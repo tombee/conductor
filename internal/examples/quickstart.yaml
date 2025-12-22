@@ -1,0 +1,18 @@
+name: quickstart
+description: Hello world workflow demonstrating basic Conductor usage
+version: "1.0"
+
+steps:
+  - id: greet
+    name: Greeting
+    type: llm
+    inputs:
+      model: fast
+      prompt: "Say hello and briefly explain what you can help with in 2-3 sentences."
+    timeout: 10
+
+outputs:
+  - name: greeting
+    type: string
+    value: $.greet.content
+    description: The greeting message

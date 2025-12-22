@@ -1,0 +1,1711 @@
+// Package workflow provides workflow orchestration primitives.
+//
+// Workflow definitions follow the SPEC-2 simple workflow format, which allows
+// for concise YAML-based workflow specifications. The version field is optional
+// and defaults to "1.0". LLM steps support model tier selection (fast, balanced,
+// strategic) and inline prompt/system configuration without requiring separate
+// action definitions.
+package workflow
+
+import (
+	"fmt"
+	"regexp"
+
+	"gopkg.in/yaml.v3"
+)
+
+// Definition represents a YAML-based workflow definition.
+// It defines the structure, steps, conditions, and outputs of a workflow
+// that can be loaded from a YAML file and executed by the workflow engine.
+//
+// Following SPEC-2, the Version field is optional and will default to "1.0"
+// if not specified. This allows for minimal workflow definitions that only
+// require a name and steps array.
+type Definition struct {
+	// Name is the workflow identifier
+	Name string `yaml:"name" json:"name"`
+
+	// Description provides human-readable context about the workflow
+	Description string `yaml:"description" json:"description"`
+
+	// Version tracks the workflow definition schema version (optional, defaults to "1.0")
+	Version string `yaml:"version" json:"version"`
+
+	// Triggers define how this workflow can be invoked (webhooks, schedules, etc.)
+	Triggers []TriggerDefinition `yaml:"triggers,omitempty" json:"triggers,omitempty"`
+
+	// Inputs defines the expected input parameters for the workflow
+	Inputs []InputDefinition `yaml:"inputs" json:"inputs"`
+
+	// Steps are the executable units of the workflow
+	Steps []StepDefinition `yaml:"steps" json:"steps"`
+
+	// Outputs define what data is returned when the workflow completes
+	Outputs []OutputDefinition `yaml:"outputs" json:"outputs"`
+
+	// Agents define named agents with preferences and capabilities
+	Agents map[string]AgentDefinition `yaml:"agents,omitempty" json:"agents,omitempty"`
+
+	// Functions define workflow-level LLM-callable functions (HTTP and script functions)
+	Functions []FunctionDefinition `yaml:"functions,omitempty" json:"functions,omitempty"`
+
+	// MCPServers define MCP server configurations for tool providers
+	MCPServers []MCPServerConfig `yaml:"mcp_servers,omitempty" json:"mcp_servers,omitempty"`
+
+	// Connectors define declarative HTTP/SSH connectors for external integrations
+	Connectors map[string]ConnectorDefinition `yaml:"connectors,omitempty" json:"connectors,omitempty"`
+
+	// CostLimits define cost constraints at the workflow level
+	CostLimits *CostLimits `yaml:"cost_limits,omitempty" json:"cost_limits,omitempty"`
+}
+
+// TriggerDefinition defines how a workflow can be triggered.
+type TriggerDefinition struct {
+	// Type is the trigger type (webhook, schedule, manual)
+	Type TriggerType `yaml:"type" json:"type"`
+
+	// Webhook configuration (for webhook triggers)
+	Webhook *WebhookTrigger `yaml:"webhook,omitempty" json:"webhook,omitempty"`
+
+	// Schedule configuration (for schedule triggers)
+	Schedule *ScheduleTrigger `yaml:"schedule,omitempty" json:"schedule,omitempty"`
+}
+
+// TriggerType represents the type of trigger.
+type TriggerType string
+
+const (
+	TriggerTypeWebhook  TriggerType = "webhook"
+	TriggerTypeSchedule TriggerType = "schedule"
+	TriggerTypeManual   TriggerType = "manual"
+)
+
+// WebhookTrigger defines webhook trigger configuration.
+type WebhookTrigger struct {
+	// Path is the URL path for the webhook (e.g., "/webhooks/my-workflow")
+	Path string `yaml:"path" json:"path"`
+
+	// Source is the webhook source type (github, slack, generic)
+	Source string `yaml:"source,omitempty" json:"source,omitempty"`
+
+	// Events limits which events trigger the workflow
+	Events []string `yaml:"events,omitempty" json:"events,omitempty"`
+
+	// Secret for signature verification (can be env var reference like ${SECRET_NAME})
+	Secret string `yaml:"secret,omitempty" json:"secret,omitempty"`
+
+	// InputMapping maps webhook payload fields to workflow inputs
+	InputMapping map[string]string `yaml:"input_mapping,omitempty" json:"input_mapping,omitempty"`
+}
+
+// ScheduleTrigger defines schedule trigger configuration.
+type ScheduleTrigger struct {
+	// Cron is the cron expression
+	Cron string `yaml:"cron" json:"cron"`
+
+	// Timezone for cron evaluation (e.g., "America/New_York")
+	Timezone string `yaml:"timezone,omitempty" json:"timezone,omitempty"`
+
+	// Enabled controls if this schedule is active
+	Enabled *bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+
+	// Inputs are the static inputs to pass when scheduled
+	Inputs map[string]any `yaml:"inputs,omitempty" json:"inputs,omitempty"`
+}
+
+// InputDefinition describes a workflow input parameter.
+type InputDefinition struct {
+	// Name is the input parameter identifier
+	Name string `yaml:"name" json:"name"`
+
+	// Type specifies the data type (string, number, boolean, object, array, enum)
+	Type string `yaml:"type" json:"type"`
+
+	// Required indicates if this input must be provided
+	Required bool `yaml:"required" json:"required"`
+
+	// Default provides a fallback value if input is not provided
+	Default interface{} `yaml:"default,omitempty" json:"default,omitempty"`
+
+	// Description explains what this input is for
+	Description string `yaml:"description,omitempty" json:"description,omitempty"`
+
+	// Enum defines the allowed values for enum-type inputs
+	Enum []string `yaml:"enum,omitempty" json:"enum,omitempty"`
+}
+
+// StepDefinition represents a single step in a workflow.
+//
+// SPEC-2 simplified LLM steps by making configuration inline:
+//   - Model: tier selection (fast/balanced/strategic), defaults to "balanced"
+//   - System: optional system prompt for LLM behavior guidance
+//   - Prompt: user prompt with template variable support ({{.input}}, {{.steps.id.response}})
+//
+// Template variables support workflow inputs and step outputs for data flow
+// between steps. The Name field is optional for concise definitions.
+type StepDefinition struct {
+	// ID is the unique step identifier within this workflow
+	ID string `yaml:"id" json:"id"`
+
+	// Name is a human-readable step name (optional)
+	Name string `yaml:"name" json:"name"`
+
+	// Type specifies the step type (condition, parallel, etc.)
+	Type StepType `yaml:"type" json:"type"`
+
+	// hasExplicitID tracks whether the ID was explicitly set in YAML
+	// Used for auto-generation to skip steps with explicit IDs
+	hasExplicitID bool
+
+	// Agent references an agent definition for provider resolution
+	Agent string `yaml:"agent,omitempty" json:"agent,omitempty"`
+
+	// Inputs maps input names to values (can reference previous step outputs)
+	Inputs map[string]interface{} `yaml:"inputs,omitempty" json:"inputs,omitempty"`
+
+	// Model specifies the model tier for LLM steps (fast, balanced, strategic)
+	// Defaults to "balanced" if not specified
+	Model string `yaml:"model,omitempty" json:"model,omitempty"`
+
+	// System is the system prompt for LLM steps, used to guide model behavior
+	// Optional - only needed when specific role/behavior is required
+	System string `yaml:"system,omitempty" json:"system,omitempty"`
+
+	// Prompt is the user prompt for LLM steps (required for type=llm)
+	// Supports template variables: {{.input}}, {{.steps.stepid.response}}
+	Prompt string `yaml:"prompt,omitempty" json:"prompt,omitempty"`
+
+	// OutputSchema defines the expected JSON Schema for LLM step outputs
+	// Mutually exclusive with OutputType
+	OutputSchema map[string]interface{} `yaml:"output_schema,omitempty" json:"output_schema,omitempty"`
+
+	// OutputType specifies a built-in output type (classification, decision, extraction)
+	// Mutually exclusive with OutputSchema
+	OutputType string `yaml:"output_type,omitempty" json:"output_type,omitempty"`
+
+	// OutputOptions provides configuration for built-in output types
+	// Used with OutputType to specify categories, choices, fields, etc.
+	OutputOptions map[string]interface{} `yaml:"output_options,omitempty" json:"output_options,omitempty"`
+
+	// Tools lists the custom tools this step can access (references workflow-level tools by name)
+	Tools []string `yaml:"tools,omitempty" json:"tools,omitempty"`
+
+	// Connector specifies the connector and operation to invoke (format: "connector_name.operation_name")
+	// Only valid for type: connector steps
+	Connector string `yaml:"connector,omitempty" json:"connector,omitempty"`
+
+	// BuiltinConnector specifies the builtin connector name (file, shell)
+	// Only valid for type: builtin steps
+	BuiltinConnector string `yaml:"builtin_connector,omitempty" json:"builtin_connector,omitempty"`
+
+	// BuiltinOperation specifies the operation to invoke on the builtin connector
+	// Only valid for type: builtin steps
+	BuiltinOperation string `yaml:"builtin_operation,omitempty" json:"builtin_operation,omitempty"`
+
+	// Condition defines when this step should execute
+	Condition *ConditionDefinition `yaml:"condition,omitempty" json:"condition,omitempty"`
+
+	// OnError specifies error handling behavior
+	OnError *ErrorHandlingDefinition `yaml:"on_error,omitempty" json:"on_error,omitempty"`
+
+	// Timeout sets the maximum execution time for this step (in seconds)
+	Timeout int `yaml:"timeout,omitempty" json:"timeout,omitempty"`
+
+	// Retry configures retry behavior for this step
+	Retry *RetryDefinition `yaml:"retry,omitempty" json:"retry,omitempty"`
+
+	// MaxCost sets the maximum cost for this step in USD
+	MaxCost *float64 `yaml:"max_cost,omitempty" json:"max_cost,omitempty"`
+
+	// MaxTokens sets the maximum token count for this step
+	MaxTokens *int `yaml:"max_tokens,omitempty" json:"max_tokens,omitempty"`
+
+	// OnLimit specifies what to do when cost limits are exceeded
+	OnLimit LimitBehavior `yaml:"on_limit,omitempty" json:"on_limit,omitempty"`
+
+	// Steps contains nested steps for parallel execution (type: parallel)
+	// Each nested step executes concurrently and results are aggregated
+	Steps []StepDefinition `yaml:"steps,omitempty" json:"steps,omitempty"`
+
+	// MaxConcurrency limits the number of concurrent nested steps for parallel execution.
+	// When set, overrides the executor's default parallelism limit.
+	// Useful for resource-intensive steps like agent launches.
+	// If 0, uses the executor's default (currently 3).
+	MaxConcurrency int `yaml:"max_concurrency,omitempty" json:"max_concurrency,omitempty"`
+
+	// Foreach enables parallel iteration over an array input.
+	// The value should be a template expression that resolves to an array.
+	// Each nested step in Steps will be executed once per array element with access to:
+	//   - .item: the current array element
+	//   - .index: zero-based position in the array
+	//   - .total: total number of elements in the array
+	// Results are collected as an array in the original order.
+	// Only valid for type: parallel steps.
+	Foreach string `yaml:"foreach,omitempty" json:"foreach,omitempty"`
+}
+
+// StepType represents the type of workflow step.
+type StepType string
+
+const (
+	// StepTypeCondition evaluates a condition and branches
+	StepTypeCondition StepType = "condition"
+
+	// StepTypeLLM makes an LLM API call
+	StepTypeLLM StepType = "llm"
+
+	// StepTypeParallel executes multiple steps concurrently
+	StepTypeParallel StepType = "parallel"
+
+	// StepTypeConnector executes a declarative connector operation
+	StepTypeConnector StepType = "connector"
+
+	// StepTypeBuiltin executes a builtin connector operation (file, shell)
+	StepTypeBuiltin StepType = "builtin"
+)
+
+// ModelTier represents the model capability tier for LLM steps.
+// This abstraction allows workflow authors to select models based on task
+// requirements without coupling to specific provider model names.
+type ModelTier string
+
+const (
+	// ModelTierFast is for simple, quick tasks requiring low latency and cost
+	// Examples: haiku, gpt-4o-mini
+	ModelTierFast ModelTier = "fast"
+
+	// ModelTierBalanced is the default tier, suitable for most tasks
+	// Provides good quality and reasonable performance/cost tradeoff
+	// Examples: sonnet, gpt-4o
+	ModelTierBalanced ModelTier = "balanced"
+
+	// ModelTierStrategic is for complex reasoning tasks requiring advanced capabilities
+	// Examples: opus, o1
+	ModelTierStrategic ModelTier = "strategic"
+)
+
+// ValidModelTiers for validation
+var ValidModelTiers = map[ModelTier]bool{
+	ModelTierFast:      true,
+	ModelTierBalanced:  true,
+	ModelTierStrategic: true,
+}
+
+// ConditionDefinition defines a conditional expression.
+type ConditionDefinition struct {
+	// Expression is the condition to evaluate (e.g., "$.previous_step.status == 'success'")
+	Expression string `yaml:"expression" json:"expression"`
+
+	// ThenSteps are steps to execute if condition is true
+	ThenSteps []string `yaml:"then_steps,omitempty" json:"then_steps,omitempty"`
+
+	// ElseSteps are steps to execute if condition is false
+	ElseSteps []string `yaml:"else_steps,omitempty" json:"else_steps,omitempty"`
+}
+
+// ErrorHandlingDefinition defines how to handle step errors.
+type ErrorHandlingDefinition struct {
+	// Strategy specifies the error handling approach (fail, ignore, retry, fallback)
+	Strategy ErrorStrategy `yaml:"strategy" json:"strategy"`
+
+	// FallbackStep is the step ID to execute on error (when strategy is 'fallback')
+	FallbackStep string `yaml:"fallback_step,omitempty" json:"fallback_step,omitempty"`
+}
+
+// ErrorStrategy represents an error handling strategy.
+type ErrorStrategy string
+
+const (
+	// ErrorStrategyFail stops workflow execution on error
+	ErrorStrategyFail ErrorStrategy = "fail"
+
+	// ErrorStrategyIgnore continues workflow execution despite error
+	ErrorStrategyIgnore ErrorStrategy = "ignore"
+
+	// ErrorStrategyRetry retries the step according to retry configuration
+	ErrorStrategyRetry ErrorStrategy = "retry"
+
+	// ErrorStrategyFallback executes a fallback step on error
+	ErrorStrategyFallback ErrorStrategy = "fallback"
+)
+
+// RetryDefinition configures retry behavior for a step.
+type RetryDefinition struct {
+	// MaxAttempts is the maximum number of retry attempts
+	MaxAttempts int `yaml:"max_attempts" json:"max_attempts"`
+
+	// BackoffBase is the base duration for exponential backoff (in seconds)
+	BackoffBase int `yaml:"backoff_base" json:"backoff_base"`
+
+	// BackoffMultiplier is the multiplier for exponential backoff
+	BackoffMultiplier float64 `yaml:"backoff_multiplier" json:"backoff_multiplier"`
+}
+
+// OutputDefinition describes a workflow output value.
+type OutputDefinition struct {
+	// Name is the output identifier
+	Name string `yaml:"name" json:"name"`
+
+	// Type specifies the output data type
+	Type string `yaml:"type" json:"type"`
+
+	// Value is an expression that computes the output value
+	// (e.g., "$.final_step.result")
+	Value string `yaml:"value" json:"value"`
+
+	// Description explains what this output represents
+	Description string `yaml:"description,omitempty" json:"description,omitempty"`
+}
+
+// AgentDefinition describes an agent with provider preferences and capability requirements.
+type AgentDefinition struct {
+	// Prefers is a hint about which provider family works best (not enforced)
+	Prefers string `yaml:"prefers,omitempty" json:"prefers,omitempty"`
+
+	// Capabilities lists required provider capabilities (vision, long-context, tool-use, streaming, json-mode)
+	Capabilities []string `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
+}
+
+// FunctionDefinition describes a custom function that can be called by LLM steps.
+// Functions are defined at the workflow level and can be either HTTP endpoints or shell scripts.
+type FunctionDefinition struct {
+	// Name is the unique function identifier
+	Name string `yaml:"name" json:"name"`
+
+	// Type specifies the function implementation (http or script)
+	Type ToolType `yaml:"type" json:"type"`
+
+	// Description provides human-readable context about what the function does
+	Description string `yaml:"description" json:"description"`
+
+	// Method is the HTTP method (GET, POST, etc.) for HTTP functions
+	Method string `yaml:"method,omitempty" json:"method,omitempty"`
+
+	// URL is the endpoint URL template for HTTP functions (supports {{.param}} interpolation)
+	URL string `yaml:"url,omitempty" json:"url,omitempty"`
+
+	// Headers are HTTP headers for HTTP functions (supports {{.env.VAR}} interpolation)
+	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
+
+	// Command is the script path for script functions (relative to workflow file directory)
+	Command string `yaml:"command,omitempty" json:"command,omitempty"`
+
+	// InputSchema defines the expected input parameters using JSON Schema
+	InputSchema map[string]interface{} `yaml:"input_schema,omitempty" json:"input_schema,omitempty"`
+
+	// AutoApprove indicates whether the function can execute without user approval
+	// Defaults to false for security
+	AutoApprove bool `yaml:"auto_approve,omitempty" json:"auto_approve,omitempty"`
+
+	// Timeout is the maximum execution time in seconds (default: 30s, max: 300s)
+	Timeout int `yaml:"timeout,omitempty" json:"timeout,omitempty"`
+
+	// MaxResponseSize is the maximum response size in bytes (default: 1MB)
+	MaxResponseSize int64 `yaml:"max_response_size,omitempty" json:"max_response_size,omitempty"`
+}
+
+// ToolType represents the type of custom tool.
+type ToolType string
+
+const (
+	// ToolTypeHTTP is an HTTP endpoint tool
+	ToolTypeHTTP ToolType = "http"
+
+	// ToolTypeScript is a shell script tool
+	ToolTypeScript ToolType = "script"
+)
+
+// ValidToolTypes for validation
+var ValidToolTypes = map[ToolType]bool{
+	ToolTypeHTTP:   true,
+	ToolTypeScript: true,
+}
+
+// MCPServerConfig defines configuration for an MCP (Model Context Protocol) server.
+// MCP servers provide tools that can be used in workflow steps via the tool registry.
+type MCPServerConfig struct {
+	// Name is the unique identifier for this MCP server
+	Name string `yaml:"name" json:"name"`
+
+	// Command is the executable to run (e.g., "npx", "python", "/usr/bin/mcp-server")
+	Command string `yaml:"command" json:"command"`
+
+	// Args are command-line arguments to pass to the server
+	Args []string `yaml:"args,omitempty" json:"args,omitempty"`
+
+	// Env are environment variables to pass to the server (e.g., ["API_KEY=xyz"])
+	Env []string `yaml:"env,omitempty" json:"env,omitempty"`
+
+	// Timeout is the default timeout for tool calls in seconds (defaults to 30)
+	Timeout int `yaml:"timeout,omitempty" json:"timeout,omitempty"`
+}
+
+// ConnectorDefinition defines a declarative connector for external integrations.
+// Connectors provide schema-validated, deterministic operations that execute without LLM involvement.
+type ConnectorDefinition struct {
+	// Name is inferred from the map key in workflow.connectors
+	Name string `yaml:"-" json:"name,omitempty"`
+
+	// From imports a connector package (e.g., "connectors/github", "github.com/org/connector@v1.0")
+	// Mutually exclusive with inline definition (BaseURL + Operations)
+	From string `yaml:"from,omitempty" json:"from,omitempty"`
+
+	// BaseURL is the base URL for all operations (required for inline connectors)
+	BaseURL string `yaml:"base_url,omitempty" json:"base_url,omitempty"`
+
+	// Auth defines authentication configuration
+	Auth *AuthDefinition `yaml:"auth,omitempty" json:"auth,omitempty"`
+
+	// Headers are default headers applied to all operations
+	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
+
+	// RateLimit defines rate limiting configuration
+	RateLimit *RateLimitConfig `yaml:"rate_limit,omitempty" json:"rate_limit,omitempty"`
+
+	// Operations define named operations for inline connectors
+	// Not used when From is specified (operations come from package)
+	Operations map[string]OperationDefinition `yaml:"operations,omitempty" json:"operations,omitempty"`
+}
+
+// OperationDefinition defines a single operation within a connector.
+type OperationDefinition struct {
+	// Method is the HTTP method (GET, POST, PUT, PATCH, DELETE)
+	Method string `yaml:"method" json:"method"`
+
+	// Path is the URL path template with {param} placeholders
+	Path string `yaml:"path" json:"path"`
+
+	// RequestSchema is the JSON Schema for operation inputs
+	RequestSchema map[string]interface{} `yaml:"request_schema,omitempty" json:"request_schema,omitempty"`
+
+	// ResponseTransform is a jq expression to transform the response
+	ResponseTransform string `yaml:"response_transform,omitempty" json:"response_transform,omitempty"`
+
+	// Headers are operation-specific headers (merged with connector headers)
+	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
+
+	// Timeout is the operation-specific timeout in seconds
+	Timeout int `yaml:"timeout,omitempty" json:"timeout,omitempty"`
+
+	// Retry defines retry configuration for this operation
+	Retry *RetryDefinition `yaml:"retry,omitempty" json:"retry,omitempty"`
+}
+
+// AuthDefinition defines authentication configuration for a connector.
+type AuthDefinition struct {
+	// Type is the authentication type (bearer, basic, api_key, oauth2_client)
+	// Optional - inferred as "bearer" if only Token is present
+	Type string `yaml:"type,omitempty" json:"type,omitempty"`
+
+	// Token is the bearer token (for type: bearer or shorthand)
+	// Can reference environment variables: ${GITHUB_TOKEN}
+	Token string `yaml:"token,omitempty" json:"token,omitempty"`
+
+	// Username for basic auth (type: basic)
+	Username string `yaml:"username,omitempty" json:"username,omitempty"`
+
+	// Password for basic auth (type: basic)
+	Password string `yaml:"password,omitempty" json:"password,omitempty"`
+
+	// Header is the header name for API key auth (type: api_key)
+	Header string `yaml:"header,omitempty" json:"header,omitempty"`
+
+	// Value is the API key value (type: api_key)
+	Value string `yaml:"value,omitempty" json:"value,omitempty"`
+
+	// ClientID for OAuth2 client credentials flow (type: oauth2_client) - future
+	ClientID string `yaml:"client_id,omitempty" json:"client_id,omitempty"`
+
+	// ClientSecret for OAuth2 client credentials flow (type: oauth2_client) - future
+	ClientSecret string `yaml:"client_secret,omitempty" json:"client_secret,omitempty"`
+
+	// TokenURL for OAuth2 token endpoint (type: oauth2_client) - future
+	TokenURL string `yaml:"token_url,omitempty" json:"token_url,omitempty"`
+
+	// Scopes for OAuth2 (type: oauth2_client) - future
+	Scopes []string `yaml:"scopes,omitempty" json:"scopes,omitempty"`
+}
+
+// RateLimitConfig defines rate limiting configuration for a connector.
+type RateLimitConfig struct {
+	// RequestsPerSecond limits the number of requests per second
+	RequestsPerSecond float64 `yaml:"requests_per_second,omitempty" json:"requests_per_second,omitempty"`
+
+	// RequestsPerMinute limits the number of requests per minute
+	RequestsPerMinute int `yaml:"requests_per_minute,omitempty" json:"requests_per_minute,omitempty"`
+
+	// Timeout is the maximum time to wait for rate limit (in seconds, default 30)
+	Timeout int `yaml:"timeout,omitempty" json:"timeout,omitempty"`
+}
+
+// CostLimits defines cost constraints for a workflow or step.
+type CostLimits struct {
+	// MaxCost is the maximum total cost in USD
+	MaxCost *float64 `yaml:"max_cost,omitempty" json:"max_cost,omitempty"`
+
+	// MaxTokens is the maximum total token count
+	MaxTokens *int `yaml:"max_tokens,omitempty" json:"max_tokens,omitempty"`
+
+	// PerStep defines cost limits for individual steps
+	PerStep *CostLimits `yaml:"per_step,omitempty" json:"per_step,omitempty"`
+
+	// OnLimit specifies what to do when limits are exceeded
+	OnLimit LimitBehavior `yaml:"on_limit,omitempty" json:"on_limit,omitempty"`
+}
+
+// LimitBehavior defines what happens when cost limits are exceeded.
+type LimitBehavior string
+
+const (
+	// LimitBehaviorAbort stops execution and returns an error
+	LimitBehaviorAbort LimitBehavior = "abort"
+
+	// LimitBehaviorWarn logs a warning but continues execution
+	LimitBehaviorWarn LimitBehavior = "warn"
+
+	// LimitBehaviorContinue continues execution silently
+	LimitBehaviorContinue LimitBehavior = "continue"
+)
+
+// ParseDefinition parses a workflow definition from YAML bytes.
+func ParseDefinition(data []byte) (*Definition, error) {
+	var def Definition
+	if err := yaml.Unmarshal(data, &def); err != nil {
+		return nil, fmt.Errorf("failed to parse workflow definition: %w", err)
+	}
+
+	// Auto-generate step IDs before applying defaults
+	def.autoGenerateStepIDs()
+
+	// Apply defaults before validation (may return error from output_type expansion)
+	if err := def.ApplyDefaults(); err != nil {
+		return nil, fmt.Errorf("failed to apply defaults: %w", err)
+	}
+
+	if err := def.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid workflow definition: %w", err)
+	}
+
+	return &def, nil
+}
+
+// ApplyDefaults applies default values to workflow and step fields.
+// Returns an error if output_type expansion fails.
+func (d *Definition) ApplyDefaults() error {
+	// Apply defaults to each step
+	for i := range d.Steps {
+		step := &d.Steps[i]
+
+		// Default timeout: 30 seconds
+		if step.Timeout == 0 {
+			step.Timeout = 30
+		}
+
+		// Default retry configuration: max_attempts=2, backoff_base=1, backoff_multiplier=2.0
+		if step.Retry == nil {
+			step.Retry = &RetryDefinition{
+				MaxAttempts:       2,
+				BackoffBase:       1,
+				BackoffMultiplier: 2.0,
+			}
+		}
+
+		// Default model tier for LLM steps: balanced
+		if step.Type == StepTypeLLM && step.Model == "" {
+			step.Model = string(ModelTierBalanced)
+		}
+
+		// Expand output_type to output_schema (T1.3)
+		if step.OutputType != "" {
+			// This will be validated later, but expansion happens here
+			// so that the expanded schema is available for validation
+			if err := step.expandOutputType(); err != nil {
+				return fmt.Errorf("step %s: %w", step.ID, err)
+			}
+		}
+	}
+	return nil
+}
+
+// autoGenerateStepIDs generates IDs for steps that don't have explicit IDs.
+// Uses a two-pass algorithm:
+// 1. First pass: collect all explicit IDs
+// 2. Second pass: generate auto-IDs, skipping numbers that would collide
+//
+// Auto-ID format: {connector}_{operation}_{N}
+// Example: file_read_1, github_create_issue_2
+func (d *Definition) autoGenerateStepIDs() {
+	// First pass: collect all explicit IDs
+	explicitIDs := make(map[string]bool)
+	for _, step := range d.Steps {
+		if step.hasExplicitID {
+			explicitIDs[step.ID] = true
+		}
+	}
+
+	// Track counters for each connector.operation combination
+	counters := make(map[string]int)
+
+	// Second pass: generate auto-IDs for steps without explicit IDs
+	for i := range d.Steps {
+		step := &d.Steps[i]
+
+		// Skip steps that already have explicit IDs
+		if step.hasExplicitID {
+			continue
+		}
+
+		// Determine the base ID based on step type
+		var baseID string
+		if step.Type == StepTypeBuiltin {
+			baseID = step.BuiltinConnector + "_" + step.BuiltinOperation
+		} else if step.Type == StepTypeConnector {
+			// Connector field is in format "connector.operation", convert to "connector_operation"
+			baseID = step.Connector
+			// Replace dot with underscore
+			for j, c := range baseID {
+				if c == '.' {
+					baseID = baseID[:j] + "_" + baseID[j+1:]
+					break
+				}
+			}
+		} else {
+			// For other step types (llm, parallel, condition), generate a generic ID
+			// This shouldn't happen in practice since these types should have explicit IDs
+			baseID = "step"
+		}
+
+		// Find the next available number that doesn't collide
+		n := counters[baseID] + 1
+		candidate := fmt.Sprintf("%s_%d", baseID, n)
+
+		// Keep incrementing until we find a non-colliding ID
+		for explicitIDs[candidate] {
+			n++
+			candidate = fmt.Sprintf("%s_%d", baseID, n)
+		}
+
+		// Assign the generated ID
+		step.ID = candidate
+		counters[baseID] = n
+
+		// Mark this ID as used to prevent collisions in subsequent steps
+		explicitIDs[candidate] = true
+	}
+}
+
+// Validate checks if the workflow definition is valid.
+func (d *Definition) Validate() error {
+	if d.Name == "" {
+		return fmt.Errorf("workflow name is required")
+	}
+
+	// Version is now optional (removed validation check)
+
+	if len(d.Steps) == 0 {
+		return fmt.Errorf("workflow must have at least one step")
+	}
+
+	// Validate step IDs are unique
+	stepIDs := make(map[string]bool)
+	for _, step := range d.Steps {
+		if step.ID == "" {
+			return fmt.Errorf("step ID is required")
+		}
+		if stepIDs[step.ID] {
+			return fmt.Errorf("duplicate step ID: %s", step.ID)
+		}
+		stepIDs[step.ID] = true
+
+		// Validate step
+		if err := step.Validate(); err != nil {
+			return fmt.Errorf("invalid step %s: %w", step.ID, err)
+		}
+
+		// Validate expression injection prevention
+		if err := ValidateExpressionInjection(&step); err != nil {
+			return fmt.Errorf("invalid step %s: %w", step.ID, err)
+		}
+
+		// Validate nested foreach prevention
+		if err := ValidateNestedForeach(&step, false); err != nil {
+			return fmt.Errorf("invalid step %s: %w", step.ID, err)
+		}
+
+		// Validate agent reference exists if specified
+		if step.Agent != "" {
+			if _, exists := d.Agents[step.Agent]; !exists {
+				return fmt.Errorf("step %s references undefined agent: %s", step.ID, step.Agent)
+			}
+		}
+	}
+
+	// Validate inputs
+	for _, input := range d.Inputs {
+		if err := input.Validate(); err != nil {
+			return fmt.Errorf("invalid input %s: %w", input.Name, err)
+		}
+	}
+
+	// Validate outputs
+	for _, output := range d.Outputs {
+		if err := output.Validate(); err != nil {
+			return fmt.Errorf("invalid output %s: %w", output.Name, err)
+		}
+	}
+
+	// Validate agents
+	for name, agent := range d.Agents {
+		if err := agent.Validate(); err != nil {
+			return fmt.Errorf("invalid agent %s: %w", name, err)
+		}
+	}
+
+	// Validate functions and build function name index
+	functionNames := make(map[string]bool)
+	for i, function := range d.Functions {
+		if err := function.Validate(); err != nil {
+			return fmt.Errorf("invalid function %s: %w", function.Name, err)
+		}
+		if functionNames[function.Name] {
+			return fmt.Errorf("duplicate function name: %s", function.Name)
+		}
+		functionNames[function.Name] = true
+
+		// Store index for error messages
+		_ = i
+	}
+
+	// Validate step function references
+	for _, step := range d.Steps {
+		for _, functionName := range step.Tools {
+			if !functionNames[functionName] {
+				return fmt.Errorf("step %s references undefined function: %s", step.ID, functionName)
+			}
+		}
+	}
+
+	// Validate MCP servers
+	mcpServerNames := make(map[string]bool)
+	for _, server := range d.MCPServers {
+		if err := server.Validate(); err != nil {
+			return fmt.Errorf("invalid mcp_server %s: %w", server.Name, err)
+		}
+		// Check for duplicate server names
+		if mcpServerNames[server.Name] {
+			return fmt.Errorf("duplicate mcp_server name: %s", server.Name)
+		}
+		mcpServerNames[server.Name] = true
+	}
+
+	// Validate connectors and build connector name index
+	connectorNames := make(map[string]bool)
+	for name, connector := range d.Connectors {
+		// Set the name from the map key
+		connector.Name = name
+		d.Connectors[name] = connector
+
+		if err := connector.Validate(); err != nil {
+			return fmt.Errorf("invalid connector %s: %w", name, err)
+		}
+		connectorNames[name] = true
+	}
+
+	// Validate step connector references
+	for _, step := range d.Steps {
+		if step.Type == StepTypeConnector && step.Connector != "" {
+			// Parse connector.operation format
+			parts := splitConnectorReference(step.Connector)
+			if len(parts) != 2 {
+				return fmt.Errorf("step %s: connector must be in format 'connector_name.operation_name', got: %s", step.ID, step.Connector)
+			}
+			connectorName, operationName := parts[0], parts[1]
+
+			// Check connector exists
+			if !connectorNames[connectorName] {
+				return fmt.Errorf("step %s references undefined connector: %s", step.ID, connectorName)
+			}
+
+			// Check operation exists (only for inline connectors, not packages)
+			connector := d.Connectors[connectorName]
+			if connector.From == "" {
+				// Inline connector - validate operation exists
+				if _, exists := connector.Operations[operationName]; !exists {
+					return fmt.Errorf("step %s references undefined operation %s in connector %s", step.ID, operationName, connectorName)
+				}
+			}
+			// For package connectors, we can't validate operations at definition time
+		}
+	}
+
+	return nil
+}
+
+// splitConnectorReference splits a connector reference like "github.create_issue" into ["github", "create_issue"]
+func splitConnectorReference(ref string) []string {
+	// Find the first dot
+	dotIndex := -1
+	for i, ch := range ref {
+		if ch == '.' {
+			dotIndex = i
+			break
+		}
+	}
+
+	if dotIndex == -1 {
+		return []string{ref}
+	}
+
+	return []string{ref[:dotIndex], ref[dotIndex+1:]}
+}
+
+// Validate checks if the input definition is valid.
+func (i *InputDefinition) Validate() error {
+	if i.Name == "" {
+		return fmt.Errorf("input name is required")
+	}
+
+	if i.Type == "" {
+		return fmt.Errorf("input type is required")
+	}
+
+	// Validate type is one of the allowed types
+	validTypes := map[string]bool{
+		"string":  true,
+		"number":  true,
+		"boolean": true,
+		"object":  true,
+		"array":   true,
+	}
+	if !validTypes[i.Type] {
+		return fmt.Errorf("invalid input type: %s (must be string, number, boolean, object, or array)", i.Type)
+	}
+
+	return nil
+}
+
+// Validate checks if the step definition is valid.
+func (s *StepDefinition) Validate() error {
+	if s.ID == "" {
+		return fmt.Errorf("step ID is required")
+	}
+
+	// Name is now optional (removed validation check)
+
+	if s.Type == "" {
+		return fmt.Errorf("step type is required")
+	}
+
+	// Validate step type
+	validTypes := map[StepType]bool{
+		StepTypeCondition: true,
+		StepTypeLLM:       true,
+		StepTypeParallel:  true,
+		StepTypeConnector: true,
+		StepTypeBuiltin:   true,
+	}
+	if !validTypes[s.Type] {
+		return fmt.Errorf("invalid step type: %s", s.Type)
+	}
+
+	// Validate prompt is present for LLM steps
+	if s.Type == StepTypeLLM && s.Prompt == "" {
+		return fmt.Errorf("prompt is required for LLM step type")
+	}
+
+	// Validate model tier for LLM steps
+	if s.Type == StepTypeLLM && s.Model != "" {
+		if !ValidModelTiers[ModelTier(s.Model)] {
+			return fmt.Errorf("invalid model tier: %s (must be fast, balanced, or strategic)", s.Model)
+		}
+	}
+
+	// Validate condition is present for condition steps
+	if s.Type == StepTypeCondition && s.Condition == nil {
+		return fmt.Errorf("condition is required for condition step type")
+	}
+
+	// Validate connector field for connector steps
+	if s.Type == StepTypeConnector {
+		if s.Connector == "" {
+			return fmt.Errorf("connector is required for connector step type")
+		}
+		// Format validation happens at workflow level where we can check against defined connectors
+	}
+
+	// Validate builtin connector field for builtin steps
+	if s.Type == StepTypeBuiltin {
+		if s.BuiltinConnector == "" {
+			return fmt.Errorf("builtin_connector is required for builtin step type")
+		}
+		if s.BuiltinOperation == "" {
+			return fmt.Errorf("builtin_operation is required for builtin step type")
+		}
+		// Validate builtin connector name
+		validBuiltins := map[string]bool{
+			"file":  true,
+			"shell": true,
+		}
+		if !validBuiltins[s.BuiltinConnector] {
+			return fmt.Errorf("invalid builtin connector: %s (must be file or shell)", s.BuiltinConnector)
+		}
+	}
+
+	// Validate error handling
+	if s.OnError != nil {
+		if err := s.OnError.Validate(); err != nil {
+			return fmt.Errorf("invalid error handling: %w", err)
+		}
+	}
+
+	// Validate retry configuration
+	if s.Retry != nil {
+		if err := s.Retry.Validate(); err != nil {
+			return fmt.Errorf("invalid retry configuration: %w", err)
+		}
+	}
+
+	// Validate schema complexity if output_schema is specified (T1.5)
+	// This runs after expansion, so we check the final OutputSchema
+	if s.OutputSchema != nil {
+		if err := validateSchemaComplexity(s.OutputSchema); err != nil {
+			return fmt.Errorf("invalid output_schema: %w", err)
+		}
+	}
+
+	// Validate parallel step nested steps
+	if s.Type == StepTypeParallel {
+		if len(s.Steps) == 0 {
+			return fmt.Errorf("parallel step requires nested steps")
+		}
+		// Validate each nested step
+		nestedIDs := make(map[string]bool)
+		for i, nested := range s.Steps {
+			if err := nested.Validate(); err != nil {
+				return fmt.Errorf("parallel step %s, nested step %d (%s): %w", s.ID, i, nested.ID, err)
+			}
+			// Check for duplicate IDs within parallel block
+			if nestedIDs[nested.ID] {
+				return fmt.Errorf("parallel step %s has duplicate nested step ID: %s", s.ID, nested.ID)
+			}
+			nestedIDs[nested.ID] = true
+		}
+	}
+
+	return nil
+}
+
+// Validate checks if the error handling definition is valid.
+func (e *ErrorHandlingDefinition) Validate() error {
+	validStrategies := map[ErrorStrategy]bool{
+		ErrorStrategyFail:     true,
+		ErrorStrategyIgnore:   true,
+		ErrorStrategyRetry:    true,
+		ErrorStrategyFallback: true,
+	}
+	if !validStrategies[e.Strategy] {
+		return fmt.Errorf("invalid error strategy: %s", e.Strategy)
+	}
+
+	if e.Strategy == ErrorStrategyFallback && e.FallbackStep == "" {
+		return fmt.Errorf("fallback_step is required when error strategy is 'fallback'")
+	}
+
+	return nil
+}
+
+// Validate checks if the retry definition is valid.
+func (r *RetryDefinition) Validate() error {
+	if r.MaxAttempts < 1 {
+		return fmt.Errorf("max_attempts must be at least 1")
+	}
+
+	if r.BackoffBase < 1 {
+		return fmt.Errorf("backoff_base must be at least 1 second")
+	}
+
+	if r.BackoffMultiplier < 1.0 {
+		return fmt.Errorf("backoff_multiplier must be at least 1.0")
+	}
+
+	return nil
+}
+
+// Validate checks if the output definition is valid.
+func (o *OutputDefinition) Validate() error {
+	if o.Name == "" {
+		return fmt.Errorf("output name is required")
+	}
+
+	if o.Type == "" {
+		return fmt.Errorf("output type is required")
+	}
+
+	if o.Value == "" {
+		return fmt.Errorf("output value expression is required")
+	}
+
+	return nil
+}
+
+// Validate checks if the agent definition is valid.
+func (a *AgentDefinition) Validate() error {
+	// Validate capabilities if specified
+	if len(a.Capabilities) > 0 {
+		validCapabilities := map[string]bool{
+			"vision":       true,
+			"long-context": true,
+			"tool-use":     true,
+			"streaming":    true,
+			"json-mode":    true,
+		}
+		for _, cap := range a.Capabilities {
+			if !validCapabilities[cap] {
+				return fmt.Errorf("invalid capability: %s (must be one of: vision, long-context, tool-use, streaming, json-mode)", cap)
+			}
+		}
+	}
+
+	return nil
+}
+
+// Validate checks if the MCP server configuration is valid.
+func (m *MCPServerConfig) Validate() error {
+	if m.Name == "" {
+		return fmt.Errorf("mcp_server name is required")
+	}
+
+	if m.Command == "" {
+		return fmt.Errorf("mcp_server command is required")
+	}
+
+	// Validate timeout if specified
+	if m.Timeout < 0 {
+		return fmt.Errorf("mcp_server timeout must be non-negative")
+	}
+
+	return nil
+}
+
+// Validate checks if the connector definition is valid (FR8).
+func (c *ConnectorDefinition) Validate() error {
+	// Validate name (should be set from map key)
+	if c.Name == "" {
+		return fmt.Errorf("connector name is required")
+	}
+
+	// Check for mutually exclusive fields: from vs inline definition
+	hasFrom := c.From != ""
+	hasInline := c.BaseURL != "" || len(c.Operations) > 0
+
+	if !hasFrom && !hasInline {
+		return fmt.Errorf("connector must specify either 'from' (package import) or inline definition (base_url + operations)")
+	}
+
+	if hasFrom && hasInline {
+		return fmt.Errorf("connector cannot specify both 'from' and inline definition (base_url/operations)")
+	}
+
+	// For inline connectors, base_url is required
+	if !hasFrom && c.BaseURL == "" {
+		return fmt.Errorf("base_url is required for inline connector definition")
+	}
+
+	// For inline connectors, must have at least one operation
+	if !hasFrom && len(c.Operations) == 0 {
+		return fmt.Errorf("inline connector must define at least one operation")
+	}
+
+	// Validate auth if specified
+	if c.Auth != nil {
+		if err := c.Auth.Validate(); err != nil {
+			return fmt.Errorf("invalid auth: %w", err)
+		}
+	}
+
+	// Validate rate limit if specified
+	if c.RateLimit != nil {
+		if err := c.RateLimit.Validate(); err != nil {
+			return fmt.Errorf("invalid rate_limit: %w", err)
+		}
+	}
+
+	// Validate operations
+	for name, op := range c.Operations {
+		if err := op.Validate(); err != nil {
+			return fmt.Errorf("invalid operation %s: %w", name, err)
+		}
+	}
+
+	return nil
+}
+
+// Validate checks if the operation definition is valid.
+func (o *OperationDefinition) Validate() error {
+	// Method is required
+	if o.Method == "" {
+		return fmt.Errorf("method is required")
+	}
+
+	// Validate HTTP method
+	validMethods := map[string]bool{
+		"GET":    true,
+		"POST":   true,
+		"PUT":    true,
+		"PATCH":  true,
+		"DELETE": true,
+		"HEAD":   true,
+	}
+	if !validMethods[o.Method] {
+		return fmt.Errorf("invalid method: %s (must be GET, POST, PUT, PATCH, DELETE, or HEAD)", o.Method)
+	}
+
+	// Path is required
+	if o.Path == "" {
+		return fmt.Errorf("path is required")
+	}
+
+	// Validate timeout if specified
+	if o.Timeout < 0 {
+		return fmt.Errorf("timeout must be non-negative")
+	}
+
+	// Validate retry if specified
+	if o.Retry != nil {
+		if err := o.Retry.Validate(); err != nil {
+			return fmt.Errorf("invalid retry: %w", err)
+		}
+	}
+
+	// TODO: Validate request_schema is valid JSON Schema
+	// TODO: Validate response_transform is valid jq expression
+	// TODO: Validate path template parameters exist in request_schema
+
+	return nil
+}
+
+// Validate checks if the auth definition is valid.
+func (a *AuthDefinition) Validate() error {
+	// Infer type if not specified
+	authType := a.Type
+	if authType == "" {
+		// If only token is present, assume bearer
+		if a.Token != "" {
+			authType = "bearer"
+		}
+	}
+
+	switch authType {
+	case "bearer", "":
+		if a.Token == "" {
+			return fmt.Errorf("token is required for bearer auth")
+		}
+
+	case "basic":
+		if a.Username == "" {
+			return fmt.Errorf("username is required for basic auth")
+		}
+		if a.Password == "" {
+			return fmt.Errorf("password is required for basic auth")
+		}
+
+	case "api_key":
+		if a.Header == "" {
+			return fmt.Errorf("header is required for api_key auth")
+		}
+		if a.Value == "" {
+			return fmt.Errorf("value is required for api_key auth")
+		}
+
+	case "oauth2_client":
+		// OAuth2 is future functionality
+		return fmt.Errorf("oauth2_client auth type is not yet implemented")
+
+	default:
+		return fmt.Errorf("invalid auth type: %s (must be bearer, basic, api_key, or oauth2_client)", authType)
+	}
+
+	return nil
+}
+
+// Validate checks if the rate limit config is valid.
+func (r *RateLimitConfig) Validate() error {
+	// At least one limit must be specified
+	if r.RequestsPerSecond == 0 && r.RequestsPerMinute == 0 {
+		return fmt.Errorf("at least one of requests_per_second or requests_per_minute must be specified")
+	}
+
+	// Values must be positive
+	if r.RequestsPerSecond < 0 {
+		return fmt.Errorf("requests_per_second must be non-negative")
+	}
+	if r.RequestsPerMinute < 0 {
+		return fmt.Errorf("requests_per_minute must be non-negative")
+	}
+
+	// Validate timeout
+	if r.Timeout < 0 {
+		return fmt.Errorf("timeout must be non-negative")
+	}
+
+	return nil
+}
+
+// expandOutputType expands built-in output types to their equivalent output_schema.
+// This implements T1.3: schema expansion logic for classification, decision, and extraction types.
+// This method should be called from ApplyDefaults before validation.
+func (s *StepDefinition) expandOutputType() error {
+	// T1.4: Check mutual exclusivity BEFORE expansion
+	if s.OutputSchema != nil && s.OutputType != "" {
+		return fmt.Errorf("output_schema and output_type are mutually exclusive")
+	}
+
+	// If OutputType is not set, nothing to expand
+	if s.OutputType == "" {
+		return nil
+	}
+
+	switch s.OutputType {
+	case "classification":
+		// Extract categories from output_options
+		categories, ok := s.OutputOptions["categories"]
+		if !ok {
+			return fmt.Errorf("output_type 'classification' requires 'categories' in output_options")
+		}
+		categoriesSlice, ok := categories.([]interface{})
+		if !ok {
+			return fmt.Errorf("categories must be an array")
+		}
+		if len(categoriesSlice) == 0 {
+			return fmt.Errorf("categories array cannot be empty")
+		}
+
+		// Expand to schema
+		s.OutputSchema = map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"category": map[string]interface{}{
+					"type": "string",
+					"enum": categoriesSlice,
+				},
+			},
+			"required": []interface{}{"category"},
+		}
+
+	case "decision":
+		// Extract choices from output_options
+		choices, ok := s.OutputOptions["choices"]
+		if !ok {
+			return fmt.Errorf("output_type 'decision' requires 'choices' in output_options")
+		}
+		choicesSlice, ok := choices.([]interface{})
+		if !ok {
+			return fmt.Errorf("choices must be an array")
+		}
+		if len(choicesSlice) == 0 {
+			return fmt.Errorf("choices array cannot be empty")
+		}
+
+		// Build required fields list
+		requiredFields := []interface{}{"decision"}
+
+		// Check if reasoning is required
+		requireReasoning, _ := s.OutputOptions["require_reasoning"].(bool)
+		if requireReasoning {
+			requiredFields = append(requiredFields, "reasoning")
+		}
+
+		// Expand to schema
+		properties := map[string]interface{}{
+			"decision": map[string]interface{}{
+				"type": "string",
+				"enum": choicesSlice,
+			},
+		}
+
+		// Always include reasoning field, but only require it if specified
+		properties["reasoning"] = map[string]interface{}{
+			"type": "string",
+		}
+
+		s.OutputSchema = map[string]interface{}{
+			"type":       "object",
+			"properties": properties,
+			"required":   requiredFields,
+		}
+
+	case "extraction":
+		// Extract fields from output_options
+		fields, ok := s.OutputOptions["fields"]
+		if !ok {
+			return fmt.Errorf("output_type 'extraction' requires 'fields' in output_options")
+		}
+		fieldsSlice, ok := fields.([]interface{})
+		if !ok {
+			return fmt.Errorf("fields must be an array")
+		}
+		if len(fieldsSlice) == 0 {
+			return fmt.Errorf("fields array cannot be empty")
+		}
+
+		// Build properties and required fields
+		properties := make(map[string]interface{})
+		requiredFields := make([]interface{}, 0, len(fieldsSlice))
+
+		for _, field := range fieldsSlice {
+			fieldName, ok := field.(string)
+			if !ok {
+				return fmt.Errorf("field names must be strings")
+			}
+			properties[fieldName] = map[string]interface{}{
+				"type": "string",
+			}
+			requiredFields = append(requiredFields, fieldName)
+		}
+
+		// Expand to schema
+		s.OutputSchema = map[string]interface{}{
+			"type":       "object",
+			"properties": properties,
+			"required":   requiredFields,
+		}
+
+	default:
+		return fmt.Errorf("unsupported output_type: %s (must be classification, decision, or extraction)", s.OutputType)
+	}
+
+	return nil
+}
+
+// validateSchemaComplexity validates that a schema doesn't exceed complexity limits.
+// This implements T1.5: max depth 10, max properties 100, max size 64KB.
+func validateSchemaComplexity(schema map[string]interface{}) error {
+	// Check schema size (serialize to JSON and check byte length)
+	// Using a simple estimate: each entry is roughly 50 bytes on average
+	// This is a rough heuristic to avoid expensive marshaling during validation
+	estimatedSize := estimateSchemaSize(schema)
+	if estimatedSize > 64*1024 {
+		return fmt.Errorf("schema exceeds maximum size of 64KB")
+	}
+
+	// Check nesting depth and property count
+	return validateSchemaDepthAndProperties(schema, 0, 0)
+}
+
+// estimateSchemaSize estimates the JSON size of a schema.
+func estimateSchemaSize(v interface{}) int {
+	switch val := v.(type) {
+	case map[string]interface{}:
+		size := 2 // {}
+		for k, v := range val {
+			size += len(k) + 4 // "key":
+			size += estimateSchemaSize(v)
+			size += 1 // comma
+		}
+		return size
+	case []interface{}:
+		size := 2 // []
+		for _, item := range val {
+			size += estimateSchemaSize(item)
+			size += 1 // comma
+		}
+		return size
+	case string:
+		return len(val) + 2 // quotes
+	case bool:
+		return 5 // true/false
+	case float64, int:
+		return 10 // rough estimate
+	default:
+		return 10
+	}
+}
+
+// validateSchemaDepthAndProperties validates nesting depth and property count recursively.
+func validateSchemaDepthAndProperties(schema map[string]interface{}, depth int, propertyCount int) error {
+	const maxDepth = 10
+	const maxProperties = 100
+
+	if depth > maxDepth {
+		return fmt.Errorf("schema exceeds maximum nesting depth of %d", maxDepth)
+	}
+
+	// Count properties at this level
+	if props, ok := schema["properties"].(map[string]interface{}); ok {
+		propertyCount += len(props)
+		if propertyCount > maxProperties {
+			return fmt.Errorf("schema exceeds maximum of %d properties", maxProperties)
+		}
+
+		// Recursively validate nested properties
+		for _, propSchema := range props {
+			if nestedSchema, ok := propSchema.(map[string]interface{}); ok {
+				if err := validateSchemaDepthAndProperties(nestedSchema, depth+1, propertyCount); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	// Check items for arrays
+	if items, ok := schema["items"].(map[string]interface{}); ok {
+		if err := validateSchemaDepthAndProperties(items, depth+1, propertyCount); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Validate checks if the tool definition is valid.
+func (t *FunctionDefinition) Validate() error {
+	if t.Name == "" {
+		return fmt.Errorf("function name is required")
+	}
+
+	if t.Type == "" {
+		return fmt.Errorf("function type is required")
+	}
+
+	// Validate function type
+	if !ValidToolTypes[t.Type] {
+		return fmt.Errorf("invalid function type: %s (must be http or script)", t.Type)
+	}
+
+	if t.Description == "" {
+		return fmt.Errorf("function description is required")
+	}
+
+	// Type-specific validation
+	switch t.Type {
+	case ToolTypeHTTP:
+		if t.URL == "" {
+			return fmt.Errorf("url is required for http function")
+		}
+		if t.Method == "" {
+			return fmt.Errorf("method is required for http function")
+		}
+		// Validate HTTP method
+		validMethods := map[string]bool{
+			"GET":     true,
+			"POST":    true,
+			"PUT":     true,
+			"PATCH":   true,
+			"DELETE":  true,
+			"HEAD":    true,
+			"OPTIONS": true,
+		}
+		if !validMethods[t.Method] {
+			return fmt.Errorf("invalid HTTP method: %s", t.Method)
+		}
+
+	case ToolTypeScript:
+		if t.Command == "" {
+			return fmt.Errorf("command is required for script tool")
+		}
+	}
+
+	// Validate timeout if specified
+	if t.Timeout < 0 {
+		return fmt.Errorf("timeout must be non-negative")
+	}
+	if t.Timeout > 300 {
+		return fmt.Errorf("timeout must not exceed 300 seconds")
+	}
+
+	// Validate max response size if specified
+	if t.MaxResponseSize < 0 {
+		return fmt.Errorf("max_response_size must be non-negative")
+	}
+
+	return nil
+}
+
+// shorthandPattern matches connector.operation keys like "file.read" or "github.list_issues"
+var shorthandPattern = regexp.MustCompile(`^([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)$`)
+
+// builtinConnectorNames lists builtin connectors that don't need connectors: config
+var builtinConnectorNames = map[string]bool{
+	"file":      true,
+	"shell":     true,
+	"transform": true,
+	"utility":   true,
+}
+
+// primaryParameters maps operation names to their primary parameter for inline form
+var primaryParameters = map[string]string{
+	// File read operations
+	"read":       "path",
+	"read_text":  "path",
+	"read_json":  "path",
+	"read_yaml":  "path",
+	"read_csv":   "path",
+	"read_lines": "path",
+	// File write operations (primary is path, content is second)
+	"write":      "path",
+	"write_text": "path",
+	"write_json": "path",
+	"write_yaml": "path",
+	"append":     "path",
+	"render":     "template",
+	// Directory operations
+	"list":   "path",
+	"exists": "path",
+	"stat":   "path",
+	"mkdir":  "path",
+	"copy":   "src",
+	"move":   "src",
+	"delete": "path",
+	// Shell operations
+	"run": "command",
+	// Transform operations
+	"parse_json": "data",
+	"parse_xml":  "data",
+	"extract":    "data",
+	"split":      "data",
+	"map":        "data",
+	"filter":     "data",
+	"flatten":    "data",
+	"sort":       "data",
+	"group":      "data",
+	// Utility operations
+	"random_int":      "max",
+	"random_choose":   "items",
+	"random_weighted": "items",
+	"random_sample":   "items",
+	"random_shuffle":  "items",
+	"id_nanoid":       "length",
+	"id_custom":       "length",
+	"math_clamp":      "value",
+	"math_round":      "value",
+	"math_min":        "values",
+	"math_max":        "values",
+}
+
+// UnmarshalYAML implements custom YAML unmarshaling for StepDefinition
+// to support shorthand syntax like "file.read: ./config.json"
+func (s *StepDefinition) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// First try to unmarshal as a raw map to detect shorthand
+	var raw map[string]interface{}
+	if err := unmarshal(&raw); err != nil {
+		return err
+	}
+
+	// Look for shorthand key
+	shorthandKey, shorthandValue := findShorthandKey(raw)
+
+	if shorthandKey != "" {
+		// Parse shorthand: file.read -> connector=file, operation=read
+		matches := shorthandPattern.FindStringSubmatch(shorthandKey)
+		if matches == nil {
+			return fmt.Errorf("invalid shorthand key format: %s", shorthandKey)
+		}
+
+		connectorName := matches[1]
+		operationName := matches[2]
+
+		// Determine step type
+		isBuiltin := builtinConnectorNames[connectorName]
+
+		// Extract standard fields (id, condition, etc.)
+		extractStandardFields(raw, s, shorthandKey)
+
+		// Parse shorthand value into inputs
+		inputs, err := parseShorthandInputs(operationName, shorthandValue)
+		if err != nil {
+			return fmt.Errorf("invalid shorthand value for %s: %w", shorthandKey, err)
+		}
+
+		if isBuiltin {
+			s.Type = StepTypeBuiltin
+			s.BuiltinConnector = connectorName
+			s.BuiltinOperation = operationName
+			s.Inputs = inputs
+		} else {
+			s.Type = StepTypeConnector
+			// Connector field uses format "connector_name.operation_name"
+			s.Connector = connectorName + "." + operationName
+			s.Inputs = inputs
+		}
+
+		return nil
+	}
+
+	// No shorthand found, use standard unmarshaling
+	type plainStep StepDefinition
+	if err := unmarshal((*plainStep)(s)); err != nil {
+		return err
+	}
+
+	// Check if ID was explicitly set in the raw map
+	if _, ok := raw["id"]; ok {
+		s.hasExplicitID = true
+	}
+
+	return nil
+}
+
+// findShorthandKey looks for a connector.operation key in the map
+func findShorthandKey(raw map[string]interface{}) (string, interface{}) {
+	for key, value := range raw {
+		if shorthandPattern.MatchString(key) {
+			return key, value
+		}
+	}
+	return "", nil
+}
+
+// extractStandardFields copies standard step fields from raw map to step
+func extractStandardFields(raw map[string]interface{}, s *StepDefinition, skipKey string) {
+	if id, ok := raw["id"].(string); ok {
+		s.ID = id
+		s.hasExplicitID = true
+	}
+	if name, ok := raw["name"].(string); ok {
+		s.Name = name
+	}
+	if timeout, ok := raw["timeout"].(int); ok {
+		s.Timeout = timeout
+	}
+	// Note: condition, on_error, and retry are complex types that require
+	// separate YAML unmarshaling if used with shorthand syntax
+}
+
+// parseShorthandInputs converts shorthand value to inputs map
+func parseShorthandInputs(operation string, value interface{}) (map[string]interface{}, error) {
+	inputs := make(map[string]interface{})
+
+	primaryParam := getPrimaryParameter(operation)
+	if primaryParam == "" {
+		primaryParam = "path" // default fallback
+	}
+
+	switch v := value.(type) {
+	case string:
+		// Simple string value -> primary parameter
+		inputs[primaryParam] = v
+
+	case map[string]interface{}:
+		// Full object form with explicit parameters
+		for k, val := range v {
+			inputs[k] = val
+		}
+
+	case nil:
+		// No value provided, operation may not need inputs
+		return inputs, nil
+
+	default:
+		return nil, fmt.Errorf("unsupported value type: %T", value)
+	}
+
+	return inputs, nil
+}
+
+// getPrimaryParameter returns the primary parameter name for an operation
+func getPrimaryParameter(operation string) string {
+	if param, ok := primaryParameters[operation]; ok {
+		return param
+	}
+	return ""
+}

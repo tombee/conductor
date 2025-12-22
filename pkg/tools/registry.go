@@ -1,0 +1,353 @@
+// Package tools provides a registry system for workflow tools.
+//
+// Tools are discrete functions that can be called by LLM agents or workflow steps.
+// Each tool has a name, schema (defining its inputs/outputs), and an execution function.
+//
+// The registry allows tools to be registered, discovered, and executed in a type-safe manner.
+package tools
+
+import (
+	"context"
+	"fmt"
+	"sync"
+)
+
+// Tool represents an executable tool that can be used in workflows or by agents.
+type Tool interface {
+	// Name returns the unique identifier for this tool
+	Name() string
+
+	// Description returns a human-readable description of what the tool does
+	Description() string
+
+	// Schema returns the JSON schema defining the tool's inputs and outputs
+	Schema() *Schema
+
+	// Execute runs the tool with the given inputs and returns outputs
+	Execute(ctx context.Context, inputs map[string]interface{}) (map[string]interface{}, error)
+}
+
+// Schema defines the input and output schema for a tool using JSON Schema.
+type Schema struct {
+	// Inputs defines the expected input parameters
+	Inputs *ParameterSchema `json:"inputs"`
+
+	// Outputs defines the structure of returned data
+	Outputs *ParameterSchema `json:"outputs"`
+}
+
+// ParameterSchema defines a set of parameters using JSON Schema conventions.
+type ParameterSchema struct {
+	// Type is the JSON type (e.g., "object", "string", "number")
+	Type string `json:"type"`
+
+	// Properties defines nested properties (for type="object")
+	Properties map[string]*Property `json:"properties,omitempty"`
+
+	// Required lists the required property names
+	Required []string `json:"required,omitempty"`
+
+	// Description provides human-readable context
+	Description string `json:"description,omitempty"`
+}
+
+// Property defines a single property in a parameter schema.
+type Property struct {
+	// Type is the JSON type of this property
+	Type string `json:"type"`
+
+	// Description explains what this property represents
+	Description string `json:"description,omitempty"`
+
+	// Enum lists allowed values (for validation)
+	Enum []interface{} `json:"enum,omitempty"`
+
+	// Default provides a default value if not specified
+	Default interface{} `json:"default,omitempty"`
+
+	// Format specifies a format hint (e.g., "uri", "email", "date-time")
+	Format string `json:"format,omitempty"`
+}
+
+// Registry maintains a collection of registered tools.
+type Registry struct {
+	mu          sync.RWMutex
+	tools       map[string]Tool
+	interceptor Interceptor
+}
+
+// Interceptor validates tool execution against security policy.
+// This interface is defined here to avoid circular dependencies.
+type Interceptor interface {
+	// Intercept is called before tool execution
+	Intercept(ctx context.Context, tool Tool, inputs map[string]interface{}) error
+
+	// PostExecute is called after tool execution
+	PostExecute(ctx context.Context, tool Tool, outputs map[string]interface{}, err error)
+}
+
+// NewRegistry creates a new tool registry.
+func NewRegistry() *Registry {
+	return &Registry{
+		tools: make(map[string]Tool),
+	}
+}
+
+// SetInterceptor sets the security interceptor for this registry.
+// The interceptor will be called before and after each tool execution.
+func (r *Registry) SetInterceptor(interceptor Interceptor) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.interceptor = interceptor
+}
+
+// Register adds a tool to the registry.
+// Returns an error if a tool with the same name is already registered.
+func (r *Registry) Register(tool Tool) error {
+	if tool == nil {
+		return fmt.Errorf("cannot register nil tool")
+	}
+
+	name := tool.Name()
+	if name == "" {
+		return fmt.Errorf("tool name cannot be empty")
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, exists := r.tools[name]; exists {
+		return fmt.Errorf("tool already registered: %s", name)
+	}
+
+	// Validate tool schema
+	schema := tool.Schema()
+	if schema == nil {
+		return fmt.Errorf("tool schema cannot be nil: %s", name)
+	}
+
+	r.tools[name] = tool
+	return nil
+}
+
+// Unregister removes a tool from the registry.
+func (r *Registry) Unregister(name string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, exists := r.tools[name]; !exists {
+		return fmt.Errorf("tool not found: %s", name)
+	}
+
+	delete(r.tools, name)
+	return nil
+}
+
+// Get retrieves a tool by name.
+func (r *Registry) Get(name string) (Tool, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	tool, exists := r.tools[name]
+	if !exists {
+		return nil, fmt.Errorf("tool not found: %s", name)
+	}
+
+	return tool, nil
+}
+
+// Has checks if a tool is registered.
+func (r *Registry) Has(name string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	_, exists := r.tools[name]
+	return exists
+}
+
+// List returns all registered tool names.
+func (r *Registry) List() []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	names := make([]string, 0, len(r.tools))
+	for name := range r.tools {
+		names = append(names, name)
+	}
+
+	return names
+}
+
+// ListTools returns all registered tools.
+func (r *Registry) ListTools() []Tool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	tools := make([]Tool, 0, len(r.tools))
+	for _, tool := range r.tools {
+		tools = append(tools, tool)
+	}
+
+	return tools
+}
+
+// Execute executes a tool by name with the given inputs.
+func (r *Registry) Execute(ctx context.Context, name string, inputs map[string]interface{}) (map[string]interface{}, error) {
+	tool, err := r.Get(name)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate inputs against schema
+	if err := r.validateInputs(tool, inputs); err != nil {
+		return nil, fmt.Errorf("input validation failed for tool %s: %w", name, err)
+	}
+
+	// Call security interceptor before execution
+	r.mu.RLock()
+	interceptor := r.interceptor
+	r.mu.RUnlock()
+
+	if interceptor != nil {
+		if err := interceptor.Intercept(ctx, tool, inputs); err != nil {
+			return nil, err
+		}
+	}
+
+	// Execute the tool
+	outputs, err := tool.Execute(ctx, inputs)
+
+	// Call security interceptor after execution
+	if interceptor != nil {
+		interceptor.PostExecute(ctx, tool, outputs, err)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("tool execution failed for %s: %w", name, err)
+	}
+
+	return outputs, nil
+}
+
+// validateInputs validates inputs against a tool's schema.
+// Phase 1: Basic validation (required fields check).
+// Future: Full JSON Schema validation.
+func (r *Registry) validateInputs(tool Tool, inputs map[string]interface{}) error {
+	schema := tool.Schema()
+	if schema == nil || schema.Inputs == nil {
+		return nil // No validation required
+	}
+
+	// Check required fields
+	for _, required := range schema.Inputs.Required {
+		if _, exists := inputs[required]; !exists {
+			return fmt.Errorf("required input missing: %s", required)
+		}
+	}
+
+	return nil
+}
+
+// GetToolSchemas returns schemas for all registered tools.
+// This is useful for LLM function calling where the agent needs to know
+// what tools are available and how to use them.
+func (r *Registry) GetToolSchemas() map[string]*Schema {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	schemas := make(map[string]*Schema)
+	for name, tool := range r.tools {
+		schemas[name] = tool.Schema()
+	}
+
+	return schemas
+}
+
+// ToolDescriptors returns a list of tool descriptors for LLM function calling.
+type ToolDescriptor struct {
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Schema      *Schema `json:"schema"`
+}
+
+// GetToolDescriptors returns descriptors for all registered tools.
+func (r *Registry) GetToolDescriptors() []ToolDescriptor {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	descriptors := make([]ToolDescriptor, 0, len(r.tools))
+	for _, tool := range r.tools {
+		descriptors = append(descriptors, ToolDescriptor{
+			Name:        tool.Name(),
+			Description: tool.Description(),
+			Schema:      tool.Schema(),
+		})
+	}
+
+	return descriptors
+}
+
+// ExpandToolPatterns expands tool name patterns into concrete tool names.
+// Supports:
+//   - Exact names: "github.list_repos" -> ["github.list_repos"]
+//   - Namespace wildcards: "github.*" -> ["github.list_repos", "github.create_issue", ...]
+//   - All tools: "*" -> [all registered tools]
+//
+// This is used to resolve MCP server tool patterns in workflow definitions.
+func (r *Registry) ExpandToolPatterns(patterns []string) []string {
+	if len(patterns) == 0 {
+		return nil
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	seen := make(map[string]bool)
+	var result []string
+
+	for _, pattern := range patterns {
+		if pattern == "*" {
+			// Match all tools
+			for name := range r.tools {
+				if !seen[name] {
+					result = append(result, name)
+					seen[name] = true
+				}
+			}
+			continue
+		}
+
+		// Check if pattern is a namespace wildcard (e.g., "github.*")
+		if len(pattern) > 2 && pattern[len(pattern)-2:] == ".*" {
+			namespace := pattern[:len(pattern)-2]
+			// Match all tools in this namespace
+			for name := range r.tools {
+				if hasNamespacePrefix(name, namespace) {
+					if !seen[name] {
+						result = append(result, name)
+						seen[name] = true
+					}
+				}
+			}
+			continue
+		}
+
+		// Exact match
+		if r.tools[pattern] != nil {
+			if !seen[pattern] {
+				result = append(result, pattern)
+				seen[pattern] = true
+			}
+		}
+	}
+
+	return result
+}
+
+// hasNamespacePrefix checks if a tool name belongs to a given namespace.
+// Example: hasNamespacePrefix("github.list_repos", "github") -> true
+// Example: hasNamespacePrefix("filesystem.read", "github") -> false
+func hasNamespacePrefix(toolName, namespace string) bool {
+	prefix := namespace + "."
+	return len(toolName) > len(prefix) && toolName[:len(prefix)] == prefix
+}

@@ -1,0 +1,746 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tombee.github.io/conductor/schemas/workflow.schema.json",
+  "title": "Conductor Workflow Definition",
+  "description": "Schema for Conductor workflow YAML files. Conductor is a workflow orchestration tool for LLM-powered automation that enables multi-step AI workflows with tool use, error handling, and agent preferences.",
+  "type": "object",
+  "required": ["name", "steps"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique identifier for this workflow. Used for logging, execution tracking, and workflow references.",
+      "examples": ["code-review", "issue-triage", "pr-classifier", "content-generator"]
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of what this workflow does and when to use it. Supports multi-line YAML strings."
+    },
+    "version": {
+      "type": "string",
+      "description": "Workflow definition schema version. Optional - defaults to '1.0' if not specified.",
+      "default": "1.0",
+      "examples": ["1.0", "1.1"]
+    },
+    "triggers": {
+      "type": "array",
+      "description": "Defines how this workflow can be invoked (webhooks, schedules, manual execution). If not specified, workflow can only be triggered manually via CLI.",
+      "items": {
+        "$ref": "#/$defs/trigger"
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "description": "Workflow input parameters. These can be referenced in step prompts and configurations using template syntax like {{.input_name}}.",
+      "items": {
+        "$ref": "#/$defs/input"
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered list of workflow steps to execute. Steps run sequentially unless wrapped in a parallel step. Each step can reference outputs from previous steps using {{.steps.step_id.response}}.",
+      "items": {
+        "$ref": "#/$defs/step"
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "description": "Workflow output values computed from step results. Outputs are returned when workflow completes successfully.",
+      "items": {
+        "$ref": "#/$defs/output"
+      }
+    },
+    "agents": {
+      "type": "object",
+      "description": "Named agent definitions with provider preferences and capability requirements. Steps can reference agents by name to inherit provider selection logic.",
+      "additionalProperties": {
+        "$ref": "#/$defs/agent"
+      },
+      "examples": [
+        {
+          "reviewer": {
+            "prefers": "anthropic",
+            "capabilities": ["long-context"]
+          },
+          "analyzer": {
+            "capabilities": ["vision", "tool-use"]
+          }
+        }
+      ]
+    },
+    "functions": {
+      "type": "array",
+      "description": "Workflow-level LLM-callable function definitions. These are HTTP endpoints or shell scripts that LLM steps can invoke during execution. Renamed from 'tools' to match industry terminology for function calling.",
+      "items": {
+        "$ref": "#/$defs/function"
+      }
+    },
+    "connectors": {
+      "type": "object",
+      "description": "Declarative connector definitions for external integrations (GitHub, Slack, etc). Builtin connectors (file, shell, http, transform) work without configuration.",
+      "additionalProperties": {
+        "$ref": "#/$defs/connector"
+      }
+    },
+    "mcp_servers": {
+      "type": "array",
+      "description": "MCP (Model Context Protocol) server configurations. MCP servers provide tools that can be used by workflow steps via the tool registry.",
+      "items": {
+        "$ref": "#/$defs/mcp_server"
+      }
+    }
+  },
+  "$defs": {
+    "trigger": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["webhook", "schedule", "manual"],
+          "description": "Type of trigger: 'webhook' for HTTP endpoints, 'schedule' for cron-based execution, 'manual' for CLI-only triggering."
+        },
+        "webhook": {
+          "$ref": "#/$defs/webhook_trigger",
+          "description": "Webhook trigger configuration. Required when type is 'webhook'."
+        },
+        "schedule": {
+          "$ref": "#/$defs/schedule_trigger",
+          "description": "Schedule trigger configuration. Required when type is 'schedule'."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "webhook"
+              }
+            }
+          },
+          "then": {
+            "required": ["webhook"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "schedule"
+              }
+            }
+          },
+          "then": {
+            "required": ["schedule"]
+          }
+        }
+      ]
+    },
+    "webhook_trigger": {
+      "type": "object",
+      "required": ["path"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "URL path for the webhook endpoint. Must start with '/'. Example: '/webhooks/my-workflow'",
+          "pattern": "^/",
+          "examples": ["/webhooks/github-pr", "/webhooks/slack-event"]
+        },
+        "source": {
+          "type": "string",
+          "description": "Webhook source type for built-in integrations. Enables source-specific parsing and validation.",
+          "enum": ["github", "slack", "generic"],
+          "examples": ["github", "slack"]
+        },
+        "events": {
+          "type": "array",
+          "description": "Filter which events trigger the workflow. Interpretation depends on source type (e.g., GitHub events: 'pull_request.opened').",
+          "items": {
+            "type": "string"
+          },
+          "examples": [["pull_request.opened", "pull_request.synchronize"], ["issue.created"]]
+        },
+        "secret": {
+          "type": "string",
+          "description": "Secret for signature verification. MUST use environment variable reference like ${WEBHOOK_SECRET} - never hardcode secrets.",
+          "pattern": "^\\$\\{[A-Z_][A-Z0-9_]*\\}$",
+          "examples": ["${GITHUB_WEBHOOK_SECRET}", "${SLACK_SIGNING_SECRET}"]
+        },
+        "input_mapping": {
+          "type": "object",
+          "description": "Maps webhook payload fields to workflow inputs. Keys are workflow input names, values are JSONPath expressions like '$.pull_request.number'.",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "examples": [
+            {
+              "pr_number": "$.pull_request.number",
+              "repo": "$.repository.full_name"
+            }
+          ]
+        }
+      }
+    },
+    "schedule_trigger": {
+      "type": "object",
+      "required": ["cron"],
+      "properties": {
+        "cron": {
+          "type": "string",
+          "description": "Cron expression for schedule timing. Standard 5-field format: minute hour day month weekday. Example: '0 9 * * 1-5' runs at 9am on weekdays.",
+          "examples": ["0 9 * * 1-5", "*/15 * * * *", "0 0 * * 0"]
+        },
+        "timezone": {
+          "type": "string",
+          "description": "Timezone for cron expression evaluation. Uses IANA timezone database names. Defaults to UTC if not specified.",
+          "examples": ["America/New_York", "Europe/London", "Asia/Tokyo"]
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Controls whether this schedule is active. Set to false to temporarily disable without removing the trigger.",
+          "default": true
+        },
+        "inputs": {
+          "type": "object",
+          "description": "Static input values to pass when workflow is triggered by schedule. Keys must match workflow input definitions.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "input": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Input parameter identifier. Referenced in step configurations using {{.input_name}} template syntax.",
+          "examples": ["pr_number", "repository", "severity_threshold"]
+        },
+        "type": {
+          "type": "string",
+          "enum": ["string", "number", "boolean", "object", "array"],
+          "description": "Input data type. Determines validation and type coercion behavior."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether this input must be provided when triggering the workflow. If false, the default value is used when input is missing.",
+          "default": false
+        },
+        "default": {
+          "description": "Fallback value when input is not provided. Type must match the 'type' field. Only used when required is false."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable explanation of what this input is for and what values are expected."
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Step identifier within this workflow. Auto-generated for shorthand steps using format {connector}_{operation}_{N}. Used to reference step outputs via {{.steps.step_id.response}}.",
+          "pattern": "^[a-z0-9_]+$",
+          "examples": ["fetch_pr", "analyze_code", "file_read_1", "github_create_issue_1"]
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable step name for logging and UI display. Optional - defaults to step ID if not provided."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["llm", "parallel", "condition", "connector"],
+          "description": "Step type: 'llm' for LLM calls, 'parallel' for concurrent execution, 'condition' for branching. 'connector' is auto-detected from shorthand syntax (connector.operation:) and rarely specified explicitly."
+        },
+        "agent": {
+          "type": "string",
+          "description": "References a named agent definition for provider selection. The agent's preferences and capability requirements will be used for LLM provider resolution."
+        },
+        "connector": {
+          "type": "string",
+          "description": "Connector name for connector steps (e.g., 'github', 'slack', 'file', 'shell'). Auto-extracted from shorthand syntax.",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "examples": ["github", "slack", "file", "shell", "http", "transform"]
+        },
+        "operation": {
+          "type": "string",
+          "description": "Operation to execute on the connector (e.g., 'create_issue', 'read', 'run'). Auto-extracted from shorthand syntax.",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "examples": ["create_issue", "read", "write", "run", "get", "post"]
+        },
+        "inputs": {
+          "type": "object",
+          "description": "Input values for this step. Can include references to workflow inputs {{.input_name}} or previous step outputs {{.steps.step_id.response}}.",
+          "additionalProperties": true
+        },
+        "model": {
+          "type": "string",
+          "enum": ["fast", "balanced", "strategic"],
+          "description": "Model tier for LLM steps: 'fast' for quick/cheap models (haiku, gpt-4o-mini), 'balanced' for general tasks (sonnet, gpt-4o), 'strategic' for complex reasoning (opus, o1). Defaults to 'balanced'.",
+          "default": "balanced"
+        },
+        "system": {
+          "type": "string",
+          "description": "System prompt for LLM steps. Guides model behavior and persona. Optional - only use when specific role or constraints are needed. Supports template variables."
+        },
+        "prompt": {
+          "type": "string",
+          "description": "User prompt for LLM steps. Required when type is 'llm'. Supports template variables: {{.input_name}}, {{.steps.step_id.response}}, {{if .var}}...{{end}}. Can be multi-line YAML string."
+        },
+        "output_schema": {
+          "type": "object",
+          "description": "JSON Schema defining expected structure for LLM output. Enables structured output mode with validation. Mutually exclusive with output_type. Maximum depth: 10 levels, maximum properties: 100, maximum size: 64KB.",
+          "additionalProperties": true
+        },
+        "output_type": {
+          "type": "string",
+          "enum": ["classification", "decision", "extraction"],
+          "description": "Built-in output type for common patterns. Mutually exclusive with output_schema. 'classification' categorizes into predefined classes, 'decision' chooses from options with reasoning, 'extraction' pulls out specific fields."
+        },
+        "output_options": {
+          "type": "object",
+          "description": "Configuration for built-in output types. For 'classification': {categories: [...]}. For 'decision': {choices: [...], require_reasoning: bool}. For 'extraction': {fields: [...]}.",
+          "additionalProperties": true,
+          "examples": [
+            {
+              "categories": ["bug", "feature", "documentation"]
+            },
+            {
+              "choices": ["approve", "reject", "needs_changes"],
+              "require_reasoning": true
+            },
+            {
+              "fields": ["title", "severity", "affected_components"]
+            }
+          ]
+        },
+        "functions": {
+          "type": "array",
+          "description": "List of workflow functions this LLM step can invoke. References function names defined in workflow-level 'functions' array. LLM can choose to call these functions during execution. Renamed from 'tools' to match industry terminology.",
+          "items": {
+            "type": "string"
+          },
+          "examples": [["get_weather", "search_database"], ["send_email"]]
+        },
+        "foreach": {
+          "type": "string",
+          "description": "Expression that returns an array to iterate over. Each item spawns a parallel step instance with {{.item}} context. Example: {{.steps.fetch.issues}}",
+          "examples": ["{{.steps.fetch.issues}}", "{{.inputs.repositories}}"]
+        },
+        "condition": {
+          "$ref": "#/$defs/condition",
+          "description": "Condition definition for 'condition' type steps. Required when type is 'condition'."
+        },
+        "on_error": {
+          "$ref": "#/$defs/error_handling",
+          "description": "Error handling strategy for this step. Defines what happens if step execution fails."
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Maximum execution time for this step in seconds. Step is terminated if it exceeds this duration. Defaults to 30 seconds.",
+          "default": 30,
+          "minimum": 1,
+          "examples": [30, 60, 120]
+        },
+        "retry": {
+          "$ref": "#/$defs/retry",
+          "description": "Retry configuration for this step. Defines retry behavior on transient failures."
+        },
+        "steps": {
+          "type": "array",
+          "description": "Nested steps for parallel execution. Required when type is 'parallel'. Each nested step runs concurrently and results are aggregated by step ID.",
+          "items": {
+            "$ref": "#/$defs/step"
+          },
+          "minItems": 1
+        },
+        "max_concurrency": {
+          "type": "integer",
+          "description": "Maximum number of concurrent nested steps for parallel execution. Limits resource usage when launching multiple agents. Defaults to 3 if not specified.",
+          "default": 3,
+          "minimum": 1,
+          "examples": [1, 3, 5]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "llm"
+              }
+            }
+          },
+          "then": {
+            "required": ["id", "prompt"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "condition"
+              }
+            }
+          },
+          "then": {
+            "required": ["id", "condition"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "parallel"
+              }
+            }
+          },
+          "then": {
+            "required": ["id", "steps"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "connector"
+              }
+            }
+          },
+          "then": {
+            "required": ["connector", "operation"]
+          }
+        }
+      ],
+      "patternProperties": {
+        "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$": {
+          "description": "Connector shorthand syntax: connector.operation. Value becomes the inputs for the operation. Examples: file.read, github.create_issue, shell.run",
+          "oneOf": [
+            {"type": "string"},
+            {"type": "object"},
+            {"type": "array"}
+          ]
+        }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "required": ["expression"],
+      "properties": {
+        "expression": {
+          "type": "string",
+          "description": "Condition expression to evaluate. Uses expr-lang syntax with access to inputs, steps, and env. Supports: equality (==, !=), comparison (>, <, >=, <=), logical (&&, ||, !), array membership ('x' in array), and functions (has, length).",
+          "examples": [
+            "steps.classify.status == \"success\"",
+            "\"security\" in inputs.personas",
+            "steps.analyze.score >= 80",
+            "inputs.enabled && !inputs.skip_review"
+          ]
+        },
+        "then_steps": {
+          "type": "array",
+          "description": "Step IDs to execute if condition evaluates to true. Steps must be defined in the workflow.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "else_steps": {
+          "type": "array",
+          "description": "Step IDs to execute if condition evaluates to false. Steps must be defined in the workflow.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "error_handling": {
+      "type": "object",
+      "required": ["strategy"],
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": ["fail", "ignore", "retry", "fallback"],
+          "description": "Error handling strategy: 'fail' stops workflow, 'ignore' continues despite error, 'retry' uses retry configuration, 'fallback' executes alternate step."
+        },
+        "fallback_step": {
+          "type": "string",
+          "description": "Step ID to execute when error occurs and strategy is 'fallback'. The fallback step must be defined in the workflow."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "strategy": {
+                "const": "fallback"
+              }
+            }
+          },
+          "then": {
+            "required": ["fallback_step"]
+          }
+        }
+      ]
+    },
+    "retry": {
+      "type": "object",
+      "properties": {
+        "max_attempts": {
+          "type": "integer",
+          "description": "Maximum number of retry attempts including the initial execution. Must be at least 1. Defaults to 2 (1 initial + 1 retry).",
+          "minimum": 1,
+          "default": 2,
+          "examples": [2, 3, 5]
+        },
+        "backoff_base": {
+          "type": "integer",
+          "description": "Base duration in seconds for exponential backoff. First retry waits backoff_base seconds, subsequent retries multiply by backoff_multiplier. Defaults to 1.",
+          "minimum": 1,
+          "default": 1,
+          "examples": [1, 2, 5]
+        },
+        "backoff_multiplier": {
+          "type": "number",
+          "description": "Multiplier for exponential backoff. Each retry waits backoff_base * (backoff_multiplier ^ attempt_number) seconds. Defaults to 2.0.",
+          "minimum": 1.0,
+          "default": 2.0,
+          "examples": [1.5, 2.0, 3.0]
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["name", "type", "value"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Output identifier. Used in workflow results and can be referenced by calling workflows.",
+          "examples": ["summary", "has_blockers", "classification"]
+        },
+        "type": {
+          "type": "string",
+          "description": "Output data type for validation and type coercion.",
+          "examples": ["string", "number", "boolean", "object", "array"]
+        },
+        "value": {
+          "type": "string",
+          "description": "Expression that computes the output value from step results. Uses JSONPath syntax like '$.steps.final_step.response' or can include logic like 'contains'.",
+          "examples": [
+            "$.steps.summary.response",
+            "$.steps.classify.category",
+            "$.steps.analyze.content contains 'CRITICAL'"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable explanation of what this output represents and how it should be used."
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "properties": {
+        "prefers": {
+          "type": "string",
+          "description": "Hint about which provider family works best for this agent's tasks. Not enforced - actual provider selected based on capabilities and availability. Examples: 'anthropic', 'openai', 'google'.",
+          "examples": ["anthropic", "openai", "google"]
+        },
+        "capabilities": {
+          "type": "array",
+          "description": "Required provider capabilities for this agent. Provider must support all listed capabilities to be selected.",
+          "items": {
+            "type": "string",
+            "enum": ["vision", "long-context", "tool-use", "streaming", "json-mode"]
+          },
+          "examples": [["vision", "tool-use"], ["long-context", "json-mode"]]
+        }
+      }
+    },
+    "function": {
+      "type": "object",
+      "required": ["name", "type", "description"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique function identifier. Referenced by LLM steps that want to use this function via the 'functions' array.",
+          "examples": ["get_weather", "search_docs", "send_notification"]
+        },
+        "type": {
+          "type": "string",
+          "enum": ["http", "script"],
+          "description": "Function implementation type: 'http' for HTTP API endpoints, 'script' for shell scripts. These are LLM-callable functions, different from workflow connectors."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of what this function does. Used by LLM to decide when to call the function. Should clearly explain inputs, outputs, and side effects."
+        },
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"],
+          "description": "HTTP method for 'http' type tools. Required when type is 'http'."
+        },
+        "url": {
+          "type": "string",
+          "description": "Endpoint URL template for 'http' type tools. Supports {{.param}} interpolation for dynamic values. Required when type is 'http'.",
+          "examples": [
+            "https://api.example.com/search?q={{.query}}",
+            "https://api.weather.com/current?city={{.city}}"
+          ]
+        },
+        "headers": {
+          "type": "object",
+          "description": "HTTP headers for 'http' type tools. Supports {{.env.VAR}} interpolation for environment variables. Use env vars for secrets - never hardcode credentials.",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "examples": [
+            {
+              "Authorization": "Bearer {{.env.API_TOKEN}}",
+              "Content-Type": "application/json"
+            }
+          ]
+        },
+        "command": {
+          "type": "string",
+          "description": "Script path for 'script' type tools. Path is relative to workflow file directory. Required when type is 'script'.",
+          "examples": ["./scripts/process.py", "./tools/analyze.sh"]
+        },
+        "input_schema": {
+          "type": "object",
+          "description": "JSON Schema defining expected input parameters for the tool. Helps LLM understand what arguments to provide.",
+          "additionalProperties": true
+        },
+        "auto_approve": {
+          "type": "boolean",
+          "description": "Whether tool can execute without user approval. Defaults to false for security. Only set true for read-only or trusted operations.",
+          "default": false
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Maximum execution time in seconds. Defaults to 30s, maximum 300s (5 minutes).",
+          "minimum": 0,
+          "maximum": 300,
+          "default": 30
+        },
+        "max_response_size": {
+          "type": "integer",
+          "description": "Maximum response size in bytes. Prevents memory issues from large responses. Defaults to 1MB.",
+          "minimum": 0,
+          "examples": [1048576, 5242880]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "http"
+              }
+            }
+          },
+          "then": {
+            "required": ["method", "url"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "script"
+              }
+            }
+          },
+          "then": {
+            "required": ["command"]
+          }
+        }
+      ]
+    },
+    "connector": {
+      "type": "object",
+      "required": ["from"],
+      "description": "Declarative connector definition for external integrations. Connectors expose operations that can be called from workflow steps using shorthand syntax.",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Connector package source. Can be a local path (connectors/github) or future package reference.",
+          "examples": ["connectors/github", "connectors/slack", "connectors/jira"]
+        },
+        "auth": {
+          "type": "object",
+          "description": "Authentication configuration for the connector. Use environment variables (${VAR}) or secret references ($secret:name) - never hardcode credentials.",
+          "properties": {
+            "token": {
+              "type": "string",
+              "description": "Bearer token for authentication. MUST use ${ENV_VAR} or $secret:name format.",
+              "pattern": "^(\\$\\{[A-Z_][A-Z0-9_]*\\}|\\$secret:[a-z0-9_]+)$"
+            },
+            "api_key": {
+              "type": "string",
+              "description": "API key for authentication. MUST use ${ENV_VAR} or $secret:name format.",
+              "pattern": "^(\\$\\{[A-Z_][A-Z0-9_]*\\}|\\$secret:[a-z0-9_]+)$"
+            },
+            "username": {
+              "type": "string",
+              "description": "Username for basic auth or other auth schemes."
+            },
+            "password": {
+              "type": "string",
+              "description": "Password for authentication. MUST use ${ENV_VAR} or $secret:name format.",
+              "pattern": "^(\\$\\{[A-Z_][A-Z0-9_]*\\}|\\$secret:[a-z0-9_]+)$"
+            }
+          },
+          "additionalProperties": true
+        },
+        "config": {
+          "type": "object",
+          "description": "Connector-specific configuration options beyond authentication.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "mcp_server": {
+      "type": "object",
+      "required": ["name", "command"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique identifier for this MCP server. Used for logging and tool namespacing.",
+          "examples": ["filesystem", "github", "database"]
+        },
+        "command": {
+          "type": "string",
+          "description": "Executable to run for the MCP server. Can be a system command or path to executable.",
+          "examples": ["npx", "python", "/usr/bin/mcp-server", "node"]
+        },
+        "args": {
+          "type": "array",
+          "description": "Command-line arguments to pass to the MCP server executable.",
+          "items": {
+            "type": "string"
+          },
+          "examples": [
+            ["-y", "@modelcontextprotocol/server-filesystem"],
+            ["mcp_server.py", "--config", "config.json"]
+          ]
+        },
+        "env": {
+          "type": "array",
+          "description": "Environment variables to pass to the MCP server in KEY=value format. Use for API keys and configuration.",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z_][A-Z0-9_]*=.*$"
+          },
+          "examples": [["API_KEY=xyz123", "DEBUG=true"], ["GITHUB_TOKEN=${GITHUB_TOKEN}"]]
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Default timeout for tool calls to this MCP server in seconds. Defaults to 30.",
+          "minimum": 0,
+          "default": 30
+        }
+      }
+    }
+  }
+}

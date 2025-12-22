@@ -1,0 +1,652 @@
+// Copyright 2025 Tom Barlow
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package config
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+)
+
+func TestDefault(t *testing.T) {
+	cfg := Default()
+
+	// Server defaults
+	if cfg.Server.PortRange[0] != 9876 {
+		t.Errorf("expected port range start 9876, got %d", cfg.Server.PortRange[0])
+	}
+	if cfg.Server.PortRange[1] != 9899 {
+		t.Errorf("expected port range end 9899, got %d", cfg.Server.PortRange[1])
+	}
+	if cfg.Server.HealthCheckInterval != 500*time.Millisecond {
+		t.Errorf("expected health check interval 500ms, got %v", cfg.Server.HealthCheckInterval)
+	}
+	if cfg.Server.ShutdownTimeout != 5*time.Second {
+		t.Errorf("expected shutdown timeout 5s, got %v", cfg.Server.ShutdownTimeout)
+	}
+	if cfg.Server.ReadTimeout != 10*time.Second {
+		t.Errorf("expected read timeout 10s, got %v", cfg.Server.ReadTimeout)
+	}
+
+	// Auth defaults
+	if cfg.Auth.TokenLength != 32 {
+		t.Errorf("expected token length 32, got %d", cfg.Auth.TokenLength)
+	}
+	if cfg.Auth.RateLimitMaxAttempts != 5 {
+		t.Errorf("expected rate limit max attempts 5, got %d", cfg.Auth.RateLimitMaxAttempts)
+	}
+	if cfg.Auth.RateLimitWindow != 1*time.Minute {
+		t.Errorf("expected rate limit window 1m, got %v", cfg.Auth.RateLimitWindow)
+	}
+	if cfg.Auth.RateLimitLockout != 60*time.Second {
+		t.Errorf("expected rate limit lockout 60s, got %v", cfg.Auth.RateLimitLockout)
+	}
+
+	// Log defaults
+	if cfg.Log.Level != "info" {
+		t.Errorf("expected log level 'info', got %q", cfg.Log.Level)
+	}
+	if cfg.Log.Format != "json" {
+		t.Errorf("expected log format 'json', got %q", cfg.Log.Format)
+	}
+	if cfg.Log.AddSource {
+		t.Errorf("expected log add_source false, got true")
+	}
+
+	// LLM defaults
+	if cfg.LLM.DefaultProvider != "anthropic" {
+		t.Errorf("expected default provider 'anthropic', got %q", cfg.LLM.DefaultProvider)
+	}
+	if cfg.LLM.RequestTimeout != 5*time.Second {
+		t.Errorf("expected request timeout 5s, got %v", cfg.LLM.RequestTimeout)
+	}
+	if cfg.LLM.MaxRetries != 3 {
+		t.Errorf("expected max retries 3, got %d", cfg.LLM.MaxRetries)
+	}
+	if cfg.LLM.RetryBackoffBase != 100*time.Millisecond {
+		t.Errorf("expected retry backoff base 100ms, got %v", cfg.LLM.RetryBackoffBase)
+	}
+	if cfg.LLM.ConnectionPoolSize != 10 {
+		t.Errorf("expected connection pool size 10, got %d", cfg.LLM.ConnectionPoolSize)
+	}
+	if cfg.LLM.ConnectionIdleTimeout != 30*time.Second {
+		t.Errorf("expected connection idle timeout 30s, got %v", cfg.LLM.ConnectionIdleTimeout)
+	}
+	if cfg.LLM.TraceRetentionDays != 7 {
+		t.Errorf("expected trace retention days 7, got %d", cfg.LLM.TraceRetentionDays)
+	}
+}
+
+func TestValidate(t *testing.T) {
+	tests := []struct {
+		name    string
+		modify  func(*Config)
+		wantErr bool
+		errText string
+	}{
+		{
+			name:    "valid default config",
+			modify:  func(c *Config) {},
+			wantErr: false,
+		},
+		{
+			name: "invalid port range start too low",
+			modify: func(c *Config) {
+				c.Server.PortRange[0] = 1023
+			},
+			wantErr: true,
+			errText: "port_range[0] must be between 1024 and 65535",
+		},
+		{
+			name: "invalid port range start too high",
+			modify: func(c *Config) {
+				c.Server.PortRange[0] = 65536
+			},
+			wantErr: true,
+			errText: "port_range[0] must be between 1024 and 65535",
+		},
+		{
+			name: "invalid port range end too low",
+			modify: func(c *Config) {
+				c.Server.PortRange[1] = 1023
+			},
+			wantErr: true,
+			errText: "port_range[1] must be between 1024 and 65535",
+		},
+		{
+			name: "invalid port range end too high",
+			modify: func(c *Config) {
+				c.Server.PortRange[1] = 65536
+			},
+			wantErr: true,
+			errText: "port_range[1] must be between 1024 and 65535",
+		},
+		{
+			name: "invalid port range reversed",
+			modify: func(c *Config) {
+				c.Server.PortRange = [2]int{9899, 9876}
+			},
+			wantErr: true,
+			errText: "port_range[0] (9899) must be <= port_range[1] (9876)",
+		},
+		{
+			name: "invalid health check interval",
+			modify: func(c *Config) {
+				c.Server.HealthCheckInterval = -1
+			},
+			wantErr: true,
+			errText: "health_check_interval must be positive",
+		},
+		{
+			name: "invalid shutdown timeout",
+			modify: func(c *Config) {
+				c.Server.ShutdownTimeout = 0
+			},
+			wantErr: true,
+			errText: "shutdown_timeout must be positive",
+		},
+		{
+			name: "invalid read timeout",
+			modify: func(c *Config) {
+				c.Server.ReadTimeout = -1
+			},
+			wantErr: true,
+			errText: "read_timeout must be positive",
+		},
+		{
+			name: "invalid token length",
+			modify: func(c *Config) {
+				c.Auth.TokenLength = 15
+			},
+			wantErr: true,
+			errText: "token_length must be at least 16 bytes",
+		},
+		{
+			name: "invalid rate limit max attempts",
+			modify: func(c *Config) {
+				c.Auth.RateLimitMaxAttempts = 0
+			},
+			wantErr: true,
+			errText: "rate_limit_max_attempts must be positive",
+		},
+		{
+			name: "invalid rate limit window",
+			modify: func(c *Config) {
+				c.Auth.RateLimitWindow = -1
+			},
+			wantErr: true,
+			errText: "rate_limit_window must be positive",
+		},
+		{
+			name: "invalid rate limit lockout",
+			modify: func(c *Config) {
+				c.Auth.RateLimitLockout = 0
+			},
+			wantErr: true,
+			errText: "rate_limit_lockout must be positive",
+		},
+		{
+			name: "invalid log level",
+			modify: func(c *Config) {
+				c.Log.Level = "invalid"
+			},
+			wantErr: true,
+			errText: "log.level must be one of [debug, info, warn, warning, error]",
+		},
+		{
+			name: "invalid log format",
+			modify: func(c *Config) {
+				c.Log.Format = "invalid"
+			},
+			wantErr: true,
+			errText: "log.format must be one of [json, text]",
+		},
+		{
+			name: "invalid llm provider",
+			modify: func(c *Config) {
+				// Add a provider so validation runs against configured providers
+				c.Providers = ProvidersMap{
+					"my-provider": ProviderConfig{Type: "claude-code"},
+				}
+				c.LLM.DefaultProvider = "nonexistent-provider"
+			},
+			wantErr: true,
+			errText: "llm.default_provider \"nonexistent-provider\" not found in configured providers",
+		},
+		{
+			name: "invalid llm request timeout",
+			modify: func(c *Config) {
+				c.LLM.RequestTimeout = 0
+			},
+			wantErr: true,
+			errText: "llm.request_timeout must be positive",
+		},
+		{
+			name: "invalid llm max retries",
+			modify: func(c *Config) {
+				c.LLM.MaxRetries = -1
+			},
+			wantErr: true,
+			errText: "llm.max_retries must be non-negative",
+		},
+		{
+			name: "invalid llm retry backoff base",
+			modify: func(c *Config) {
+				c.LLM.RetryBackoffBase = -1
+			},
+			wantErr: true,
+			errText: "llm.retry_backoff_base must be positive",
+		},
+		{
+			name: "invalid llm connection pool size",
+			modify: func(c *Config) {
+				c.LLM.ConnectionPoolSize = 0
+			},
+			wantErr: true,
+			errText: "llm.connection_pool_size must be positive",
+		},
+		{
+			name: "invalid llm connection idle timeout",
+			modify: func(c *Config) {
+				c.LLM.ConnectionIdleTimeout = -1
+			},
+			wantErr: true,
+			errText: "llm.connection_idle_timeout must be positive",
+		},
+		{
+			name: "invalid llm trace retention days",
+			modify: func(c *Config) {
+				c.LLM.TraceRetentionDays = -1
+			},
+			wantErr: true,
+			errText: "llm.trace_retention_days must be non-negative",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := Default()
+			tt.modify(cfg)
+			err := cfg.Validate()
+
+			if tt.wantErr && err == nil {
+				t.Errorf("expected error, got nil")
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("expected no error, got %v", err)
+			}
+			if tt.wantErr && err != nil && !strings.Contains(err.Error(), tt.errText) {
+				t.Errorf("expected error to contain %q, got %q", tt.errText, err.Error())
+			}
+		})
+	}
+}
+
+func TestLoadFromEnv(t *testing.T) {
+	// Save and restore environment
+	oldEnv := saveEnv()
+	defer restoreEnv(oldEnv)
+
+	// Clear all config-related env vars
+	clearConfigEnv()
+
+	// Set test environment variables
+	envVars := map[string]string{
+		"SERVER_PORT_MIN":                  "8000",
+		"SERVER_PORT_MAX":                  "8100",
+		"SERVER_HEALTH_CHECK_INTERVAL":     "1s",
+		"SERVER_SHUTDOWN_TIMEOUT":          "10s",
+		"SERVER_READ_TIMEOUT":              "5s",
+		"AUTH_TOKEN_LENGTH":                "64",
+		"AUTH_RATE_LIMIT_MAX_ATTEMPTS":     "10",
+		"AUTH_RATE_LIMIT_WINDOW":           "2m",
+		"AUTH_RATE_LIMIT_LOCKOUT":          "120s",
+		"LOG_LEVEL":                        "debug",
+		"LOG_FORMAT":                       "text",
+		"LOG_SOURCE":                       "1",
+		"LLM_DEFAULT_PROVIDER":             "openai",
+		"LLM_REQUEST_TIMEOUT":              "10s",
+		"LLM_MAX_RETRIES":                  "5",
+		"LLM_RETRY_BACKOFF_BASE":           "200ms",
+		"LLM_CONNECTION_POOL_SIZE":         "20",
+		"LLM_CONNECTION_IDLE_TIMEOUT":      "60s",
+		"LLM_TRACE_RETENTION_DAYS":         "14",
+	}
+
+	for k, v := range envVars {
+		os.Setenv(k, v)
+	}
+
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify server config
+	if cfg.Server.PortRange[0] != 8000 {
+		t.Errorf("expected port range start 8000, got %d", cfg.Server.PortRange[0])
+	}
+	if cfg.Server.PortRange[1] != 8100 {
+		t.Errorf("expected port range end 8100, got %d", cfg.Server.PortRange[1])
+	}
+	if cfg.Server.HealthCheckInterval != 1*time.Second {
+		t.Errorf("expected health check interval 1s, got %v", cfg.Server.HealthCheckInterval)
+	}
+	if cfg.Server.ShutdownTimeout != 10*time.Second {
+		t.Errorf("expected shutdown timeout 10s, got %v", cfg.Server.ShutdownTimeout)
+	}
+	if cfg.Server.ReadTimeout != 5*time.Second {
+		t.Errorf("expected read timeout 5s, got %v", cfg.Server.ReadTimeout)
+	}
+
+	// Verify auth config
+	if cfg.Auth.TokenLength != 64 {
+		t.Errorf("expected token length 64, got %d", cfg.Auth.TokenLength)
+	}
+	if cfg.Auth.RateLimitMaxAttempts != 10 {
+		t.Errorf("expected rate limit max attempts 10, got %d", cfg.Auth.RateLimitMaxAttempts)
+	}
+	if cfg.Auth.RateLimitWindow != 2*time.Minute {
+		t.Errorf("expected rate limit window 2m, got %v", cfg.Auth.RateLimitWindow)
+	}
+	if cfg.Auth.RateLimitLockout != 120*time.Second {
+		t.Errorf("expected rate limit lockout 120s, got %v", cfg.Auth.RateLimitLockout)
+	}
+
+	// Verify log config
+	if cfg.Log.Level != "debug" {
+		t.Errorf("expected log level 'debug', got %q", cfg.Log.Level)
+	}
+	if cfg.Log.Format != "text" {
+		t.Errorf("expected log format 'text', got %q", cfg.Log.Format)
+	}
+	if !cfg.Log.AddSource {
+		t.Errorf("expected log add_source true, got false")
+	}
+
+	// Verify LLM config
+	if cfg.LLM.DefaultProvider != "openai" {
+		t.Errorf("expected default provider 'openai', got %q", cfg.LLM.DefaultProvider)
+	}
+	if cfg.LLM.RequestTimeout != 10*time.Second {
+		t.Errorf("expected request timeout 10s, got %v", cfg.LLM.RequestTimeout)
+	}
+	if cfg.LLM.MaxRetries != 5 {
+		t.Errorf("expected max retries 5, got %d", cfg.LLM.MaxRetries)
+	}
+	if cfg.LLM.RetryBackoffBase != 200*time.Millisecond {
+		t.Errorf("expected retry backoff base 200ms, got %v", cfg.LLM.RetryBackoffBase)
+	}
+	if cfg.LLM.ConnectionPoolSize != 20 {
+		t.Errorf("expected connection pool size 20, got %d", cfg.LLM.ConnectionPoolSize)
+	}
+	if cfg.LLM.ConnectionIdleTimeout != 60*time.Second {
+		t.Errorf("expected connection idle timeout 60s, got %v", cfg.LLM.ConnectionIdleTimeout)
+	}
+	if cfg.LLM.TraceRetentionDays != 14 {
+		t.Errorf("expected trace retention days 14, got %d", cfg.LLM.TraceRetentionDays)
+	}
+}
+
+func TestLoadFromFile(t *testing.T) {
+	// Create temporary config file
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	yamlContent := `
+server:
+  port_range: [8080, 8090]
+  health_check_interval: 2s
+  shutdown_timeout: 15s
+  read_timeout: 20s
+
+auth:
+  token_length: 48
+  rate_limit_max_attempts: 7
+  rate_limit_window: 3m
+  rate_limit_lockout: 90s
+
+log:
+  level: warn
+  format: text
+  add_source: true
+
+llm:
+  default_provider: ollama
+  request_timeout: 8s
+  max_retries: 4
+  retry_backoff_base: 150ms
+  connection_pool_size: 15
+  connection_idle_timeout: 45s
+  trace_retention_days: 30
+`
+
+	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
+	// Save and restore environment
+	oldEnv := saveEnv()
+	defer restoreEnv(oldEnv)
+	clearConfigEnv()
+
+	cfg, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify loaded values
+	if cfg.Server.PortRange[0] != 8080 {
+		t.Errorf("expected port range start 8080, got %d", cfg.Server.PortRange[0])
+	}
+	if cfg.Server.PortRange[1] != 8090 {
+		t.Errorf("expected port range end 8090, got %d", cfg.Server.PortRange[1])
+	}
+	if cfg.Auth.TokenLength != 48 {
+		t.Errorf("expected token length 48, got %d", cfg.Auth.TokenLength)
+	}
+	if cfg.Log.Level != "warn" {
+		t.Errorf("expected log level 'warn', got %q", cfg.Log.Level)
+	}
+	if cfg.LLM.DefaultProvider != "ollama" {
+		t.Errorf("expected default provider 'ollama', got %q", cfg.LLM.DefaultProvider)
+	}
+}
+
+func TestLoadFromFileWithEnvOverride(t *testing.T) {
+	// Create temporary config file
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	yamlContent := `
+server:
+  port_range: [8080, 8090]
+log:
+  level: info
+`
+
+	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
+	// Save and restore environment
+	oldEnv := saveEnv()
+	defer restoreEnv(oldEnv)
+	clearConfigEnv()
+
+	// Set env var to override file value
+	os.Setenv("LOG_LEVEL", "debug")
+	os.Setenv("SERVER_PORT_MIN", "7000")
+
+	cfg, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify env overrides file
+	if cfg.Log.Level != "debug" {
+		t.Errorf("expected log level 'debug' from env, got %q", cfg.Log.Level)
+	}
+	if cfg.Server.PortRange[0] != 7000 {
+		t.Errorf("expected port range start 7000 from env, got %d", cfg.Server.PortRange[0])
+	}
+	// File value should still be used for port_range[1]
+	if cfg.Server.PortRange[1] != 8090 {
+		t.Errorf("expected port range end 8090 from file, got %d", cfg.Server.PortRange[1])
+	}
+}
+
+func TestLoadInvalidFile(t *testing.T) {
+	_, err := Load("/nonexistent/config.yaml")
+	if err == nil {
+		t.Errorf("expected error for nonexistent file, got nil")
+	}
+}
+
+func TestLoadInvalidYAML(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "bad.yaml")
+
+	if err := os.WriteFile(configPath, []byte("invalid: yaml: content:"), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
+	_, err := Load(configPath)
+	if err == nil {
+		t.Errorf("expected error for invalid YAML, got nil")
+	}
+}
+
+func TestLoadValidationFailure(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "invalid-config.yaml")
+
+	// Config with invalid values
+	yamlContent := `
+server:
+  port_range: [100, 200]  # Too low
+`
+
+	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
+	// Save and restore environment
+	oldEnv := saveEnv()
+	defer restoreEnv(oldEnv)
+	clearConfigEnv()
+
+	_, err := Load(configPath)
+	if err == nil {
+		t.Errorf("expected validation error, got nil")
+	}
+	if !strings.Contains(err.Error(), "validation failed") {
+		t.Errorf("expected validation error message, got %q", err.Error())
+	}
+}
+
+// Helper functions for environment management
+func saveEnv() map[string]string {
+	env := make(map[string]string)
+	for _, e := range os.Environ() {
+		parts := strings.SplitN(e, "=", 2)
+		if len(parts) == 2 {
+			env[parts[0]] = parts[1]
+		}
+	}
+	return env
+}
+
+func restoreEnv(env map[string]string) {
+	os.Clearenv()
+	for k, v := range env {
+		os.Setenv(k, v)
+	}
+}
+
+func clearConfigEnv() {
+	envVars := []string{
+		"SERVER_PORT_MIN", "SERVER_PORT_MAX", "SERVER_HEALTH_CHECK_INTERVAL",
+		"SERVER_SHUTDOWN_TIMEOUT", "SERVER_READ_TIMEOUT",
+		"AUTH_TOKEN_LENGTH", "AUTH_RATE_LIMIT_MAX_ATTEMPTS",
+		"AUTH_RATE_LIMIT_WINDOW", "AUTH_RATE_LIMIT_LOCKOUT",
+		"LOG_LEVEL", "LOG_FORMAT", "LOG_SOURCE",
+		"LLM_DEFAULT_PROVIDER", "LLM_REQUEST_TIMEOUT", "LLM_MAX_RETRIES",
+		"LLM_RETRY_BACKOFF_BASE", "LLM_CONNECTION_POOL_SIZE",
+		"LLM_CONNECTION_IDLE_TIMEOUT", "LLM_TRACE_RETENTION_DAYS",
+	}
+	for _, v := range envVars {
+		os.Unsetenv(v)
+	}
+}
+
+// TestMinimalConfigRoundTrip verifies that a minimal config (SPEC-50) with only
+// provider settings can be written and loaded back with sensible defaults.
+func TestMinimalConfigRoundTrip(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	// Save and restore environment
+	oldEnv := saveEnv()
+	defer restoreEnv(oldEnv)
+	clearConfigEnv()
+
+	// Create minimal config like conductor init does
+	providers := ProvidersMap{
+		"claude": ProviderConfig{
+			Type: "claude-code",
+		},
+	}
+
+	if err := WriteConfigMinimal("claude", providers, configPath); err != nil {
+		t.Fatalf("failed to write minimal config: %v", err)
+	}
+
+	// Load the config back - this should work without validation errors
+	cfg, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("failed to load minimal config: %v", err)
+	}
+
+	// Verify defaults were applied
+	if cfg.Server.PortRange[0] != 9876 {
+		t.Errorf("expected port range start 9876, got %d", cfg.Server.PortRange[0])
+	}
+	if cfg.Server.HealthCheckInterval != 500*time.Millisecond {
+		t.Errorf("expected health check interval 500ms, got %v", cfg.Server.HealthCheckInterval)
+	}
+	if cfg.Auth.TokenLength != 32 {
+		t.Errorf("expected token length 32, got %d", cfg.Auth.TokenLength)
+	}
+	if cfg.Log.Level != "info" {
+		t.Errorf("expected log level 'info', got %q", cfg.Log.Level)
+	}
+	if cfg.LLM.RequestTimeout != 5*time.Second {
+		t.Errorf("expected request timeout 5s, got %v", cfg.LLM.RequestTimeout)
+	}
+
+	// Verify provider settings were preserved
+	if cfg.DefaultProvider != "claude" {
+		t.Errorf("expected default provider 'claude', got %q", cfg.DefaultProvider)
+	}
+	if len(cfg.Providers) != 1 {
+		t.Errorf("expected 1 provider, got %d", len(cfg.Providers))
+	}
+	if cfg.Providers["claude"].Type != "claude-code" {
+		t.Errorf("expected provider type 'claude-code', got %q", cfg.Providers["claude"].Type)
+	}
+}

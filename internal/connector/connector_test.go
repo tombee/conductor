@@ -1,0 +1,442 @@
+package connector
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/tombee/conductor/pkg/workflow"
+)
+
+func TestHTTPConnector_Execute(t *testing.T) {
+	// Create a test HTTP server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify request
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+
+		// Verify auth header
+		auth := r.Header.Get("Authorization")
+		if auth != "Bearer test-token" {
+			t.Errorf("expected Bearer test-token, got %s", auth)
+		}
+
+		// Return test response
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":     123,
+			"title":  "Test Issue",
+			"number": 42,
+		})
+	}))
+	defer server.Close()
+
+	// Create connector definition
+	def := &workflow.ConnectorDefinition{
+		Name:    "test",
+		BaseURL: server.URL,
+		Auth: &workflow.AuthDefinition{
+			Type:  "bearer",
+			Token: "test-token",
+		},
+		Operations: map[string]workflow.OperationDefinition{
+			"create_issue": {
+				Method: "POST",
+				Path:   "/repos/{owner}/{repo}/issues",
+				RequestSchema: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"owner": map[string]interface{}{"type": "string"},
+						"repo":  map[string]interface{}{"type": "string"},
+						"title": map[string]interface{}{"type": "string"},
+					},
+					"required": []interface{}{"owner", "repo", "title"},
+				},
+				ResponseTransform: ".number",
+			},
+		},
+	}
+
+	// Create connector (allow localhost for testing)
+	config := DefaultConfig()
+	config.AllowedHosts = []string{"127.0.0.1", "localhost"}
+	connector, err := New(def, config)
+	if err != nil {
+		t.Fatalf("failed to create connector: %v", err)
+	}
+
+	// Execute operation
+	result, err := connector.Execute(context.Background(), "create_issue", map[string]interface{}{
+		"owner": "test-org",
+		"repo":  "test-repo",
+		"title": "Test Issue",
+	})
+
+	if err != nil {
+		t.Fatalf("execution failed: %v", err)
+	}
+
+	// Verify result
+	if result.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200, got %d", result.StatusCode)
+	}
+
+	// Response should be transformed to just the number
+	responseNum, ok := result.Response.(float64)
+	if !ok {
+		t.Fatalf("expected number response, got %T: %v", result.Response, result.Response)
+	}
+
+	if responseNum != 42 {
+		t.Errorf("expected response 42, got %v", responseNum)
+	}
+
+	// Raw response should have full object
+	if result.RawResponse == nil {
+		t.Error("expected raw response to be present")
+	}
+}
+
+func TestHTTPConnector_AuthTypes(t *testing.T) {
+	tests := []struct {
+		name     string
+		auth     *workflow.AuthDefinition
+		wantAuth string
+	}{
+		{
+			name: "bearer token",
+			auth: &workflow.AuthDefinition{
+				Type:  "bearer",
+				Token: "test-token",
+			},
+			wantAuth: "Bearer test-token",
+		},
+		{
+			name: "bearer token (inferred)",
+			auth: &workflow.AuthDefinition{
+				Token: "test-token",
+			},
+			wantAuth: "Bearer test-token",
+		},
+		{
+			name: "basic auth",
+			auth: &workflow.AuthDefinition{
+				Type:     "basic",
+				Username: "user",
+				Password: "pass",
+			},
+			wantAuth: "Basic dXNlcjpwYXNz", // base64(user:pass)
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create test server
+			var gotAuth string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotAuth = r.Header.Get("Authorization")
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+			}))
+			defer server.Close()
+
+			// Create connector
+			def := &workflow.ConnectorDefinition{
+				Name:    "test",
+				BaseURL: server.URL,
+				Auth:    tt.auth,
+				Operations: map[string]workflow.OperationDefinition{
+					"test": {
+						Method: "GET",
+						Path:   "/test",
+					},
+				},
+			}
+
+			config := DefaultConfig()
+			config.AllowedHosts = []string{"127.0.0.1", "localhost"}
+			connector, err := New(def, config)
+			if err != nil {
+				t.Fatalf("failed to create connector: %v", err)
+			}
+
+			// Execute
+			_, err = connector.Execute(context.Background(), "test", map[string]interface{}{})
+			if err != nil {
+				t.Fatalf("execution failed: %v", err)
+			}
+
+			// Verify auth header
+			if gotAuth != tt.wantAuth {
+				t.Errorf("expected auth %q, got %q", tt.wantAuth, gotAuth)
+			}
+		})
+	}
+}
+
+func TestHTTPConnector_PathParameters(t *testing.T) {
+	// Create test server
+	var gotPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	}))
+	defer server.Close()
+
+	// Create connector
+	def := &workflow.ConnectorDefinition{
+		Name:    "test",
+		BaseURL: server.URL,
+		Operations: map[string]workflow.OperationDefinition{
+			"test": {
+				Method: "GET",
+				Path:   "/repos/{owner}/{repo}/issues/{number}",
+			},
+		},
+	}
+
+	config := DefaultConfig()
+	config.AllowedHosts = []string{"127.0.0.1", "localhost"}
+	connector, err := New(def, config)
+	if err != nil {
+		t.Fatalf("failed to create connector: %v", err)
+	}
+
+	// Execute with path parameters
+	_, err = connector.Execute(context.Background(), "test", map[string]interface{}{
+		"owner":  "test-org",
+		"repo":   "test-repo",
+		"number": 42,
+	})
+
+	if err != nil {
+		t.Fatalf("execution failed: %v", err)
+	}
+
+	// Verify path was correctly substituted
+	wantPath := "/repos/test-org/test-repo/issues/42"
+	if gotPath != wantPath {
+		t.Errorf("expected path %q, got %q", wantPath, gotPath)
+	}
+}
+
+func TestHTTPConnector_ErrorHandling(t *testing.T) {
+	tests := []struct {
+		name           string
+		statusCode     int
+		wantErrorType  ErrorType
+		wantRetryable  bool
+	}{
+		{
+			name:          "401 Unauthorized",
+			statusCode:    401,
+			wantErrorType: ErrorTypeAuth,
+			wantRetryable: false,
+		},
+		{
+			name:          "404 Not Found",
+			statusCode:    404,
+			wantErrorType: ErrorTypeNotFound,
+			wantRetryable: false,
+		},
+		{
+			name:          "429 Rate Limited",
+			statusCode:    429,
+			wantErrorType: ErrorTypeRateLimit,
+			wantRetryable: true,
+		},
+		{
+			name:          "500 Server Error",
+			statusCode:    500,
+			wantErrorType: ErrorTypeServer,
+			wantRetryable: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create test server
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tt.statusCode)
+				json.NewEncoder(w).Encode(map[string]string{"error": "test error"})
+			}))
+			defer server.Close()
+
+			// Create connector
+			def := &workflow.ConnectorDefinition{
+				Name:    "test",
+				BaseURL: server.URL,
+				Operations: map[string]workflow.OperationDefinition{
+					"test": {
+						Method: "GET",
+						Path:   "/test",
+					},
+				},
+			}
+
+			config := DefaultConfig()
+			config.AllowedHosts = []string{"127.0.0.1", "localhost"}
+			connector, err := New(def, config)
+			if err != nil {
+				t.Fatalf("failed to create connector: %v", err)
+			}
+
+			// Execute (should fail)
+			_, err = connector.Execute(context.Background(), "test", map[string]interface{}{})
+
+			// Verify error
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+
+			connErr, ok := err.(*Error)
+			if !ok {
+				t.Fatalf("expected *Error, got %T", err)
+			}
+
+			if connErr.Type != tt.wantErrorType {
+				t.Errorf("expected error type %s, got %s", tt.wantErrorType, connErr.Type)
+			}
+
+			if connErr.IsRetryable() != tt.wantRetryable {
+				t.Errorf("expected retryable=%v, got %v", tt.wantRetryable, connErr.IsRetryable())
+			}
+		})
+	}
+}
+
+func TestRegistry(t *testing.T) {
+	// Create workflow definition with connectors
+	def := &workflow.Definition{
+		Name: "test-workflow",
+		Connectors: map[string]workflow.ConnectorDefinition{
+			"github": {
+				Name:    "github",
+				BaseURL: "https://api.github.com",
+				Auth: &workflow.AuthDefinition{
+					Token: "test-token",
+				},
+				Operations: map[string]workflow.OperationDefinition{
+					"get_user": {
+						Method: "GET",
+						Path:   "/users/{username}",
+					},
+				},
+			},
+			"slack": {
+				Name:    "slack",
+				BaseURL: "https://slack.com/api",
+				Auth: &workflow.AuthDefinition{
+					Token: "slack-token",
+				},
+				Operations: map[string]workflow.OperationDefinition{
+					"post_message": {
+						Method: "POST",
+						Path:   "/chat.postMessage",
+					},
+				},
+			},
+		},
+	}
+
+	// Create registry
+	registry := NewRegistry(DefaultConfig())
+
+	// Load connectors
+	err := registry.LoadFromDefinition(def)
+	if err != nil {
+		t.Fatalf("failed to load connectors: %v", err)
+	}
+
+	// Test List
+	names := registry.List()
+	if len(names) != 2 {
+		t.Errorf("expected 2 connectors, got %d", len(names))
+	}
+
+	// Test Get
+	connector, err := registry.Get("github")
+	if err != nil {
+		t.Fatalf("failed to get connector: %v", err)
+	}
+
+	if connector.Name() != "github" {
+		t.Errorf("expected name 'github', got %s", connector.Name())
+	}
+
+	// Test Get non-existent
+	_, err = registry.Get("nonexistent")
+	if err == nil {
+		t.Error("expected error for non-existent connector")
+	}
+}
+
+func TestParseReference(t *testing.T) {
+	tests := []struct {
+		name          string
+		reference     string
+		wantConnector string
+		wantOperation string
+		wantError     bool
+	}{
+		{
+			name:          "valid reference",
+			reference:     "github.create_issue",
+			wantConnector: "github",
+			wantOperation: "create_issue",
+			wantError:     false,
+		},
+		{
+			name:          "valid reference with underscores",
+			reference:     "my_connector.my_operation",
+			wantConnector: "my_connector",
+			wantOperation: "my_operation",
+			wantError:     false,
+		},
+		{
+			name:      "missing dot",
+			reference: "githubcreate_issue",
+			wantError: true,
+		},
+		{
+			name:      "empty connector",
+			reference: ".create_issue",
+			wantError: true,
+		},
+		{
+			name:      "empty operation",
+			reference: "github.",
+			wantError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			connector, operation, err := parseReference(tt.reference)
+
+			if tt.wantError {
+				if err == nil {
+					t.Error("expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if connector != tt.wantConnector {
+				t.Errorf("expected connector %q, got %q", tt.wantConnector, connector)
+			}
+
+			if operation != tt.wantOperation {
+				t.Errorf("expected operation %q, got %q", tt.wantOperation, operation)
+			}
+		})
+	}
+}

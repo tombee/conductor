@@ -1,0 +1,1200 @@
+package workflow
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"strings"
+	"time"
+
+	"github.com/tombee/conductor/pkg/workflow/expression"
+	"github.com/tombee/conductor/pkg/workflow/schema"
+)
+
+// StepStatus represents the execution status of a workflow step.
+type StepStatus string
+
+const (
+	// StepStatusPending indicates the step has not started yet.
+	StepStatusPending StepStatus = "pending"
+	// StepStatusRunning indicates the step is currently executing.
+	StepStatusRunning StepStatus = "running"
+	// StepStatusSuccess indicates the step completed successfully.
+	StepStatusSuccess StepStatus = "success"
+	// StepStatusFailed indicates the step failed.
+	StepStatusFailed StepStatus = "failed"
+	// StepStatusSkipped indicates the step was skipped due to a condition.
+	StepStatusSkipped StepStatus = "skipped"
+)
+
+// StepResult represents the result of executing a workflow step.
+type StepResult struct {
+	// StepID is the ID of the executed step
+	StepID string
+
+	// Status is the execution status (pending, running, success, failed, skipped)
+	Status StepStatus
+
+	// Success indicates if the step completed successfully (deprecated: use Status)
+	Success bool
+
+	// Output contains the step's output data
+	// Note: Migrating to StepOutput type (SPEC-40). Currently kept as map for compatibility.
+	Output map[string]interface{}
+
+	// Error contains the error message if the step failed
+	Error string
+
+	// Duration is the time taken to execute the step
+	Duration time.Duration
+
+	// StartedAt is when the step execution began
+	StartedAt time.Time
+
+	// CompletedAt is when the step execution finished
+	CompletedAt time.Time
+
+	// Attempts is the number of execution attempts (for retry logic)
+	Attempts int
+}
+
+// DefaultParallelConcurrency is the default maximum number of concurrent parallel steps.
+// Set conservatively to avoid overwhelming resources when launching multiple agents.
+// Can be overridden via WithParallelConcurrency() or per-step MaxConcurrency field.
+const DefaultParallelConcurrency = 3
+
+// StepExecutor executes individual workflow steps.
+type StepExecutor struct {
+	// toolRegistry provides access to registered tools for action steps
+	toolRegistry ToolRegistry
+
+	// llmProvider provides access to LLM for llm steps
+	llmProvider LLMProvider
+
+	// connectorRegistry provides access to connectors for connector steps
+	connectorRegistry ConnectorRegistry
+
+	// exprEval evaluates condition expressions
+	exprEval *expression.Evaluator
+
+	// logger for debug/info logging
+	logger *slog.Logger
+
+	// parallelSem limits concurrent parallel step execution
+	parallelSem chan struct{}
+}
+
+// ToolRegistry defines the interface for tool lookup and execution.
+type ToolRegistry interface {
+	// Get retrieves a tool by name
+	Get(name string) (Tool, error)
+
+	// Execute executes a tool with the given inputs
+	Execute(ctx context.Context, name string, inputs map[string]interface{}) (map[string]interface{}, error)
+
+	// ListTools returns all registered tools
+	ListTools() []Tool
+}
+
+// Tool represents an executable tool with a name and schema.
+type Tool interface {
+	// Name returns the tool identifier
+	Name() string
+
+	// Description returns what the tool does
+	Description() string
+
+	// Execute runs the tool with the given inputs and returns the output.
+	// Note: Return type will migrate to StepOutput in future (SPEC-40).
+	// For now, returns map[string]interface{} for backward compatibility.
+	// Tools should include structured metadata (duration, etc.) when possible.
+	Execute(ctx context.Context, inputs map[string]interface{}) (map[string]interface{}, error)
+}
+
+// LLMProvider defines the interface for LLM interactions.
+type LLMProvider interface {
+	// Complete makes a synchronous LLM call
+	// tools parameter contains available tools for function calling (optional)
+	Complete(ctx context.Context, prompt string, options map[string]interface{}) (string, error)
+}
+
+// ConnectorRegistry defines the interface for connector lookup and execution.
+type ConnectorRegistry interface {
+	// Execute runs a connector operation
+	// The reference should be in format "connector_name.operation_name"
+	Execute(ctx context.Context, reference string, inputs map[string]interface{}) (ConnectorResult, error)
+}
+
+// ConnectorResult represents the output of a connector operation.
+type ConnectorResult interface {
+	// GetResponse returns the transformed response data
+	GetResponse() interface{}
+
+	// GetRawResponse returns the original response before transformation
+	GetRawResponse() interface{}
+
+	// GetStatusCode returns the HTTP status code (for HTTP connectors)
+	GetStatusCode() int
+
+	// GetMetadata returns execution metadata
+	GetMetadata() map[string]interface{}
+}
+
+// NewStepExecutor creates a new step executor.
+func NewStepExecutor(toolRegistry ToolRegistry, llmProvider LLMProvider) *StepExecutor {
+	return &StepExecutor{
+		toolRegistry: toolRegistry,
+		llmProvider:  llmProvider,
+		exprEval:     expression.New(),
+		logger:       slog.Default(),
+		parallelSem:  make(chan struct{}, DefaultParallelConcurrency),
+	}
+}
+
+// WithLogger sets a custom logger for the executor.
+func (e *StepExecutor) WithLogger(logger *slog.Logger) *StepExecutor {
+	e.logger = logger
+	return e
+}
+
+// WithConnectorRegistry sets the connector registry for the executor.
+func (e *StepExecutor) WithConnectorRegistry(registry ConnectorRegistry) *StepExecutor {
+	e.connectorRegistry = registry
+	return e
+}
+
+// WithParallelConcurrency sets the maximum number of concurrent parallel steps.
+func (e *StepExecutor) WithParallelConcurrency(max int) *StepExecutor {
+	if max <= 0 {
+		max = DefaultParallelConcurrency
+	}
+	e.parallelSem = make(chan struct{}, max)
+	return e
+}
+
+// Execute executes a single workflow step.
+func (e *StepExecutor) Execute(ctx context.Context, step *StepDefinition, workflowContext map[string]interface{}) (*StepResult, error) {
+	result := &StepResult{
+		StepID:    step.ID,
+		Status:    StepStatusRunning,
+		StartedAt: time.Now(),
+		Attempts:  1,
+	}
+
+	// Check condition before executing (skip if condition is false)
+	if step.Condition != nil && step.Condition.Expression != "" {
+		shouldRun, err := e.evaluateCondition(step.Condition.Expression, workflowContext)
+		if err != nil {
+			result.Status = StepStatusFailed
+			result.Success = false
+			result.Error = fmt.Sprintf("condition evaluation failed: %s", err.Error())
+			result.CompletedAt = time.Now()
+			result.Duration = result.CompletedAt.Sub(result.StartedAt)
+			return result, fmt.Errorf("evaluate condition for step %s: %w", step.ID, err)
+		}
+
+		if !shouldRun {
+			e.logger.Debug("step skipped due to condition",
+				"step_id", step.ID,
+				"expression", step.Condition.Expression,
+			)
+			result.Status = StepStatusSkipped
+			result.Success = true // Skipped is not a failure
+			result.Output = map[string]interface{}{
+				"content": "",
+				"skipped": true,
+				"reason":  "condition evaluated to false",
+			}
+			result.CompletedAt = time.Now()
+			result.Duration = result.CompletedAt.Sub(result.StartedAt)
+			return result, nil
+		}
+	}
+
+	// Apply default timeout (30s) when step.Timeout is 0
+	timeout := step.Timeout
+	if timeout == 0 {
+		timeout = 30 // Default 30 seconds
+	}
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+		defer cancel()
+	}
+
+	// Apply default retry config when step.Retry is nil
+	retry := step.Retry
+	if retry == nil {
+		retry = &RetryDefinition{
+			MaxAttempts:       2,
+			BackoffBase:       1,
+			BackoffMultiplier: 2.0,
+		}
+	}
+
+	// Execute with retry
+	var err error
+	result.Output, err = e.executeWithRetry(ctx, step, workflowContext, result, retry)
+
+	result.CompletedAt = time.Now()
+	result.Duration = result.CompletedAt.Sub(result.StartedAt)
+
+	if err != nil {
+		result.Status = StepStatusFailed
+		result.Success = false
+		result.Error = err.Error()
+
+		// Handle error according to step configuration
+		if step.OnError != nil {
+			return e.handleError(ctx, step, result, err)
+		}
+
+		return result, err
+	}
+
+	result.Status = StepStatusSuccess
+	result.Success = true
+	return result, nil
+}
+
+// executeStep executes a step once without retry logic.
+func (e *StepExecutor) executeStep(ctx context.Context, step *StepDefinition, workflowContext map[string]interface{}) (map[string]interface{}, error) {
+	// Resolve inputs (substitute context variables)
+	inputs, err := e.resolveInputs(step.Inputs, workflowContext)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve inputs: %w", err)
+	}
+
+	// Resolve step fields (prompt, system) for template variables
+	resolvedStep := *step
+	if err := e.resolveStepFields(&resolvedStep, workflowContext); err != nil {
+		return nil, fmt.Errorf("failed to resolve step fields: %w", err)
+	}
+
+	// Execute based on step type
+	switch step.Type {
+	case StepTypeLLM:
+		return e.executeLLM(ctx, &resolvedStep, inputs)
+	case StepTypeCondition:
+		return e.executeCondition(ctx, &resolvedStep, inputs, workflowContext)
+	case StepTypeParallel:
+		return e.executeParallel(ctx, &resolvedStep, inputs, workflowContext)
+	case StepTypeConnector:
+		return e.executeConnector(ctx, &resolvedStep, inputs)
+	case StepTypeBuiltin:
+		// Convert builtin step to connector format for execution
+		resolvedStep.Connector = resolvedStep.BuiltinConnector + "." + resolvedStep.BuiltinOperation
+		return e.executeConnector(ctx, &resolvedStep, inputs)
+	default:
+		return nil, fmt.Errorf("unsupported step type: %s", step.Type)
+	}
+}
+
+// executeWithRetry executes a step with retry logic.
+func (e *StepExecutor) executeWithRetry(ctx context.Context, step *StepDefinition, workflowContext map[string]interface{}, result *StepResult, retry *RetryDefinition) (map[string]interface{}, error) {
+	// Don't retry parallel steps - they have their own internal error handling
+	// Retrying a parallel step would re-execute all nested steps unnecessarily
+	if step.Type == StepTypeParallel {
+		return e.executeStep(ctx, step, workflowContext)
+	}
+
+	// If only one attempt, execute directly without retry logic
+	if retry.MaxAttempts == 1 {
+		return e.executeStep(ctx, step, workflowContext)
+	}
+
+	var lastErr error
+	var lastOutput map[string]interface{}
+	backoffDuration := time.Duration(retry.BackoffBase) * time.Second
+
+	for attempt := 1; attempt <= retry.MaxAttempts; attempt++ {
+		result.Attempts = attempt
+
+		output, err := e.executeStep(ctx, step, workflowContext)
+		if err == nil {
+			return output, nil
+		}
+
+		lastErr = err
+		lastOutput = output // Preserve partial output for error cases
+
+		// Don't retry if this was the last attempt
+		if attempt == retry.MaxAttempts {
+			break
+		}
+
+		// Wait before retrying
+		select {
+		case <-ctx.Done():
+			return lastOutput, ctx.Err()
+		case <-time.After(backoffDuration):
+			// Calculate next backoff duration
+			backoffDuration = time.Duration(float64(backoffDuration) * retry.BackoffMultiplier)
+		}
+	}
+
+	return lastOutput, fmt.Errorf("step failed after %d attempts: %w", retry.MaxAttempts, lastErr)
+}
+
+// executeConnector executes a connector step by invoking a connector operation.
+// The step.Connector field should be in format "connector_name.operation_name".
+// Note: No type assertions on inputs - inputs passed through to connector registry (SPEC-40).
+func (e *StepExecutor) executeConnector(ctx context.Context, step *StepDefinition, inputs map[string]interface{}) (map[string]interface{}, error) {
+	// Check if connector registry is configured
+	if e.connectorRegistry == nil {
+		return nil, fmt.Errorf("connector registry not configured")
+	}
+
+	// Validate connector field is present
+	if step.Connector == "" {
+		return nil, fmt.Errorf("connector field is required for connector step")
+	}
+
+	// Log connector execution start with structured logging
+	e.logger.Debug("executing connector operation",
+		"step_id", step.ID,
+		"connector", step.Connector,
+		"inputs", maskSensitiveInputs(inputs),
+	)
+
+	// Execute the connector operation
+	result, err := e.connectorRegistry.Execute(ctx, step.Connector, inputs)
+	if err != nil {
+		e.logger.Error("connector execution failed",
+			"step_id", step.ID,
+			"connector", step.Connector,
+			"error", err,
+		)
+		return nil, fmt.Errorf("connector execution failed: %w", err)
+	}
+
+	// Log successful execution with metadata
+	e.logger.Debug("connector operation completed",
+		"step_id", step.ID,
+		"connector", step.Connector,
+		"status_code", result.GetStatusCode(),
+		"metadata", result.GetMetadata(),
+	)
+
+	// Map connector result to step output format
+	// The response is the primary output, but we also include metadata for debugging
+	output := map[string]interface{}{
+		"response": result.GetResponse(),
+	}
+
+	// Include metadata if present
+	if metadata := result.GetMetadata(); len(metadata) > 0 {
+		output["metadata"] = metadata
+	}
+
+	// Include status code for HTTP connectors
+	if statusCode := result.GetStatusCode(); statusCode > 0 {
+		output["status_code"] = statusCode
+	}
+
+	return output, nil
+}
+
+// maskSensitiveInputs masks sensitive values in inputs for logging.
+// This prevents credentials from appearing in logs.
+func maskSensitiveInputs(inputs map[string]interface{}) map[string]interface{} {
+	masked := make(map[string]interface{})
+	sensitiveKeys := map[string]bool{
+		"token":      true,
+		"password":   true,
+		"secret":     true,
+		"api_key":    true,
+		"apikey":     true,
+		"auth":       true,
+		"credential": true,
+	}
+
+	for key, value := range inputs {
+		// Check if key contains sensitive terms (case-insensitive)
+		lowerKey := ""
+		for i := 0; i < len(key); i++ {
+			ch := key[i]
+			if ch >= 'A' && ch <= 'Z' {
+				lowerKey += string(ch + 32) // Convert to lowercase
+			} else {
+				lowerKey += string(ch)
+			}
+		}
+
+		isSensitive := false
+		for sensitiveKey := range sensitiveKeys {
+			// Check if the key contains the sensitive term
+			if stringContains(lowerKey, sensitiveKey) {
+				isSensitive = true
+				break
+			}
+		}
+
+		if isSensitive {
+			masked[key] = "***MASKED***"
+		} else {
+			masked[key] = value
+		}
+	}
+
+	return masked
+}
+
+// stringContains checks if a string contains a substring.
+func stringContains(s, substr string) bool {
+	if len(substr) > len(s) {
+		return false
+	}
+	for i := 0; i <= len(s)-len(substr); i++ {
+		found := true
+		for j := 0; j < len(substr); j++ {
+			if s[i+j] != substr[j] {
+				found = false
+				break
+			}
+		}
+		if found {
+			return true
+		}
+	}
+	return false
+}
+
+// executeLLM executes an LLM step by making an LLM API call.
+// Supports structured output validation via OutputSchema (SPEC-6).
+func (e *StepExecutor) executeLLM(ctx context.Context, step *StepDefinition, inputs map[string]interface{}) (map[string]interface{}, error) {
+	if e.llmProvider == nil {
+		return nil, fmt.Errorf("LLM provider not configured")
+	}
+
+	// SPEC-40: Wrap inputs in type-safe context for safer access
+	inputCtx := NewWorkflowContext(inputs)
+
+	// SPEC-2 format: Use Prompt field from step definition
+	// Fallback to old format: prompt from inputs
+	prompt := step.Prompt
+	if prompt == "" {
+		// Legacy format: prompt from inputs (type-safe accessor)
+		promptInput, err := inputCtx.GetString("prompt")
+		if err != nil {
+			return nil, fmt.Errorf("prompt is required for LLM step and must be a string")
+		}
+		prompt = promptInput
+	}
+
+	// Get options (if any) - type-safe accessor with default
+	options, err := inputCtx.GetMap("options")
+	if err != nil {
+		// If options is missing or not a map, use empty map
+		options = make(map[string]interface{})
+	}
+
+	// Add system prompt if specified (SPEC-2)
+	if step.System != "" {
+		options["system"] = step.System
+	}
+
+	// Add model if specified (SPEC-2)
+	if step.Model != "" {
+		options["model"] = step.Model
+	}
+
+	// Filter and include tools based on step's Tools field
+	if e.toolRegistry != nil && len(step.Tools) > 0 {
+		filteredTools := e.filterTools(step.Tools)
+		if len(filteredTools) > 0 {
+			options["tools"] = filteredTools
+		}
+	}
+
+	// Check if structured output is required (SPEC-6 Phase 4)
+	if step.OutputSchema != nil {
+		return e.executeLLMWithSchema(ctx, prompt, options, step.OutputSchema)
+	}
+
+	// Standard unstructured LLM call
+	response, err := e.llmProvider.Complete(ctx, prompt, options)
+	if err != nil {
+		return nil, fmt.Errorf("LLM call failed: %w", err)
+	}
+
+	return map[string]interface{}{
+		"response": response,
+	}, nil
+}
+
+// executeLLMWithSchema executes an LLM call with structured output validation and retry.
+// Implements T4.1-T4.8: schema-aware execution with validation and retry logic.
+func (e *StepExecutor) executeLLMWithSchema(ctx context.Context, basePrompt string, options map[string]interface{}, outputSchema map[string]interface{}) (map[string]interface{}, error) {
+	const maxAttempts = 3
+	validator := schema.NewValidator()
+
+	var lastResponse string
+	var lastErr error
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		// T4.2: Inject schema requirements into prompt
+		prompt := schema.BuildPromptWithSchema(basePrompt, outputSchema, attempt)
+
+		// Make LLM call
+		response, err := e.llmProvider.Complete(ctx, prompt, options)
+		if err != nil {
+			return nil, fmt.Errorf("LLM call failed on attempt %d: %w", attempt+1, err)
+		}
+
+		lastResponse = response
+
+		// T3.2 & T4.3: Extract and parse JSON from response
+		data, err := schema.ExtractJSON(response)
+		if err != nil {
+			lastErr = fmt.Errorf("failed to extract JSON: %w", err)
+			continue // Retry with clearer instructions
+		}
+
+		// T4.3: Validate against schema
+		if err := validator.Validate(outputSchema, data); err != nil {
+			lastErr = fmt.Errorf("schema validation failed: %w", err)
+			continue // Retry with clearer instructions
+		}
+
+		// T4.5: Strip extra fields (validator already does this implicitly)
+		// T4.6: Store validated output under "output" key
+		return map[string]interface{}{
+			"output":   data,                  // Structured output accessible as {{.steps.id.output.field}}
+			"response": response,              // Original response for debugging
+			"attempts": attempt + 1,           // T4.8: Track retry attempts
+		}, nil
+	}
+
+	// T4.7: All retries exhausted, return structured error
+	return nil, &SchemaValidationError{
+		ErrorCode:        "SCHEMA_VALIDATION_FAILED",
+		ExpectedSchema:   outputSchema,
+		ActualResponse:   truncateString(lastResponse, 500),
+		ValidationErrors: []string{lastErr.Error()},
+		Attempts:         maxAttempts,
+	}
+}
+
+// SchemaValidationError represents a structured output validation failure.
+// Implements T4.7: structured error for SCHEMA_VALIDATION_FAILED.
+type SchemaValidationError struct {
+	ErrorCode        string
+	ExpectedSchema   map[string]interface{}
+	ActualResponse   string
+	ValidationErrors []string
+	Attempts         int
+}
+
+// Error implements the error interface.
+func (e *SchemaValidationError) Error() string {
+	return fmt.Sprintf("%s: validation failed after %d attempts. Last error: %s. Response (truncated): %q",
+		e.ErrorCode, e.Attempts, e.ValidationErrors[len(e.ValidationErrors)-1], e.ActualResponse)
+}
+
+// truncateString truncates a string to maxLen characters.
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
+}
+
+// filterTools returns tools filtered by the given tool names.
+// Returns tool descriptors suitable for LLM function calling.
+func (e *StepExecutor) filterTools(toolNames []string) []map[string]interface{} {
+	if e.toolRegistry == nil {
+		return nil
+	}
+
+	allTools := e.toolRegistry.ListTools()
+	filtered := []map[string]interface{}{}
+
+	// Create a set of allowed tool names for quick lookup
+	allowedNames := make(map[string]bool)
+	for _, name := range toolNames {
+		allowedNames[name] = true
+	}
+
+	// Filter tools and build descriptors
+	for _, tool := range allTools {
+		if allowedNames[tool.Name()] {
+			filtered = append(filtered, map[string]interface{}{
+				"name":        tool.Name(),
+				"description": tool.Description(),
+			})
+		}
+	}
+
+	return filtered
+}
+
+// executeCondition executes a condition step by evaluating an expression.
+// Note: No type assertions on inputs - expression layer migration is Phase 3 (SPEC-40).
+func (e *StepExecutor) executeCondition(ctx context.Context, step *StepDefinition, inputs map[string]interface{}, workflowContext map[string]interface{}) (map[string]interface{}, error) {
+	if step.Condition == nil {
+		return nil, fmt.Errorf("condition is required for condition step")
+	}
+
+	// Evaluate condition expression
+	// For Phase 1, we'll use a simple string comparison
+	// In the future, this could be replaced with a proper expression evaluator
+	conditionMet, err := e.evaluateCondition(step.Condition.Expression, workflowContext)
+	if err != nil {
+		return nil, fmt.Errorf("failed to evaluate condition: %w", err)
+	}
+
+	return map[string]interface{}{
+		"condition_met": conditionMet,
+		"then_steps":    step.Condition.ThenSteps,
+		"else_steps":    step.Condition.ElseSteps,
+	}, nil
+}
+
+// executeParallel executes nested steps concurrently and aggregates results.
+func (e *StepExecutor) executeParallel(ctx context.Context, step *StepDefinition, inputs map[string]interface{}, workflowContext map[string]interface{}) (map[string]interface{}, error) {
+	if len(step.Steps) == 0 {
+		return nil, fmt.Errorf("parallel step has no nested steps")
+	}
+
+	// Handle foreach iteration if specified
+	if step.Foreach != "" {
+		return e.executeForeach(ctx, step, inputs, workflowContext)
+	}
+
+	// Apply parent timeout if specified
+	if step.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(step.Timeout)*time.Second)
+		defer cancel()
+	}
+
+	// Determine error strategy
+	failFast := true
+	if step.OnError != nil && step.OnError.Strategy == ErrorStrategyIgnore {
+		failFast = false
+	}
+
+	// Use step-specific concurrency limit if set, otherwise use executor's default
+	var sem chan struct{}
+	if step.MaxConcurrency > 0 {
+		sem = make(chan struct{}, step.MaxConcurrency)
+		e.logger.Debug("using step-specific concurrency limit",
+			"step_id", step.ID,
+			"max_concurrency", step.MaxConcurrency,
+		)
+	} else {
+		sem = e.parallelSem
+	}
+
+	type stepResult struct {
+		id     string
+		result *StepResult
+		err    error
+	}
+
+	results := make(chan stepResult, len(step.Steps))
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	start := time.Now()
+
+	e.logger.Debug("starting parallel execution",
+		"step_id", step.ID,
+		"nested_count", len(step.Steps),
+		"max_concurrency", step.MaxConcurrency,
+		"fail_fast", failFast,
+	)
+
+	// Launch goroutines for each nested step with concurrency limiting
+	for _, nested := range step.Steps {
+		go func(s StepDefinition) {
+			stepStart := time.Now()
+
+			// Acquire semaphore (blocks if at capacity)
+			select {
+			case sem <- struct{}{}:
+				// Got slot
+			case <-ctx.Done():
+				e.logger.Debug("nested step cancelled while waiting for slot",
+					"parent_step_id", step.ID,
+					"step_id", s.ID,
+				)
+				results <- stepResult{
+					id:  s.ID,
+					err: ctx.Err(),
+				}
+				return
+			}
+			defer func() { <-sem }() // Release slot
+
+			// Check if context is already cancelled
+			select {
+			case <-ctx.Done():
+				e.logger.Debug("nested step cancelled before execution",
+					"parent_step_id", step.ID,
+					"step_id", s.ID,
+				)
+				results <- stepResult{
+					id:  s.ID,
+					err: ctx.Err(),
+				}
+				return
+			default:
+			}
+
+			// Create a copy of workflow context for this step
+			nestedContext := copyWorkflowContext(workflowContext)
+
+			// Execute the step
+			result, err := e.Execute(ctx, &s, nestedContext)
+
+			e.logger.Debug("nested step completed",
+				"parent_step_id", step.ID,
+				"step_id", s.ID,
+				"status", result.Status,
+				"duration", time.Since(stepStart),
+				"error", err,
+			)
+
+			if err != nil && failFast {
+				cancel() // Cancel other steps on first error
+			}
+			results <- stepResult{
+				id:     s.ID,
+				result: result,
+				err:    err,
+			}
+		}(nested)
+	}
+
+	// Collect results
+	output := make(map[string]interface{})
+	var errors []error
+	for i := 0; i < len(step.Steps); i++ {
+		r := <-results
+		if r.err != nil {
+			errors = append(errors, fmt.Errorf("step %s: %w", r.id, r.err))
+			// Include partial result even on error
+			if r.result != nil {
+				output[r.id] = r.result.Output
+			}
+		} else if r.result != nil {
+			output[r.id] = r.result.Output
+		}
+	}
+
+	e.logger.Debug("parallel execution complete",
+		"step_id", step.ID,
+		"duration", time.Since(start),
+		"nested_count", len(step.Steps),
+		"error_count", len(errors),
+	)
+
+	// Return error if any step failed and fail_fast is enabled
+	if len(errors) > 0 && failFast {
+		return output, errors[0]
+	}
+
+	// Return combined error if any step failed
+	if len(errors) > 0 {
+		return output, fmt.Errorf("parallel execution had %d errors: %v", len(errors), errors)
+	}
+
+	return output, nil
+}
+
+// executeForeach executes steps for each element in an array with context injection.
+// Implements fail-last error semantics: all iterations run to completion,
+// then the step fails if any iteration failed. Results are ordered by index.
+func (e *StepExecutor) executeForeach(ctx context.Context, step *StepDefinition, inputs map[string]interface{}, workflowContext map[string]interface{}) (map[string]interface{}, error) {
+	// Resolve the foreach expression to get the array value
+	arrayValue, err := e.resolveForeachValue(step.Foreach, workflowContext)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve foreach expression: %w", err)
+	}
+
+	// Validate that the resolved value is an array
+	array, ok := arrayValue.([]interface{})
+	if !ok {
+		// Check if it's a different type and provide helpful error
+		typeName := "unknown"
+		if arrayValue == nil {
+			typeName = "null"
+		} else {
+			switch arrayValue.(type) {
+			case map[string]interface{}:
+				typeName = "object"
+			case string:
+				typeName = "string"
+			case int, int64, float64:
+				typeName = "number"
+			case bool:
+				typeName = "boolean"
+			}
+		}
+		return nil, fmt.Errorf("foreach requires array input, got %s", typeName)
+	}
+
+	// Handle empty array case - return empty results
+	if len(array) == 0 {
+		e.logger.Debug("foreach with empty array, returning empty results",
+			"step_id", step.ID,
+		)
+		return map[string]interface{}{
+			"results": []interface{}{},
+		}, nil
+	}
+
+	// Apply parent timeout if specified
+	if step.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(step.Timeout)*time.Second)
+		defer cancel()
+	}
+
+	// Use step-specific concurrency limit if set, otherwise use executor's default
+	var sem chan struct{}
+	if step.MaxConcurrency > 0 {
+		sem = make(chan struct{}, step.MaxConcurrency)
+		e.logger.Debug("using step-specific concurrency limit for foreach",
+			"step_id", step.ID,
+			"max_concurrency", step.MaxConcurrency,
+		)
+	} else {
+		sem = e.parallelSem
+	}
+
+	type iterationResult struct {
+		index  int
+		result interface{}
+		err    error
+	}
+
+	total := len(array)
+	results := make(chan iterationResult, total)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	start := time.Now()
+
+	e.logger.Debug("starting foreach execution",
+		"step_id", step.ID,
+		"array_length", total,
+		"max_concurrency", step.MaxConcurrency,
+	)
+
+	// Launch goroutines for each array element
+	for idx, item := range array {
+		go func(index int, element interface{}) {
+			iterStart := time.Now()
+
+			// Acquire semaphore (blocks if at capacity)
+			select {
+			case sem <- struct{}{}:
+				// Got slot
+			case <-ctx.Done():
+				e.logger.Debug("foreach iteration cancelled while waiting for slot",
+					"parent_step_id", step.ID,
+					"index", index,
+				)
+				results <- iterationResult{
+					index: index,
+					err:   ctx.Err(),
+				}
+				return
+			}
+			defer func() { <-sem }() // Release slot
+
+			// Check if context is already cancelled
+			select {
+			case <-ctx.Done():
+				e.logger.Debug("foreach iteration cancelled before execution",
+					"parent_step_id", step.ID,
+					"index", index,
+				)
+				results <- iterationResult{
+					index: index,
+					err:   ctx.Err(),
+				}
+				return
+			default:
+			}
+
+			// Create a copy of workflow context for this iteration
+			iterContext := copyWorkflowContext(workflowContext)
+
+			// Inject foreach context variables into template context
+			if templateCtx, ok := iterContext["_templateContext"].(*TemplateContext); ok {
+				// Create a new template context with foreach variables
+				newTemplateCtx := &TemplateContext{
+					Inputs: make(map[string]interface{}),
+					Steps:  templateCtx.Steps,
+					Env:    templateCtx.Env,
+					Tools:  templateCtx.Tools,
+				}
+				// Copy existing inputs
+				if templateCtx.Inputs != nil {
+					for k, v := range templateCtx.Inputs {
+						newTemplateCtx.Inputs[k] = v
+					}
+				}
+				// Add foreach-specific variables
+				newTemplateCtx.Inputs["item"] = element
+				newTemplateCtx.Inputs["index"] = index
+				newTemplateCtx.Inputs["total"] = total
+				iterContext["_templateContext"] = newTemplateCtx
+			}
+
+			// Execute all nested steps for this iteration
+			// We treat the nested steps as a mini workflow
+			iterOutput := make(map[string]interface{})
+			var iterErr error
+			for _, nested := range step.Steps {
+				result, err := e.Execute(ctx, &nested, iterContext)
+				if err != nil {
+					iterErr = err
+					e.logger.Debug("foreach iteration step failed",
+						"parent_step_id", step.ID,
+						"index", index,
+						"step_id", nested.ID,
+						"error", err,
+					)
+					break
+				}
+				if result != nil && nested.ID != "" {
+					iterOutput[nested.ID] = result.Output
+					// Update context for subsequent steps in this iteration
+					if tc, ok := iterContext["_templateContext"].(*TemplateContext); ok {
+						if tc.Steps == nil {
+							tc.Steps = make(map[string]map[string]interface{})
+						}
+						tc.Steps[nested.ID] = map[string]interface{}{
+							"response": result.Output,
+							"status":   result.Status,
+						}
+					}
+				}
+			}
+
+			e.logger.Debug("foreach iteration completed",
+				"parent_step_id", step.ID,
+				"index", index,
+				"duration", time.Since(iterStart),
+				"error", iterErr,
+			)
+
+			results <- iterationResult{
+				index:  index,
+				result: iterOutput,
+				err:    iterErr,
+			}
+		}(idx, item)
+	}
+
+	// Collect all results (fail-last semantics: let all iterations complete)
+	iterResults := make([]iterationResult, total)
+	for i := 0; i < total; i++ {
+		r := <-results
+		iterResults[i] = r
+	}
+
+	// Sort results by index to maintain original order
+	sortedResults := make([]iterationResult, total)
+	for _, r := range iterResults {
+		sortedResults[r.index] = r
+	}
+
+	// Build output array and collect errors
+	outputArray := make([]interface{}, total)
+	var errors []error
+	for i, r := range sortedResults {
+		if r.err != nil {
+			errors = append(errors, fmt.Errorf("iteration %d: %w", i, r.err))
+		}
+		outputArray[i] = r.result
+	}
+
+	e.logger.Debug("foreach execution complete",
+		"step_id", step.ID,
+		"duration", time.Since(start),
+		"total_iterations", total,
+		"error_count", len(errors),
+	)
+
+	// Fail-last: if any iteration failed, fail the entire foreach
+	if len(errors) > 0 {
+		return nil, fmt.Errorf("foreach had %d failed iterations (first error: %v)", len(errors), errors[0])
+	}
+
+	return map[string]interface{}{
+		"results": outputArray,
+	}, nil
+}
+
+// copyWorkflowContext creates a shallow copy of the workflow context.
+// This ensures each parallel step has its own context without interfering with others.
+func copyWorkflowContext(ctx map[string]interface{}) map[string]interface{} {
+	copy := make(map[string]interface{})
+	for k, v := range ctx {
+		copy[k] = v
+	}
+	return copy
+}
+
+// evaluateCondition evaluates a condition expression using the expression evaluator.
+// Supports expressions like:
+//   - "security" in inputs.personas
+//   - has(inputs.personas, "security")
+//   - inputs.mode == "strict"
+//   - inputs.count > 5 && inputs.enabled
+func (e *StepExecutor) evaluateCondition(expr string, workflowContext map[string]interface{}) (bool, error) {
+	// Build expression context from workflow context
+	ctx := expression.BuildContext(workflowContext)
+
+	// Evaluate the expression
+	result, err := e.exprEval.Evaluate(expr, ctx)
+	if err != nil {
+		return false, err
+	}
+
+	e.logger.Debug("condition evaluated",
+		"expression", expr,
+		"result", result,
+	)
+
+	return result, nil
+}
+
+// resolveInputs resolves input values by substituting context variables.
+// Uses Go template syntax ({{.variable}}) for variable resolution.
+func (e *StepExecutor) resolveInputs(inputs map[string]interface{}, workflowContext map[string]interface{}) (map[string]interface{}, error) {
+	// Extract template context from workflow context
+	ctx, ok := workflowContext["_templateContext"].(*TemplateContext)
+	if !ok || ctx == nil {
+		// No template context available, return inputs as-is
+		return inputs, nil
+	}
+
+	// Use ResolveInputs to resolve all string values
+	return ResolveInputs(inputs, ctx)
+}
+
+// resolveStepFields resolves template variables in step definition fields (prompt, system).
+func (e *StepExecutor) resolveStepFields(step *StepDefinition, workflowContext map[string]interface{}) error {
+	// Extract template context from workflow context
+	ctx, ok := workflowContext["_templateContext"].(*TemplateContext)
+	if !ok || ctx == nil {
+		// No template context available, nothing to resolve
+		return nil
+	}
+
+	// Resolve prompt field
+	if step.Prompt != "" {
+		resolved, err := ResolveTemplate(step.Prompt, ctx)
+		if err != nil {
+			return fmt.Errorf("failed to resolve prompt: %w", err)
+		}
+		step.Prompt = resolved
+	}
+
+	// Resolve system field
+	if step.System != "" {
+		resolved, err := ResolveTemplate(step.System, ctx)
+		if err != nil {
+			return fmt.Errorf("failed to resolve system prompt: %w", err)
+		}
+		step.System = resolved
+	}
+
+	return nil
+}
+
+// handleError handles step execution errors according to the step's error handling configuration.
+func (e *StepExecutor) handleError(ctx context.Context, step *StepDefinition, result *StepResult, err error) (*StepResult, error) {
+	switch step.OnError.Strategy {
+	case ErrorStrategyFail:
+		// Default behavior: propagate error
+		return result, err
+
+	case ErrorStrategyIgnore:
+		// Mark as success but include error info
+		result.Success = true
+		result.Error = fmt.Sprintf("ignored error: %s", err.Error())
+		return result, nil
+
+	case ErrorStrategyRetry:
+		// Retry logic is handled by executeWithRetry
+		return result, err
+
+	case ErrorStrategyFallback:
+		// Execute fallback step
+		// Phase 1: Return error with fallback step ID
+		// Future implementation would actually execute the fallback step
+		result.Success = false
+		result.Error = fmt.Sprintf("error (fallback to %s): %s", step.OnError.FallbackStep, err.Error())
+		result.Output = map[string]interface{}{
+			"fallback_step": step.OnError.FallbackStep,
+		}
+		return result, fmt.Errorf("step failed, fallback required: %w", err)
+
+	default:
+		return result, err
+	}
+}
+
+// resolveForeachValue resolves a template expression to get the actual value (not string).
+// This is needed for foreach to access array values from the context.
+func (e *StepExecutor) resolveForeachValue(expr string, workflowContext map[string]interface{}) (interface{}, error) {
+	templateCtx, ok := workflowContext["_templateContext"].(*TemplateContext)
+	if !ok {
+		return nil, fmt.Errorf("template context not available")
+	}
+
+	// Directly look up the value from the context by parsing the expression path
+	// For example: "{{.steps.step_id}}" or "{{.steps.step_id.field}}"
+
+	// Remove {{ and }} if present
+	path := expr
+	if strings.HasPrefix(path, "{{") && strings.HasSuffix(path, "}}") {
+		path = strings.TrimSpace(path[2 : len(path)-2])
+	}
+
+	// Remove leading dot
+	if strings.HasPrefix(path, ".") {
+		path = path[1:]
+	}
+
+	// Split path by dots
+	parts := strings.Split(path, ".")
+	if len(parts) == 0 {
+		return nil, fmt.Errorf("invalid expression: %s", expr)
+	}
+
+	// Navigate through the context
+	var current interface{}
+	contextMap := templateCtx.ToMap()
+	current = contextMap
+
+	for _, part := range parts {
+		switch v := current.(type) {
+		case map[string]interface{}:
+			val, ok := v[part]
+			if !ok {
+				return nil, fmt.Errorf("field %s not found in context", part)
+			}
+			current = val
+		case map[string]map[string]interface{}:
+			// Handle the Steps field which is map[string]map[string]interface{}
+			val, ok := v[part]
+			if !ok {
+				return nil, fmt.Errorf("field %s not found in context", part)
+			}
+			current = val
+		default:
+			return nil, fmt.Errorf("cannot access field %s on non-object (type %T)", part, current)
+		}
+	}
+
+	return current, nil
+}

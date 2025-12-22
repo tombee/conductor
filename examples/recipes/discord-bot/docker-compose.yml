@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # Discord bot
+  discord-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - CONDUCTOR_URL=${CONDUCTOR_URL:-http://conductor:9000}
+      - CONDUCTOR_API_KEY=${CONDUCTOR_API_KEY}
+    depends_on:
+      - conductor
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Conductor daemon (for testing)
+  conductor:
+    image: conductor:latest  # Replace with actual image when available
+    ports:
+      - "9000:9000"
+    environment:
+      - CONDUCTOR_LOG_LEVEL=info
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - ./workflows:/workflows
+      - conductor-data:/data
+    restart: unless-stopped
+
+volumes:
+  conductor-data:

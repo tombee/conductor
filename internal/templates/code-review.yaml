@@ -1,0 +1,27 @@
+name: {{.Name}}
+description: Review code changes for quality, security, and best practices
+
+steps:
+  - id: analyze
+    type: llm
+    model: balanced
+    system: You are an experienced code reviewer focused on quality, security, and maintainability.
+    prompt: |
+      Review the following code changes:
+
+      {{.input}}
+
+      Please provide:
+      1. Overall assessment
+      2. Potential issues or bugs
+      3. Security concerns
+      4. Suggested improvements
+
+  - id: recommendations
+    type: llm
+    model: balanced
+    prompt: |
+      Based on this code review:
+      {{.steps.analyze.response}}
+
+      Provide 3-5 actionable recommendations prioritized by impact.

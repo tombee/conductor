@@ -1,0 +1,73 @@
+;; Conductor Sandbox Profile for macOS sandbox-exec
+;;
+;; DEPRECATION NOTICE: sandbox-exec is deprecated by Apple and may be removed
+;; in future macOS versions. This profile is provided for reference only.
+;; Use Docker Desktop for Mac for production sandboxing.
+;;
+;; Usage:
+;;   sandbox-exec -f sandbox-exec-profile.sb <command>
+;;
+;; Note: This profile must be customized with specific paths before use.
+;; Replace placeholders like {{WORKSPACE_PATH}} with actual values.
+
+(version 1)
+(deny default)
+
+;; Allow basic process operations
+(allow process-exec)
+(allow process-fork)
+
+;; Allow reading workspace
+;; Replace {{WORKSPACE_PATH}} with actual workspace directory
+(allow file-read* (subpath "{{WORKSPACE_PATH}}"))
+
+;; Allow writing to output directory
+;; Replace {{OUTPUT_PATH}} with actual output directory
+(allow file-write* (subpath "{{OUTPUT_PATH}}"))
+
+;; Allow reading system libraries and binaries
+(allow file-read*
+  (subpath "/usr/lib")
+  (subpath "/usr/bin")
+  (subpath "/bin")
+  (subpath "/System/Library"))
+
+;; Allow temporary files
+(allow file-read* file-write*
+  (subpath "/tmp/conductor-sandbox-{{WORKFLOW_ID}}"))
+
+;; Deny access to home directory (except workspace)
+(deny file-read* file-write*
+  (subpath (user-home)))
+
+;; Deny access to sensitive paths
+(deny file-read* file-write*
+  (subpath (string-append (user-home) "/.ssh"))
+  (subpath (string-append (user-home) "/.aws"))
+  (subpath (string-append (user-home) "/.gnupg"))
+  (subpath (string-append (user-home) "/.config/conductor/credentials")))
+
+;; Network access
+;; For air-gapped: deny all network
+(deny network*)
+
+;; For filtered network: allow specific hosts
+;; Uncomment and customize for filtered mode:
+;; (allow network-outbound
+;;   (remote tcp "api.anthropic.com:443")
+;;   (remote tcp "api.openai.com:443"))
+
+;; Deny IPC with other processes
+(deny ipc-posix-shm*)
+(deny mach-lookup)
+
+;; Allow basic system operations
+(allow sysctl-read)
+(allow signal (target self))
+
+;; Deny everything else (explicit for clarity)
+(deny file-ioctl)
+(deny file-mount)
+(deny file-unmount)
+(deny system-audit)
+(deny system-socket)

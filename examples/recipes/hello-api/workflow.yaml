@@ -1,0 +1,51 @@
+name: hello-api
+description: Simple workflow for testing API calls and automation recipes
+
+inputs:
+  - name: name
+    type: string
+    description: Name to greet
+    default: "World"
+
+  - name: include_timestamp
+    type: boolean
+    description: Include current timestamp in response
+    default: true
+
+steps:
+  - id: generate_greeting
+    type: llm
+    inputs:
+      model: fast
+      prompt: |
+        Generate a friendly greeting for "{{.name}}".
+        Keep it short and professional.
+
+  - id: format_response
+    type: llm
+    inputs:
+      model: fast
+      prompt: |
+        Format this greeting as a JSON response:
+        Greeting: {{$.generate_greeting.content}}
+        {% if .include_timestamp %}
+        Include the current timestamp: {{ now | date('2006-01-02 15:04:05') }}
+        {% endif %}
+
+        Return only valid JSON in this format:
+        {
+          "message": "the greeting",
+          "recipient": "{{.name}}"
+          {% if .include_timestamp %}
+          , "timestamp": "the timestamp"
+          {% endif %}
+        }
+
+outputs:
+  - name: message
+    value: $.format_response.content
+    description: Formatted greeting message
+
+  - name: recipient
+    value: $.name
+    description: Name that was greeted

@@ -1,0 +1,261 @@
+# Discord Connector Package
+# Official connector for Discord API integration
+
+version: "1.0"
+name: discord
+description: Discord API connector for messages, channels, and servers
+
+base_url: https://discord.com/api/v10
+
+# Discord API rate limits are complex and endpoint-specific
+# Conservative default to avoid hitting limits
+rate_limit:
+  requests_per_second: 5
+  requests_per_minute: 50
+
+operations:
+  # Messages
+  send_message:
+    method: POST
+    path: /channels/{channel_id}/messages
+    request_schema:
+      type: object
+      properties:
+        channel_id:
+          type: string
+          description: Channel snowflake ID
+        content:
+          type: string
+          description: Message content (up to 2000 characters)
+        tts:
+          type: boolean
+          description: Text-to-speech message
+        embeds:
+          type: array
+          description: Array of embed objects (max 10)
+      required: [channel_id, content]
+    response_transform: "{id, channel_id, content, timestamp, type}"
+
+  edit_message:
+    method: PATCH
+    path: /channels/{channel_id}/messages/{message_id}
+    request_schema:
+      type: object
+      properties:
+        channel_id:
+          type: string
+        message_id:
+          type: string
+          description: Message snowflake ID
+        content:
+          type: string
+          description: New message content
+        embeds:
+          type: array
+          description: New embeds
+      required: [channel_id, message_id]
+    response_transform: "{id, content, edited_timestamp}"
+
+  delete_message:
+    method: DELETE
+    path: /channels/{channel_id}/messages/{message_id}
+    request_schema:
+      type: object
+      properties:
+        channel_id:
+          type: string
+        message_id:
+          type: string
+      required: [channel_id, message_id]
+    response_transform: "{}"
+
+  add_reaction:
+    method: PUT
+    path: /channels/{channel_id}/messages/{message_id}/reactions/{emoji}/@me
+    request_schema:
+      type: object
+      properties:
+        channel_id:
+          type: string
+        message_id:
+          type: string
+        emoji:
+          type: string
+          description: Emoji (URL-encoded, e.g., "👍" or "custom:123456789")
+      required: [channel_id, message_id, emoji]
+    response_transform: "{}"
+
+  # Threads
+  create_thread:
+    method: POST
+    path: /channels/{channel_id}/messages/{message_id}/threads
+    request_schema:
+      type: object
+      properties:
+        channel_id:
+          type: string
+        message_id:
+          type: string
+          description: Message to create thread from
+        name:
+          type: string
+          description: Thread name (1-100 characters)
+        auto_archive_duration:
+          type: integer
+          description: Minutes of inactivity before auto-archive (60, 1440, 4320, 10080)
+      required: [channel_id, message_id, name]
+    response_transform: "{id, name, type, parent_id}"
+
+  # Embeds
+  send_embed:
+    method: POST
+    path: /channels/{channel_id}/messages
+    request_schema:
+      type: object
+      properties:
+        channel_id:
+          type: string
+        title:
+          type: string
+          description: Embed title
+        description:
+          type: string
+          description: Embed description
+        color:
+          type: integer
+          description: Color code (decimal)
+        url:
+          type: string
+          description: URL of embed title
+        author:
+          type: object
+          properties:
+            name:
+              type: string
+            url:
+              type: string
+            icon_url:
+              type: string
+        fields:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              value:
+                type: string
+              inline:
+                type: boolean
+          description: Array of embed fields
+        footer:
+          type: object
+          properties:
+            text:
+              type: string
+            icon_url:
+              type: string
+        timestamp:
+          type: string
+          description: ISO8601 timestamp
+      required: [channel_id]
+    response_transform: "{id, channel_id, embeds: [.embeds[] | {title, description}]}"
+
+  # Channels
+  list_channels:
+    method: GET
+    path: /guilds/{guild_id}/channels
+    request_schema:
+      type: object
+      properties:
+        guild_id:
+          type: string
+          description: Guild (server) snowflake ID
+      required: [guild_id]
+    response_transform: "[.[] | {id, name, type, position, parent_id}]"
+
+  get_channel:
+    method: GET
+    path: /channels/{channel_id}
+    request_schema:
+      type: object
+      properties:
+        channel_id:
+          type: string
+      required: [channel_id]
+    response_transform: "{id, name, type, guild_id, position, topic}"
+
+  # Members
+  list_members:
+    method: GET
+    path: /guilds/{guild_id}/members
+    request_schema:
+      type: object
+      properties:
+        guild_id:
+          type: string
+        limit:
+          type: integer
+          description: Max members to return (1-1000, default 1)
+        after:
+          type: string
+          description: User ID to fetch after (for pagination)
+      required: [guild_id]
+    response_transform: "[.[] | {user: {id: .user.id, username: .user.username, discriminator: .user.discriminator}, nick, roles, joined_at}]"
+
+  get_member:
+    method: GET
+    path: /guilds/{guild_id}/members/{user_id}
+    request_schema:
+      type: object
+      properties:
+        guild_id:
+          type: string
+        user_id:
+          type: string
+          description: User snowflake ID
+      required: [guild_id, user_id]
+    response_transform: "{user: {id: .user.id, username: .user.username}, nick, roles, joined_at}"
+
+  # Webhooks
+  create_webhook:
+    method: POST
+    path: /channels/{channel_id}/webhooks
+    request_schema:
+      type: object
+      properties:
+        channel_id:
+          type: string
+        name:
+          type: string
+          description: Webhook name (1-80 characters)
+        avatar:
+          type: string
+          description: Base64-encoded image for webhook avatar
+      required: [channel_id, name]
+    response_transform: "{id, token, name, channel_id, url}"
+
+  send_webhook:
+    method: POST
+    path: /webhooks/{webhook_id}/{webhook_token}
+    request_schema:
+      type: object
+      properties:
+        webhook_id:
+          type: string
+        webhook_token:
+          type: string
+        content:
+          type: string
+          description: Message content
+        username:
+          type: string
+          description: Override webhook username
+        avatar_url:
+          type: string
+          description: Override webhook avatar
+        embeds:
+          type: array
+          description: Array of embed objects
+      required: [webhook_id, webhook_token]
+    response_transform: "{id, channel_id, content}"

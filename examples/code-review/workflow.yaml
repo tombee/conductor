@@ -1,0 +1,181 @@
+name: code-review
+description: |
+  Multi-persona code review workflow that analyzes code changes from security,
+  performance, and style perspectives, then consolidates findings into a
+  comprehensive review report.
+version: "1.0"
+
+inputs:
+  - name: diff
+    type: string
+    required: true
+    description: Git diff or file content to review
+
+  - name: context
+    type: string
+    required: false
+    description: Additional context about the changes (e.g., PR description, issue reference)
+
+  - name: language
+    type: string
+    required: false
+    default: "auto"
+    description: Programming language (auto-detected if not specified)
+
+steps:
+  # Security review persona
+  - id: security_review
+    name: Security Analysis
+    type: llm
+    model: fast
+    system: |
+      You are a security expert reviewing code changes. Focus on:
+      - Authentication and authorization issues
+      - Input validation and sanitization
+      - SQL injection, XSS, CSRF vulnerabilities
+      - Secrets or sensitive data exposure
+      - Insecure dependencies or APIs
+
+      Format findings as:
+      - CRITICAL: Security vulnerabilities that must be fixed
+      - WARNING: Potential security concerns to investigate
+      - INFO: Security best practices to consider
+    prompt: |
+      Review this code change for security issues:
+
+      {{if .context}}
+      Context: {{.context}}
+      {{end}}
+
+      ```diff
+      {{.diff}}
+      ```
+
+      Provide specific line references for any issues found.
+    timeout: 30
+    retry:
+      max_attempts: 2
+      backoff_base: 2
+      backoff_multiplier: 2.0
+
+  # Performance review persona
+  - id: performance_review
+    name: Performance Analysis
+    type: llm
+    model: fast
+    system: |
+      You are a performance optimization expert. Focus on:
+      - Algorithmic complexity (time and space)
+      - Database query efficiency (N+1 queries, missing indexes)
+      - Memory leaks or excessive allocations
+      - Blocking operations in async code
+      - Resource cleanup (connections, file handles)
+
+      Format findings as:
+      - BLOCKER: Performance issues that will cause production problems
+      - OPTIMIZE: Clear optimization opportunities
+      - CONSIDER: Areas that might benefit from optimization
+    prompt: |
+      Review this code change for performance issues:
+
+      {{if .context}}
+      Context: {{.context}}
+      {{end}}
+
+      ```diff
+      {{.diff}}
+      ```
+
+      Provide specific line references and suggest optimizations.
+    timeout: 30
+    retry:
+      max_attempts: 2
+      backoff_base: 2
+      backoff_multiplier: 2.0
+
+  # Style review persona
+  - id: style_review
+    name: Code Style Analysis
+    type: llm
+    model: fast
+    system: |
+      You are a code quality expert focused on maintainability. Review:
+      - Code clarity and readability
+      - Naming conventions (descriptive, consistent)
+      - Function/method complexity and size
+      - Comment quality (explain why, not what)
+      - Error handling completeness
+      - Test coverage for new code
+
+      Format findings as:
+      - REQUIRED: Style issues that violate project standards
+      - SUGGESTED: Improvements that enhance maintainability
+      - NITPICK: Minor suggestions (optional)
+    prompt: |
+      Review this code change for style and maintainability:
+
+      {{if .context}}
+      Context: {{.context}}
+      {{end}}
+
+      {{if ne .language "auto"}}
+      Language: {{.language}}
+      {{end}}
+
+      ```diff
+      {{.diff}}
+      ```
+
+      Focus on readability, naming, and maintainability.
+    timeout: 30
+    retry:
+      max_attempts: 2
+      backoff_base: 2
+      backoff_multiplier: 2.0
+
+  # Consolidate all reviews
+  - id: consolidate_findings
+    name: Consolidate Review Findings
+    type: llm
+    model: balanced
+    system: |
+      You are a technical lead consolidating code review feedback.
+      Synthesize findings from multiple reviewers into a clear, actionable report.
+
+      Group findings by severity:
+      1. BLOCKERS - Must fix before merge
+      2. REQUIRED - Should fix before merge
+      3. SUGGESTED - Consider addressing
+      4. INFORMATIONAL - Keep in mind
+
+      For each finding:
+      - Provide file and line reference
+      - Explain the issue clearly
+      - Suggest a specific fix
+      - Note if multiple reviewers flagged the same issue
+    prompt: |
+      Consolidate these code review findings into a single comprehensive report:
+
+      ## Security Review
+      {{.steps.security_review.response}}
+
+      ## Performance Review
+      {{.steps.performance_review.response}}
+
+      ## Style Review
+      {{.steps.style_review.response}}
+
+      Create a well-organized report that prioritizes the most important issues.
+      Include a summary at the top with counts of each severity level.
+    timeout: 45
+
+outputs:
+  - name: review
+    type: string
+    value: "{{.steps.consolidate_findings.response}}"
+    description: Comprehensive code review report with findings from all personas
+
+  - name: has_blockers
+    type: boolean
+    value: "{{.steps.consolidate_findings.response contains \"BLOCKERS\" or .steps.consolidate_findings.response contains \"CRITICAL\"}}"
+    description: Whether any blocking issues were found

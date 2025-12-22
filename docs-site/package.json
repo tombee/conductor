@@ -1,0 +1,18 @@
+{
+  "name": "conductor-docs",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "convert": "node scripts/convert-docs.mjs",
+    "dev": "npm run convert && astro dev",
+    "start": "npm run convert && astro dev",
+    "build": "npm run convert && astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.31.0",
+    "astro": "^5.1.0",
+    "sharp": "^0.33.0"
+  }
+}

@@ -1,0 +1,18 @@
+name: {{.Name}}
+description: Explain code or technical concepts in clear terms
+
+steps:
+  - id: explain
+    type: llm
+    model: balanced
+    system: You are a technical educator who explains complex topics clearly.
+    prompt: |
+      Please explain the following in clear, accessible terms:
+
+      {{.input}}
+
+      Include:
+      - What it is and what it does
+      - Key concepts involved
+      - Common use cases or examples
+      - Any important caveats or considerations

@@ -1,0 +1,111 @@
+name: webhook-handler
+description: Example workflow for processing webhook events
+
+inputs:
+  - name: event_type
+    type: string
+    description: Type of webhook event
+    required: true
+
+  - name: event_id
+    type: string
+    description: Unique event identifier
+    required: true
+
+  - name: timestamp
+    type: string
+    description: Event timestamp
+    required: false
+
+  - name: data
+    type: object
+    description: Event payload data
+    required: true
+
+steps:
+  - id: validate_event
+    type: llm
+    inputs:
+      model: fast
+      prompt: |
+        Validate this webhook event:
+        Type: {{.event_type}}
+        ID: {{.event_id}}
+        Data: {{ .data | toJson }}
+
+        Check if:
+        1. Event type is valid (should be one of: created, updated, deleted)
+        2. Event ID is present and non-empty
+        3. Data contains required fields
+
+        Respond with JSON:
+        {
+          "valid": true/false,
+          "errors": ["list of validation errors, if any"]
+        }
+
+  - id: process_event
+    type: llm
+    condition: $.validate_event.content | fromJson | .valid
+    inputs:
+      model: balanced
+      system: "You are a webhook event processor that extracts insights from event data."
+      prompt: |
+        Process this webhook event:
+        Type: {{.event_type}}
+        Timestamp: {{.timestamp}}
+        Data: {{ .data | toJson }}
+
+        Extract:
+        - Summary of what happened
+        - Key entities involved (users, resources, etc.)
+        - Recommended actions (if any)
+        - Priority level (low/medium/high)
+
+        Format as JSON:
+        {
+          "summary": "brief summary",
+          "entities": ["entity1", "entity2"],
+          "actions": ["action1", "action2"],
+          "priority": "low/medium/high"
+        }
+
+  - id: generate_notification
+    type: llm
+    condition: $.validate_event.content | fromJson | .valid
+    inputs:
+      model: fast
+      prompt: |
+        Create a notification message for this webhook event:
+
+        Event: {{.event_type}}
+        Processing result: {{$.process_event.content}}
+
+        Generate a concise notification suitable for:
+        - Slack message
+        - Email subject line
+        - Dashboard alert
+
+        Return JSON:
+        {
+          "slack": "slack message with emoji",
+          "email_subject": "email subject",
+          "alert": "short alert text"
+        }
+
+outputs:
+  - name: validation_result
+    value: $.validate_event.content
+    description: Event validation result
+
+  - name: processing_result
+    value: $.process_event.content
+    description: Processed event insights
+
+  - name: notification
+    value: $.generate_notification.content
+    description: Generated notification messages
+
+  - name: event_id
+    value: $.event_id
+    description: Original event ID for correlation

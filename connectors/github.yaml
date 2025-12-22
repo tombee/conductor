@@ -1,0 +1,352 @@
+# GitHub Connector Package
+# Official connector for GitHub API integration
+# Compatible with GitHub.com and GitHub Enterprise
+
+version: "1.0"
+name: github
+description: GitHub API connector for issues, pull requests, repositories, and releases
+
+base_url: https://api.github.com
+
+# Default headers for all GitHub API requests
+headers:
+  Accept: "application/vnd.github+json"
+  X-GitHub-Api-Version: "2022-11-28"
+
+# GitHub API rate limiting (5000 requests/hour for authenticated users)
+# Conservative default to avoid hitting limits
+rate_limit:
+  requests_per_second: 10
+  requests_per_minute: 100
+
+operations:
+  # Issues
+  create_issue:
+    method: POST
+    path: /repos/{owner}/{repo}/issues
+    request_schema:
+      type: object
+      properties:
+        owner:
+          type: string
+          description: Repository owner (username or organization)
+        repo:
+          type: string
+          description: Repository name
+        title:
+          type: string
+          description: Issue title
+        body:
+          type: string
+          description: Issue description (supports Markdown)
+        labels:
+          type: array
+          items:
+            type: string
+          description: Labels to add to the issue
+        assignees:
+          type: array
+          items:
+            type: string
+          description: Usernames to assign to the issue
+        milestone:
+          type: integer
+          description: Milestone number to associate with the issue
+      required: [owner, repo, title]
+    response_transform: "{number, html_url, state}"
+
+  update_issue:
+    method: PATCH
+    path: /repos/{owner}/{repo}/issues/{issue_number}
+    request_schema:
+      type: object
+      properties:
+        owner:
+          type: string
+        repo:
+          type: string
+        issue_number:
+          type: integer
+        title:
+          type: string
+        body:
+          type: string
+        state:
+          type: string
+          enum: [open, closed]
+        labels:
+          type: array
+          items:
+            type: string
+        assignees:
+          type: array
+          items:
+            type: string
+      required: [owner, repo, issue_number]
+    response_transform: "{number, html_url, state, updated_at}"
+
+  close_issue:
+    method: PATCH
+    path: /repos/{owner}/{repo}/issues/{issue_number}
+    request_schema:
+      type: object
+      properties:
+        owner:
+          type: string
+        repo:
+          type: string
+        issue_number:
+          type: integer
+      required: [owner, repo, issue_number]
+    # Hardcode state to closed in the request body
+    body_template: '{"state": "closed"}'
+    response_transform: "{number, state, closed_at}"
+
+  add_comment:
+    method: POST
+    path: /repos/{owner}/{repo}/issues/{issue_number}/comments
+    request_schema:
+      type: object
+      properties:
+        owner:
+          type: string
+        repo:
+          type: string
+        issue_number:
+          type: integer
+          description: Issue or PR number
+        body:
+          type: string
+          description: Comment text (supports Markdown)
+      required: [owner, repo, issue_number, body]
+    response_transform: "{id, html_url, created_at}"
+
+  list_issues:
+    method: GET
+    path: /repos/{owner}/{repo}/issues
+    request_schema:
+      type: object
+      properties:
+        owner:
+          type: string
+        repo:
+          type: string
+        state:
+          type: string
+          enum: [open, closed, all]
+          description: Filter by issue state
+        labels:
+          type: string
+          description: Comma-separated list of label names
+        sort:
+          type: string
+          enum: [created, updated, comments]
+          description: Sort field
+        direction:
+          type: string
+          enum: [asc, desc]
+          description: Sort direction
+        per_page:
+          type: integer
+          description: Results per page (max 100)
+        page:
+          type: integer
+          description: Page number
+      required: [owner, repo]
+    response_transform: "[.[] | {number, title, state, html_url, created_at, labels: [.labels[].name]}]"
+
+  # Pull Requests
+  create_pr:
+    method: POST
+    path: /repos/{owner}/{repo}/pulls
+    request_schema:
+      type: object
+      properties:
+        owner:
+          type: string
+        repo:
+          type: string
+        title:
+          type: string
+          description: Pull request title
+        head:
+          type: string
+          description: Branch containing changes
+        base:
+          type: string
+          description: Branch to merge into
+        body:
+          type: string
+          description: Pull request description
+        draft:
+          type: boolean
+          description: Create as draft PR
+      required: [owner, repo, title, head, base]
+    response_transform: "{number, html_url, state, draft}"
+
+  merge_pr:
+    method: PUT
+    path: /repos/{owner}/{repo}/pulls/{pull_number}/merge
+    request_schema:
+      type: object
+      properties:
+        owner:
+          type: string
+        repo:
+          type: string
+        pull_number:
+          type: integer
+        commit_title:
+          type: string
+          description: Title for the merge commit
+        commit_message:
+          type: string
+          description: Extra detail for the merge commit
+        merge_method:
+          type: string
+          enum: [merge, squash, rebase]
+          description: Merge strategy
+      required: [owner, repo, pull_number]
+    response_transform: "{merged, sha, message}"
+
+  list_prs:
+    method: GET
+    path: /repos/{owner}/{repo}/pulls
+    request_schema:
+      type: object
+      properties:
+        owner:
+          type: string
+        repo:
+          type: string
+        state:
+          type: string
+          enum: [open, closed, all]
+        head:
+          type: string
+          description: "Filter by head branch (format: user:branch)"
+        base:
+          type: string
+          description: Filter by base branch
+        sort:
+          type: string
+          enum: [created, updated, popularity, long-running]
+        direction:
+          type: string
+          enum: [asc, desc]
+        per_page:
+          type: integer
+        page:
+          type: integer
+      required: [owner, repo]
+    response_transform: "[.[] | {number, title, state, html_url, head: .head.ref, base: .base.ref, created_at}]"
+
+  # Files
+  get_file:
+    method: GET
+    path: /repos/{owner}/{repo}/contents/{path}
+    request_schema:
+      type: object
+      properties:
+        owner:
+          type: string
+        repo:
+          type: string
+        path:
+          type: string
+          description: Path to file in repository
+        ref:
+          type: string
+          description: Branch, tag, or commit SHA
+      required: [owner, repo, path]
+    response_transform: "{name, path, sha, size, content: .content, encoding, download_url}"
+
+  # Releases
+  create_release:
+    method: POST
+    path: /repos/{owner}/{repo}/releases
+    request_schema:
+      type: object
+      properties:
+        owner:
+          type: string
+        repo:
+          type: string
+        tag_name:
+          type: string
+          description: Git tag name
+        target_commitish:
+          type: string
+          description: Branch or commit SHA (defaults to default branch)
+        name:
+          type: string
+          description: Release name
+        body:
+          type: string
+          description: Release notes (supports Markdown)
+        draft:
+          type: boolean
+          description: Create as draft release
+        prerelease:
+          type: boolean
+          description: Mark as pre-release
+      required: [owner, repo, tag_name]
+    response_transform: "{id, html_url, tag_name, name, draft, prerelease, created_at}"
+
+  # Repositories
+  list_repos:
+    method: GET
+    path: /users/{username}/repos
+    request_schema:
+      type: object
+      properties:
+        username:
+          type: string
+          description: GitHub username
+        type:
+          type: string
+          enum: [all, owner, member]
+          description: Repository type filter
+        sort:
+          type: string
+          enum: [created, updated, pushed, full_name]
+          description: Sort field
+        direction:
+          type: string
+          enum: [asc, desc]
+        per_page:
+          type: integer
+        page:
+          type: integer
+      required: [username]
+    response_transform: "[.[] | {name, full_name, description, html_url, language, stargazers_count, created_at}]"
+
+  # GitHub Actions
+  get_workflow_runs:
+    method: GET
+    path: /repos/{owner}/{repo}/actions/runs
+    request_schema:
+      type: object
+      properties:
+        owner:
+          type: string
+        repo:
+          type: string
+        workflow_id:
+          type: string
+          description: Workflow file name or ID
+        branch:
+          type: string
+          description: Filter by branch
+        event:
+          type: string
+          description: Filter by event type
+        status:
+          type: string
+          enum: [queued, in_progress, completed]
+        per_page:
+          type: integer
+        page:
+          type: integer
+      required: [owner, repo]
+    response_transform: "{total_count, workflow_runs: [.workflow_runs[] | {id, name, status, conclusion, html_url, created_at}]}"

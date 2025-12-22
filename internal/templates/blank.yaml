@@ -1,0 +1,7 @@
+name: {{.Name}}
+
+steps:
+  - id: process
+    type: llm
+    prompt: |
+      {{.input}}

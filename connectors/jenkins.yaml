@@ -1,0 +1,221 @@
+# Jenkins Connector Package
+# Official connector for Jenkins REST API integration
+
+version: "1.0"
+name: jenkins
+description: Jenkins REST API connector for builds, jobs, and nodes
+
+# Note: base_url must be overridden by user (e.g., https://jenkins.mycompany.com)
+base_url: https://jenkins.example.com
+
+# Default headers for Jenkins API
+headers:
+  Content-Type: "application/json"
+
+# Jenkins doesn't have strict rate limits, but be conservative
+rate_limit:
+  requests_per_second: 10
+  requests_per_minute: 100
+
+operations:
+  # Builds
+  trigger_build:
+    method: POST
+    path: /job/{job_name}/build
+    request_schema:
+      type: object
+      properties:
+        job_name:
+          type: string
+          description: Job name or full path (e.g., "folder/job-name")
+        parameters:
+          type: object
+          description: Build parameters as key-value pairs
+        delay:
+          type: integer
+          description: Delay before build starts (seconds)
+      required: [job_name]
+    response_transform: "{}"
+
+  trigger_build_with_parameters:
+    method: POST
+    path: /job/{job_name}/buildWithParameters
+    request_schema:
+      type: object
+      properties:
+        job_name:
+          type: string
+        parameters:
+          type: object
+          description: Build parameters as key-value pairs
+      required: [job_name, parameters]
+    response_transform: "{}"
+
+  get_build:
+    method: GET
+    path: /job/{job_name}/{build_number}/api/json
+    request_schema:
+      type: object
+      properties:
+        job_name:
+          type: string
+        build_number:
+          type: integer
+          description: Build number (or "lastBuild", "lastSuccessfulBuild", etc.)
+      required: [job_name, build_number]
+    response_transform: "{number, result, building, duration, timestamp, url, fullDisplayName}"
+
+  get_build_log:
+    method: GET
+    path: /job/{job_name}/{build_number}/consoleText
+    request_schema:
+      type: object
+      properties:
+        job_name:
+          type: string
+        build_number:
+          type: integer
+      required: [job_name, build_number]
+    # Console output is plain text, return as-is
+    response_transform: "."
+
+  cancel_build:
+    method: POST
+    path: /job/{job_name}/{build_number}/stop
+    request_schema:
+      type: object
+      properties:
+        job_name:
+          type: string
+        build_number:
+          type: integer
+      required: [job_name, build_number]
+    response_transform: "{}"
+
+  # Jobs
+  get_job:
+    method: GET
+    path: /job/{job_name}/api/json
+    request_schema:
+      type: object
+      properties:
+        job_name:
+          type: string
+        depth:
+          type: integer
+          description: JSON depth (default 0)
+      required: [job_name]
+    response_transform: "{name, url, buildable, color, description, lastBuild: {number, url}, nextBuildNumber}"
+
+  list_jobs:
+    method: GET
+    path: /api/json
+    request_schema:
+      type: object
+      properties:
+        folder:
+          type: string
+          description: Folder path (e.g., "folder1/folder2")
+        depth:
+          type: integer
+          description: JSON depth for nested jobs
+      required: []
+    response_transform: "{jobs: [.jobs[] | {name, url, color, buildable}]}"
+
+  # Queue
+  get_queue_item:
+    method: GET
+    path: /queue/item/{queue_id}/api/json
+    request_schema:
+      type: object
+      properties:
+        queue_id:
+          type: integer
+          description: Queue item ID
+      required: [queue_id]
+    response_transform: "{id, blocked, stuck, task: {name, url}, why, buildable, executable: {number, url}}"
+
+  cancel_queue_item:
+    method: POST
+    path: /queue/cancelItem
+    request_schema:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Queue item ID to cancel
+      required: [id]
+    response_transform: "{}"
+
+  # Test Results
+  get_test_report:
+    method: GET
+    path: /job/{job_name}/{build_number}/testReport/api/json
+    request_schema:
+      type: object
+      properties:
+        job_name:
+          type: string
+        build_number:
+          type: integer
+      required: [job_name, build_number]
+    response_transform: "{duration, failCount, passCount, skipCount, suites: [.suites[] | {name, duration, cases: [.cases[] | {name, status, duration}]}]}"
+
+  # Nodes
+  list_nodes:
+    method: GET
+    path: /computer/api/json
+    request_schema:
+      type: object
+      properties:
+        depth:
+          type: integer
+          description: JSON depth
+      required: []
+    response_transform: "{computer: [.computer[] | {displayName, offline, idle, numExecutors, monitorData}]}"
+
+  get_node:
+    method: GET
+    path: /computer/{node_name}/api/json
+    request_schema:
+      type: object
+      properties:
+        node_name:
+          type: string
+          description: Node name (use "(master)" for Jenkins master)
+      required: [node_name]
+    response_transform: "{displayName, description, offline, idle, offlineCause, numExecutors, monitorData}"
+
+  # Build Information
+  get_last_build:
+    method: GET
+    path: /job/{job_name}/lastBuild/api/json
+    request_schema:
+      type: object
+      properties:
+        job_name:
+          type: string
+      required: [job_name]
+    response_transform: "{number, result, building, duration, timestamp, url}"
+
+  get_last_successful_build:
+    method: GET
+    path: /job/{job_name}/lastSuccessfulBuild/api/json
+    request_schema:
+      type: object
+      properties:
+        job_name:
+          type: string
+      required: [job_name]
+    response_transform: "{number, duration, timestamp, url}"
+
+  get_last_failed_build:
+    method: GET
+    path: /job/{job_name}/lastFailedBuild/api/json
+    request_schema:
+      type: object
+      properties:
+        job_name:
+          type: string
+      required: [job_name]
+    response_transform: "{number, duration, timestamp, url}"

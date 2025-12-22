@@ -1,0 +1,105 @@
+# Conductor Configuration Example
+#
+# This file shows all available configuration options with their default values.
+# Copy this file to config.yaml and customize as needed.
+#
+# Environment variables take precedence over file-based configuration.
+# To use this file: export CONDUCTOR_CONFIG=/path/to/config.yaml
+
+# Server configuration
+server:
+  # Port range to try when starting the server (inclusive)
+  # Environment: SERVER_PORT_MIN, SERVER_PORT_MAX
+  # Default: [9876, 9899]
+  port_range: [9876, 9899]
+
+  # Health check interval for Electron polling
+  # Environment: SERVER_HEALTH_CHECK_INTERVAL
+  # Default: 500ms
+  health_check_interval: 500ms
+
+  # Maximum duration to wait for graceful shutdown
+  # Environment: SERVER_SHUTDOWN_TIMEOUT
+  # Default: 5s
+  shutdown_timeout: 5s
+
+  # Maximum duration for reading requests
+  # Environment: SERVER_READ_TIMEOUT
+  # Default: 10s
+  read_timeout: 10s
+
+# Authentication configuration
+auth:
+  # Length of generated auth tokens in bytes
+  # Environment: AUTH_TOKEN_LENGTH
+  # Default: 32
+  token_length: 32
+
+  # Maximum failed authentication attempts before rate limiting
+  # Environment: AUTH_RATE_LIMIT_MAX_ATTEMPTS
+  # Default: 5
+  rate_limit_max_attempts: 5
+
+  # Time window for counting failed attempts
+  # Environment: AUTH_RATE_LIMIT_WINDOW
+  # Default: 1m
+  rate_limit_window: 1m
+
+  # Lockout duration after exceeding rate limit
+  # Environment: AUTH_RATE_LIMIT_LOCKOUT
+  # Default: 60s
+  rate_limit_lockout: 60s
+
+# Logging configuration
+log:
+  # Minimum log level: debug, info, warn, warning, error
+  # Environment: LOG_LEVEL
+  # Default: info
+  level: info
+
+  # Output format: json, text
+  # Environment: LOG_FORMAT
+  # Default: json
+  format: json
+
+  # Add source file and line information to logs
+  # Environment: LOG_SOURCE (1 or true to enable)
+  # Default: false
+  add_source: false
+
+# LLM provider configuration (Phase 1b)
+llm:
+  # Default LLM provider: anthropic, openai, ollama
+  # Environment: LLM_DEFAULT_PROVIDER
+  # Default: anthropic
+  default_provider: anthropic
+
+  # Maximum duration for LLM requests
+  # Environment: LLM_REQUEST_TIMEOUT
+  # Default: 5s
+  request_timeout: 5s
+
+  # Maximum number of retry attempts for failed requests
+  # Environment: LLM_MAX_RETRIES
+  # Default: 3
+  max_retries: 3
+
+  # Base duration for exponential backoff retries
+  # Environment: LLM_RETRY_BACKOFF_BASE
+  # Default: 100ms
+  retry_backoff_base: 100ms
+
+  # Number of HTTP connections per provider
+  # Environment: LLM_CONNECTION_POOL_SIZE
+  # Default: 10
+  connection_pool_size: 10
+
+  # Idle timeout for pooled connections
+  # Environment: LLM_CONNECTION_IDLE_TIMEOUT
+  # Default: 30s
+  connection_idle_timeout: 30s
+
+  # Number of days to retain request traces
+  # Environment: LLM_TRACE_RETENTION_DAYS
+  # Default: 7
+  trace_retention_days: 7

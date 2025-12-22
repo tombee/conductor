@@ -1,0 +1,44 @@
+# Binaries
+conduct
+conductor
+bin/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*.test
+
+# Coverage files
+coverage.out
+coverage.html
+*.coverprofile
+
+# Go workspace file
+go.work
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# GoReleaser artifacts
+*.tar.gz
+*.zip
+
+.claude
+AGENTS.md
+
+# Documentation build artifacts
+site/
+.venv/
+*.pyc
+__pycache__/

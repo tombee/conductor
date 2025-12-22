@@ -1,0 +1,13 @@
+name: {{.Name}}
+description: Translate text between languages
+
+steps:
+  - id: translate
+    type: llm
+    model: fast
+    prompt: |
+      Translate the following text to {{.target_language}}:
+
+      {{.input}}
+
+      Provide only the translation without additional commentary.
