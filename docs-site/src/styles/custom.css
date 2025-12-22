@@ -1,0 +1,51 @@
+/* Conductor docs custom styles */
+
+:root {
+  /* Yellow/amber accent - matching landing page */
+  --sl-color-accent-low: #92400e;
+  --sl-color-accent: #d97706;
+  --sl-color-accent-high: #fbbf24;
+
+  /* Clean light backgrounds */
+  --sl-color-bg: #fafafa;
+  --sl-color-bg-nav: #ffffff;
+  --sl-color-bg-sidebar: #f8fafc;
+}
+
+:root[data-theme='dark'] {
+  --sl-color-accent-low: #78350f;
+  --sl-color-accent: #f59e0b;
+  --sl-color-accent-high: #fcd34d;
+
+  --sl-color-bg: #0c0a09;
+  --sl-color-bg-nav: #1c1917;
+  --sl-color-bg-sidebar: #1c1917;
+}
+
+/* Better code block styling */
+.expressive-code {
+  --ec-brdRad: 8px;
+}
+
+/* Subtle shadow on cards */
+.card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Hero section enhancement for homepage */
+.hero {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.hero h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.hero .tagline {
+  font-size: 1.25rem;
+  color: var(--sl-color-gray-2);
+  margin-bottom: 2rem;
+}

@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
+name: write-song
+description: |
+  Generate a song with lyrics and chord symbols. The LLM picks an authentic
+  song structure for the genre (12-bar blues, verse-chorus, AABA, etc.) and
+  uses chords diatonic to the specified key.
+version: "1.0"
+
+inputs:
+  - name: genre
+    type: string
+    required: true
+    description: Musical genre (e.g., blues, folk, country, rock, jazz)
+  - name: topic
+    type: string
+    required: true
+    description: What the song is about
+  - name: key
+    type: string
+    default: "C Major"
+    description: Musical key (e.g., C Major, G Major, A minor)
+
+steps:
+  - id: compose
+    name: Compose Song
+    type: llm
+    model: balanced
+    prompt: |
+      Write a short {{.inputs.genre}} song about "{{.inputs.topic}}" in the key of {{.inputs.key}}.
+
+      Use a song structure authentic to {{.inputs.genre}} (e.g., 12-bar blues, verse-chorus,
+      AABA, etc.). Include chord symbols above the lyrics, using chords diatonic to
+      {{.inputs.key}} with progressions that fit the style.
+
+outputs:
+  - name: song
+    type: string
+    value: "{{.steps.compose.response}}"
+    description: The generated song with lyrics and chords

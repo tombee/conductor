@@ -1,0 +1,196 @@
+// Copyright 2025 Tom Barlow
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Package trigger provides workflow trigger scanning and registration.
+package trigger
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/tombee/conductor/pkg/workflow"
+)
+
+// WorkflowTrigger represents a trigger found in a workflow file.
+type WorkflowTrigger struct {
+	// WorkflowPath is the path to the workflow file
+	WorkflowPath string
+
+	// WorkflowName is the name of the workflow
+	WorkflowName string
+
+	// Type is the trigger type (webhook, schedule, file)
+	Type workflow.TriggerType
+
+	// Webhook configuration (for webhook triggers)
+	Webhook *workflow.WebhookTrigger
+
+	// Schedule configuration (for schedule triggers)
+	Schedule *workflow.ScheduleTrigger
+
+	// File configuration (for file triggers)
+	File *workflow.FileTriggerConfig
+}
+
+// ScanResult contains the results of scanning workflows for triggers.
+type ScanResult struct {
+	// WebhookTriggers are all webhook triggers found
+	WebhookTriggers []WorkflowTrigger
+
+	// ScheduleTriggers are all schedule triggers found
+	ScheduleTriggers []WorkflowTrigger
+
+	// FileTriggers are all file watcher triggers found
+	FileTriggers []WorkflowTrigger
+
+	// Errors are any errors encountered while scanning
+	Errors []error
+}
+
+// Scanner scans workflow files for trigger definitions.
+type Scanner struct {
+	workflowsDir string
+}
+
+// NewScanner creates a new trigger scanner.
+func NewScanner(workflowsDir string) *Scanner {
+	return &Scanner{
+		workflowsDir: workflowsDir,
+	}
+}
+
+// Scan scans all workflow files in the configured directory.
+func (s *Scanner) Scan() (*ScanResult, error) {
+	result := &ScanResult{
+		WebhookTriggers:  make([]WorkflowTrigger, 0),
+		ScheduleTriggers: make([]WorkflowTrigger, 0),
+		FileTriggers:     make([]WorkflowTrigger, 0),
+		Errors:           make([]error, 0),
+	}
+
+	// Walk the workflows directory
+	err := filepath.Walk(s.workflowsDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Errorf("error accessing %s: %w", path, err))
+			return nil // Continue scanning
+		}
+
+		// Skip directories
+		if info.IsDir() {
+			return nil
+		}
+
+		// Only process YAML files
+		ext := strings.ToLower(filepath.Ext(path))
+		if ext != ".yaml" && ext != ".yml" {
+			return nil
+		}
+
+		// Scan the workflow file
+		triggers, err := s.scanWorkflow(path)
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Errorf("error scanning %s: %w", path, err))
+			return nil // Continue scanning
+		}
+
+		// Categorize triggers
+		for _, t := range triggers {
+			switch t.Type {
+			case workflow.TriggerTypeWebhook:
+				result.WebhookTriggers = append(result.WebhookTriggers, t)
+			case workflow.TriggerTypeSchedule:
+				result.ScheduleTriggers = append(result.ScheduleTriggers, t)
+			case workflow.TriggerTypeFile:
+				result.FileTriggers = append(result.FileTriggers, t)
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to walk workflows directory: %w", err)
+	}
+
+	return result, nil
+}
+
+// scanWorkflow scans a single workflow file for triggers.
+func (s *Scanner) scanWorkflow(path string) ([]WorkflowTrigger, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	def, err := workflow.ParseDefinition(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse workflow: %w", err)
+	}
+
+	if def.Trigger == nil {
+		return nil, nil
+	}
+
+	triggers := make([]WorkflowTrigger, 0, 2)
+
+	// Collect webhook trigger
+	if def.Trigger.Webhook != nil {
+		triggers = append(triggers, WorkflowTrigger{
+			WorkflowPath: path,
+			WorkflowName: def.Name,
+			Type:         workflow.TriggerTypeWebhook,
+			Webhook:      def.Trigger.Webhook,
+		})
+	}
+
+	// Collect schedule trigger
+	if def.Trigger.Schedule != nil {
+		triggers = append(triggers, WorkflowTrigger{
+			WorkflowPath: path,
+			WorkflowName: def.Name,
+			Type:         workflow.TriggerTypeSchedule,
+			Schedule:     def.Trigger.Schedule,
+		})
+	}
+
+	// Collect file trigger
+	if def.Trigger.File != nil {
+		// Validate file trigger configuration
+		if err := workflow.ValidateFileTrigger(def.Trigger.File); err != nil {
+			return nil, fmt.Errorf("invalid file trigger: %w", err)
+		}
+
+		triggers = append(triggers, WorkflowTrigger{
+			WorkflowPath: path,
+			WorkflowName: def.Name,
+			Type:         workflow.TriggerTypeFile,
+			File:         def.Trigger.File,
+		})
+	}
+
+	return triggers, nil
+}
+
+// ExpandSecret expands environment variable references in a secret string.
+// Supports ${VAR_NAME} syntax.
+func ExpandSecret(secret string) string {
+	if !strings.HasPrefix(secret, "${") || !strings.HasSuffix(secret, "}") {
+		return secret
+	}
+
+	envVar := strings.TrimSuffix(strings.TrimPrefix(secret, "${"), "}")
+	return os.Getenv(envVar)
+}

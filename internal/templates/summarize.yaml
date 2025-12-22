@@ -1,0 +1,13 @@
+name: {{.Name}}
+description: Summarize text input into key points
+
+steps:
+  - id: summarize
+    type: llm
+    model: balanced
+    prompt: |
+      Please summarize the following text into clear, concise bullet points:
+
+      {{.input}}
+
+      Provide 3-5 key points that capture the main ideas.

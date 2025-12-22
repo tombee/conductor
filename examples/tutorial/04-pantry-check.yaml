@@ -1,0 +1,75 @@
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
+name: pantry-check
+description: Generate meals using available pantry ingredients
+
+inputs:
+  - name: pantry_file
+    type: string
+    default: "pantry.txt"
+    description: Path to pantry inventory file
+
+  - name: diet
+    type: string
+    description: Dietary preference
+
+steps:
+  - id: read_pantry
+    name: Read Pantry Inventory
+    file.read: "{{.inputs.pantry_file}}"
+
+  - id: meals
+    name: Generate Meals
+    type: parallel
+    max_concurrency: 3
+    steps:
+      - id: breakfast
+        name: Generate Breakfast
+        type: llm
+        model: fast
+        prompt: |
+          Available ingredients:
+          {{.steps.read_pantry.content}}
+
+          Generate a {{.inputs.diet}} breakfast using only these ingredients.
+          Include the recipe name, ingredients with quantities, and cooking steps.
+
+      - id: lunch
+        name: Generate Lunch
+        type: llm
+        model: fast
+        prompt: |
+          Available ingredients:
+          {{.steps.read_pantry.content}}
+
+          Generate a {{.inputs.diet}} lunch using only these ingredients.
+          Include the recipe name, ingredients with quantities, and cooking steps.
+
+      - id: dinner
+        name: Generate Dinner
+        type: llm
+        model: fast
+        prompt: |
+          Available ingredients:
+          {{.steps.read_pantry.content}}
+
+          Generate a {{.inputs.diet}} dinner using only these ingredients.
+          Include the recipe name, ingredients with quantities, and cooking steps.
+
+outputs:
+  - name: breakfast
+    type: string
+    value: "{{.steps.meals.breakfast.response}}"
+    description: Breakfast recipe
+    format: markdown
+
+  - name: lunch
+    type: string
+    value: "{{.steps.meals.lunch.response}}"
+    description: Lunch recipe
+    format: markdown
+
+  - name: dinner
+    type: string
+    value: "{{.steps.meals.dinner.response}}"
+    description: Dinner recipe
+    format: markdown

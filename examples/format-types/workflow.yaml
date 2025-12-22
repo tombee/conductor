@@ -1,0 +1,66 @@
+name: format-types-showcase
+description: |
+  Demonstrates all output format types available in Conductor.
+  Shows markdown rendering, JSON validation, code highlighting, and number formatting.
+
+inputs:
+  - name: topic
+    type: string
+    default: "artificial intelligence"
+    description: Topic to generate content about
+
+steps:
+  - id: generate_markdown
+    prompt: |
+      Write a brief overview of {{.topic}} using markdown formatting.
+      Include:
+      - A heading
+      - A bullet list with 3 points
+      - One **bold** and one *italic* word
+
+      Keep it under 100 words.
+
+  - id: generate_json
+    prompt: |
+      Create a JSON object about {{.topic}} with these fields:
+      - "name": string
+      - "category": string
+      - "importance": number (1-10)
+      - "keywords": array of 3 strings
+
+      Return ONLY the JSON, no explanation.
+
+  - id: generate_code
+    prompt: |
+      Write a simple Python function that prints "Hello, {{.topic}}!"
+      Include a docstring. Return ONLY the code, no explanation.
+
+  - id: generate_number
+    prompt: |
+      On a scale of 1 to 100, rate the importance of {{.topic}} in modern technology.
+      Return ONLY the number, nothing else.
+
+outputs:
+  - name: markdown_output
+    type: string
+    format: markdown
+    value: "{{.steps.generate_markdown.response}}"
+    description: Rendered markdown content
+
+  - name: json_output
+    type: string
+    format: json
+    value: "{{.steps.generate_json.response}}"
+    description: Validated and pretty-printed JSON
+
+  - name: code_output
+    type: string
+    format: code:python
+    value: "{{.steps.generate_code.response}}"
+    description: Syntax-highlighted Python code
+
+  - name: number_output
+    type: string
+    format: number
+    value: "{{.steps.generate_number.response}}"
+    description: Validated numeric value

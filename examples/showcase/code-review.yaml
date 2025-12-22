@@ -1,0 +1,136 @@
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
+name: code-review
+description: Multi-persona code review for git branch changes
+
+inputs:
+  - name: base_branch
+    type: string
+    default: "main"
+    description: Base branch to compare against
+
+  - name: personas
+    type: array
+    default: ["security", "performance", "style"]
+    description: Review personas to use
+
+  - name: output_file
+    type: string
+    default: "code-review.md"
+    description: Output file for the review report
+
+steps:
+  - id: get_branch
+    name: Get Current Branch
+    shell.run: git rev-parse --abbrev-ref HEAD
+
+  - id: get_diff
+    name: Get Git Diff
+    shell.run: "git diff {{.inputs.base_branch}}...HEAD --stat && echo '---' && git diff {{.inputs.base_branch}}...HEAD"
+
+  - id: get_commits
+    name: Get Commit Messages
+    shell.run: "git log {{.inputs.base_branch}}..HEAD --oneline"
+
+  - id: reviews
+    name: Parallel Reviews
+    type: parallel
+    max_concurrency: 3
+    steps:
+      - id: security_review
+        name: Security Review
+        type: llm
+        model: strategic
+        condition:
+          expression: '"security" in inputs.personas'
+        prompt: |
+          Review these code changes for security issues.
+          Focus on: input validation, auth issues, injection attacks, sensitive data exposure, cryptography.
+          Rate findings as: CRITICAL, HIGH, MEDIUM, or LOW severity.
+
+          Branch: {{.steps.get_branch.stdout}}
+          Commits: {{.steps.get_commits.stdout}}
+          Changes: {{.steps.get_diff.stdout}}
+
+          Provide: 1) Executive summary 2) Findings with severity 3) Recommendations
+
+      - id: performance_review
+        name: Performance Review
+        type: llm
+        model: balanced
+        condition:
+          expression: '"performance" in inputs.personas'
+        prompt: |
+          Review these code changes for performance issues.
+          Focus on: algorithmic complexity, memory allocation, database queries, caching, resource cleanup.
+          Rate findings as: CRITICAL, HIGH, MEDIUM, or LOW impact.
+
+          Branch: {{.steps.get_branch.stdout}}
+          Commits: {{.steps.get_commits.stdout}}
+          Changes: {{.steps.get_diff.stdout}}
+
+          Provide: 1) Executive summary 2) Findings with impact 3) Optimization recommendations
+
+      - id: style_review
+        name: Style Review
+        type: llm
+        model: fast
+        condition:
+          expression: '"style" in inputs.personas'
+        prompt: |
+          Review these code changes for style and maintainability.
+          Focus on: naming, code organization, documentation, error handling, idiomatic usage.
+          Rate findings as: SUGGESTION, MINOR, or IMPORTANT.
+
+          Branch: {{.steps.get_branch.stdout}}
+          Commits: {{.steps.get_commits.stdout}}
+          Changes: {{.steps.get_diff.stdout}}
+
+          Provide: 1) Executive summary 2) Findings with severity 3) Improvement suggestions
+
+  - id: generate_report
+    name: Generate Report
+    type: llm
+    model: balanced
+    prompt: |
+      Generate a comprehensive code review report in Markdown.
+
+      Context:
+      - Branch: {{.steps.get_branch.stdout}}
+      - Base: {{.inputs.base_branch}}
+      - Commits: {{.steps.get_commits.stdout}}
+
+      Reviews:
+      Security: {{.steps.reviews.security_review.response}}
+      Performance: {{.steps.reviews.performance_review.response}}
+      Style: {{.steps.reviews.style_review.response}}
+
+      Create a well-formatted Markdown report with:
+      1. Header with branch info and date
+      2. Overall summary with recommendation (APPROVE, REQUEST_CHANGES, or NEEDS_DISCUSSION)
+      3. Each review section
+      4. Prioritized action items list combining all findings
+      5. Conclusion
+
+      Output ONLY the Markdown content.
+
+  - id: write_report
+    name: Write Report
+    file.write:
+      path: "{{.inputs.output_file}}"
+      content: "{{.steps.generate_report.response}}"
+
+outputs:
+  - name: report_path
+    type: string
+    value: "{{.inputs.output_file}}"
+    description: Path to the generated report
+
+  - name: branch
+    type: string
+    value: "{{.steps.get_branch.stdout}}"
+    description: Branch that was reviewed
+
+  - name: summary
+    type: string
+    value: "{{.steps.generate_report.response}}"
+    description: Full review report content

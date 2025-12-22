@@ -1,0 +1,64 @@
+# Conductor Configuration Example
+#
+# This file shows all available configuration options with their default values.
+# Copy this file to config.yaml and customize as needed.
+#
+# Environment variables take precedence over file-based configuration.
+# To use this file: export CONDUCTOR_CONFIG=/path/to/config.yaml
+
+# Server configuration
+server:
+  # Port to bind to when starting the server
+  # Default: 9876
+  port: 9876
+
+  # Maximum duration to wait for graceful shutdown
+  # Environment: SERVER_SHUTDOWN_TIMEOUT
+  # Default: 5s
+  shutdown_timeout: 5s
+
+# Authentication configuration
+auth:
+  # Length of generated auth tokens in bytes
+  # Environment: AUTH_TOKEN_LENGTH
+  # Default: 32
+  token_length: 32
+
+# Logging configuration
+log:
+  # Minimum log level: debug, info, warn, warning, error
+  # Environment: LOG_LEVEL
+  # Default: info
+  level: info
+
+  # Output format: json, text
+  # Environment: LOG_FORMAT
+  # Default: json
+  format: json
+
+  # Add source file and line information to logs
+  # Environment: LOG_SOURCE (1 or true to enable)
+  # Default: false
+  add_source: false
+
+# LLM provider configuration
+llm:
+  # Default LLM provider: anthropic, claude-code
+  # Environment: LLM_DEFAULT_PROVIDER
+  # Default: anthropic
+  default_provider: anthropic
+
+  # Maximum duration for LLM requests
+  # Environment: LLM_REQUEST_TIMEOUT
+  # Default: 5s
+  request_timeout: 5s
+
+  # Maximum number of retry attempts for failed requests
+  # Environment: LLM_MAX_RETRIES
+  # Default: 3
+  max_retries: 3
+
+  # Base duration for exponential backoff retries
+  # Environment: LLM_RETRY_BACKOFF_BASE
+  # Default: 100ms
+  retry_backoff_base: 100ms

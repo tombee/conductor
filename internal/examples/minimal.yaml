@@ -1,0 +1,6 @@
+# Minimal workflow - just name and steps
+name: summarize
+steps:
+  - id: summarize
+    type: llm
+    prompt: "Summarize this text: {{.input}}"

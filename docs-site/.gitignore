@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Generated content (converted from docs/ at build time)
+src/content/docs/
+
+# Astro
+.astro/
+
+# Environment
+.env
+.env.*

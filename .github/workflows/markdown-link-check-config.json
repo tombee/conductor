@@ -1,0 +1,20 @@
+{
+  "ignorePatterns": [
+    {
+      "pattern": "^https://api.example.com"
+    },
+    {
+      "pattern": "^https://internal-api.company.com"
+    },
+    {
+      "pattern": "^https://company.atlassian.net"
+    }
+  ],
+  "replacementPatterns": [],
+  "httpHeaders": [],
+  "timeout": "10s",
+  "retryOn429": true,
+  "retryCount": 3,
+  "fallbackRetryDelay": "5s",
+  "aliveStatusCodes": [200, 206]
+}

@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
+name: meal-plan
+description: Generate three meals in parallel
+
+inputs:
+  - name: diet
+    type: string
+    description: Dietary preference (e.g., high-protein, vegan, keto)
+
+steps:
+  # Using 'fast' model to minimize token usage during tutorials
+  - id: meals
+    type: parallel
+    max_concurrency: 3
+    steps:
+      - id: breakfast
+        type: llm
+        model: fast
+        prompt: |
+          Generate a {{.inputs.diet}} breakfast recipe.
+          Include the recipe name, ingredients with quantities, and cooking steps.
+
+      - id: lunch
+        type: llm
+        model: fast
+        prompt: |
+          Generate a {{.inputs.diet}} lunch recipe.
+          Include the recipe name, ingredients with quantities, and cooking steps.
+
+      - id: dinner
+        type: llm
+        model: fast
+        prompt: |
+          Generate a {{.inputs.diet}} dinner recipe.
+          Include the recipe name, ingredients with quantities, and cooking steps.
+
+outputs:
+  - name: breakfast
+    type: string
+    value: "{{.steps.meals.breakfast.response}}"
+    description: Breakfast recipe
+    format: markdown
+
+  - name: lunch
+    type: string
+    value: "{{.steps.meals.lunch.response}}"
+    description: Lunch recipe
+    format: markdown
+
+  - name: dinner
+    type: string
+    value: "{{.steps.meals.dinner.response}}"
+    description: Dinner recipe
+    format: markdown

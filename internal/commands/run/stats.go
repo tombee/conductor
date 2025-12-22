@@ -1,0 +1,202 @@
+// Copyright 2025 Tom Barlow
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package run
+
+import (
+	"fmt"
+	"strings"
+	"time"
+)
+
+// parseStats parses statistics from an event map
+func parseStats(event map[string]any) *RunStats {
+	stats := &RunStats{}
+
+	if cost, ok := event["cost_usd"].(float64); ok {
+		stats.CostUSD = cost
+	}
+	if tokensIn, ok := event["tokens_in"].(float64); ok {
+		stats.TokensIn = int(tokensIn)
+	}
+	if tokensOut, ok := event["tokens_out"].(float64); ok {
+		stats.TokensOut = int(tokensOut)
+	}
+	if cacheCreation, ok := event["cache_creation"].(float64); ok {
+		stats.CacheCreation = int(cacheCreation)
+	}
+	if cacheRead, ok := event["cache_read"].(float64); ok {
+		stats.CacheRead = int(cacheRead)
+	}
+	if duration, ok := event["duration_ms"].(float64); ok {
+		stats.DurationMs = int64(duration)
+	}
+
+	return stats
+}
+
+// parseStatsFromRun parses statistics from a run response
+func parseStatsFromRun(run map[string]any) *RunStats {
+	var stats *RunStats
+
+	// Check if there's a stats object
+	if statsData, ok := run["stats"].(map[string]any); ok {
+		stats = parseStats(statsData)
+	} else {
+		// Try to extract from top-level fields
+		stats = parseStats(run)
+	}
+
+	// Compute duration from timestamps if not already set
+	if stats.DurationMs == 0 {
+		if startedAt, ok := run["started_at"].(string); ok {
+			if completedAt, ok := run["completed_at"].(string); ok {
+				if start, err := time.Parse(time.RFC3339Nano, startedAt); err == nil {
+					if end, err := time.Parse(time.RFC3339Nano, completedAt); err == nil {
+						stats.DurationMs = end.Sub(start).Milliseconds()
+					}
+				}
+			}
+		}
+	}
+
+	return stats
+}
+
+// displayStats displays execution statistics
+func displayStats(stats *RunStats) {
+	// Don't display anything if we have no meaningful stats
+	hasStats := stats.CostUSD > 0 || stats.TokensIn > 0 || stats.TokensOut > 0 || stats.DurationMs > 0 || len(stats.StepCosts) > 0
+	if !hasStats {
+		return
+	}
+
+	fmt.Println("\n---")
+
+	var parts []string
+
+	if stats.CostUSD > 0 {
+		costStr := formatCost(stats.CostUSD, stats.Accuracy)
+		parts = append(parts, fmt.Sprintf("Cost: %s", costStr))
+	}
+
+	if stats.TokensIn > 0 || stats.TokensOut > 0 {
+		tokenStr := fmt.Sprintf("Tokens: %d in / %d out", stats.TokensIn, stats.TokensOut)
+		if stats.CacheCreation > 0 || stats.CacheRead > 0 {
+			tokenStr += fmt.Sprintf(" (cache: %d write / %d read)", stats.CacheCreation, stats.CacheRead)
+		}
+		parts = append(parts, tokenStr)
+	}
+
+	if stats.DurationMs > 0 {
+		parts = append(parts, fmt.Sprintf("Time: %.1fs", float64(stats.DurationMs)/1000.0))
+	}
+
+	if len(parts) > 0 {
+		fmt.Println(strings.Join(parts, " | "))
+	}
+
+	// Show per-step breakdown if available (only LLM steps with tokens)
+	if len(stats.StepCosts) > 0 {
+		var llmSteps []string
+		for stepName, stepCost := range stats.StepCosts {
+			// Skip non-LLM steps (no tokens, no cost)
+			if stepCost.TokensIn == 0 && stepCost.TokensOut == 0 && stepCost.CostUSD == 0 {
+				continue
+			}
+			stepCostStr := formatStepCost(stepCost)
+			tokenInfo := fmt.Sprintf("%d in / %d out", stepCost.TokensIn, stepCost.TokensOut)
+			if stepCost.CacheCreation > 0 || stepCost.CacheRead > 0 {
+				tokenInfo += fmt.Sprintf(", cache: %d/%d", stepCost.CacheCreation, stepCost.CacheRead)
+			}
+			llmSteps = append(llmSteps, fmt.Sprintf("  %s: %s (%s)", stepName, stepCostStr, tokenInfo))
+		}
+		if len(llmSteps) > 0 {
+			fmt.Println("\nPer-step costs:")
+			for _, line := range llmSteps {
+				fmt.Println(line)
+			}
+		}
+	}
+}
+
+// updateStatsWithStep updates running stats with step completion data
+func updateStatsWithStep(stats *RunStats, event map[string]any) {
+	stepName, _ := event["step_name"].(string)
+	if stepName == "" {
+		return
+	}
+
+	cost, _ := event["cost_usd"].(float64)
+	tokensIn, _ := event["tokens_in"].(float64)
+	tokensOut, _ := event["tokens_out"].(float64)
+	cacheCreation, _ := event["cache_creation"].(float64)
+	cacheRead, _ := event["cache_read"].(float64)
+	accuracy, _ := event["accuracy"].(string)
+
+	// Update step costs
+	if stats.StepCosts == nil {
+		stats.StepCosts = make(map[string]StepCost)
+	}
+
+	stats.StepCosts[stepName] = StepCost{
+		CostUSD:       cost,
+		TokensIn:      int(tokensIn),
+		TokensOut:     int(tokensOut),
+		CacheCreation: int(cacheCreation),
+		CacheRead:     int(cacheRead),
+		Accuracy:      accuracy,
+	}
+
+	// Update totals
+	stats.CostUSD += cost
+	stats.TokensIn += int(tokensIn)
+	stats.TokensOut += int(tokensOut)
+	stats.CacheCreation += int(cacheCreation)
+	stats.CacheRead += int(cacheRead)
+
+	// Update overall accuracy (use most conservative)
+	if accuracy == "unavailable" || stats.Accuracy == "unavailable" {
+		stats.Accuracy = "unavailable"
+	} else if accuracy == "estimated" || stats.Accuracy == "estimated" {
+		stats.Accuracy = "estimated"
+	} else {
+		stats.Accuracy = "measured"
+	}
+
+	stats.RunningTotal = stats.CostUSD
+}
+
+// formatCost formats a cost value with accuracy indicator
+func formatCost(cost float64, accuracy string) string {
+	if accuracy == "unavailable" {
+		return "--"
+	}
+
+	prefix := ""
+	if accuracy == "estimated" {
+		prefix = "~"
+	}
+
+	// Use 2 decimal places for amounts >= $0.01, otherwise show more precision
+	if cost >= 0.01 {
+		return fmt.Sprintf("%s$%.2f", prefix, cost)
+	}
+	return fmt.Sprintf("%s$%.4f", prefix, cost)
+}
+
+// formatStepCost formats a step cost with accuracy indicator
+func formatStepCost(stepCost StepCost) string {
+	return formatCost(stepCost.CostUSD, stepCost.Accuracy)
+}

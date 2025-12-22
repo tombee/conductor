@@ -1,0 +1,22 @@
+# Workflow with required inputs
+name: workflow-with-inputs
+description: Workflow that requires input parameters
+version: "1.0"
+
+inputs:
+  - name: user_name
+    description: Name of the user
+    required: true
+    type: string
+  - name: message
+    description: Message to process
+    required: true
+    type: string
+
+steps:
+  - id: greet
+    name: Greet User
+    type: llm
+    prompt: "Hello {{.inputs.user_name}}, your message is: {{.inputs.message}}"
+    inputs:
+      model: fast

@@ -1,0 +1,145 @@
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
+name: issue-triage
+description: Automatic issue classification and team assignment
+
+inputs:
+  - name: title
+    type: string
+    required: true
+    description: Issue title
+
+  - name: body
+    type: string
+    required: true
+    description: Issue description
+
+  - name: author
+    type: string
+    required: true
+    description: Issue author username
+
+  - name: repository
+    type: string
+    required: true
+    description: Repository name
+
+steps:
+  - id: classify_issue
+    name: Classify Issue
+    type: llm
+    model: fast
+    prompt: |
+      Analyze this issue and classify it.
+
+      Types: bug, feature, enhancement, documentation, question, refactor, performance, security
+      Priority: critical, high, medium, low
+      Sentiment: frustrated, neutral, positive
+
+      Title: {{.inputs.title}}
+      Body: {{.inputs.body}}
+      Author: {{.inputs.author}}
+      Repository: {{.inputs.repository}}
+
+      Return JSON:
+      {
+        "type": "...",
+        "priority": "...",
+        "sentiment": "...",
+        "confidence": 0.0-1.0,
+        "reasoning": "..."
+      }
+
+  - id: extract_labels
+    name: Extract Labels
+    type: llm
+    model: fast
+    prompt: |
+      Extract relevant labels for this issue.
+
+      Available labels:
+      - Platform: frontend, backend, database, api, cli, mobile
+      - Component: auth, ui, workflow, storage, networking, deployment
+      - Status: needs-reproduction, needs-design, ready-to-implement
+      - Expertise: accessibility, performance, security, i18n
+      - Special: breaking-change, good-first-issue, help-wanted
+
+      Classification: {{.steps.classify_issue.response}}
+      Title: {{.inputs.title}}
+      Body: {{.inputs.body}}
+
+      Return JSON (max 5 labels):
+      {
+        "labels": ["label1", "label2"],
+        "reasoning": "..."
+      }
+
+  - id: suggest_assignment
+    name: Suggest Assignment
+    type: llm
+    model: fast
+    prompt: |
+      Suggest which team should handle this issue.
+
+      Teams: platform, frontend, backend, devops, security, support
+
+      Classification: {{.steps.classify_issue.response}}
+      Labels: {{.steps.extract_labels.response}}
+      Title: {{.inputs.title}}
+
+      Return JSON:
+      {
+        "team": "...",
+        "confidence": 0.0-1.0,
+        "reasoning": "...",
+        "requires_multiple_teams": true|false
+      }
+
+  - id: generate_summary
+    name: Generate Summary
+    type: llm
+    model: balanced
+    prompt: |
+      Create a triage summary for this issue.
+
+      Classification: {{.steps.classify_issue.response}}
+      Labels: {{.steps.extract_labels.response}}
+      Suggested Team: {{.steps.suggest_assignment.response}}
+
+      Original Issue:
+      Title: {{.inputs.title}}
+      Body: {{.inputs.body}}
+
+      Format as:
+      ## Triage Summary
+
+      **Classification:** [type] - [priority]
+      **Labels:** [labels]
+      **Suggested Team:** [team]
+
+      **Analysis:**
+      [Brief analysis]
+
+      **Recommended Actions:**
+      - [ ] Action 1
+      - [ ] Action 2
+
+outputs:
+  - name: classification
+    type: string
+    value: "{{.steps.classify_issue.response}}"
+    description: Issue classification
+
+  - name: labels
+    type: string
+    value: "{{.steps.extract_labels.response}}"
+    description: Suggested labels
+
+  - name: team
+    type: string
+    value: "{{.steps.suggest_assignment.response}}"
+    description: Suggested team assignment
+
+  - name: summary
+    type: string
+    value: "{{.steps.generate_summary.response}}"
+    description: Triage summary

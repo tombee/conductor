@@ -1,0 +1,101 @@
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
+name: slack-notify
+description: AI-powered Slack notifications with intelligent summaries
+
+inputs:
+  - name: event_type
+    type: string
+    required: true
+    description: Type of event (build, deployment, alert, issue)
+
+  - name: status
+    type: string
+    required: true
+    description: Event status (success, failed, warning, critical)
+
+  - name: details
+    type: string
+    required: true
+    description: Event details or log content
+
+  - name: channel
+    type: string
+    required: true
+    description: Slack channel (e.g., "#engineering")
+
+  - name: mention_users
+    type: string
+    default: ""
+    description: Users to mention (comma-separated, e.g., "@john,@jane")
+
+steps:
+  - id: generate_summary
+    name: Generate Summary
+    type: llm
+    model: fast
+    prompt: |
+      Create a concise summary (2-3 sentences) for this {{.inputs.event_type}} event.
+
+      Status: {{.inputs.status}}
+      Details: {{.inputs.details}}
+
+      Capture:
+      - What happened
+      - Impact or significance
+      - Next steps (if any)
+
+      Keep it clear, technical, and actionable.
+
+  - id: format_message
+    name: Format Message
+    type: llm
+    model: fast
+    prompt: |
+      Format this event for Slack using mrkdwn syntax.
+
+      Use:
+      - *bold* for emphasis
+      - `code` for technical terms
+      - > blockquote for important notes
+      - Emoji for status (✅ success, ❌ failed, ⚠️ warning, 🚨 critical)
+
+      Event Type: {{.inputs.event_type}}
+      Status: {{.inputs.status}}
+      Summary: {{.steps.generate_summary.response}}
+      Mention: {{.inputs.mention_users}}
+
+      Structure:
+      [emoji] **[Event Type]: [Status]**
+
+      [Summary]
+
+      [Additional details if needed]
+
+      Return ONLY the formatted message text.
+
+  - id: post_to_slack
+    name: Post to Slack
+    http.post:
+      url: https://slack.com/api/chat.postMessage
+      headers:
+        Authorization: "Bearer {{env.SLACK_BOT_TOKEN}}"
+        Content-Type: application/json
+      body:
+        channel: "{{.inputs.channel}}"
+        text: "{{.steps.format_message.response}}"
+
+outputs:
+  - name: summary
+    type: string
+    value: "{{.steps.generate_summary.response}}"
+    description: Generated event summary
+
+  - name: message
+    type: string
+    value: "{{.steps.format_message.response}}"
+    description: Formatted Slack message
+
+  - name: slack_response
+    type: string
+    value: "{{.steps.post_to_slack.response}}"
+    description: Slack API response
