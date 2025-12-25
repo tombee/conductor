@@ -1,181 +1,195 @@
-name: code-review
-description: |
-  Multi-persona code review workflow that analyzes code changes from security,
-  performance, and style perspectives, then consolidates findings into a
-  comprehensive review report.
+name: git-branch-code-review
+description: Multi-persona code review for git branch changes
 version: "1.0"
 
 inputs:
-  - name: diff
+  - name: base_branch
     type: string
-    required: true
-    description: Git diff or file content to review
+    default: "main"
+    description: Base branch to compare against
 
-  - name: context
-    type: string
-    required: false
-    description: Additional context about the changes (e.g., PR description, issue reference)
+  - name: personas
+    type: array
+    default: ["security", "performance", "style"]
+    description: Review personas to use
 
-  - name: language
+  - name: output_file
     type: string
-    required: false
-    default: "auto"
-    description: Programming language (auto-detected if not specified)
+    default: "code-review.md"
+    description: Output file for the review report
 
 steps:
-  # Security review persona
-  - id: security_review
-    name: Security Analysis
-    type: llm
-    model: fast
-    system: |
-      You are a security expert reviewing code changes. Focus on:
-      - Authentication and authorization issues
-      - Input validation and sanitization
-      - SQL injection, XSS, CSRF vulnerabilities
-      - Secrets or sensitive data exposure
-      - Insecure dependencies or APIs
+  - id: get_branch
+    name: Get Current Branch
+    shell.run:
+      command: ["git", "rev-parse", "--abbrev-ref", "HEAD"]
 
-      Format findings as:
-      - CRITICAL: Security vulnerabilities that must be fixed
-      - WARNING: Potential security concerns to investigate
-      - INFO: Security best practices to consider
-    prompt: |
-      Review this code change for security issues:
+  - id: get_diff
+    name: Get Git Diff
+    shell.run: "git diff {{.inputs.base_branch}}...HEAD --stat && echo '---DIFF---' && git diff {{.inputs.base_branch}}...HEAD"
 
-      {{if .context}}
-      Context: {{.context}}
-      {{end}}
+  - id: get_commits
+    name: Get Commit Messages
+    shell.run:
+      command: ["git", "log", "{{.inputs.base_branch}}..HEAD", "--oneline"]
 
-      ```diff
-      {{.diff}}
-      ```
+  - id: reviews
+    name: Parallel Persona Reviews
+    type: parallel
+    max_concurrency: 3
+    steps:
+      - id: security_review
+        name: Security Review
+        type: llm
+        model: strategic
+        condition:
+          expression: '"security" in inputs.personas'
+        system: |
+          You are a security engineer reviewing code changes for vulnerabilities.
+          Focus on:
+          - Input validation and sanitization
+          - Authentication and authorization issues
+          - Injection attacks (SQL, command, XSS)
+          - Sensitive data exposure
+          - Cryptography issues
 
-      Provide specific line references for any issues found.
-    timeout: 30
-    retry:
-      max_attempts: 2
-      backoff_base: 2
-      backoff_multiplier: 2.0
+          Rate each finding as: CRITICAL, HIGH, MEDIUM, or LOW severity.
+          Be specific about file names and line context.
+        prompt: |
+          Review these code changes for security issues:
 
-  # Performance review persona
-  - id: performance_review
-    name: Performance Analysis
-    type: llm
-    model: fast
-    system: |
-      You are a performance optimization expert. Focus on:
-      - Algorithmic complexity (time and space)
-      - Database query efficiency (N+1 queries, missing indexes)
-      - Memory leaks or excessive allocations
-      - Blocking operations in async code
-      - Resource cleanup (connections, file handles)
+          **Branch:** {{.steps.get_branch.stdout}}
+          **Commits:**
+          {{.steps.get_commits.stdout}}
 
-      Format findings as:
-      - BLOCKER: Performance issues that will cause production problems
-      - OPTIMIZE: Clear optimization opportunities
-      - CONSIDER: Areas that might benefit from optimization
-    prompt: |
-      Review this code change for performance issues:
+          **Changes:**
+          {{.steps.get_diff.stdout}}
 
-      {{if .context}}
-      Context: {{.context}}
-      {{end}}
+          Provide a structured security review with:
+          1. Executive summary (1-2 sentences)
+          2. Findings (if any) with severity ratings
+          3. Recommendations
 
-      ```diff
-      {{.diff}}
-      ```
+      - id: performance_review
+        name: Performance Review
+        type: llm
+        model: balanced
+        condition:
+          expression: '"performance" in inputs.personas'
+        system: |
+          You are a performance engineer reviewing code for efficiency issues.
+          Focus on:
+          - Algorithmic complexity (O(n²), unnecessary loops)
+          - Memory allocation and leaks
+          - Database query efficiency (N+1 queries, missing indexes)
+          - Caching opportunities
+          - Resource cleanup
 
-      Provide specific line references and suggest optimizations.
-    timeout: 30
-    retry:
-      max_attempts: 2
-      backoff_base: 2
-      backoff_multiplier: 2.0
+          Rate each finding as: CRITICAL, HIGH, MEDIUM, or LOW impact.
+        prompt: |
+          Review these code changes for performance issues:
 
-  # Style review persona
-  - id: style_review
-    name: Code Style Analysis
-    type: llm
-    model: fast
-    system: |
-      You are a code quality expert focused on maintainability. Review:
-      - Code clarity and readability
-      - Naming conventions (descriptive, consistent)
-      - Function/method complexity and size
-      - Comment quality (explain why, not what)
-      - Error handling completeness
-      - Test coverage for new code
+          **Branch:** {{.steps.get_branch.stdout}}
+          **Commits:**
+          {{.steps.get_commits.stdout}}
 
-      Format findings as:
-      - REQUIRED: Style issues that violate project standards
-      - SUGGESTED: Improvements that enhance maintainability
-      - NITPICK: Minor suggestions (optional)
-    prompt: |
-      Review this code change for style and maintainability:
+          **Changes:**
+          {{.steps.get_diff.stdout}}
 
-      {{if .context}}
-      Context: {{.context}}
-      {{end}}
+          Provide a structured performance review with:
+          1. Executive summary (1-2 sentences)
+          2. Findings (if any) with impact ratings
+          3. Optimization recommendations
 
-      {{if ne .language "auto"}}
-      Language: {{.language}}
-      {{end}}
+      - id: style_review
+        name: Code Style Review
+        type: llm
+        model: fast
+        condition:
+          expression: '"style" in inputs.personas'
+        system: |
+          You are a code quality reviewer focused on readability and maintainability.
+          Focus on:
+          - Naming conventions (variables, functions, types)
+          - Code organization and structure
+          - Documentation and comments
+          - Error handling patterns
+          - Idiomatic code usage
 
-      ```diff
-      {{.diff}}
-      ```
+          Rate each finding as: SUGGESTION, MINOR, or IMPORTANT.
+          Be constructive and specific.
+        prompt: |
+          Review these code changes for style and maintainability:
 
-      Focus on readability, naming, and maintainability.
-    timeout: 30
-    retry:
-      max_attempts: 2
-      backoff_base: 2
-      backoff_multiplier: 2.0
+          **Branch:** {{.steps.get_branch.stdout}}
+          **Commits:**
+          {{.steps.get_commits.stdout}}
 
-  # Consolidate all reviews
-  - id: consolidate_findings
-    name: Consolidate Review Findings
+          **Changes:**
+          {{.steps.get_diff.stdout}}
+
+          Provide a structured style review with:
+          1. Executive summary (1-2 sentences)
+          2. Findings (if any) with severity
+          3. Improvement suggestions
+
+  - id: generate_report
+    name: Generate Review Report
     type: llm
     model: balanced
-    system: |
-      You are a technical lead consolidating code review feedback.
-      Synthesize findings from multiple reviewers into a clear, actionable report.
-
-      Group findings by severity:
-      1. BLOCKERS - Must fix before merge
-      2. REQUIRED - Should fix before merge
-      3. SUGGESTED - Consider addressing
-      4. INFORMATIONAL - Keep in mind
-
-      For each finding:
-      - Provide file and line reference
-      - Explain the issue clearly
-      - Suggest a specific fix
-      - Note if multiple reviewers flagged the same issue
     prompt: |
-      Consolidate these code review findings into a single comprehensive report:
+      Generate a comprehensive code review report in Markdown format.
 
-      ## Security Review
-      {{.steps.security_review.response}}
+      ## Context
+      - **Branch:** {{.steps.get_branch.stdout}}
+      - **Base:** {{.inputs.base_branch}}
+      - **Commits:**
+      {{.steps.get_commits.stdout}}
 
-      ## Performance Review
-      {{.steps.performance_review.response}}
+      ## Reviews
 
-      ## Style Review
-      {{.steps.style_review.response}}
+      {{if .steps.reviews.security_review}}
+      ### Security Review
+      {{.steps.reviews.security_review.response}}
+      {{end}}
 
-      Create a well-organized report that prioritizes the most important issues.
-      Include a summary at the top with counts of each severity level.
-    timeout: 45
+      {{if .steps.reviews.performance_review}}
+      ### Performance Review
+      {{.steps.reviews.performance_review.response}}
+      {{end}}
+
+      {{if .steps.reviews.style_review}}
+      ### Style Review
+      {{.steps.reviews.style_review.response}}
+      {{end}}
+
+      Create a well-formatted Markdown report with:
+      1. A header with branch info and date
+      2. An overall summary with a recommendation (APPROVE, REQUEST_CHANGES, or NEEDS_DISCUSSION)
+      3. Each review section (only include sections that have content)
+      4. A prioritized action items list combining all findings
+      5. A conclusion
+
+      Output ONLY the Markdown content, no code fences.
+
+  - id: write_report
+    name: Write Report File
+    file.write:
+      path: "{{.inputs.output_file}}"
+      content: "{{.steps.generate_report.response}}"
 
 outputs:
-  - name: review
+  - name: report_path
     type: string
-    value: "{{.steps.consolidate_findings.response}}"
-    description: Comprehensive code review report with findings from all personas
+    value: "{{.inputs.output_file}}"
+    description: Path to the generated review report
 
-  - name: has_blockers
-    type: boolean
-    value: "{{.steps.consolidate_findings.response contains \"BLOCKERS\" or .steps.consolidate_findings.response contains \"CRITICAL\"}}"
-    description: Whether any blocking issues were found
+  - name: branch
+    type: string
+    value: "{{.steps.get_branch.stdout}}"
+    description: Branch that was reviewed
+
+  - name: summary
+    type: string
+    value: "{{.steps.generate_report.response}}"
+    description: Full review report content

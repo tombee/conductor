@@ -1,35 +1,76 @@
 # Code Review
 
-Multi-persona AI code review that analyzes changes from security, performance, and style perspectives.
+Multi-persona AI code review that analyzes git branch changes from security, performance, and style perspectives.
 
 ## Usage
 
+Run in any git repository with changes on a feature branch:
+
 ```bash
-# Review staged changes
-git diff --cached | conductor run examples/code-review -i diff=-
+# Review current branch against main
+conductor run examples/code-review
 
-# Review a branch against main
-git diff main...HEAD | conductor run examples/code-review -i diff=-
+# Review against a different base branch
+conductor run examples/code-review -i base_branch="develop"
 
-# Review last commit
-git show HEAD | conductor run examples/code-review -i diff=-
+# Run only security review
+conductor run examples/code-review -i personas='["security"]'
 
-# Add context about the changes
-git diff main | conductor run examples/code-review \
-  -i diff=- \
-  -i context="Refactoring auth to use OAuth2"
+# Save report to custom location
+conductor run examples/code-review -i output_file="reviews/my-review.md"
 ```
+
+## What It Does
+
+1. **Extracts git info** - Gets current branch, diff against base, and commit messages
+2. **Runs parallel reviews** - Security, performance, and style reviews run concurrently
+3. **Consolidates findings** - Combines all reviews into a prioritized report
+4. **Saves to file** - Writes the report to `code-review.md` (or custom path)
 
 ## Output
 
-The workflow produces a consolidated report with findings grouped by severity:
+The workflow produces a Markdown report with:
 
-- **BLOCKERS** - Must fix before merge
-- **REQUIRED** - Should fix before merge
-- **SUGGESTED** - Consider addressing
-- **INFORMATIONAL** - Keep in mind
+- **CRITICAL/HIGH** - Security vulnerabilities and blockers
+- **MEDIUM/LOW** - Issues to address
+- **SUGGESTIONS** - Style and maintainability improvements
 
-Each finding includes file/line references and suggested fixes.
+Each finding includes file/line references and recommended fixes.
+
+## Inputs
+
+| Input | Default | Description |
+|-------|---------|-------------|
+| `base_branch` | `"main"` | Branch to compare against |
+| `personas` | `["security", "performance", "style"]` | Which reviews to run |
+| `output_file` | `"code-review.md"` | Where to save the report |
+
+## Customization
+
+### Model Selection
+
+Edit `workflow.yaml` to adjust model tiers per persona:
+
+- **Security:** `strategic` (deep vulnerability analysis)
+- **Performance:** `balanced` (good trade-off)
+- **Style:** `fast` (pattern matching)
+
+### Add Review Personas
+
+Add new personas to the parallel reviews section:
+
+```yaml
+- id: accessibility_review
+  name: Accessibility Review
+  model: balanced
+  condition:
+    expression: '"accessibility" in inputs.personas'
+  system: |
+    You are an accessibility expert. Review for:
+    - ARIA attributes and semantic HTML
+    - Keyboard navigation support
+    - Color contrast and visual indicators
+```
 
 ## CI/CD Integration
 
@@ -38,17 +79,12 @@ Each finding includes file/line references and suggested fixes.
 ```yaml
 - name: AI Code Review
   run: |
-    git diff origin/main..HEAD | conductor run examples/code-review -i diff=- > review.md
+    conductor run examples/code-review \
+      -i base_branch="${{ github.base_ref }}" \
+      -i output_file="review.md"
 
 - name: Comment on PR
-  uses: actions/github-script@v7
-  with:
-    script: |
-      const fs = require('fs');
-      github.rest.issues.createComment({
-        issue_number: context.issue.number,
-        body: fs.readFileSync('review.md', 'utf8')
-      });
+  run: gh pr comment ${{ github.event.pull_request.number }} --body-file review.md
 ```
 
 ### Pre-commit Hook
@@ -56,30 +92,5 @@ Each finding includes file/line references and suggested fixes.
 ```bash
 #!/bin/bash
 # .git/hooks/pre-commit
-git diff --cached | conductor run examples/code-review -i diff=-
-if [ $? -eq 1 ]; then
-  echo "Blocking issues found"
-  exit 1
-fi
-```
-
-## Customization
-
-### Model Selection
-
-Edit `workflow.yaml` to adjust model tiers:
-
-- `fast` (Haiku) - Quick feedback, lower cost
-- `balanced` (Sonnet) - Better analysis
-- `strategic` (Opus) - Deep reasoning for complex code
-
-### Add Review Personas
-
-Add steps for domain-specific reviews (accessibility, API design, etc.):
-
-```yaml
-- id: api_review
-  type: llm
-  model: balanced
-  system: "You are an API design expert..."
+conductor run examples/code-review -i personas='["security"]'
 ```
