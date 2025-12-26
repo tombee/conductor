@@ -172,6 +172,37 @@ func (e *StepExecutor) WithParallelConcurrency(max int) *StepExecutor {
 	return e
 }
 
+// ActionRegistryFactory is a function that creates a ConnectorRegistry from a workflow directory.
+// This allows the executor to be independent of the internal/connector package.
+type ActionRegistryFactory func(workflowDir string) (ConnectorRegistry, error)
+
+// defaultActionRegistryFactory is set by the connector package during init.
+var defaultActionRegistryFactory ActionRegistryFactory
+
+// SetDefaultActionRegistryFactory sets the factory used by WithWorkflowDir.
+// This is called by the connector package during initialization.
+func SetDefaultActionRegistryFactory(factory ActionRegistryFactory) {
+	defaultActionRegistryFactory = factory
+}
+
+// WithWorkflowDir sets the workflow directory and initializes the builtin action registry.
+// Actions like file.read and shell.run will resolve paths relative to this directory.
+func (e *StepExecutor) WithWorkflowDir(workflowDir string) *StepExecutor {
+	if defaultActionRegistryFactory == nil {
+		e.logger.Warn("action registry factory not configured, actions will not be available")
+		return e
+	}
+
+	registry, err := defaultActionRegistryFactory(workflowDir)
+	if err != nil {
+		e.logger.Error("failed to create action registry", "error", err)
+		return e
+	}
+
+	e.connectorRegistry = registry
+	return e
+}
+
 // Execute executes a single workflow step.
 func (e *StepExecutor) Execute(ctx context.Context, step *StepDefinition, workflowContext map[string]interface{}) (*StepResult, error) {
 	result := &StepResult{

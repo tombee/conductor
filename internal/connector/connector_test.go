@@ -440,3 +440,127 @@ func TestParseReference(t *testing.T) {
 		})
 	}
 }
+
+func TestNewBuiltinRegistry(t *testing.T) {
+	config := &BuiltinConfig{
+		WorkflowDir: "/tmp/test",
+	}
+
+	registry, err := NewBuiltinRegistry(config)
+	if err != nil {
+		t.Fatalf("NewBuiltinRegistry failed: %v", err)
+	}
+
+	// Verify all builtin connectors are registered
+	names := registry.List()
+	expected := []string{"file", "shell", "transform", "utility"}
+
+	if len(names) != len(expected) {
+		t.Errorf("expected %d connectors, got %d", len(expected), len(names))
+	}
+
+	// Check each builtin exists
+	for _, name := range expected {
+		connector, err := registry.Get(name)
+		if err != nil {
+			t.Errorf("expected connector %q to exist: %v", name, err)
+			continue
+		}
+		if connector.Name() != name {
+			t.Errorf("expected connector name %q, got %q", name, connector.Name())
+		}
+	}
+}
+
+func TestBuiltinConnector_ShellExecution(t *testing.T) {
+	// Use a directory that actually exists
+	config := &BuiltinConfig{
+		WorkflowDir: "/tmp",
+	}
+
+	registry, err := NewBuiltinRegistry(config)
+	if err != nil {
+		t.Fatalf("NewBuiltinRegistry failed: %v", err)
+	}
+
+	// Execute a shell command through the registry
+	result, err := registry.Execute(context.Background(), "shell.run", map[string]interface{}{
+		"command": []string{"echo", "hello from shell"},
+	})
+	if err != nil {
+		t.Fatalf("shell.run execution failed: %v", err)
+	}
+
+	response, ok := result.Response.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected map response, got %T", result.Response)
+	}
+
+	stdout, ok := response["stdout"].(string)
+	if !ok {
+		t.Fatalf("expected stdout string, got %T", response["stdout"])
+	}
+
+	if stdout != "hello from shell" {
+		t.Errorf("expected 'hello from shell', got %q", stdout)
+	}
+}
+
+func TestBuiltinConnector_FileExecution(t *testing.T) {
+	config := &BuiltinConfig{
+		WorkflowDir:   "/tmp",
+		AllowAbsolute: true, // Allow absolute paths for this test
+	}
+
+	registry, err := NewBuiltinRegistry(config)
+	if err != nil {
+		t.Fatalf("NewBuiltinRegistry failed: %v", err)
+	}
+
+	// Check if a file exists (should return false for non-existent file)
+	result, err := registry.Execute(context.Background(), "file.exists", map[string]interface{}{
+		"path": "/tmp/nonexistent-test-file-xyz123",
+	})
+	if err != nil {
+		t.Fatalf("file.exists execution failed: %v", err)
+	}
+
+	exists := result.Response.(bool)
+	if exists {
+		t.Error("expected file to not exist")
+	}
+}
+
+func TestRegistryAsWorkflowRegistry(t *testing.T) {
+	config := &BuiltinConfig{
+		WorkflowDir: "/tmp", // Use existing directory
+	}
+
+	registry, err := NewBuiltinRegistry(config)
+	if err != nil {
+		t.Fatalf("NewBuiltinRegistry failed: %v", err)
+	}
+
+	// Get the workflow.ConnectorRegistry interface
+	workflowRegistry := registry.AsWorkflowRegistry()
+
+	// Execute through the interface
+	result, err := workflowRegistry.Execute(context.Background(), "shell.run", map[string]interface{}{
+		"command": []string{"echo", "interface test"},
+	})
+	if err != nil {
+		t.Fatalf("execution through interface failed: %v", err)
+	}
+
+	// Verify result implements ConnectorResult interface
+	response := result.GetResponse()
+	if response == nil {
+		t.Error("expected non-nil response")
+	}
+
+	responseMap := response.(map[string]interface{})
+	stdout := responseMap["stdout"].(string)
+	if stdout != "interface test" {
+		t.Errorf("expected 'interface test', got %q", stdout)
+	}
+}

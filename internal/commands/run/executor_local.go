@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -26,6 +27,9 @@ import (
 	"github.com/tombee/conductor/internal/config"
 	internalllm "github.com/tombee/conductor/internal/llm"
 	"github.com/tombee/conductor/pkg/workflow"
+
+	// Import connector package to register action registry factory
+	_ "github.com/tombee/conductor/internal/connector"
 )
 
 // runWorkflowLocal executes a workflow locally (not via daemon)
@@ -179,12 +183,15 @@ func runWorkflowLocal(workflowPath string, inputArgs []string, inputFile string,
 		return nil
 	}
 
+	// Get workflow directory for action resolution
+	workflowDir := filepath.Dir(resolvedPath)
+
 	// Execute the workflow
-	return executeWorkflow(def, cfg, plan, inputs, quiet, verbose)
+	return executeWorkflow(def, cfg, plan, inputs, workflowDir, quiet, verbose)
 }
 
 // executeWorkflow runs the workflow using the step executor
-func executeWorkflow(def *workflow.Definition, cfg *config.Config, plan *ExecutionPlan, inputs map[string]interface{}, quiet, verbose bool) error {
+func executeWorkflow(def *workflow.Definition, cfg *config.Config, plan *ExecutionPlan, inputs map[string]interface{}, workflowDir string, quiet, verbose bool) error {
 	ctx := context.Background()
 	startTime := time.Now()
 
@@ -211,8 +218,9 @@ func executeWorkflow(def *workflow.Definition, cfg *config.Config, plan *Executi
 	// Wrap the provider with our adapter
 	adapter := internalllm.NewProviderAdapter(llmProvider)
 
-	// Create the step executor (nil tool registry for now - tools not yet implemented)
-	executor := workflow.NewStepExecutor(nil, adapter)
+	// Create the step executor with actions initialized
+	executor := workflow.NewStepExecutor(nil, adapter).
+		WithWorkflowDir(workflowDir)
 
 	// Build template context from inputs
 	templateCtx := workflow.NewTemplateContext()

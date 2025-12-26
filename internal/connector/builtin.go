@@ -5,9 +5,26 @@ import (
 	"fmt"
 
 	"github.com/tombee/conductor/internal/connector/file"
+	"github.com/tombee/conductor/internal/connector/shell"
 	"github.com/tombee/conductor/internal/connector/transform"
 	"github.com/tombee/conductor/internal/connector/utility"
+	"github.com/tombee/conductor/pkg/workflow"
 )
+
+func init() {
+	// Register the action registry factory with the workflow package.
+	// This enables WithWorkflowDir() to automatically initialize builtin actions.
+	workflow.SetDefaultActionRegistryFactory(func(workflowDir string) (workflow.ConnectorRegistry, error) {
+		config := &BuiltinConfig{
+			WorkflowDir: workflowDir,
+		}
+		registry, err := NewBuiltinRegistry(config)
+		if err != nil {
+			return nil, err
+		}
+		return registry.AsWorkflowRegistry(), nil
+	})
+}
 
 // BuiltinConfig holds configuration for builtin connectors.
 type BuiltinConfig struct {
@@ -50,6 +67,7 @@ func IsBuiltin(name string) bool {
 type BuiltinConnector struct {
 	name               string
 	fileConnector      *file.FileConnector
+	shellConnector     *shell.ShellConnector
 	transformConnector *transform.TransformConnector
 	utilityConnector   *utility.UtilityConnector
 }
@@ -89,8 +107,18 @@ func NewBuiltin(name string, config *BuiltinConfig) (Connector, error) {
 		}, nil
 
 	case "shell":
-		// Shell connector will be implemented in future
-		return nil, fmt.Errorf("shell connector not yet implemented")
+		shellConfig := &shell.Config{
+			WorkingDir: config.WorkflowDir,
+		}
+		sc, err := shell.New(shellConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create shell connector: %w", err)
+		}
+
+		return &BuiltinConnector{
+			name:           "shell",
+			shellConnector: sc,
+		}, nil
 
 	case "transform":
 		tc, err := transform.New(nil) // Use default config
@@ -129,6 +157,16 @@ func (c *BuiltinConnector) Execute(ctx context.Context, operation string, inputs
 	switch c.name {
 	case "file":
 		result, err := c.fileConnector.Execute(ctx, operation, inputs)
+		if err != nil {
+			return nil, err
+		}
+		return &Result{
+			Response: result.Response,
+			Metadata: result.Metadata,
+		}, nil
+
+	case "shell":
+		result, err := c.shellConnector.Execute(ctx, operation, inputs)
 		if err != nil {
 			return nil, err
 		}

@@ -101,6 +101,53 @@ func (r *Registry) List() []string {
 	return names
 }
 
+// Register adds a connector to the registry.
+func (r *Registry) Register(name string, connector Connector) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.connectors[name] = connector
+}
+
+// LoadBuiltins loads all builtin connectors (file, shell, transform, utility).
+func (r *Registry) LoadBuiltins(config *BuiltinConfig) error {
+	for name := range builtinNames {
+		connector, err := NewBuiltin(name, config)
+		if err != nil {
+			return fmt.Errorf("failed to load builtin connector %q: %w", name, err)
+		}
+		r.Register(name, connector)
+	}
+	return nil
+}
+
+// NewBuiltinRegistry creates a registry with all builtin connectors pre-loaded.
+func NewBuiltinRegistry(config *BuiltinConfig) (*Registry, error) {
+	registry := NewRegistry(nil)
+	if err := registry.LoadBuiltins(config); err != nil {
+		return nil, err
+	}
+	return registry, nil
+}
+
+// AsWorkflowRegistry returns a wrapper that implements workflow.ConnectorRegistry.
+func (r *Registry) AsWorkflowRegistry() workflow.ConnectorRegistry {
+	return &workflowRegistryAdapter{r}
+}
+
+// workflowRegistryAdapter wraps Registry to implement workflow.ConnectorRegistry.
+type workflowRegistryAdapter struct {
+	registry *Registry
+}
+
+// Execute implements workflow.ConnectorRegistry.
+func (a *workflowRegistryAdapter) Execute(ctx context.Context, reference string, inputs map[string]interface{}) (workflow.ConnectorResult, error) {
+	result, err := a.registry.Execute(ctx, reference, inputs)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 // parseReference splits a connector reference into connector and operation names.
 // Expected format: "connector_name.operation_name"
 func parseReference(reference string) (string, string, error) {
