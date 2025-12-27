@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/tombee/conductor/internal/daemon/backend"
+	"github.com/tombee/conductor/pkg/workflow"
 )
 
 // snapshotRun creates an immutable deep copy of a Run (must hold lock).
@@ -98,6 +99,32 @@ func (r *Runner) toBackendRun(run *Run) *backend.Run {
 		beRun.CompletedAt = run.CompletedAt
 	}
 	return beRun
+}
+
+// stepOutputToMap converts a workflow.StepOutput to a map for run.Output.
+func stepOutputToMap(output workflow.StepOutput) map[string]any {
+	result := make(map[string]any)
+
+	if output.Text != "" {
+		result["response"] = output.Text
+	}
+
+	if output.Data != nil {
+		// If Data is already a map, merge it
+		if dataMap, ok := output.Data.(map[string]any); ok {
+			for k, v := range dataMap {
+				result[k] = v
+			}
+		} else {
+			result["data"] = output.Data
+		}
+	}
+
+	if output.Error != "" {
+		result["error"] = output.Error
+	}
+
+	return result
 }
 
 // addLog adds a log entry and notifies subscribers.

@@ -190,13 +190,8 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 		}
 	} else {
 		run.Status = RunStatusCompleted
-		if result != nil {
-			// Use typed StepOutput if available, fall back to legacy Output
-			if result.StepOutput != nil {
-				run.Output = outputToMap(*result.StepOutput)
-			} else {
-				run.Output = result.Output
-			}
+		if result != nil && result.StepOutput != nil {
+			run.Output = stepOutputToMap(*result.StepOutput)
 		}
 	}
 
