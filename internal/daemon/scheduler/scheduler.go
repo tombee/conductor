@@ -246,6 +246,13 @@ func (s *Scheduler) tick(ctx context.Context, now time.Time) {
 // triggerSchedule triggers a scheduled workflow.
 func (s *Scheduler) triggerSchedule(ctx context.Context, sched *Schedule) {
 	schedLogger := s.logger.With(slog.String("schedule", sched.Name), slog.String(log.WorkflowKey, sched.Workflow))
+
+	// Check if runner is draining (graceful shutdown in progress)
+	if s.runner.IsDraining() {
+		schedLogger.Info("Skipping scheduled execution during graceful shutdown")
+		return
+	}
+
 	schedLogger.Info("Triggering scheduled workflow")
 
 	// Find workflow file

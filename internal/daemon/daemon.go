@@ -433,6 +433,32 @@ func (d *Daemon) Shutdown(ctx context.Context) error {
 		return nil
 	}
 
+	// Start draining: log the drain start with active workflow count
+	activeCount := d.runner.ActiveRunCount()
+	d.logger.Info("graceful shutdown initiated",
+		slog.Int("active_workflows", activeCount))
+
+	// Put runner into draining mode to stop accepting new workflows
+	d.runner.StartDraining()
+
+	// Stop accepting new connections (disable keep-alive)
+	if d.server != nil {
+		d.server.SetKeepAlivesEnabled(false)
+	}
+
+	// Wait for active workflows to complete (with drain timeout)
+	drainCtx, drainCancel := context.WithTimeout(ctx, d.cfg.Daemon.DrainTimeout)
+	defer drainCancel()
+
+	if err := d.runner.WaitForDrain(drainCtx, d.cfg.Daemon.DrainTimeout); err != nil {
+		remainingCount := d.runner.ActiveRunCount()
+		d.logger.Warn("drain timeout exceeded",
+			slog.Int("remaining_workflows", remainingCount),
+			slog.Duration("drain_timeout", d.cfg.Daemon.DrainTimeout))
+	} else {
+		d.logger.Info("all workflows completed during drain")
+	}
+
 	// Stop leader election
 	if d.leader != nil {
 		d.leader.Stop()

@@ -109,6 +109,13 @@ func (router *Router) RegisterRoutes(mux *http.ServeMux) {
 
 // handleWebhook handles a webhook request for a specific route.
 func (router *Router) handleWebhook(w http.ResponseWriter, r *http.Request, route Route) {
+	// Check if runner is draining (graceful shutdown in progress)
+	if router.runner.IsDraining() {
+		w.Header().Set("Retry-After", "10")
+		writeError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
+		return
+	}
+
 	// Read body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -189,6 +196,13 @@ func (router *Router) handleWebhook(w http.ResponseWriter, r *http.Request, rout
 
 // handleDynamicWebhook handles webhooks to /webhooks/{source}/{workflow}
 func (router *Router) handleDynamicWebhook(w http.ResponseWriter, r *http.Request) {
+	// Check if runner is draining (graceful shutdown in progress)
+	if router.runner.IsDraining() {
+		w.Header().Set("Retry-After", "10")
+		writeError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
+		return
+	}
+
 	source := r.PathValue("source")
 	workflowName := r.PathValue("workflow")
 

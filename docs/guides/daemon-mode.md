@@ -660,6 +660,242 @@ volumes:
   postgres-data:
 ```
 
+## Graceful Shutdown
+
+conductord implements graceful shutdown to ensure workflows complete safely when the daemon stops.
+
+### How It Works
+
+When conductord receives a SIGTERM signal (from `systemctl stop`, `docker stop`, etc.):
+
+1. **Enter drain mode** - Stop accepting new workflow submissions
+2. **Wait for active workflows** - Allow running workflows to complete
+3. **Timeout handling** - After `drain_timeout`, force shutdown
+4. **Clean shutdown** - Close connections and clean up resources
+
+### Drain Timeout Configuration
+
+Configure how long to wait for active workflows:
+
+```yaml
+# In config.yaml
+daemon:
+  drain_timeout: 30s  # Default: 30 seconds
+```
+
+Or via environment variable:
+
+```bash
+export CONDUCTOR_DRAIN_TIMEOUT=60s
+conductord
+```
+
+Common timeout values:
+- `30s` - Quick shutdown for short workflows (default)
+- `5m` - Allow longer workflows to complete
+- `0s` - Immediate shutdown (not recommended - workflows will be cancelled)
+
+### Client Behavior During Shutdown
+
+When draining, clients receive `503 Service Unavailable` responses:
+
+```bash
+$ curl -X POST http://localhost:9000/v1/runs \
+  -H "Content-Type: application/x-yaml" \
+  --data-binary @workflow.yaml
+
+HTTP/1.1 503 Service Unavailable
+Retry-After: 10
+
+{
+  "error": "daemon is shutting down gracefully"
+}
+```
+
+The `Retry-After: 10` header tells clients to retry in 10 seconds.
+
+### systemd Integration
+
+For proper graceful shutdown with systemd, configure these settings:
+
+```ini
+[Service]
+# Allow mixed signal handling (SIGTERM to daemon, SIGKILL to child processes)
+KillMode=mixed
+
+# Wait longer than drain_timeout before force-killing
+# If drain_timeout=30s, set TimeoutStopSec to at least 40s
+TimeoutStopSec=60
+
+# Send SIGTERM for graceful shutdown (default, but explicit is better)
+KillSignal=SIGTERM
+```
+
+Example complete service file:
+
+```ini
+[Unit]
+Description=Conductor Workflow Daemon
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=conductor
+Group=conductor
+WorkingDirectory=/var/lib/conductor
+
+# Daemon configuration
+ExecStart=/usr/local/bin/conductord \
+  --socket=/var/run/conductor.sock \
+  --workflows-dir=/etc/conductor/workflows \
+  --backend=postgres \
+  --postgres-url=postgresql://conductor:pass@localhost/conductor
+
+# Environment configuration
+Environment="CONDUCTOR_DRAIN_TIMEOUT=60s"
+
+# Graceful shutdown settings
+KillMode=mixed
+TimeoutStopSec=90
+KillSignal=SIGTERM
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### Docker and Kubernetes
+
+**Docker:**
+
+Use `--stop-timeout` to give workflows time to complete:
+
+```bash
+docker run -d \
+  --name conductord \
+  --stop-timeout 60 \
+  conductor:latest
+```
+
+**docker-compose:**
+
+```yaml
+services:
+  conductord:
+    build: .
+    environment:
+      CONDUCTOR_DRAIN_TIMEOUT: 60s
+    stop_grace_period: 90s  # Longer than drain_timeout
+```
+
+**Kubernetes:**
+
+Set `terminationGracePeriodSeconds` in pod spec:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: conductord
+spec:
+  template:
+    spec:
+      terminationGracePeriodSeconds: 90  # Longer than drain_timeout
+      containers:
+      - name: conductord
+        image: conductor:latest
+        env:
+        - name: CONDUCTOR_DRAIN_TIMEOUT
+          value: "60s"
+```
+
+### Monitoring Graceful Shutdown
+
+Check logs during shutdown:
+
+```bash
+# Shutdown initiated
+INFO: graceful shutdown initiated active_workflows=5
+
+# Drain complete
+INFO: all workflows completed during drain
+
+# Or if timeout exceeded
+WARN: drain timeout exceeded remaining_workflows=2 drain_timeout=30s
+
+# Final shutdown
+INFO: daemon stopped
+```
+
+### Best Practices
+
+1. **Set drain_timeout based on workflow duration**
+   - If workflows typically run 2-5 minutes, use `drain_timeout: 5m`
+   - Add buffer for safety: `drain_timeout: 7m`
+
+2. **Configure systemd/Docker timeout longer than drain_timeout**
+   - `TimeoutStopSec` = `drain_timeout` + 20-30 seconds
+   - Gives daemon time to clean up after drain
+
+3. **Handle 503 responses in clients**
+   - Implement retry logic with exponential backoff
+   - Respect `Retry-After` header
+   - Queue requests during brief maintenance windows
+
+4. **Test shutdown behavior**
+   ```bash
+   # Start daemon with test workflow
+   conductord &
+
+   # Submit a long-running workflow
+   conductor run long-workflow.yaml
+
+   # Immediately send SIGTERM
+   kill -TERM $!
+
+   # Verify workflow completes and daemon exits cleanly
+   ```
+
+5. **Use health checks during deployments**
+   - Check `/health` endpoint before routing traffic
+   - Drain old instances before terminating
+   - Implement rolling deployments to avoid service interruption
+
+### Troubleshooting
+
+**Workflows getting cancelled during shutdown:**
+
+Problem: Workflows are cancelled before completing.
+
+Solution: Increase `drain_timeout`:
+
+```bash
+export CONDUCTOR_DRAIN_TIMEOUT=5m
+```
+
+**systemd killing daemon too quickly:**
+
+Problem: systemd sends SIGKILL before drain completes.
+
+Solution: Increase `TimeoutStopSec` in service file:
+
+```ini
+TimeoutStopSec=300  # 5 minutes
+```
+
+**503 errors during normal operation:**
+
+Problem: Clients getting 503 when daemon is running normally.
+
+Solution: This should not happen - check logs for unexpected drain mode activation. May indicate a bug or external signal being sent.
+
 ## Security
 
 ### Authentication

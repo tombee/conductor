@@ -93,6 +93,13 @@ type DaemonConfig struct {
 	// ShutdownTimeout is the maximum duration to wait for graceful shutdown.
 	ShutdownTimeout time.Duration `yaml:"shutdown_timeout,omitempty"`
 
+	// DrainTimeout is the maximum duration to wait for active workflows to complete during shutdown.
+	// When the daemon receives SIGTERM, it stops accepting new workflows and waits up to this
+	// duration for existing workflows to complete before forcing shutdown.
+	// Environment: CONDUCTOR_DRAIN_TIMEOUT
+	// Default: 30s
+	DrainTimeout time.Duration `yaml:"drain_timeout,omitempty"`
+
 	// CheckpointsEnabled enables checkpoint saving for crash recovery.
 	CheckpointsEnabled bool `yaml:"checkpoints_enabled"`
 
@@ -479,6 +486,7 @@ func Default() *Config {
 			MaxConcurrentRuns:  10,
 			DefaultTimeout:     30 * time.Minute,
 			ShutdownTimeout:    30 * time.Second,
+			DrainTimeout:       30 * time.Second,
 			CheckpointsEnabled: true,
 			Backend: BackendConfig{
 				Type: "memory",
@@ -657,6 +665,9 @@ func (c *Config) applyDefaults() {
 	if c.Daemon.ShutdownTimeout == 0 {
 		c.Daemon.ShutdownTimeout = defaults.Daemon.ShutdownTimeout
 	}
+	if c.Daemon.DrainTimeout == 0 {
+		c.Daemon.DrainTimeout = defaults.Daemon.DrainTimeout
+	}
 	if c.Daemon.Backend.Type == "" {
 		c.Daemon.Backend.Type = defaults.Daemon.Backend.Type
 	}
@@ -799,6 +810,11 @@ func (c *Config) loadFromEnv() {
 	if val := os.Getenv("CONDUCTOR_SHUTDOWN_TIMEOUT"); val != "" {
 		if duration, err := time.ParseDuration(val); err == nil {
 			c.Daemon.ShutdownTimeout = duration
+		}
+	}
+	if val := os.Getenv("CONDUCTOR_DRAIN_TIMEOUT"); val != "" {
+		if duration, err := time.ParseDuration(val); err == nil {
+			c.Daemon.DrainTimeout = duration
 		}
 	}
 	if val := os.Getenv("CONDUCTOR_CHECKPOINTS_ENABLED"); val != "" {

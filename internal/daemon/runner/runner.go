@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -149,6 +150,9 @@ type Runner struct {
 
 	// Metrics collector for observability (optional)
 	metrics MetricsCollector
+
+	// draining indicates the runner is in graceful shutdown mode
+	draining atomic.Bool
 }
 
 // New creates a new Runner with the given configuration.
@@ -407,4 +411,52 @@ func (r *Runner) Subscribe(runID string) (<-chan LogEntry, func()) {
 	return ch, unsub
 }
 
+// StartDraining puts the runner into draining mode, preventing new workflow submissions.
+func (r *Runner) StartDraining() {
+	r.draining.Store(true)
+}
 
+// IsDraining returns true if the runner is in draining mode.
+func (r *Runner) IsDraining() bool {
+	return r.draining.Load()
+}
+
+// ActiveRunCount returns the number of currently active (running or pending) workflow runs.
+func (r *Runner) ActiveRunCount() int {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	count := 0
+	for _, run := range r.runs {
+		if run.Status == RunStatusRunning || run.Status == RunStatusPending {
+			count++
+		}
+	}
+	return count
+}
+
+// WaitForDrain waits for all active runs to complete or until the timeout is reached.
+// Returns nil if all runs complete, or an error if the timeout expires with runs still active.
+func (r *Runner) WaitForDrain(ctx context.Context, timeout time.Duration) error {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	timeoutCh := time.After(timeout)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-timeoutCh:
+			remaining := r.ActiveRunCount()
+			if remaining > 0 {
+				return fmt.Errorf("drain timeout: %d workflow(s) still running", remaining)
+			}
+			return nil
+		case <-ticker.C:
+			if r.ActiveRunCount() == 0 {
+				return nil
+			}
+		}
+	}
+}

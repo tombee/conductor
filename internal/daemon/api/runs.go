@@ -52,6 +52,13 @@ type CreateRunRequest struct {
 
 // handleCreate handles POST /v1/runs.
 func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
+	// Check if runner is draining (graceful shutdown in progress)
+	if h.runner.IsDraining() {
+		w.Header().Set("Retry-After", "10")
+		writeError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
+		return
+	}
+
 	// Check for remote reference in query params
 	remoteRef := r.URL.Query().Get("remote_ref")
 	noCache := r.URL.Query().Get("no_cache") == "true"

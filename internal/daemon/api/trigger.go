@@ -49,6 +49,13 @@ func (h *TriggerHandler) RegisterRoutes(mux *http.ServeMux) {
 
 // handleTrigger triggers a workflow by name.
 func (h *TriggerHandler) handleTrigger(w http.ResponseWriter, r *http.Request) {
+	// Check if runner is draining (graceful shutdown in progress)
+	if h.runner.IsDraining() {
+		w.Header().Set("Retry-After", "10")
+		writeError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
+		return
+	}
+
 	workflowName := r.PathValue("workflow")
 	if workflowName == "" {
 		writeError(w, http.StatusBadRequest, "workflow name required")
