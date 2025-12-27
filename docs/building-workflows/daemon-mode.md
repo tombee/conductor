@@ -93,7 +93,14 @@ conductord
 
 ### Listen Configuration
 
-conductord can listen on Unix sockets or TCP:
+conductord uses a two-plane architecture:
+
+1. **Control Plane**: Management API for workflow execution, runs, and status
+2. **Public API** (Optional): Webhook and API-triggered workflows with per-workflow authentication
+
+#### Control Plane (Required)
+
+The control plane handles management operations and can listen on Unix sockets or TCP:
 
 **Unix Socket (Default - Recommended)**
 
@@ -130,6 +137,65 @@ conductord \
   --allow-remote \
   --tls-cert=/path/to/cert.pem \
   --tls-key=/path/to/key.pem
+```
+
+#### Public API (Optional)
+
+The public API serves webhooks and API-triggered workflows on a separate port. It's disabled by default and uses per-workflow authentication instead of global API keys.
+
+**Enable Public API**
+
+```bash
+conductord \
+  --tcp=:9000 \
+  --public-api-enabled \
+  --public-api-tcp=:9001
+```
+
+Or via environment:
+
+```bash
+export CONDUCTOR_PUBLIC_API_ENABLED=true
+export CONDUCTOR_PUBLIC_API_TCP=:9001
+conductord
+```
+
+**Security Model**
+
+| Plane | Authentication | Endpoints | Use Case |
+|-------|---------------|-----------|----------|
+| Control Plane | Global API key | All management operations | Admin access |
+| Public API | Per-workflow secrets | Webhooks, API triggers, minimal health | External integrations |
+
+The public API exposes only:
+- `POST /webhooks/{source}/{workflow}` - Webhook receivers (signature-verified)
+- `POST /v1/start/{workflow}` - API trigger endpoints (Bearer token auth)
+- `GET /health` - Minimal health check (no auth, for load balancers)
+
+**When to Enable Public API**
+
+Enable the public API when you need:
+- GitHub/Slack webhooks from the internet
+- API-triggered workflows with per-workflow tokens
+- Separation between admin operations and workflow triggers
+
+Keep it disabled (default) when:
+- Only using scheduled workflows
+- All workflow execution is via control plane API
+- No external triggers needed
+
+**Example Deployment: exe.dev**
+
+```bash
+# Control plane stays private (via exe.dev auth)
+ssh exe.dev share port conductor 9000
+
+# Public API is exposed publicly (with TLS via exe.dev)
+ssh exe.dev share port conductor 9001 --name conductor-webhooks
+ssh exe.dev share set-public conductor-webhooks
+
+# Now GitHub can send webhooks to:
+# https://conductor-webhooks-user.exe.dev/webhooks/github/my-workflow
 ```
 
 ### Storage Backend
@@ -235,29 +301,27 @@ Useful for:
 
 ## Webhooks
 
-Webhooks trigger workflows from external events.
+Webhooks trigger workflows from external events. Webhooks are served on the public API port and require signature verification.
 
 ### Defining Webhook Workflows
 
-Add webhook triggers to workflow definitions:
+Use the `listen.webhook` configuration in workflow definitions:
 
 ```yaml
 name: github-pr-review
 description: Analyze pull requests from GitHub webhooks
 
-triggers:
-  - type: webhook
-    webhook:
-      path: /webhooks/github/pr
-      source: github
-      events:
-        - pull_request.opened
-        - pull_request.synchronize
-      secret: ${GITHUB_WEBHOOK_SECRET}
-      input_mapping:
-        pr_url: $.pull_request.html_url
-        pr_number: $.pull_request.number
-        repo: $.repository.full_name
+listen:
+  webhook:
+    source: github
+    secret: ${GITHUB_WEBHOOK_SECRET}
+    events:
+      - pull_request.opened
+      - pull_request.synchronize
+    input_mapping:
+      pr_url: pull_request.html_url
+      pr_number: pull_request.number
+      repo: repository.full_name
 
 inputs:
   - name: pr_url
@@ -289,41 +353,51 @@ outputs:
     value: $.review.content
 ```
 
+The webhook is accessible at `POST /webhooks/{source}/{workflow-name}`. For the example above, the URL would be:
+```
+POST /webhooks/github/github-pr-review
+```
+
 ### Webhook Sources
 
 **GitHub**
 
 ```yaml
-webhook:
-  path: /webhooks/github/pr
-  source: github
-  secret: ${GITHUB_WEBHOOK_SECRET}
-  events:
-    - pull_request
-    - push
-    - issues
+listen:
+  webhook:
+    source: github
+    secret: ${GITHUB_WEBHOOK_SECRET}
+    events:
+      - pull_request
+      - push
+      - issues
 ```
 
-conductord verifies GitHub webhook signatures using the secret.
+conductord verifies GitHub webhook signatures (HMAC-SHA256 via `X-Hub-Signature-256` header) using the secret.
 
 **Slack**
 
 ```yaml
-webhook:
-  path: /webhooks/slack/commands
-  source: slack
-  secret: ${SLACK_SIGNING_SECRET}
+listen:
+  webhook:
+    source: slack
+    secret: ${SLACK_SIGNING_SECRET}
 ```
+
+conductord verifies Slack signatures (HMAC-SHA256 via `X-Slack-Signature` header with timestamp).
 
 **Generic (Custom)**
 
 ```yaml
-webhook:
-  path: /webhooks/custom/trigger
-  source: generic
-  input_mapping:
-    custom_field: $.data.field
+listen:
+  webhook:
+    source: generic
+    secret: ${WEBHOOK_SECRET}
+    input_mapping:
+      custom_field: data.field
 ```
+
+For generic webhooks, include `X-Webhook-Signature` header with HMAC-SHA256 signature.
 
 ### Configuring GitHub Webhooks
 
@@ -340,14 +414,111 @@ webhook:
 Use ngrok to expose local conductord:
 
 ```bash
-# Start conductord
-conductord --tcp=localhost:9000
+# Start conductord with public API enabled
+conductord --tcp=localhost:9000 --public-api-enabled --public-api-tcp=localhost:9001
 
-# In another terminal, start ngrok
-ngrok http 9000
+# In another terminal, start ngrok for public API
+ngrok http 9001
 
 # Use the ngrok URL in webhook configuration
-# https://abc123.ngrok.io/webhooks/github/pr
+# https://abc123.ngrok.io/webhooks/github/github-pr-review
+```
+
+## API-Triggered Workflows
+
+API triggers allow workflows to be started via authenticated HTTP POST requests. Unlike webhooks which require signature verification, API triggers use simple Bearer token authentication.
+
+### Defining API-Triggered Workflows
+
+Use the `listen.api` configuration:
+
+```yaml
+name: deploy-workflow
+description: Deploy application to production
+
+listen:
+  api:
+    secret: ${DEPLOY_SECRET}
+
+inputs:
+  - name: environment
+    type: string
+    required: true
+  - name: version
+    type: string
+    required: true
+
+steps:
+  - id: validate
+    type: llm
+    inputs:
+      prompt: "Validate deployment of {{.version}} to {{.environment}}"
+
+  - id: deploy
+    type: action
+    action: http
+    inputs:
+      method: POST
+      url: "https://deploy-api.example.com/deploy"
+      body: |
+        {
+          "environment": "{{.environment}}",
+          "version": "{{.version}}"
+        }
+```
+
+The workflow is accessible at `POST /v1/start/{workflow-name}` on the public API. For the example above:
+
+```bash
+curl -X POST https://your-server.com/v1/start/deploy-workflow \
+  -H "Authorization: Bearer ${DEPLOY_SECRET}" \
+  -H "Content-Type: application/json" \
+  -d '{"environment": "production", "version": "1.2.3"}'
+
+# Response:
+{
+  "status": "triggered",
+  "run_id": "run_abc123",
+  "workflow": "deploy-workflow"
+}
+```
+
+### Generating Secrets
+
+Generate strong secrets for API triggers:
+
+```bash
+# Generate a cryptographically secure secret
+openssl rand -base64 32
+
+# Set in environment
+export DEPLOY_SECRET=$(openssl rand -base64 32)
+```
+
+Secrets must be:
+- At least 32 characters (256 bits of entropy recommended)
+- Stored securely (environment variables, secrets manager)
+- Never committed to version control
+
+### Combining Multiple Listeners
+
+A workflow can listen on multiple triggers:
+
+```yaml
+name: deploy-workflow
+description: Deploy via webhook, API, or schedule
+
+listen:
+  webhook:
+    source: github
+    secret: ${GITHUB_WEBHOOK_SECRET}
+    events:
+      - push
+  api:
+    secret: ${DEPLOY_SECRET}
+  schedule:
+    cron: "0 2 * * *"  # Daily at 2 AM
+    timezone: "UTC"
 ```
 
 ## Scheduled Workflows
@@ -360,14 +531,13 @@ Execute workflows on a schedule using cron expressions.
 name: daily-report
 description: Generate daily analytics report
 
-triggers:
-  - type: schedule
-    schedule:
-      cron: "0 9 * * *"  # Every day at 9 AM
-      timezone: "America/New_York"
-      enabled: true
-      inputs:
-        report_type: "daily"
+listen:
+  schedule:
+    cron: "0 9 * * *"  # Every day at 9 AM
+    timezone: "America/New_York"
+    enabled: true
+    inputs:
+      report_type: "daily"
 
 inputs:
   - name: report_type

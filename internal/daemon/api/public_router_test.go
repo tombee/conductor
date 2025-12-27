@@ -21,7 +21,7 @@ import (
 )
 
 func TestPublicRouter_Health(t *testing.T) {
-	router := NewPublicRouter()
+	router := NewPublicRouter(PublicRouterConfig{})
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
@@ -44,7 +44,7 @@ func TestPublicRouter_Health(t *testing.T) {
 }
 
 func TestPublicRouter_HealthMethodNotAllowed(t *testing.T) {
-	router := NewPublicRouter()
+	router := NewPublicRouter(PublicRouterConfig{})
 
 	req := httptest.NewRequest(http.MethodPost, "/health", nil)
 	rec := httptest.NewRecorder()
@@ -57,7 +57,7 @@ func TestPublicRouter_HealthMethodNotAllowed(t *testing.T) {
 }
 
 func TestPublicRouter_NotFound(t *testing.T) {
-	router := NewPublicRouter()
+	router := NewPublicRouter(PublicRouterConfig{})
 
 	req := httptest.NewRequest(http.MethodGet, "/nonexistent", nil)
 	rec := httptest.NewRecorder()

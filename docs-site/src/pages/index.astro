@@ -71,17 +71,21 @@ const useCases = [
 const codeExample = `name: security-review
 description: Review PRs for security issues
 
-triggers:
-  - event: pull_request
-    actions: [opened, synchronize]
+listen:
+  webhook:
+    source: github
+    secret: \${GITHUB_WEBHOOK_SECRET}
+    events:
+      - pull_request.opened
+      - pull_request.synchronize
 
 steps:
   - id: get_diff
     action: github.get_pull_request_diff
     inputs:
-      owner: "{{.trigger.repo.owner}}"
-      repo: "{{.trigger.repo.name}}"
-      number: "{{.trigger.number}}"
+      owner: "{{.payload.repository.owner.login}}"
+      repo: "{{.payload.repository.name}}"
+      number: "{{.payload.pull_request.number}}"
 
   - id: review
     model: claude-sonnet

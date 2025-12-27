@@ -16,6 +16,8 @@ package api
 
 import (
 	"net/http"
+
+	"github.com/tombee/conductor/internal/daemon/runner"
 )
 
 // PublicRouter handles routing for the public-facing API.
@@ -25,12 +27,18 @@ type PublicRouter struct {
 	mux *http.ServeMux
 }
 
+// PublicRouterConfig contains configuration for the public router.
+type PublicRouterConfig struct {
+	Runner       *runner.Runner
+	WorkflowsDir string
+}
+
 // NewPublicRouter creates a new public API router.
 // The public API only exposes endpoints that are safe for public access:
 // - GET /health - Minimal health check (no internals exposed)
 // - POST /webhooks/* - Webhook receivers (signature-verified)
 // - POST /v1/start/* - API trigger endpoints (Bearer token auth)
-func NewPublicRouter() *PublicRouter {
+func NewPublicRouter(cfg PublicRouterConfig) *PublicRouter {
 	mux := http.NewServeMux()
 
 	router := &PublicRouter{
@@ -39,6 +47,16 @@ func NewPublicRouter() *PublicRouter {
 
 	// Register minimal health endpoint
 	mux.HandleFunc("/health", router.handleHealth)
+
+	// Register start handler for API-triggered workflows
+	if cfg.Runner != nil && cfg.WorkflowsDir != "" {
+		startHandler := NewStartHandler(cfg.Runner, cfg.WorkflowsDir)
+		startHandler.RegisterRoutes(mux)
+
+		// Register webhook handler
+		webhookHandler := NewWebhookHandler(cfg.Runner, cfg.WorkflowsDir)
+		webhookHandler.RegisterRoutes(mux)
+	}
 
 	return router
 }

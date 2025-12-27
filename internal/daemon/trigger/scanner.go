@@ -125,16 +125,35 @@ func (s *Scanner) scanWorkflow(path string) ([]WorkflowTrigger, error) {
 		return nil, fmt.Errorf("failed to parse workflow: %w", err)
 	}
 
-	if len(def.Triggers) == 0 {
+	// Convert listen config to legacy trigger format for backward compatibility
+	// This scanner is used internally and will be updated in SPEC-137
+	if def.Listen == nil {
 		return nil, nil
 	}
 
-	triggers := make([]WorkflowTrigger, 0, len(def.Triggers))
-	for _, t := range def.Triggers {
+	triggers := make([]WorkflowTrigger, 0, 2)
+
+	// Convert webhook listener to trigger
+	if def.Listen.Webhook != nil {
 		triggers = append(triggers, WorkflowTrigger{
 			WorkflowPath: path,
 			WorkflowName: def.Name,
-			Trigger:      t,
+			Trigger: workflow.TriggerDefinition{
+				Type:    workflow.TriggerTypeWebhook,
+				Webhook: def.Listen.Webhook,
+			},
+		})
+	}
+
+	// Convert schedule listener to trigger
+	if def.Listen.Schedule != nil {
+		triggers = append(triggers, WorkflowTrigger{
+			WorkflowPath: path,
+			WorkflowName: def.Name,
+			Trigger: workflow.TriggerDefinition{
+				Type:     workflow.TriggerTypeSchedule,
+				Schedule: def.Listen.Schedule,
+			},
 		})
 	}
 

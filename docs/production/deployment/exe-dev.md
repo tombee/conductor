@@ -24,11 +24,35 @@ export CONDUCTOR_API_KEY=<your-api-key>
 conductor runs list
 ```
 
+## Webhook Support
+
+To enable GitHub/Slack webhooks, expose the public API on a second port:
+
+```bash
+# On the VM, enable public API
+ssh exe.dev ssh conductor
+cat >> ~/.config/conductor/config.yaml << EOF
+daemon:
+  listen:
+    public_api:
+      enabled: true
+      tcp: :9001
+EOF
+~/stop-conductor.sh && ~/start-conductor.sh
+
+# From local machine, expose it publicly
+ssh exe.dev share port conductor 9001 --name conductor-webhooks
+ssh exe.dev share set-public conductor-webhooks
+```
+
+Now configure GitHub webhooks to send to `https://conductor-webhooks-<your-id>.exe.dev/webhooks/github/{workflow-name}`.
+
 ## Full Documentation
 
 See the complete deployment guide at [deploy/exe.dev/](https://github.com/tombee/conductor/tree/main/deploy/exe.dev) which covers:
 
 - Detailed setup instructions
+- Webhook configuration with two-port deployment
 - Team access management
 - Backup and restore procedures
 - Upgrading
@@ -37,9 +61,15 @@ See the complete deployment guide at [deploy/exe.dev/](https://github.com/tombee
 
 ## Security Model
 
-exe.dev deployment uses defense-in-depth:
+exe.dev deployment uses defense-in-depth with a two-plane architecture:
 
-1. **exe.dev perimeter** - Only invited users can access your VM's shared ports
-2. **Conductor API key** - Required for all API requests even with network access
+**Control Plane (Port 9000 - Private)**
+1. **exe.dev perimeter** - Only invited users can access
+2. **Conductor API key** - Required for all management API requests
 
-Both layers are enabled by default. Never disable API key authentication.
+**Public API (Port 9001 - Optional, Public)**
+1. **Per-workflow secrets** - Each webhook/trigger has its own credential
+2. **Signature verification** - GitHub/Slack signatures validated
+3. **No management APIs** - Only workflow triggers exposed
+
+Both layers are enabled by default. Never disable API key authentication on the control plane.

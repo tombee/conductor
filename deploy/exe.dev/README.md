@@ -72,7 +72,9 @@ From your local machine, tell exe.dev to proxy port 9000:
 ssh exe.dev share port conductor 9000
 ```
 
-This returns a URL like `https://conductor-abc123.exe.dev` - this is your Conductor endpoint.
+This returns a URL like `https://conductor-abc123.exe.dev` - this is your Conductor control plane endpoint.
+
+**For Webhooks:** If you plan to use GitHub/Slack webhooks, you'll also need to expose the public API port (see [Webhook Support](#webhook-support) below).
 
 ### Step 4: Connect Local CLI
 
@@ -109,6 +111,113 @@ source ~/.bashrc
 ~/stop-conductor.sh
 ~/start-conductor.sh
 ```
+
+## Webhook Support
+
+To use GitHub/Slack webhooks, you need to expose the public API port separately.
+
+### Enable Public API
+
+On the VM, configure the public API:
+
+```bash
+ssh exe.dev ssh conductor
+
+# Edit config to enable public API
+cat >> ~/.config/conductor/config.yaml << EOF
+daemon:
+  listen:
+    public_api:
+      enabled: true
+      tcp: :9001
+EOF
+
+# Restart daemon
+~/stop-conductor.sh
+~/start-conductor.sh
+```
+
+### Expose Public API Port
+
+From your local machine:
+
+```bash
+# Expose the public API port and make it public
+ssh exe.dev share port conductor 9001 --name conductor-webhooks
+ssh exe.dev share set-public conductor-webhooks
+```
+
+This returns a public URL like `https://conductor-webhooks-abc123.exe.dev`.
+
+### Configure Workflow
+
+Create a workflow with webhook listener:
+
+```yaml
+name: github-pr-review
+description: Analyze pull requests
+
+listen:
+  webhook:
+    source: github
+    secret: ${GITHUB_WEBHOOK_SECRET}
+    events:
+      - pull_request.opened
+      - pull_request.synchronize
+
+steps:
+  - id: review
+    type: llm
+    inputs:
+      prompt: "Review this PR"
+```
+
+Upload to the VM:
+
+```bash
+# Copy workflow to VM
+scp -o ProxyCommand="ssh -W %h:%p exe.dev" \
+    ./pr-review.yaml \
+    conductor:~/workflows/
+```
+
+### Configure GitHub Webhook
+
+1. Go to your GitHub repository → Settings → Webhooks
+2. Click "Add webhook"
+3. Set Payload URL: `https://conductor-webhooks-abc123.exe.dev/webhooks/github/github-pr-review`
+4. Set Content type: `application/json`
+5. Set Secret: (same value as GITHUB_WEBHOOK_SECRET on VM)
+6. Select events: Pull requests
+7. Click "Add webhook"
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    exe.dev Platform                     │
+├──────────────────────┬──────────────────────────────────┤
+│  Control Plane       │  Public API                      │
+│  (Private)           │  (Public)                        │
+│                      │                                  │
+│  Port 9000           │  Port 9001                       │
+│  conductor-abc.exe.  │  conductor-webhooks-abc.exe.dev  │
+│                      │                                  │
+│  - Workflow mgmt     │  - Webhooks                      │
+│  - Run status        │  - API triggers                  │
+│  - Admin ops         │  - Health check                  │
+│                      │                                  │
+│  Auth: API key       │  Auth: Per-workflow secrets      │
+│  Access: Team only   │  Access: Public internet         │
+└──────────────────────┴──────────────────────────────────┘
+```
+
+### Security Notes
+
+- Control plane stays private (requires exe.dev team access + API key)
+- Public API requires per-workflow secrets (GitHub signature, Bearer tokens)
+- Each workflow has its own secret - compromise of one doesn't affect others
+- Public API only exposes webhook/trigger endpoints, not management APIs
 
 ## Team Access
 

@@ -83,6 +83,11 @@ type Daemon struct {
 
 // New creates a new daemon instance.
 func New(cfg *config.Config, opts Options) (*Daemon, error) {
+	// Validate that workflows requiring public API have it enabled (SPEC-137)
+	if err := config.ValidatePublicAPIRequirements(cfg); err != nil {
+		return nil, err
+	}
+
 	// Create logger with daemon component context
 	logger := internallog.WithComponent(internallog.New(internallog.FromEnv()), "daemon")
 
@@ -331,23 +336,27 @@ func (d *Daemon) Start(ctx context.Context) error {
 	triggerHandler := api.NewTriggerHandler(d.runner, d.cfg.Daemon.WorkflowsDir)
 	triggerHandler.RegisterRoutes(router.Mux())
 
-	// Register webhook routes
-	webhookRoutes := make([]webhook.Route, len(d.cfg.Daemon.Webhooks.Routes))
-	for i, r := range d.cfg.Daemon.Webhooks.Routes {
-		webhookRoutes[i] = webhook.Route{
-			Path:         r.Path,
-			Source:       r.Source,
-			Workflow:     r.Workflow,
-			Events:       r.Events,
-			Secret:       r.Secret,
-			InputMapping: r.InputMapping,
+	// Register webhook routes on control plane only if public API is disabled
+	// When public API is enabled, webhooks are only available on the public API port
+	// When public API is disabled, webhooks from config are available on control plane
+	if !d.cfg.Daemon.Listen.PublicAPI.Enabled {
+		webhookRoutes := make([]webhook.Route, len(d.cfg.Daemon.Webhooks.Routes))
+		for i, r := range d.cfg.Daemon.Webhooks.Routes {
+			webhookRoutes[i] = webhook.Route{
+				Path:         r.Path,
+				Source:       r.Source,
+				Workflow:     r.Workflow,
+				Events:       r.Events,
+				Secret:       r.Secret,
+				InputMapping: r.InputMapping,
+			}
 		}
+		webhookRouter := webhook.NewRouter(webhook.Config{
+			Routes:       webhookRoutes,
+			WorkflowsDir: d.cfg.Daemon.WorkflowsDir,
+		}, d.runner)
+		webhookRouter.RegisterRoutes(router.Mux())
 	}
-	webhookRouter := webhook.NewRouter(webhook.Config{
-		Routes:       webhookRoutes,
-		WorkflowsDir: d.cfg.Daemon.WorkflowsDir,
-	}, d.runner)
-	webhookRouter.RegisterRoutes(router.Mux())
 
 	// Register schedules API
 	schedulesHandler := api.NewSchedulesHandler(d.scheduler)
@@ -439,7 +448,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// Create and start public API server if enabled
 	var publicErrCh chan error
 	if d.cfg.Daemon.Listen.PublicAPI.Enabled {
-		publicRouter := api.NewPublicRouter()
+		publicRouter := api.NewPublicRouter(api.PublicRouterConfig{
+			Runner:       d.runner,
+			WorkflowsDir: d.cfg.Daemon.WorkflowsDir,
+		})
 		d.publicServer = publicapi.New(
 			d.cfg.Daemon.Listen.PublicAPI,
 			publicRouter.Handler(),
