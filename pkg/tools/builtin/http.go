@@ -15,6 +15,7 @@ import (
 
 	"github.com/tombee/conductor/internal/tracing"
 	"github.com/tombee/conductor/pkg/errors"
+	"github.com/tombee/conductor/pkg/httpclient"
 	"github.com/tombee/conductor/pkg/security"
 	"github.com/tombee/conductor/pkg/tools"
 )
@@ -143,24 +144,37 @@ func (t *HTTPTool) WithSecurityConfig(config *security.HTTPSecurityConfig) *HTTP
 	}
 	// Update client with secure transport
 	if config != nil {
-		t.client = &http.Client{
-			Timeout: t.timeout,
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				if len(via) >= config.MaxRedirects {
-					return fmt.Errorf("too many redirects")
-				}
-				// Validate redirect URL if configured
-				if config.ValidateRedirects {
-					if err := config.ValidateURL(req.URL.String()); err != nil {
-						return fmt.Errorf("redirect blocked: %w", err)
-					}
-				}
-				return nil
-			},
-			Transport: &http.Transport{
-				DialContext: config.SecureDialContext(t.dnsCache),
-			},
+		// Create base client using shared httpclient package
+		cfg := httpclient.DefaultConfig()
+		cfg.Timeout = t.timeout
+		cfg.UserAgent = "conductor-http-tool/1.0"
+
+		baseClient, err := httpclient.New(cfg)
+		if err != nil {
+			// Fallback to basic client if creation fails
+			baseClient = &http.Client{Timeout: t.timeout}
 		}
+
+		// Override transport with security-enhanced version
+		baseClient.Transport = &http.Transport{
+			DialContext: config.SecureDialContext(t.dnsCache),
+		}
+
+		// Set redirect validation
+		baseClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			if len(via) >= config.MaxRedirects {
+				return fmt.Errorf("too many redirects")
+			}
+			// Validate redirect URL if configured
+			if config.ValidateRedirects {
+				if err := config.ValidateURL(req.URL.String()); err != nil {
+					return fmt.Errorf("redirect blocked: %w", err)
+				}
+			}
+			return nil
+		}
+
+		t.client = baseClient
 	}
 	return t
 }
@@ -453,26 +467,38 @@ func (t *HTTPTool) validateURL(rawURL string) error {
 	return nil
 }
 
-// createHTTPClient creates an HTTP client with redirect validation.
-// The client validates each redirect target against allowed hosts to prevent SSRF.
+// createHTTPClient creates an HTTP client using the shared httpclient package
+// for consistent retry/logging behavior, with redirect validation for SSRF protection.
 func (t *HTTPTool) createHTTPClient() *http.Client {
-	return &http.Client{
-		Timeout: t.timeout,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			// Limit redirect chain length (Go default is 10)
-			if len(via) >= 10 {
-				return fmt.Errorf("too many redirects")
-			}
-			// Validate redirect target URL
-			if err := t.validateURL(req.URL.String()); err != nil {
-				if t.logger != nil {
-					t.logger.Warn("redirect target blocked", "url", req.URL.String(), "error", err)
-				}
-				return fmt.Errorf("redirect target not allowed: %w", err)
-			}
-			return nil
-		},
+	// Create base client with shared httpclient package
+	cfg := httpclient.DefaultConfig()
+	cfg.Timeout = t.timeout
+	cfg.UserAgent = "conductor-http-tool/1.0"
+
+	baseClient, err := httpclient.New(cfg)
+	if err != nil {
+		// Fallback to default client if httpclient creation fails
+		// This should never happen with valid config, but provides safety
+		baseClient = &http.Client{Timeout: t.timeout}
 	}
+
+	// Wrap with redirect validation for SSRF protection
+	baseClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		// Limit redirect chain length (Go default is 10)
+		if len(via) >= 10 {
+			return fmt.Errorf("too many redirects")
+		}
+		// Validate redirect target URL
+		if err := t.validateURL(req.URL.String()); err != nil {
+			if t.logger != nil {
+				t.logger.Warn("redirect target blocked", "url", req.URL.String(), "error", err)
+			}
+			return fmt.Errorf("redirect target not allowed: %w", err)
+		}
+		return nil
+	}
+
+	return baseClient
 }
 
 // ParseJSON is a helper to parse JSON response bodies.

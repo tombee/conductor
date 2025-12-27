@@ -12,6 +12,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/tombee/conductor/pkg/httpclient"
 	"github.com/tombee/conductor/pkg/tools"
 	"github.com/tombee/conductor/pkg/workflow"
 )
@@ -137,10 +138,17 @@ func (h *HTTPCustomTool) Execute(ctx context.Context, inputs map[string]interfac
 		req.Header.Set(key, value)
 	}
 
-	// Execute request
-	client := &http.Client{
-		Timeout: h.timeout,
+	// Execute request using shared httpclient package
+	cfg := httpclient.DefaultConfig()
+	cfg.Timeout = h.timeout
+	cfg.UserAgent = fmt.Sprintf("conductor-custom-tool/%s", h.name)
+
+	client, err := httpclient.New(cfg)
+	if err != nil {
+		// Fallback to basic client if creation fails
+		client = &http.Client{Timeout: h.timeout}
 	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("http request failed: %w", err)

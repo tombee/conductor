@@ -437,6 +437,30 @@ provider = llm.WithRetry(provider, llm.RetryConfig{
 - Invalid request errors (400)
 - Content policy violations
 
+### HTTP Client Behavior
+
+All LLM providers use the shared `pkg/httpclient` package for HTTP communication, providing consistent behavior across providers:
+
+**Logging and Observability:**
+- All HTTP requests are logged with method, URL (sanitized), status, and duration
+- Sensitive query parameters (api_key, token, password) are automatically redacted from logs
+- Debug level for successful requests (2xx), Warn level for errors (4xx/5xx)
+
+**Correlation ID Propagation:**
+- Correlation IDs from request context are automatically injected into HTTP headers (`X-Correlation-ID`)
+- Enables distributed tracing across LLM provider calls
+- Correlation IDs are visible in logs for request correlation
+
+**Connection Management:**
+- Connection pooling with 100 max idle connections, 90s idle timeout
+- TLS 1.2 minimum, TLS 1.3 preferred with certificate validation
+- User-Agent headers identify the provider (e.g., `conductor-anthropic/1.0`)
+
+**Retry Behavior:**
+- HTTP-level retries are disabled for LLM providers (RetryAttempts: 0)
+- Retry logic is handled by the provider-specific retry wrapper (`pkg/llm/retry.go`)
+- This allows for provider-specific error handling and retry strategies
+
 ### Circuit Breaker
 
 Prevent cascading failures with circuit breaker pattern:
@@ -648,6 +672,7 @@ package myprovider
 import (
     "context"
     "github.com/tombee/conductor/pkg/llm"
+    "github.com/tombee/conductor/pkg/httpclient"
 )
 
 type CustomProvider struct {
@@ -657,10 +682,22 @@ type CustomProvider struct {
 }
 
 func NewCustomProvider(apiKey string) *CustomProvider {
+    // Use shared httpclient package for consistent behavior
+    cfg := httpclient.DefaultConfig()
+    cfg.Timeout = 30 * time.Second
+    cfg.UserAgent = "conductor-custom/1.0"
+    cfg.RetryAttempts = 0  // Disable HTTP-level retries (use llm.WithRetry wrapper)
+
+    client, err := httpclient.New(cfg)
+    if err != nil {
+        // Fallback to basic client
+        client = &http.Client{Timeout: 30 * time.Second}
+    }
+
     return &CustomProvider{
         apiKey:  apiKey,
         baseURL: "https://api.example.com",
-        client:  &http.Client{Timeout: 30 * time.Second},
+        client:  client,
     }
 }
 

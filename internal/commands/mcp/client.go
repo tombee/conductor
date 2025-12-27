@@ -21,6 +21,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/tombee/conductor/pkg/httpclient"
 )
 
 // mcpAPIClient provides methods for calling the daemon's MCP API.
@@ -30,9 +32,19 @@ type mcpAPIClient struct {
 }
 
 func newMCPAPIClient() *mcpAPIClient {
+	cfg := httpclient.DefaultConfig()
+	cfg.Timeout = 30 * time.Second
+	cfg.UserAgent = "conductor-mcp-cli/1.0"
+
+	client, err := httpclient.New(cfg)
+	if err != nil {
+		// Fallback to basic client
+		client = &http.Client{Timeout: 30 * time.Second}
+	}
+
 	return &mcpAPIClient{
 		baseURL: "http://localhost:8374", // Default daemon address
-		client:  &http.Client{Timeout: 30 * time.Second},
+		client:  client,
 	}
 }
 
