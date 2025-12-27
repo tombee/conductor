@@ -7,9 +7,40 @@ package connector
 
 import (
 	"context"
+	"strings"
 
 	"github.com/tombee/conductor/pkg/workflow"
 )
+
+// builtinAPIFactory is a function type for creating builtin API connectors.
+type builtinAPIFactory func(connectorName string, baseURL string, authType string, authToken string) (Connector, error)
+
+// builtinAPIFactories holds registered builtin API connector factories.
+var builtinAPIFactories = make(map[string]builtinAPIFactory)
+
+// RegisterBuiltinAPI registers a builtin API connector factory.
+// This is called by the builtin package during init().
+func RegisterBuiltinAPI(name string, factory builtinAPIFactory) {
+	builtinAPIFactories[name] = factory
+}
+
+// isBuiltinAPI returns true if a builtin API connector is registered.
+func isBuiltinAPI(name string) bool {
+	_, ok := builtinAPIFactories[name]
+	return ok
+}
+
+// newBuiltinAPIConnector creates a builtin API connector.
+func newBuiltinAPIConnector(name string, baseURL string, authType string, authToken string) (Connector, error) {
+	factory, ok := builtinAPIFactories[name]
+	if !ok {
+		return nil, &Error{
+			Type:    ErrorTypeNotFound,
+			Message: "builtin API connector not found: " + name,
+		}
+	}
+	return factory(name, baseURL, authType, authToken)
+}
 
 // Connector represents a configured external integration.
 // Each connector can execute multiple named operations.
@@ -140,7 +171,43 @@ func New(def *workflow.ConnectorDefinition, config *Config) (Connector, error) {
 
 // newPackageConnector creates a connector from a package reference.
 func newPackageConnector(def *workflow.ConnectorDefinition, config *Config) (Connector, error) {
-	// Load the package definition
+	// Extract connector name from "connectors/<name>"
+	if strings.HasPrefix(def.From, "connectors/") {
+		parts := strings.Split(def.From, "/")
+		if len(parts) == 2 {
+			connectorName := parts[1]
+
+			// Check if it's a registered builtin API connector
+			if isBuiltinAPI(connectorName) {
+				var authType, authToken string
+
+				// Handle authentication based on AuthDefinition fields
+				if def.Auth != nil {
+					switch def.Auth.Type {
+					case "bearer", "":
+						if def.Auth.Token != "" {
+							authType = "bearer"
+							authToken = def.Auth.Token
+						}
+					case "basic":
+						if def.Auth.Username != "" {
+							authType = "basic"
+							authToken = def.Auth.Username + ":" + def.Auth.Password
+						}
+					case "api_key":
+						if def.Auth.Value != "" {
+							authType = "api_key"
+							authToken = def.Auth.Value
+						}
+					}
+				}
+
+				return newBuiltinAPIConnector(connectorName, def.BaseURL, authType, authToken)
+			}
+		}
+	}
+
+	// Fall back to loading package definition (for custom YAML connectors)
 	pkg, err := loadPackage(def.From)
 	if err != nil {
 		return nil, err

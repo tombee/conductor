@@ -4,29 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 
 	"github.com/tombee/conductor/pkg/workflow"
 )
-
-// getBundledConnectorsPath returns the path to the bundled connectors directory.
-// This uses runtime.Caller to find the repo root, which works both in dev and production.
-func getBundledConnectorsPath() (string, error) {
-	// Get the path of this source file
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("failed to get current file path")
-	}
-
-	// Navigate to repo root: internal/connector/package.go -> ../../connectors
-	repoRoot := filepath.Join(filepath.Dir(filename), "..", "..")
-	connectorsDir := filepath.Join(repoRoot, "connectors")
-
-	return connectorsDir, nil
-}
 
 // PackageDefinition represents a connector package YAML file.
 type PackageDefinition struct {
@@ -58,7 +41,21 @@ func loadPackage(from string) (*PackageDefinition, error) {
 	}
 }
 
-// loadBundledPackage loads a bundled connector from the connectors directory.
+// builtinConnectorInfo contains metadata for Go-based builtin connectors.
+var builtinConnectorInfo = map[string]struct {
+	baseURL     string
+	description string
+}{
+	"github":  {baseURL: "https://api.github.com", description: "GitHub REST API v3"},
+	"slack":   {baseURL: "https://slack.com/api", description: "Slack Web API"},
+	"jira":    {baseURL: "https://your-domain.atlassian.net", description: "Jira Cloud REST API v3"},
+	"discord": {baseURL: "https://discord.com/api/v10", description: "Discord REST API v10"},
+	"jenkins": {baseURL: "https://jenkins.example.com", description: "Jenkins REST API"},
+}
+
+// loadBundledPackage loads a bundled connector.
+// For Go-based builtin connectors (github, slack, jira, discord, jenkins),
+// this returns metadata from the builtin connector info.
 func loadBundledPackage(from string) (*PackageDefinition, error) {
 	// Extract connector name from "connectors/<name>"
 	parts := strings.Split(from, "/")
@@ -71,50 +68,35 @@ func loadBundledPackage(from string) (*PackageDefinition, error) {
 
 	connectorName := parts[1]
 
-	// Get bundled connectors directory path
-	connectorsDir, err := getBundledConnectorsPath()
-	if err != nil {
-		return nil, &Error{
-			Type:    ErrorTypeServer,
-			Message: fmt.Sprintf("failed to locate bundled connectors: %v", err),
-		}
-	}
-
-	// Construct full path to connector file
-	filePath := filepath.Join(connectorsDir, fmt.Sprintf("%s.yaml", connectorName))
-
-	// Read file
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		// Check if it's a "not found" error
-		if os.IsNotExist(err) {
-			return nil, &Error{
-				Type:       ErrorTypeNotFound,
-				Message:    fmt.Sprintf("bundled connector %q not found", connectorName),
-				SuggestText: "available bundled connectors: github, slack, jira, discord, jenkins",
+	// Check if it's a registered Go-based builtin connector
+	if isBuiltinAPI(connectorName) {
+		info, ok := builtinConnectorInfo[connectorName]
+		if !ok {
+			// Fallback for unknown builtins
+			info = struct{ baseURL, description string }{
+				baseURL:     "https://api.example.com",
+				description: "Builtin connector",
 			}
 		}
-		return nil, &Error{
-			Type:    ErrorTypeServer,
-			Message: fmt.Sprintf("failed to read bundled connector %q: %v", connectorName, err),
-		}
+
+		// Return metadata for the builtin connector
+		// Note: Operations are handled internally by Go connectors,
+		// so we return an empty operations map for package metadata
+		return &PackageDefinition{
+			Version:     "2.0",
+			Name:        connectorName,
+			Description: info.description,
+			BaseURL:     info.baseURL,
+			Operations:  map[string]workflow.OperationDefinition{},
+		}, nil
 	}
 
-	// Parse YAML
-	var pkg PackageDefinition
-	if err := yaml.Unmarshal(data, &pkg); err != nil {
-		return nil, &Error{
-			Type:    ErrorTypeValidation,
-			Message: fmt.Sprintf("failed to parse bundled connector %q: %v", connectorName, err),
-		}
+	// Not a builtin connector - report not found
+	return nil, &Error{
+		Type:        ErrorTypeNotFound,
+		Message:     fmt.Sprintf("bundled connector %q not found", connectorName),
+		SuggestText: "available bundled connectors: github, slack, jira, discord, jenkins",
 	}
-
-	// Validate package
-	if err := validatePackage(&pkg); err != nil {
-		return nil, err
-	}
-
-	return &pkg, nil
 }
 
 // validatePackage validates a connector package definition.
