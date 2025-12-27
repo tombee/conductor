@@ -17,10 +17,12 @@ package endpoint
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/tombee/conductor/internal/config"
+	"github.com/tombee/conductor/internal/daemon/auth"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -122,13 +124,13 @@ func TestLoadConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			registry, err := LoadConfig(tt.cfg, tt.workflowDir)
+			registry, err := LoadConfig(tt.cfg, tt.workflowDir, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("LoadConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if err != nil && tt.errSubstr != "" {
-				if !contains(err.Error(), tt.errSubstr) {
+				if !strings.Contains(err.Error(), tt.errSubstr) {
 					t.Errorf("LoadConfig() error = %v, want substring %q", err, tt.errSubstr)
 				}
 				return
@@ -140,6 +142,83 @@ func TestLoadConfig(t *testing.T) {
 				t.Errorf("LoadConfig() registry count = %d, want %d", registry.Count(), tt.wantCount)
 			}
 		})
+	}
+}
+
+func TestLoadConfig_WithRateLimiter(t *testing.T) {
+	// Create temporary workflow directory
+	tmpDir := t.TempDir()
+
+	// Create test workflow file
+	testWorkflow := filepath.Join(tmpDir, "test.yaml")
+	if err := os.WriteFile(testWorkflow, []byte("name: test\nsteps: []"), 0644); err != nil {
+		t.Fatalf("Failed to create test workflow: %v", err)
+	}
+
+	rateLimiter := auth.NewNamedRateLimiter()
+
+	cfg := config.EndpointsConfig{
+		Enabled: true,
+		Endpoints: []config.EndpointEntry{
+			{
+				Name:      "test-endpoint",
+				Workflow:  "test",
+				RateLimit: "100/hour",
+			},
+		},
+	}
+
+	registry, err := LoadConfig(cfg, tmpDir, rateLimiter)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if registry.Count() != 1 {
+		t.Errorf("LoadConfig() registry count = %d, want 1", registry.Count())
+	}
+
+	// Verify rate limiter was configured
+	allowed := rateLimiter.Allow("test-endpoint")
+	if !allowed {
+		t.Error("Rate limiter should allow initial request")
+	}
+
+	// Verify limit exists
+	_, _, _, exists := rateLimiter.GetStatus("test-endpoint")
+	if !exists {
+		t.Error("Rate limit should be configured for test-endpoint")
+	}
+}
+
+func TestLoadConfig_InvalidRateLimit(t *testing.T) {
+	// Create temporary workflow directory
+	tmpDir := t.TempDir()
+
+	// Create test workflow file
+	testWorkflow := filepath.Join(tmpDir, "test.yaml")
+	if err := os.WriteFile(testWorkflow, []byte("name: test\nsteps: []"), 0644); err != nil {
+		t.Fatalf("Failed to create test workflow: %v", err)
+	}
+
+	rateLimiter := auth.NewNamedRateLimiter()
+
+	cfg := config.EndpointsConfig{
+		Enabled: true,
+		Endpoints: []config.EndpointEntry{
+			{
+				Name:      "test-endpoint",
+				Workflow:  "test",
+				RateLimit: "invalid-rate-limit",
+			},
+		},
+	}
+
+	_, err := LoadConfig(cfg, tmpDir, rateLimiter)
+	if err == nil {
+		t.Error("LoadConfig() should fail with invalid rate limit")
+	}
+	if !strings.Contains(err.Error(), "invalid rate limit") {
+		t.Errorf("LoadConfig() error = %v, want 'invalid rate limit'", err)
 	}
 }
 
@@ -315,7 +394,7 @@ func TestParseRateLimit(t *testing.T) {
 				return
 			}
 			if err != nil && tt.errSubstr != "" {
-				if !contains(err.Error(), tt.errSubstr) {
+				if !strings.Contains(err.Error(), tt.errSubstr) {
 					t.Errorf("ParseRateLimit() error = %v, want substring %q", err, tt.errSubstr)
 				}
 				return

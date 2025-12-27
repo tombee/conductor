@@ -23,11 +23,13 @@ import (
 	"time"
 
 	"github.com/tombee/conductor/internal/config"
+	"github.com/tombee/conductor/internal/daemon/auth"
 )
 
 // LoadConfig loads endpoints from configuration into a registry.
 // It validates that workflow files exist and parses rate limit strings.
-func LoadConfig(cfg config.EndpointsConfig, workflowsDir string) (*Registry, error) {
+// If a rateLimiter is provided, it configures rate limits for each endpoint.
+func LoadConfig(cfg config.EndpointsConfig, workflowsDir string, rateLimiter *auth.NamedRateLimiter) (*Registry, error) {
 	registry := NewRegistry()
 
 	if !cfg.Enabled {
@@ -56,6 +58,13 @@ func LoadConfig(cfg config.EndpointsConfig, workflowsDir string) (*Registry, err
 		// Verify file is readable
 		if _, err := os.Stat(workflowPath); err != nil {
 			return nil, fmt.Errorf("endpoint %d (%s): workflow %q not accessible: %w", i, entry.Name, entry.Workflow, err)
+		}
+
+		// Configure rate limit if specified
+		if rateLimiter != nil && entry.RateLimit != "" {
+			if err := rateLimiter.AddLimit(entry.Name, entry.RateLimit); err != nil {
+				return nil, fmt.Errorf("endpoint %d (%s): invalid rate limit %q: %w", i, entry.Name, entry.RateLimit, err)
+			}
 		}
 
 		// Add to registry

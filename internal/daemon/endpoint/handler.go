@@ -35,6 +35,7 @@ type Handler struct {
 	registry     *Registry
 	runner       *runner.Runner
 	workflowsDir string
+	rateLimiter  *auth.NamedRateLimiter
 	logger       *slog.Logger
 }
 
@@ -44,8 +45,15 @@ func NewHandler(registry *Registry, r *runner.Runner, workflowsDir string) *Hand
 		registry:     registry,
 		runner:       r,
 		workflowsDir: workflowsDir,
+		rateLimiter:  auth.NewNamedRateLimiter(),
 		logger:       slog.Default().With(slog.String("component", "endpoint")),
 	}
+}
+
+// SetRateLimiter sets the rate limiter for this handler.
+// This allows external configuration of rate limits.
+func (h *Handler) SetRateLimiter(rl *auth.NamedRateLimiter) {
+	h.rateLimiter = rl
 }
 
 // RegisterRoutes registers endpoint API routes on the router.
@@ -180,6 +188,11 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 			slog.Any("user_scopes", userScopes),
 		)
 		writeError(w, http.StatusNotFound, fmt.Sprintf("endpoint %q not found", name))
+		return
+	}
+
+	// Check rate limit for this endpoint
+	if !h.checkRateLimit(w, ep.Name) {
 		return
 	}
 
@@ -572,4 +585,54 @@ func toJSON(v any) string {
 		return "{}"
 	}
 	return string(data)
+}
+
+// checkRateLimit checks the rate limit for an endpoint and writes error response if exceeded.
+// Returns true if request is allowed, false if rate limit exceeded.
+func (h *Handler) checkRateLimit(w http.ResponseWriter, endpointName string) bool {
+	// Check if rate limit is exceeded
+	if !h.rateLimiter.Allow(endpointName) {
+		// Get status for headers
+		remaining, limit, resetAt, _ := h.rateLimiter.GetStatus(endpointName)
+
+		// Add rate limit headers
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%.0f", limit))
+		w.Header().Set("X-RateLimit-Remaining", "0")
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", resetAt.Unix()))
+
+		// Calculate retry-after in seconds
+		retryAfter := int(time.Until(resetAt).Seconds())
+		if retryAfter < 1 {
+			retryAfter = 1
+		}
+		w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfter))
+
+		// Log rate limit exceeded
+		h.logger.Warn("Rate limit exceeded",
+			slog.String("endpoint", endpointName),
+			slog.Float64("limit", limit),
+			slog.Float64("remaining", remaining),
+			slog.Time("reset_at", resetAt),
+		)
+
+		// Return 429 Too Many Requests
+		writeJSON(w, http.StatusTooManyRequests, map[string]any{
+			"error":      "rate limit exceeded",
+			"limit":      int(limit),
+			"remaining":  0,
+			"reset_at":   resetAt.Unix(),
+			"retry_after": retryAfter,
+		})
+		return false
+	}
+
+	// Get status for headers (after successful request)
+	remaining, limit, resetAt, exists := h.rateLimiter.GetStatus(endpointName)
+	if exists {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%.0f", limit))
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprintf("%.0f", remaining))
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", resetAt.Unix()))
+	}
+
+	return true
 }

@@ -187,11 +187,19 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 	// Create endpoint handler if enabled
 	var endpointHandler *endpoint.Handler
 	if cfg.Daemon.Endpoints.Enabled {
-		registry, err := endpoint.LoadConfig(cfg.Daemon.Endpoints, cfg.Daemon.WorkflowsDir)
+		// Create rate limiter for endpoints
+		rateLimiter := auth.NewNamedRateLimiter()
+
+		// Load endpoint configuration with rate limiter
+		registry, err := endpoint.LoadConfig(cfg.Daemon.Endpoints, cfg.Daemon.WorkflowsDir, rateLimiter)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load endpoints: %w", err)
 		}
+
+		// Create handler and wire in rate limiter
 		endpointHandler = endpoint.NewHandler(registry, r, cfg.Daemon.WorkflowsDir)
+		endpointHandler.SetRateLimiter(rateLimiter)
+
 		logger.Info("endpoints loaded",
 			slog.Int("count", registry.Count()))
 	}
