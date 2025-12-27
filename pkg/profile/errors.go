@@ -191,3 +191,12 @@ func NewSecretResolutionError(category ErrorCategory, reference, provider, messa
 		OriginalError: originalErr,
 	}
 }
+
+// NewBindingError creates an error for binding resolution failures.
+func NewBindingError(category ErrorCategory, requirement, profile, message string) *BindingError {
+	return &BindingError{
+		Profile:     profile,
+		Requirement: requirement,
+		Message:     message,
+	}
+}

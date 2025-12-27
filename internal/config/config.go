@@ -25,6 +25,7 @@ import (
 	"time"
 
 	conductorerrors "github.com/tombee/conductor/pkg/errors"
+	"github.com/tombee/conductor/pkg/profile"
 	"github.com/tombee/conductor/pkg/security"
 	"gopkg.in/yaml.v3"
 )
@@ -50,6 +51,10 @@ type Config struct {
 	AcknowledgedDefaults       []string      `yaml:"acknowledged_defaults,omitempty" json:"acknowledged_defaults,omitempty"`
 	SuppressUnmappedWarnings   bool          `yaml:"suppress_unmapped_warnings,omitempty" json:"suppress_unmapped_warnings,omitempty"`
 	DefaultVerbosity           string        `yaml:"default_verbosity,omitempty" json:"default_verbosity,omitempty"` // quiet, normal, verbose
+
+	// Workspaces configuration (SPEC-130)
+	// Workspaces contain profiles for workflow execution configuration
+	Workspaces map[string]Workspace `yaml:"workspaces,omitempty" json:"workspaces,omitempty"`
 }
 
 // DaemonConfig configures daemon-related settings.
@@ -372,6 +377,25 @@ type RedactionPattern struct {
 	Replacement string `yaml:"replacement,omitempty"`
 }
 
+// Workspace represents a security and configuration isolation boundary.
+// Workspaces contain named profiles that define execution configurations
+// for workflows (SPEC-130).
+type Workspace struct {
+	// Name is the workspace identifier
+	Name string `yaml:"name,omitempty" json:"name,omitempty"`
+
+	// Description provides human-readable context about this workspace
+	Description string `yaml:"description,omitempty" json:"description,omitempty"`
+
+	// Profiles maps profile names to their configuration
+	// Each workspace can have multiple profiles (dev, staging, prod, etc.)
+	Profiles map[string]profile.Profile `yaml:"profiles,omitempty" json:"profiles,omitempty"`
+
+	// DefaultProfile is the profile to use when none is specified
+	// If empty, uses "default" profile if it exists
+	DefaultProfile string `yaml:"default_profile,omitempty" json:"default_profile,omitempty"`
+}
+
 // ServerConfig configures the RPC server behavior.
 type ServerConfig struct {
 	// Port specifies the port to bind to.
@@ -520,6 +544,28 @@ func Default() *Config {
 					Level:    "strict", // Strict by default for safety
 					Patterns: nil,
 				},
+			},
+		},
+		// Default workspace with backward-compatible profile (SPEC-130)
+		Workspaces: map[string]Workspace{
+			"default": {
+				Name:        "default",
+				Description: "Default workspace for backward compatibility",
+				Profiles: map[string]profile.Profile{
+					"default": {
+						Name:        "default",
+						Description: "Default profile with environment inheritance",
+						InheritEnv: profile.InheritEnvConfig{
+							Enabled:   true,
+							Allowlist: nil, // No restrictions - backward compatible
+						},
+						Bindings: profile.Bindings{
+							Connectors: make(map[string]profile.ConnectorBinding),
+							MCPServers: make(map[string]profile.MCPServerBinding),
+						},
+					},
+				},
+				DefaultProfile: "default",
 			},
 		},
 	}
@@ -700,6 +746,12 @@ func (c *Config) applyDefaults() {
 	}
 	if c.Daemon.Observability.Redaction.Level == "" {
 		c.Daemon.Observability.Redaction.Level = defaults.Daemon.Observability.Redaction.Level
+	}
+
+	// Workspace defaults (SPEC-130)
+	// If no workspaces are configured, use the default workspace
+	if len(c.Workspaces) == 0 {
+		c.Workspaces = defaults.Workspaces
 	}
 }
 
