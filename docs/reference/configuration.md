@@ -30,18 +30,15 @@ log:
 
 # LLM provider configuration
 llm:
-  default_provider: anthropic
+  default_provider: claude-code
   request_timeout: 5s
   max_retries: 3
   retry_backoff_base: 100ms
 
 # Provider configurations
 providers:
-  claudecode:
-    type: claudecode
-  anthropic:
-    type: anthropic
-    api_key: ${ANTHROPIC_API_KEY}
+  claude-code:
+    type: claude-code
 
 # Daemon configuration
 daemon:
@@ -165,15 +162,15 @@ Global settings for LLM provider interactions.
 ### llm.default_provider
 
 **Type:** `string`
-**Values:** Provider names (e.g., `anthropic`, `openai`, `ollama`, `claudecode`)
-**Default:** `anthropic`
+**Values:** Provider names (e.g., `claude-code`, `anthropic`, `openai`, `ollama`)
+**Default:** `claude-code`
 **Environment:** `LLM_DEFAULT_PROVIDER` or `CONDUCTOR_PROVIDER`
 
 Default LLM provider to use when not specified in workflow.
 
 ```yaml
 llm:
-  default_provider: anthropic
+  default_provider: claude-code
 ```
 
 ### llm.request_timeout
@@ -229,21 +226,32 @@ Individual provider settings.
 
 Each provider has a unique name and type-specific configuration.
 
+**Supported vs Experimental Providers:**
+
+Conductor officially supports **Claude Code CLI** (`claude-code`) in this release. Other provider types are experimental and may work but are not officially tested or supported.
+
+To enable experimental providers in interactive mode, set the environment variable:
+```bash
+export CONDUCTOR_ALL_PROVIDERS=1
+```
+
+When using experimental providers via the `--type` flag or manual configuration, you will see a warning message. The workflow will still execute, but use experimental providers at your own risk.
+
 ```yaml
 providers:
   claudecode:
-    type: claudecode
+    type: claudecode  # Officially supported
 
   anthropic:
-    type: anthropic
+    type: anthropic   # Experimental
     api_key: ${ANTHROPIC_API_KEY}
 
   openai:
-    type: openai
+    type: openai      # Experimental
     api_key: ${OPENAI_API_KEY}
 
   ollama:
-    type: ollama
+    type: ollama      # Experimental
     base_url: http://localhost:11434
 ```
 
@@ -354,6 +362,7 @@ All configuration options can be set via environment variables. Environment vari
 |----------|-------------|
 | `CONDUCTOR_CONFIG` | Path to config file |
 | `CONDUCTOR_PROVIDER` | Default provider name (alias for `LLM_DEFAULT_PROVIDER`) |
+| `CONDUCTOR_ALL_PROVIDERS` | Enable all providers in interactive mode (set to `1`) |
 | `LOG_LEVEL` | Log level (`debug`, `info`, `warn`, `error`) |
 | `LOG_FORMAT` | Log format (`json`, `text`) |
 | `LOG_SOURCE` | Add source info to logs (`1` or `true`) |
@@ -435,11 +444,11 @@ Examples:
 
 ```yaml
 llm:
-  default_provider: claudecode
+  default_provider: claude-code
 
 providers:
-  claudecode:
-    type: claudecode
+  claude-code:
+    type: claude-code
 ```
 
 ### Production Configuration
@@ -481,16 +490,12 @@ log:
   add_source: true
 
 llm:
-  default_provider: ollama
+  default_provider: claude-code
   request_timeout: 60s
 
 providers:
-  ollama:
-    type: ollama
-    base_url: http://localhost:11434
-
-  claudecode:
-    type: claudecode
+  claude-code:
+    type: claude-code
 
 daemon:
   auto_start: true

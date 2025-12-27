@@ -209,6 +209,11 @@ func executeWorkflow(def *workflow.Definition, cfg *config.Config, plan *Executi
 		return shared.NewProviderError("no default provider configured", nil)
 	}
 
+	// Warn if using unsupported provider
+	if providerCfg, exists := cfg.Providers[providerName]; exists {
+		config.WarnUnsupportedProvider(providerCfg.Type)
+	}
+
 	// Create the LLM provider
 	llmProvider, err := internalllm.CreateProvider(cfg, providerName)
 	if err != nil {

@@ -52,8 +52,8 @@ claude --version
 
 That's it! Conductor will automatically detect and use Claude Code.
 
-:::tip[Other Providers]
-For API-based providers (Anthropic API, OpenAI, etc.), see [Configuration](reference/configuration.md).
+:::tip[Advanced Configuration]
+For advanced configuration options and experimental provider support, see [Configuration](reference/configuration.md).
 :::
 
 ---

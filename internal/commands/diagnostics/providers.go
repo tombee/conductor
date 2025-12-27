@@ -213,11 +213,29 @@ Examples:
 			// Interactive mode if type not specified
 			if providerType == "" {
 				fmt.Printf("Adding provider: %s\n\n", providerName)
+
+				// Get visible provider types (filtered by support level)
+				visibleTypes := config.GetVisibleProviderTypes()
+
+				// Build interactive menu from visible types
 				fmt.Println("Select provider type:")
-				fmt.Println("  1) claude-code   - Claude Code CLI (no API key needed)")
-				fmt.Println("  2) anthropic     - Anthropic API (requires API key)")
-				fmt.Println("  3) openai        - OpenAI API (requires API key)")
-				fmt.Println("  4) ollama        - Ollama local API")
+				typeDescriptions := map[string]string{
+					"claude-code": "Claude Code CLI (recommended)",
+					"anthropic":   "Anthropic API (experimental)",
+					"openai":      "OpenAI API (experimental)",
+					"ollama":      "Ollama local API (experimental)",
+				}
+
+				typeMap := make(map[string]string) // choice -> type
+				for i, pType := range visibleTypes {
+					choiceNum := fmt.Sprintf("%d", i+1)
+					desc := typeDescriptions[pType]
+					if desc == "" {
+						desc = pType
+					}
+					fmt.Printf("  %s) %-12s - %s\n", choiceNum, pType, desc)
+					typeMap[choiceNum] = pType
+				}
 				fmt.Print("\nChoice [1]: ")
 
 				var choice string
@@ -226,19 +244,15 @@ Examples:
 					choice = "1"
 				}
 
-				switch choice {
-				case "1":
-					providerType = "claude-code"
-				case "2":
-					providerType = "anthropic"
-				case "3":
-					providerType = "openai"
-				case "4":
-					providerType = "ollama"
-				default:
+				selectedType, ok := typeMap[choice]
+				if !ok {
 					return fmt.Errorf("invalid choice: %s", choice)
 				}
+				providerType = selectedType
 			}
+
+			// Warn if using unsupported provider type
+			config.WarnUnsupportedProvider(providerType)
 
 			// Create provider config
 			providerCfg := config.ProviderConfig{
