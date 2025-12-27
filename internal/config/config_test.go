@@ -29,28 +29,13 @@ func TestDefault(t *testing.T) {
 	if cfg.Server.Port != 9876 {
 		t.Errorf("expected port 9876, got %d", cfg.Server.Port)
 	}
-	if cfg.Server.HealthCheckInterval != 500*time.Millisecond {
-		t.Errorf("expected health check interval 500ms, got %v", cfg.Server.HealthCheckInterval)
-	}
 	if cfg.Server.ShutdownTimeout != 5*time.Second {
 		t.Errorf("expected shutdown timeout 5s, got %v", cfg.Server.ShutdownTimeout)
-	}
-	if cfg.Server.ReadTimeout != 10*time.Second {
-		t.Errorf("expected read timeout 10s, got %v", cfg.Server.ReadTimeout)
 	}
 
 	// Auth defaults
 	if cfg.Auth.TokenLength != 32 {
 		t.Errorf("expected token length 32, got %d", cfg.Auth.TokenLength)
-	}
-	if cfg.Auth.RateLimitMaxAttempts != 5 {
-		t.Errorf("expected rate limit max attempts 5, got %d", cfg.Auth.RateLimitMaxAttempts)
-	}
-	if cfg.Auth.RateLimitWindow != 1*time.Minute {
-		t.Errorf("expected rate limit window 1m, got %v", cfg.Auth.RateLimitWindow)
-	}
-	if cfg.Auth.RateLimitLockout != 60*time.Second {
-		t.Errorf("expected rate limit lockout 60s, got %v", cfg.Auth.RateLimitLockout)
 	}
 
 	// Log defaults
@@ -76,15 +61,6 @@ func TestDefault(t *testing.T) {
 	}
 	if cfg.LLM.RetryBackoffBase != 100*time.Millisecond {
 		t.Errorf("expected retry backoff base 100ms, got %v", cfg.LLM.RetryBackoffBase)
-	}
-	if cfg.LLM.ConnectionPoolSize != 10 {
-		t.Errorf("expected connection pool size 10, got %d", cfg.LLM.ConnectionPoolSize)
-	}
-	if cfg.LLM.ConnectionIdleTimeout != 30*time.Second {
-		t.Errorf("expected connection idle timeout 30s, got %v", cfg.LLM.ConnectionIdleTimeout)
-	}
-	if cfg.LLM.TraceRetentionDays != 7 {
-		t.Errorf("expected trace retention days 7, got %d", cfg.LLM.TraceRetentionDays)
 	}
 }
 
@@ -117,14 +93,6 @@ func TestValidate(t *testing.T) {
 			errText: "server.port must be between 1024 and 65535",
 		},
 		{
-			name: "invalid health check interval",
-			modify: func(c *Config) {
-				c.Server.HealthCheckInterval = -1
-			},
-			wantErr: true,
-			errText: "health_check_interval must be positive",
-		},
-		{
 			name: "invalid shutdown timeout",
 			modify: func(c *Config) {
 				c.Server.ShutdownTimeout = 0
@@ -133,44 +101,12 @@ func TestValidate(t *testing.T) {
 			errText: "shutdown_timeout must be positive",
 		},
 		{
-			name: "invalid read timeout",
-			modify: func(c *Config) {
-				c.Server.ReadTimeout = -1
-			},
-			wantErr: true,
-			errText: "read_timeout must be positive",
-		},
-		{
 			name: "invalid token length",
 			modify: func(c *Config) {
 				c.Auth.TokenLength = 15
 			},
 			wantErr: true,
 			errText: "token_length must be at least 16 bytes",
-		},
-		{
-			name: "invalid rate limit max attempts",
-			modify: func(c *Config) {
-				c.Auth.RateLimitMaxAttempts = 0
-			},
-			wantErr: true,
-			errText: "rate_limit_max_attempts must be positive",
-		},
-		{
-			name: "invalid rate limit window",
-			modify: func(c *Config) {
-				c.Auth.RateLimitWindow = -1
-			},
-			wantErr: true,
-			errText: "rate_limit_window must be positive",
-		},
-		{
-			name: "invalid rate limit lockout",
-			modify: func(c *Config) {
-				c.Auth.RateLimitLockout = 0
-			},
-			wantErr: true,
-			errText: "rate_limit_lockout must be positive",
 		},
 		{
 			name: "invalid log level",
@@ -224,30 +160,6 @@ func TestValidate(t *testing.T) {
 			wantErr: true,
 			errText: "llm.retry_backoff_base must be positive",
 		},
-		{
-			name: "invalid llm connection pool size",
-			modify: func(c *Config) {
-				c.LLM.ConnectionPoolSize = 0
-			},
-			wantErr: true,
-			errText: "llm.connection_pool_size must be positive",
-		},
-		{
-			name: "invalid llm connection idle timeout",
-			modify: func(c *Config) {
-				c.LLM.ConnectionIdleTimeout = -1
-			},
-			wantErr: true,
-			errText: "llm.connection_idle_timeout must be positive",
-		},
-		{
-			name: "invalid llm trace retention days",
-			modify: func(c *Config) {
-				c.LLM.TraceRetentionDays = -1
-			},
-			wantErr: true,
-			errText: "llm.trace_retention_days must be non-negative",
-		},
 	}
 
 	for _, tt := range tests {
@@ -279,23 +191,15 @@ func TestLoadFromEnv(t *testing.T) {
 
 	// Set test environment variables
 	envVars := map[string]string{
-		"SERVER_HEALTH_CHECK_INTERVAL":     "1s",
-		"SERVER_SHUTDOWN_TIMEOUT":          "10s",
-		"SERVER_READ_TIMEOUT":              "5s",
-		"AUTH_TOKEN_LENGTH":                "64",
-		"AUTH_RATE_LIMIT_MAX_ATTEMPTS":     "10",
-		"AUTH_RATE_LIMIT_WINDOW":           "2m",
-		"AUTH_RATE_LIMIT_LOCKOUT":          "120s",
-		"LOG_LEVEL":                        "debug",
-		"LOG_FORMAT":                       "text",
-		"LOG_SOURCE":                       "1",
-		"LLM_DEFAULT_PROVIDER":             "openai",
-		"LLM_REQUEST_TIMEOUT":              "10s",
-		"LLM_MAX_RETRIES":                  "5",
-		"LLM_RETRY_BACKOFF_BASE":           "200ms",
-		"LLM_CONNECTION_POOL_SIZE":         "20",
-		"LLM_CONNECTION_IDLE_TIMEOUT":      "60s",
-		"LLM_TRACE_RETENTION_DAYS":         "14",
+		"SERVER_SHUTDOWN_TIMEOUT": "10s",
+		"AUTH_TOKEN_LENGTH":       "64",
+		"LOG_LEVEL":               "debug",
+		"LOG_FORMAT":              "text",
+		"LOG_SOURCE":              "1",
+		"LLM_DEFAULT_PROVIDER":    "openai",
+		"LLM_REQUEST_TIMEOUT":     "10s",
+		"LLM_MAX_RETRIES":         "5",
+		"LLM_RETRY_BACKOFF_BASE":  "200ms",
 	}
 
 	for k, v := range envVars {
@@ -312,28 +216,13 @@ func TestLoadFromEnv(t *testing.T) {
 	if cfg.Server.Port != 9876 {
 		t.Errorf("expected default port 9876, got %d", cfg.Server.Port)
 	}
-	if cfg.Server.HealthCheckInterval != 1*time.Second {
-		t.Errorf("expected health check interval 1s, got %v", cfg.Server.HealthCheckInterval)
-	}
 	if cfg.Server.ShutdownTimeout != 10*time.Second {
 		t.Errorf("expected shutdown timeout 10s, got %v", cfg.Server.ShutdownTimeout)
-	}
-	if cfg.Server.ReadTimeout != 5*time.Second {
-		t.Errorf("expected read timeout 5s, got %v", cfg.Server.ReadTimeout)
 	}
 
 	// Verify auth config
 	if cfg.Auth.TokenLength != 64 {
 		t.Errorf("expected token length 64, got %d", cfg.Auth.TokenLength)
-	}
-	if cfg.Auth.RateLimitMaxAttempts != 10 {
-		t.Errorf("expected rate limit max attempts 10, got %d", cfg.Auth.RateLimitMaxAttempts)
-	}
-	if cfg.Auth.RateLimitWindow != 2*time.Minute {
-		t.Errorf("expected rate limit window 2m, got %v", cfg.Auth.RateLimitWindow)
-	}
-	if cfg.Auth.RateLimitLockout != 120*time.Second {
-		t.Errorf("expected rate limit lockout 120s, got %v", cfg.Auth.RateLimitLockout)
 	}
 
 	// Verify log config
@@ -360,15 +249,6 @@ func TestLoadFromEnv(t *testing.T) {
 	if cfg.LLM.RetryBackoffBase != 200*time.Millisecond {
 		t.Errorf("expected retry backoff base 200ms, got %v", cfg.LLM.RetryBackoffBase)
 	}
-	if cfg.LLM.ConnectionPoolSize != 20 {
-		t.Errorf("expected connection pool size 20, got %d", cfg.LLM.ConnectionPoolSize)
-	}
-	if cfg.LLM.ConnectionIdleTimeout != 60*time.Second {
-		t.Errorf("expected connection idle timeout 60s, got %v", cfg.LLM.ConnectionIdleTimeout)
-	}
-	if cfg.LLM.TraceRetentionDays != 14 {
-		t.Errorf("expected trace retention days 14, got %d", cfg.LLM.TraceRetentionDays)
-	}
 }
 
 func TestLoadFromFile(t *testing.T) {
@@ -379,15 +259,10 @@ func TestLoadFromFile(t *testing.T) {
 	yamlContent := `
 server:
   port: 8080
-  health_check_interval: 2s
   shutdown_timeout: 15s
-  read_timeout: 20s
 
 auth:
   token_length: 48
-  rate_limit_max_attempts: 7
-  rate_limit_window: 3m
-  rate_limit_lockout: 90s
 
 log:
   level: warn
@@ -399,9 +274,6 @@ llm:
   request_timeout: 8s
   max_retries: 4
   retry_backoff_base: 150ms
-  connection_pool_size: 15
-  connection_idle_timeout: 45s
-  trace_retention_days: 30
 `
 
 	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
@@ -542,14 +414,11 @@ func restoreEnv(env map[string]string) {
 
 func clearConfigEnv() {
 	envVars := []string{
-		"SERVER_HEALTH_CHECK_INTERVAL",
-		"SERVER_SHUTDOWN_TIMEOUT", "SERVER_READ_TIMEOUT",
-		"AUTH_TOKEN_LENGTH", "AUTH_RATE_LIMIT_MAX_ATTEMPTS",
-		"AUTH_RATE_LIMIT_WINDOW", "AUTH_RATE_LIMIT_LOCKOUT",
+		"SERVER_SHUTDOWN_TIMEOUT",
+		"AUTH_TOKEN_LENGTH",
 		"LOG_LEVEL", "LOG_FORMAT", "LOG_SOURCE",
 		"LLM_DEFAULT_PROVIDER", "LLM_REQUEST_TIMEOUT", "LLM_MAX_RETRIES",
-		"LLM_RETRY_BACKOFF_BASE", "LLM_CONNECTION_POOL_SIZE",
-		"LLM_CONNECTION_IDLE_TIMEOUT", "LLM_TRACE_RETENTION_DAYS",
+		"LLM_RETRY_BACKOFF_BASE",
 	}
 	for _, v := range envVars {
 		os.Unsetenv(v)
@@ -587,9 +456,6 @@ func TestMinimalConfigRoundTrip(t *testing.T) {
 	// Verify defaults were applied
 	if cfg.Server.Port != 9876 {
 		t.Errorf("expected port 9876, got %d", cfg.Server.Port)
-	}
-	if cfg.Server.HealthCheckInterval != 500*time.Millisecond {
-		t.Errorf("expected health check interval 500ms, got %v", cfg.Server.HealthCheckInterval)
 	}
 	if cfg.Auth.TokenLength != 32 {
 		t.Errorf("expected token length 32, got %d", cfg.Auth.TokenLength)
