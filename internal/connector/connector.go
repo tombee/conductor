@@ -21,6 +21,23 @@ type Connector interface {
 	Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*Result, error)
 }
 
+// PaginatedConnector extends Connector to support paginated operations.
+// Connectors that support pagination (GitHub, Slack, Jira, Discord) implement
+// this interface to stream results through a channel.
+type PaginatedConnector interface {
+	Connector
+
+	// ExecutePaginated returns a channel of results for paginated operations.
+	// The channel is closed when all results have been sent or an error occurs.
+	// Errors are included in the Result.Metadata["error"] field.
+	//
+	// Supported options in inputs:
+	// - paginate: bool - Enable pagination (default: false)
+	// - max_results: int - Maximum number of results to return (default: unlimited)
+	// - page_size: int - Number of results per page (default: API-specific)
+	ExecutePaginated(ctx context.Context, operation string, inputs map[string]interface{}) (<-chan *Result, error)
+}
+
 // Result represents the output of a connector operation.
 type Result struct {
 	// Response is the transformed response data
