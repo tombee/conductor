@@ -1,0 +1,174 @@
+name: dependency-update-reviewer
+description: Review dependency update PRs, analyze changelogs, and assess breaking change risk
+version: "1.0"
+
+inputs:
+  - name: repo
+    type: string
+    description: Repository in owner/repo format
+    required: true
+
+  - name: pr_number
+    type: number
+    description: PR number to review
+    required: true
+
+steps:
+  - id: get_pr
+    name: Get PR Details
+    github.get_pull:
+      repo: "{{.inputs.repo}}"
+      pull_number: "{{.inputs.pr_number}}"
+
+  - id: get_pr_files
+    name: Get Changed Files
+    github.list_pull_files:
+      repo: "{{.inputs.repo}}"
+      pull_number: "{{.inputs.pr_number}}"
+
+  - id: parse_updates
+    name: Parse Dependency Updates
+    type: llm
+    model: fast
+    system: |
+      Parse the PR to identify dependency updates.
+
+      For each dependency update, extract:
+      - name: package name
+      - ecosystem: npm, go, python, rust, etc.
+      - from_version: old version
+      - to_version: new version
+      - version_jump: patch, minor, or major
+
+      Return as JSON array.
+    prompt: |
+      Parse these dependency updates from the PR:
+
+      **PR Title:** {{.steps.get_pr.response.title}}
+      **PR Body:** {{.steps.get_pr.response.body}}
+
+      **Changed Files:**
+      {{range .steps.get_pr_files.response}}
+      {{.filename}}:
+      ```
+      {{.patch | truncate 500}}
+      ```
+      {{end}}
+
+      Return a JSON array of dependency updates.
+
+  - id: fetch_changelogs
+    name: Fetch Changelogs
+    type: llm
+    model: balanced
+    system: |
+      For each dependency, I'll fetch its changelog or release notes.
+
+      Search strategy:
+      1. GitHub Releases API for the package's repo
+      2. CHANGELOG.md in the repo
+      3. Package registry (npm, pkg.go.dev, etc.)
+
+      Focus on changes between the from_version and to_version.
+    prompt: |
+      These dependencies need changelog research:
+
+      {{.steps.parse_updates.response}}
+
+      For each, summarize:
+      1. Key changes between versions
+      2. Breaking changes mentioned
+      3. Security fixes
+      4. Deprecation warnings
+
+      Format as structured data per dependency.
+
+  - id: analyze_risk
+    name: Analyze Update Risk
+    type: llm
+    model: strategic
+    system: |
+      You are a senior developer reviewing dependency updates.
+
+      Assess each update for:
+      1. **Breaking Changes**: API changes, removed features, behavior changes
+      2. **Security**: CVE fixes, security improvements
+      3. **Compatibility**: Node/Go/Python version requirements
+      4. **Risk Level**: SAFE, REVIEW, RISKY, BREAKING
+
+      SAFE: Patch update, no breaking changes, safe to merge
+      REVIEW: Minor update or notable changes, worth reviewing
+      RISKY: Major update or potential breaking changes
+      BREAKING: Confirmed breaking changes, requires migration
+
+      Be specific about what might break and why.
+    prompt: |
+      Analyze these dependency updates:
+
+      **Updates:**
+      {{.steps.parse_updates.response}}
+
+      **Changelog Information:**
+      {{.steps.fetch_changelogs.response}}
+
+      For each dependency, provide:
+
+      ### [package name]: [from] → [to]
+      **Risk Level:** [SAFE/REVIEW/RISKY/BREAKING]
+      **Version Jump:** [patch/minor/major]
+
+      **Breaking Changes:**
+      - [list or "None identified"]
+
+      **Security:**
+      - [CVE fixes or "No security changes"]
+
+      **Notable Changes:**
+      - [key changes]
+
+      **Recommendation:** [merge/test/investigate/block]
+
+  - id: generate_comment
+    name: Generate PR Comment
+    type: llm
+    model: balanced
+    prompt: |
+      Generate a PR comment summarizing this dependency update review:
+
+      {{.steps.analyze_risk.response}}
+
+      Format as Markdown:
+
+      ## Dependency Update Review
+
+      | Package | Version | Risk | Recommendation |
+      |---------|---------|------|----------------|
+      [table rows]
+
+      ### Details
+
+      [Per-package details with breaking changes, security fixes]
+
+      ### Summary
+      [Overall recommendation - safe to merge, needs testing, etc.]
+
+      ---
+      *Analyzed by Conductor*
+
+  - id: post_comment
+    name: Post Review Comment
+    github.create_issue_comment:
+      repo: "{{.inputs.repo}}"
+      issue_number: "{{.inputs.pr_number}}"
+      body: "{{.steps.generate_comment.response}}"
+
+outputs:
+  - name: analysis
+    type: string
+    value: "{{.steps.analyze_risk.response}}"
+    description: Full dependency update analysis
+
+  - name: comment_url
+    type: string
+    value: "{{.steps.post_comment.response.html_url}}"
+    description: URL to the posted comment

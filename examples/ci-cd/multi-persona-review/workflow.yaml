@@ -1,0 +1,290 @@
+name: multi-persona-pr-review
+description: Comprehensive PR review using parallel specialized personas
+version: "1.0"
+
+inputs:
+  - name: repo
+    type: string
+    description: Repository in owner/repo format
+    required: true
+
+  - name: pr_number
+    type: number
+    description: PR number to review
+    required: true
+
+  - name: personas
+    type: array
+    default: ["security", "performance", "architecture", "style"]
+    description: Review personas to enable
+
+steps:
+  - id: get_pr
+    name: Get PR Details
+    github.get_pull:
+      repo: "{{.inputs.repo}}"
+      pull_number: "{{.inputs.pr_number}}"
+
+  - id: get_diff
+    name: Get PR Diff
+    github.get_pull_diff:
+      repo: "{{.inputs.repo}}"
+      pull_number: "{{.inputs.pr_number}}"
+
+  - id: get_commits
+    name: Get PR Commits
+    github.list_pull_commits:
+      repo: "{{.inputs.repo}}"
+      pull_number: "{{.inputs.pr_number}}"
+
+  - id: reviews
+    name: Parallel Persona Reviews
+    type: parallel
+    max_concurrency: 4
+    steps:
+      - id: security_review
+        name: Security Review
+        condition:
+          expression: '"security" in inputs.personas'
+        type: llm
+        model: strategic
+        system: |
+          You are a senior security engineer reviewing code changes.
+
+          Focus on:
+          - **Authentication/Authorization**: Missing checks, privilege escalation
+          - **Input Validation**: Injection (SQL, command, XSS), path traversal
+          - **Data Exposure**: Sensitive data in logs, responses, or errors
+          - **Cryptography**: Weak algorithms, hardcoded secrets, insecure random
+          - **Dependencies**: Known vulnerable patterns
+
+          Rate each finding:
+          - CRITICAL: Actively exploitable, high impact
+          - HIGH: Likely exploitable, significant impact
+          - MEDIUM: Possible risk, moderate impact
+          - LOW: Minor concern, best practice
+
+          Be specific about file paths and line numbers.
+          Avoid false positives - only flag real issues.
+        prompt: |
+          Review this PR for security issues:
+
+          **PR:** #{{.inputs.pr_number}} - {{.steps.get_pr.response.title}}
+          **Author:** {{.steps.get_pr.response.user.login}}
+
+          **Description:**
+          {{.steps.get_pr.response.body | truncate 500}}
+
+          **Changes:**
+          {{.steps.get_diff.response | truncate 10000}}
+
+          Provide findings in this format:
+
+          ### [SEVERITY] [Issue Title]
+          **File:** `path/to/file.go:123`
+          **Issue:** [Description]
+          **Recommendation:** [How to fix]
+
+          If no security issues found, state "No security issues identified" with brief reasoning.
+
+      - id: performance_review
+        name: Performance Review
+        condition:
+          expression: '"performance" in inputs.personas'
+        type: llm
+        model: balanced
+        system: |
+          You are a performance engineer reviewing code changes.
+
+          Focus on:
+          - **Algorithmic Complexity**: O(n²) loops, unnecessary iterations
+          - **Database**: N+1 queries, missing indexes, large result sets
+          - **Memory**: Allocations in hot paths, leaks, large buffers
+          - **Concurrency**: Lock contention, goroutine leaks, race conditions
+          - **I/O**: Blocking operations, missing timeouts, connection pooling
+
+          Rate each finding:
+          - HIGH: Significant performance impact
+          - MEDIUM: Noticeable impact under load
+          - LOW: Minor optimization opportunity
+
+          Be specific about the impact and location.
+        prompt: |
+          Review this PR for performance issues:
+
+          **PR:** #{{.inputs.pr_number}} - {{.steps.get_pr.response.title}}
+
+          **Changes:**
+          {{.steps.get_diff.response | truncate 10000}}
+
+          Provide findings with severity, location, impact, and recommendations.
+
+      - id: architecture_review
+        name: Architecture Review
+        condition:
+          expression: '"architecture" in inputs.personas'
+        type: llm
+        model: balanced
+        system: |
+          You are a software architect reviewing code changes.
+
+          Focus on:
+          - **SOLID Principles**: Single responsibility, dependency inversion
+          - **Design Patterns**: Appropriate use, anti-patterns
+          - **Coupling**: Dependencies between components, import cycles
+          - **Abstraction**: Interface design, layering violations
+          - **Consistency**: Following existing patterns in the codebase
+
+          Rate each finding:
+          - HIGH: Architectural issue that will cause problems
+          - MEDIUM: Design could be improved
+          - SUGGESTION: Alternative approach to consider
+
+          Be constructive - suggest alternatives, not just problems.
+        prompt: |
+          Review this PR for architectural concerns:
+
+          **PR:** #{{.inputs.pr_number}} - {{.steps.get_pr.response.title}}
+
+          **Description:**
+          {{.steps.get_pr.response.body | truncate 500}}
+
+          **Changes:**
+          {{.steps.get_diff.response | truncate 10000}}
+
+          Provide findings with location, concern, and suggested improvements.
+
+      - id: style_review
+        name: Code Style Review
+        condition:
+          expression: '"style" in inputs.personas'
+        type: llm
+        model: fast
+        system: |
+          You are a code quality reviewer focused on readability.
+
+          Focus on:
+          - **Naming**: Clear, consistent variable/function names
+          - **Documentation**: Missing or unclear comments
+          - **Error Messages**: Helpful, actionable error text
+          - **Code Organization**: Function length, logical grouping
+          - **Idioms**: Language-specific best practices
+
+          Rate each finding:
+          - IMPORTANT: Significantly hurts readability
+          - MINOR: Small improvement opportunity
+          - SUGGESTION: Subjective preference
+
+          Be concise. Don't nitpick - focus on meaningful improvements.
+        prompt: |
+          Review this PR for code quality and style:
+
+          **Changes:**
+          {{.steps.get_diff.response | truncate 8000}}
+
+          Provide brief, actionable feedback. Skip formatting issues that linters catch.
+
+  - id: aggregate_findings
+    name: Aggregate Findings
+    type: llm
+    model: balanced
+    system: |
+      Aggregate findings from multiple reviewers.
+
+      - Deduplicate overlapping findings
+      - Prioritize by severity
+      - Determine overall recommendation: APPROVE, REQUEST_CHANGES, or COMMENT
+
+      REQUEST_CHANGES if any CRITICAL or HIGH security issues.
+      COMMENT if only MEDIUM or architectural concerns.
+      APPROVE if only minor style suggestions.
+    prompt: |
+      Aggregate these review findings:
+
+      {{if .steps.reviews.security_review}}
+      ## Security Review
+      {{.steps.reviews.security_review.response}}
+      {{end}}
+
+      {{if .steps.reviews.performance_review}}
+      ## Performance Review
+      {{.steps.reviews.performance_review.response}}
+      {{end}}
+
+      {{if .steps.reviews.architecture_review}}
+      ## Architecture Review
+      {{.steps.reviews.architecture_review.response}}
+      {{end}}
+
+      {{if .steps.reviews.style_review}}
+      ## Style Review
+      {{.steps.reviews.style_review.response}}
+      {{end}}
+
+      Create a unified report with:
+      1. Overall recommendation (APPROVE/REQUEST_CHANGES/COMMENT)
+      2. Summary of blocking issues
+      3. Summary of suggestions
+      4. What looks good
+
+  - id: generate_report
+    name: Generate Review Report
+    type: llm
+    model: balanced
+    prompt: |
+      Generate a comprehensive PR review comment:
+
+      **PR:** #{{.inputs.pr_number}} - {{.steps.get_pr.response.title}}
+      **Personas Used:** {{.inputs.personas}}
+
+      **Aggregated Findings:**
+      {{.steps.aggregate_findings.response}}
+
+      Format as Markdown:
+
+      ## Conductor Code Review
+
+      **PR:** #{{.inputs.pr_number}} - {{.steps.get_pr.response.title}}
+      **Reviewed by:** [list personas]
+
+      ### Summary
+      Found **X blocking issues**, **Y suggestions**
+
+      **Recommendation:** [emoji] [APPROVE/REQUEST_CHANGES/COMMENT]
+
+      ---
+
+      ### Critical/Blocking Issues
+      [list with details, code samples, recommendations]
+
+      ---
+
+      ### Suggestions
+      [list with brief descriptions]
+
+      ---
+
+      ### What Looks Good
+      [positive feedback]
+
+      ---
+      *Reviewed by Conductor | [personas used]*
+
+  - id: post_review
+    name: Post Review
+    github.create_pull_review:
+      repo: "{{.inputs.repo}}"
+      pull_number: "{{.inputs.pr_number}}"
+      body: "{{.steps.generate_report.response}}"
+      event: "{{if contains .steps.aggregate_findings.response \"REQUEST_CHANGES\"}}REQUEST_CHANGES{{else if contains .steps.aggregate_findings.response \"APPROVE\"}}APPROVE{{else}}COMMENT{{end}}"
+
+outputs:
+  - name: review
+    type: string
+    value: "{{.steps.generate_report.response}}"
+    description: Full review report
+
+  - name: recommendation
+    type: string
+    value: "{{if contains .steps.aggregate_findings.response \"REQUEST_CHANGES\"}}REQUEST_CHANGES{{else if contains .steps.aggregate_findings.response \"APPROVE\"}}APPROVE{{else}}COMMENT{{end}}"
+    description: Overall recommendation
