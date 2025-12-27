@@ -46,6 +46,9 @@ var workflowNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`)
 func NewInitCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init [name]",
+		Annotations: map[string]string{
+			"group": "workflow",
+		},
 		Short: "Initialize Conductor or create a new workflow",
 		Long: `Initialize Conductor or create a new workflow from a template.
 

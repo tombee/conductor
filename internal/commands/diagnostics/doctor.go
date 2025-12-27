@@ -59,6 +59,9 @@ type ProviderHealth struct {
 func NewDoctorCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "doctor",
+		Annotations: map[string]string{
+			"group": "diagnostics",
+		},
 		Short: "Check system health and configuration",
 		Long: `Perform a comprehensive health check of Conductor configuration and providers.
 

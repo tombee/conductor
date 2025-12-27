@@ -39,6 +39,9 @@ func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "validate <workflow>",
 		Short: "Validate workflow YAML syntax and schema",
+		Annotations: map[string]string{
+			"group": "execution",
+		},
 		Long: `Validate checks that a workflow file has valid YAML syntax and conforms
 to the Conductor workflow schema. This validation does not require provider
 configuration and only checks the workflow structure itself.

@@ -43,6 +43,9 @@ func NewDocsCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "docs",
+		Annotations: map[string]string{
+			"group": "documentation",
+		},
 		Short: "Show documentation URLs",
 		Long: `Display URLs to various documentation resources.
 

@@ -45,6 +45,9 @@ var (
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "secrets",
+		Annotations: map[string]string{
+			"group": "configuration",
+		},
 		Short: "Manage secure secrets (API keys, credentials)",
 		Long: `Manage secrets securely using multiple backends.
 

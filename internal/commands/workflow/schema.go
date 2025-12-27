@@ -36,6 +36,9 @@ func NewSchemaCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "schema",
+		Annotations: map[string]string{
+			"group": "workflow",
+		},
 		Short: "Output the workflow JSON Schema",
 		Long: `Output the embedded JSON Schema for Conductor workflow definitions.
 

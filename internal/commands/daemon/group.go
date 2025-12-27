@@ -30,6 +30,9 @@ import (
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "daemon",
+		Annotations: map[string]string{
+			"group": "system",
+		},
 		Short: "Manage the conductor daemon",
 		Long: `Commands for managing the conductor daemon (conductord).
 

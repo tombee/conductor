@@ -28,6 +28,9 @@ import (
 func NewCacheCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cache",
+		Annotations: map[string]string{
+			"group": "management",
+		},
 		Short: "Manage remote workflow cache",
 		Long: `Manage the cache for remote workflows.
 

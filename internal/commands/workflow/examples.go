@@ -18,6 +18,9 @@ import (
 func NewExamplesCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "examples",
+		Annotations: map[string]string{
+			"group": "workflow",
+		},
 		Short: "Manage example workflows",
 		Long: `Browse, view, run, and copy example workflows.
 

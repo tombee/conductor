@@ -24,6 +24,9 @@ import (
 func NewCompletionCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "completion [bash|zsh|fish]",
+		Annotations: map[string]string{
+			"group": "diagnostics",
+		},
 		Short: "Generate shell completion scripts",
 		Long: `Generate shell completion scripts for Conductor.
 

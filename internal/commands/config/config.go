@@ -30,6 +30,9 @@ import (
 func NewConfigCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
+		Annotations: map[string]string{
+			"group": "configuration",
+		},
 		Short: "View and manage configuration",
 		Long: `View and manage Conductor configuration.
 

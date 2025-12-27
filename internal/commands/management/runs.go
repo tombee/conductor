@@ -33,6 +33,9 @@ import (
 func NewRunsCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "runs",
+		Annotations: map[string]string{
+			"group": "management",
+		},
 		Short: "Manage workflow runs",
 		Long: `Commands for listing, viewing, and managing workflow runs.
 

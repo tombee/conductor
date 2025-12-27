@@ -37,6 +37,9 @@ var (
 func NewTracesCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "traces",
+		Annotations: map[string]string{
+			"group": "management",
+		},
 		Short: "Manage and view workflow traces",
 		Long:  `View and filter workflow execution traces for debugging and monitoring.`,
 		RunE:  runTracesList,

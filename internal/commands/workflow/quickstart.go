@@ -14,6 +14,9 @@ import (
 func NewQuickstartCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "quickstart",
+		Annotations: map[string]string{
+			"group": "workflow",
+		},
 		Short: "Run the quickstart workflow",
 		Long: `Run a simple hello world workflow to verify Conductor is working correctly.
 

@@ -34,6 +34,9 @@ import (
 func NewProvidersCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "providers",
+		Annotations: map[string]string{
+			"group": "diagnostics",
+		},
 		Short: "Manage LLM provider configurations",
 		Long: `Manage configured LLM providers.
 
