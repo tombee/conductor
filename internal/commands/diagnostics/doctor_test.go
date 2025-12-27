@@ -110,3 +110,86 @@ providers:
 	// Should not panic
 	_ = rootCmd.Execute()
 }
+
+func TestDoctorCommand_NoProviders(t *testing.T) {
+	// Create temp directory for config
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	// Config with no providers configured
+	config := `# Empty config with no providers
+log:
+  level: info
+`
+	if err := os.WriteFile(configPath, []byte(config), 0600); err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
+	}
+
+	// Override config path
+	shared.SetConfigPathForTest(configPath)
+	defer func() { shared.SetConfigPathForTest("") }()
+
+	cmd := NewDoctorCommand()
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	// Should succeed but report unhealthy state (no error, but recommendations)
+	if err != nil {
+		t.Logf("doctor command with no providers returned: %v", err)
+	}
+}
+
+func TestDoctorCommand_InvalidProviderType(t *testing.T) {
+	// Create temp directory for config
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	// Config with invalid provider type
+	config := `default_provider: invalid
+providers:
+  invalid:
+    type: nonexistent-provider-type
+`
+	if err := os.WriteFile(configPath, []byte(config), 0600); err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
+	}
+
+	// Override config path
+	shared.SetConfigPathForTest(configPath)
+	defer func() { shared.SetConfigPathForTest("") }()
+
+	cmd := NewDoctorCommand()
+	cmd.SetArgs([]string{})
+
+	// Should execute without panicking, even with invalid provider
+	_ = cmd.Execute()
+}
+
+func TestDoctorCommand_MultipleProviders(t *testing.T) {
+	// Create temp directory for config
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	// Config with multiple providers
+	config := `default_provider: claude-code
+providers:
+  claude-code:
+    type: claude-code
+  anthropic:
+    type: anthropic
+    api_key: ${ANTHROPIC_API_KEY}
+`
+	if err := os.WriteFile(configPath, []byte(config), 0600); err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
+	}
+
+	// Override config path
+	shared.SetConfigPathForTest(configPath)
+	defer func() { shared.SetConfigPathForTest("") }()
+
+	cmd := NewDoctorCommand()
+	cmd.SetArgs([]string{})
+
+	// Should check all providers
+	_ = cmd.Execute()
+}

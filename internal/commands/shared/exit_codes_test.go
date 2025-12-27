@@ -174,3 +174,131 @@ func TestExitError_WithUserVisibleCause(t *testing.T) {
 		t.Errorf("expected suggestion from cause error, got %q", userErr.Suggestion())
 	}
 }
+
+func TestExitCodes_Values(t *testing.T) {
+	// Verify exit codes match documented values
+	tests := []struct {
+		name     string
+		code     int
+		expected int
+	}{
+		{"ExitSuccess", ExitSuccess, 0},
+		{"ExitExecutionFailed", ExitExecutionFailed, 1},
+		{"ExitInvalidWorkflow", ExitInvalidWorkflow, 2},
+		{"ExitMissingInput", ExitMissingInput, 3},
+		{"ExitProviderError", ExitProviderError, 4},
+		{"ExitMissingInputNonInteractive", ExitMissingInputNonInteractive, 70},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.code != tt.expected {
+				t.Errorf("%s = %d, expected %d", tt.name, tt.code, tt.expected)
+			}
+		})
+	}
+}
+
+func TestExitError_Constructors(t *testing.T) {
+	tests := []struct {
+		name         string
+		constructor  func() *ExitError
+		expectedCode int
+		expectedMsg  string
+	}{
+		{
+			name: "NewExecutionError",
+			constructor: func() *ExitError {
+				return NewExecutionError("execution failed", errors.New("inner"))
+			},
+			expectedCode: ExitExecutionFailed,
+			expectedMsg:  "execution failed",
+		},
+		{
+			name: "NewInvalidWorkflowError",
+			constructor: func() *ExitError {
+				return NewInvalidWorkflowError("invalid workflow", errors.New("parse error"))
+			},
+			expectedCode: ExitInvalidWorkflow,
+			expectedMsg:  "invalid workflow",
+		},
+		{
+			name: "NewMissingInputError",
+			constructor: func() *ExitError {
+				return NewMissingInputError("missing input", errors.New("required"))
+			},
+			expectedCode: ExitMissingInput,
+			expectedMsg:  "missing input",
+		},
+		{
+			name: "NewProviderError",
+			constructor: func() *ExitError {
+				return NewProviderError("provider error", errors.New("connection failed"))
+			},
+			expectedCode: ExitProviderError,
+			expectedMsg:  "provider error",
+		},
+		{
+			name: "NewMissingInputNonInteractiveError",
+			constructor: func() *ExitError {
+				return NewMissingInputNonInteractiveError("non-interactive", errors.New("no prompt"))
+			},
+			expectedCode: ExitMissingInputNonInteractive,
+			expectedMsg:  "non-interactive",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.constructor()
+
+			if err.Code != tt.expectedCode {
+				t.Errorf("expected code %d, got %d", tt.expectedCode, err.Code)
+			}
+
+			if err.Message != tt.expectedMsg {
+				t.Errorf("expected message %q, got %q", tt.expectedMsg, err.Message)
+			}
+
+			if err.Cause == nil {
+				t.Error("expected Cause to be set")
+			}
+		})
+	}
+}
+
+func TestExitError_Error(t *testing.T) {
+	tests := []struct {
+		name     string
+		exitErr  *ExitError
+		expected string
+	}{
+		{
+			name: "with cause",
+			exitErr: &ExitError{
+				Code:    1,
+				Message: "test error",
+				Cause:   errors.New("inner error"),
+			},
+			expected: "test error: inner error",
+		},
+		{
+			name: "without cause",
+			exitErr: &ExitError{
+				Code:    1,
+				Message: "test error",
+				Cause:   nil,
+			},
+			expected: "test error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.exitErr.Error()
+			if got != tt.expected {
+				t.Errorf("Error() = %q, expected %q", got, tt.expected)
+			}
+		})
+	}
+}

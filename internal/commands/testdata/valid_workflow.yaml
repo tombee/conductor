@@ -1,0 +1,12 @@
+# Minimal valid workflow for testing
+name: test-workflow
+description: A simple test workflow
+version: "1.0"
+
+steps:
+  - id: step1
+    name: Test Step
+    type: llm
+    prompt: "Hello, world!"
+    inputs:
+      model: fast
