@@ -1,4 +1,4 @@
-.PHONY: help build build-daemon build-all test lint clean coverage install release snapshot
+.PHONY: help build test lint clean coverage install release snapshot
 
 # Version information
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -33,13 +33,6 @@ help:
 build:
 	@echo "Building conductor $(VERSION)..."
 	go build -ldflags="$(LDFLAGS)" -o bin/conductor ./cmd/conductor
-
-build-daemon:
-	@echo "Building conductord $(VERSION)..."
-	go build -ldflags="$(LDFLAGS)" -o bin/conductord ./cmd/conductord
-
-build-all: build build-daemon
-	@echo "Built conductor and conductord $(VERSION)"
 
 test:
 	go test -v -race ./...
