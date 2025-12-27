@@ -64,8 +64,8 @@ func TestActiveRunCount(t *testing.T) {
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	r.mu.Lock()
-	r.runs["run1"] = &Run{
+	r.state.mu.Lock()
+	r.state.runs["run1"] = &Run{
 		ID:        "run1",
 		Status:    RunStatusPending,
 		ctx:       runCtx,
@@ -73,7 +73,7 @@ func TestActiveRunCount(t *testing.T) {
 		stopped:   make(chan struct{}),
 		CreatedAt: time.Now(),
 	}
-	r.mu.Unlock()
+	r.state.mu.Unlock()
 
 	if count := r.ActiveRunCount(); count != 1 {
 		t.Errorf("ActiveRunCount() = %d, want 1 (pending run)", count)
@@ -83,8 +83,8 @@ func TestActiveRunCount(t *testing.T) {
 	runCtx2, cancel2 := context.WithCancel(ctx)
 	defer cancel2()
 
-	r.mu.Lock()
-	r.runs["run2"] = &Run{
+	r.state.mu.Lock()
+	r.state.runs["run2"] = &Run{
 		ID:        "run2",
 		Status:    RunStatusRunning,
 		ctx:       runCtx2,
@@ -92,7 +92,7 @@ func TestActiveRunCount(t *testing.T) {
 		stopped:   make(chan struct{}),
 		CreatedAt: time.Now(),
 	}
-	r.mu.Unlock()
+	r.state.mu.Unlock()
 
 	if count := r.ActiveRunCount(); count != 2 {
 		t.Errorf("ActiveRunCount() = %d, want 2 (pending + running)", count)
@@ -102,8 +102,8 @@ func TestActiveRunCount(t *testing.T) {
 	runCtx3, cancel3 := context.WithCancel(ctx)
 	defer cancel3()
 
-	r.mu.Lock()
-	r.runs["run3"] = &Run{
+	r.state.mu.Lock()
+	r.state.runs["run3"] = &Run{
 		ID:        "run3",
 		Status:    RunStatusCompleted,
 		ctx:       runCtx3,
@@ -111,7 +111,7 @@ func TestActiveRunCount(t *testing.T) {
 		stopped:   make(chan struct{}),
 		CreatedAt: time.Now(),
 	}
-	r.mu.Unlock()
+	r.state.mu.Unlock()
 
 	if count := r.ActiveRunCount(); count != 2 {
 		t.Errorf("ActiveRunCount() = %d, want 2 (completed run not counted)", count)
@@ -121,8 +121,8 @@ func TestActiveRunCount(t *testing.T) {
 	runCtx4, cancel4 := context.WithCancel(ctx)
 	defer cancel4()
 
-	r.mu.Lock()
-	r.runs["run4"] = &Run{
+	r.state.mu.Lock()
+	r.state.runs["run4"] = &Run{
 		ID:        "run4",
 		Status:    RunStatusFailed,
 		ctx:       runCtx4,
@@ -130,7 +130,7 @@ func TestActiveRunCount(t *testing.T) {
 		stopped:   make(chan struct{}),
 		CreatedAt: time.Now(),
 	}
-	r.mu.Unlock()
+	r.state.mu.Unlock()
 
 	if count := r.ActiveRunCount(); count != 2 {
 		t.Errorf("ActiveRunCount() = %d, want 2 (failed run not counted)", count)
@@ -140,8 +140,8 @@ func TestActiveRunCount(t *testing.T) {
 	runCtx5, cancel5 := context.WithCancel(ctx)
 	defer cancel5()
 
-	r.mu.Lock()
-	r.runs["run5"] = &Run{
+	r.state.mu.Lock()
+	r.state.runs["run5"] = &Run{
 		ID:        "run5",
 		Status:    RunStatusCancelled,
 		ctx:       runCtx5,
@@ -149,7 +149,7 @@ func TestActiveRunCount(t *testing.T) {
 		stopped:   make(chan struct{}),
 		CreatedAt: time.Now(),
 	}
-	r.mu.Unlock()
+	r.state.mu.Unlock()
 
 	if count := r.ActiveRunCount(); count != 2 {
 		t.Errorf("ActiveRunCount() = %d, want 2 (cancelled run not counted)", count)
@@ -175,8 +175,8 @@ func TestWaitForDrain_RunsComplete(t *testing.T) {
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	r.mu.Lock()
-	r.runs["run1"] = &Run{
+	r.state.mu.Lock()
+	r.state.runs["run1"] = &Run{
 		ID:        "run1",
 		Status:    RunStatusRunning,
 		ctx:       runCtx,
@@ -184,14 +184,14 @@ func TestWaitForDrain_RunsComplete(t *testing.T) {
 		stopped:   make(chan struct{}),
 		CreatedAt: time.Now(),
 	}
-	r.mu.Unlock()
+	r.state.mu.Unlock()
 
 	// Start a goroutine to complete the run after 200ms
 	go func() {
 		time.Sleep(200 * time.Millisecond)
-		r.mu.Lock()
-		r.runs["run1"].Status = RunStatusCompleted
-		r.mu.Unlock()
+		r.state.mu.Lock()
+		r.state.runs["run1"].Status = RunStatusCompleted
+		r.state.mu.Unlock()
 	}()
 
 	// Wait for drain with longer timeout
@@ -210,8 +210,8 @@ func TestWaitForDrain_Timeout(t *testing.T) {
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	r.mu.Lock()
-	r.runs["run1"] = &Run{
+	r.state.mu.Lock()
+	r.state.runs["run1"] = &Run{
 		ID:        "run1",
 		Status:    RunStatusRunning,
 		ctx:       runCtx,
@@ -219,7 +219,7 @@ func TestWaitForDrain_Timeout(t *testing.T) {
 		stopped:   make(chan struct{}),
 		CreatedAt: time.Now(),
 	}
-	r.mu.Unlock()
+	r.state.mu.Unlock()
 
 	// Wait for drain with short timeout
 	err := r.WaitForDrain(ctx, 200*time.Millisecond)
@@ -242,8 +242,8 @@ func TestWaitForDrain_ContextCancelled(t *testing.T) {
 	runCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	r.mu.Lock()
-	r.runs["run1"] = &Run{
+	r.state.mu.Lock()
+	r.state.runs["run1"] = &Run{
 		ID:        "run1",
 		Status:    RunStatusRunning,
 		ctx:       runCtx,
@@ -251,7 +251,7 @@ func TestWaitForDrain_ContextCancelled(t *testing.T) {
 		stopped:   make(chan struct{}),
 		CreatedAt: time.Now(),
 	}
-	r.mu.Unlock()
+	r.state.mu.Unlock()
 
 	// Create a context that we'll cancel
 	ctx, ctxCancel := context.WithCancel(context.Background())
@@ -285,8 +285,8 @@ func TestWaitForDrain_MultipleRuns(t *testing.T) {
 		defer cancel()
 
 		runID := string(rune('0' + i))
-		r.mu.Lock()
-		r.runs[runID] = &Run{
+		r.state.mu.Lock()
+		r.state.runs[runID] = &Run{
 			ID:        runID,
 			Status:    RunStatusRunning,
 			ctx:       runCtx,
@@ -294,27 +294,27 @@ func TestWaitForDrain_MultipleRuns(t *testing.T) {
 			stopped:   make(chan struct{}),
 			CreatedAt: time.Now(),
 		}
-		r.mu.Unlock()
+		r.state.mu.Unlock()
 	}
 
 	// Start goroutines to complete runs at different times
 	go func() {
 		time.Sleep(100 * time.Millisecond)
-		r.mu.Lock()
-		r.runs["1"].Status = RunStatusCompleted
-		r.mu.Unlock()
+		r.state.mu.Lock()
+		r.state.runs["1"].Status = RunStatusCompleted
+		r.state.mu.Unlock()
 	}()
 	go func() {
 		time.Sleep(200 * time.Millisecond)
-		r.mu.Lock()
-		r.runs["2"].Status = RunStatusFailed
-		r.mu.Unlock()
+		r.state.mu.Lock()
+		r.state.runs["2"].Status = RunStatusFailed
+		r.state.mu.Unlock()
 	}()
 	go func() {
 		time.Sleep(300 * time.Millisecond)
-		r.mu.Lock()
-		r.runs["3"].Status = RunStatusCancelled
-		r.mu.Unlock()
+		r.state.mu.Lock()
+		r.state.runs["3"].Status = RunStatusCancelled
+		r.state.mu.Unlock()
 	}()
 
 	// Wait for all runs to complete

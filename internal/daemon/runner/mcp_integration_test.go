@@ -117,7 +117,7 @@ steps:
 
 	// Wait for tools to be registered (this is the key verification)
 	require.Eventually(t, func() bool {
-		toolNames := runner.toolRegistry.List()
+		toolNames := runner.ToolRegistry().List()
 		for _, name := range toolNames {
 			if name == "echo.echo" {
 				return true
@@ -166,7 +166,7 @@ func TestMCPServerLifecycle(t *testing.T) {
 	runner := New(cfg, nil, nil, WithMCPManager(mockMgr))
 
 	// Start the server
-	err := runner.mcpManager.Start(mcp.ServerConfig{
+	err := runner.lifecycle.mcpManager.Start(mcp.ServerConfig{
 		Name:    "test-server",
 		Command: "echo",
 		Args:    []string{"test"},
@@ -184,13 +184,13 @@ func TestMCPServerLifecycle(t *testing.T) {
 	require.True(t, mockMgr.IsRunning("test-server"))
 
 	// Get client to verify it's accessible
-	client, err := runner.mcpManager.GetClient("test-server")
+	client, err := runner.lifecycle.mcpManager.GetClient("test-server")
 	require.NoError(t, err)
 	require.NotNil(t, client)
 	require.Equal(t, "test-server", client.ServerName())
 
 	// Stop the server
-	err = runner.mcpManager.Stop("test-server")
+	err = runner.lifecycle.mcpManager.Stop("test-server")
 	require.NoError(t, err)
 
 	// Wait for stop to be called
@@ -208,7 +208,7 @@ func TestMCPServerLifecycle(t *testing.T) {
 	require.True(t, stopCalled, "Stop hook should have been called")
 
 	// Verify GetClient returns error after stop
-	_, err = runner.mcpManager.GetClient("test-server")
+	_, err = runner.lifecycle.mcpManager.GetClient("test-server")
 	require.Error(t, err)
 }
 
@@ -235,7 +235,7 @@ func TestMCPServerEnvironmentVariables(t *testing.T) {
 	runner := New(cfg, nil, nil, WithMCPManager(mockMgr))
 
 	// Start server with environment variables
-	err := runner.mcpManager.Start(mcp.ServerConfig{
+	err := runner.lifecycle.mcpManager.Start(mcp.ServerConfig{
 		Name:    "test-server",
 		Command: "echo",
 		Args:    []string{"test"},
@@ -257,7 +257,7 @@ func TestMCPServerEnvironmentVariables(t *testing.T) {
 	require.Contains(t, capturedConfig.Env, "DEBUG=true")
 
 	// Clean up
-	err = runner.mcpManager.Stop("test-server")
+	err = runner.lifecycle.mcpManager.Stop("test-server")
 	require.NoError(t, err)
 }
 
@@ -311,14 +311,14 @@ func TestMCPMultipleServers(t *testing.T) {
 	runner := New(cfg, nil, nil, WithMCPManager(mockMgr))
 
 	// Start both servers
-	err := runner.mcpManager.Start(mcp.ServerConfig{
+	err := runner.lifecycle.mcpManager.Start(mcp.ServerConfig{
 		Name:    "server1",
 		Command: "echo",
 		Args:    []string{"server1"},
 	})
 	require.NoError(t, err)
 
-	err = runner.mcpManager.Start(mcp.ServerConfig{
+	err = runner.lifecycle.mcpManager.Start(mcp.ServerConfig{
 		Name:    "server2",
 		Command: "echo",
 		Args:    []string{"server2"},
@@ -366,9 +366,9 @@ func TestMCPMultipleServers(t *testing.T) {
 	require.Contains(t, resp2.Content[0].Text, "server2")
 
 	// Clean up
-	err = runner.mcpManager.Stop("server1")
+	err = runner.lifecycle.mcpManager.Stop("server1")
 	require.NoError(t, err)
-	err = runner.mcpManager.Stop("server2")
+	err = runner.lifecycle.mcpManager.Stop("server2")
 	require.NoError(t, err)
 
 	// Verify both servers are stopped

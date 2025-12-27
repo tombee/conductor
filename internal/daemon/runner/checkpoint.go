@@ -26,17 +26,17 @@ import (
 
 // ResumeInterrupted attempts to resume any interrupted runs from checkpoints.
 func (r *Runner) ResumeInterrupted(ctx context.Context) error {
-	if r.checkpoints == nil || !r.checkpoints.Enabled() {
+	if r.lifecycle.checkpoints == nil || !r.lifecycle.checkpoints.Enabled() {
 		return nil
 	}
 
-	runIDs, err := r.checkpoints.ListInterrupted(ctx)
+	runIDs, err := r.lifecycle.checkpoints.ListInterrupted(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list interrupted runs: %w", err)
 	}
 
 	for _, runID := range runIDs {
-		cp, err := r.checkpoints.Load(ctx, runID)
+		cp, err := r.lifecycle.checkpoints.Load(ctx, runID)
 		if err != nil {
 			// Log and continue
 			continue
@@ -56,7 +56,7 @@ func (r *Runner) ResumeInterrupted(ctx context.Context) error {
 
 // saveCheckpoint saves a checkpoint for the current execution state.
 func (r *Runner) saveCheckpoint(run *Run, stepIndex int, workflowCtx map[string]any) {
-	if r.checkpoints == nil || !r.checkpoints.Enabled() {
+	if r.lifecycle.checkpoints == nil || !r.lifecycle.checkpoints.Enabled() {
 		return
 	}
 
@@ -76,7 +76,7 @@ func (r *Runner) saveCheckpoint(run *Run, stepIndex int, workflowCtx map[string]
 		}
 	}
 
-	if err := r.checkpoints.Save(context.Background(), cp); err != nil {
+	if err := r.lifecycle.checkpoints.Save(context.Background(), cp); err != nil {
 		r.addLog(run, "warn", fmt.Sprintf("Failed to save checkpoint: %v", err), "")
 	}
 }

@@ -47,7 +47,7 @@ func (r *Runner) startMCPServers(run *Run) error {
 		}
 
 		// Start the server
-		if err := r.mcpManager.Start(serverConfig); err != nil {
+		if err := r.lifecycle.mcpManager.Start(serverConfig); err != nil {
 			return fmt.Errorf("failed to start MCP server %s: %w", mcpServerDef.Name, err)
 		}
 
@@ -72,7 +72,7 @@ func (r *Runner) registerMCPTools(run *Run, serverName string) error {
 	// Retry for up to 10 seconds
 	maxAttempts := 20
 	for attempt := 0; attempt < maxAttempts; attempt++ {
-		client, err = r.mcpManager.GetClient(serverName)
+		client, err = r.lifecycle.mcpManager.GetClient(serverName)
 		if err == nil {
 			break
 		}
@@ -99,7 +99,7 @@ func (r *Runner) registerMCPTools(run *Run, serverName string) error {
 	// Register each tool in the registry
 	for _, toolDef := range toolDefs {
 		mcpTool := mcp.NewMCPTool(serverName, toolDef, client)
-		r.toolRegistry.Register(mcpTool)
+		r.lifecycle.toolRegistry.Register(mcpTool)
 		r.addLog(run, "debug", fmt.Sprintf("Registered MCP tool: %s", mcpTool.Name()), "")
 	}
 

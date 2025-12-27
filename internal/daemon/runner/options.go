@@ -14,7 +14,11 @@
 
 package runner
 
-import "github.com/tombee/conductor/internal/mcp"
+import (
+	"github.com/tombee/conductor/internal/daemon/checkpoint"
+	"github.com/tombee/conductor/internal/mcp"
+	"github.com/tombee/conductor/pkg/tools"
+)
 
 // Option configures a Runner.
 type Option func(*Runner)
@@ -23,6 +27,45 @@ type Option func(*Runner)
 // This is primarily used for testing with mock implementations.
 func WithMCPManager(manager mcp.MCPManagerProvider) Option {
 	return func(r *Runner) {
-		r.mcpManager = manager
+		// Create a new lifecycle manager with the provided MCP manager
+		r.lifecycle = NewLifecycleManager(manager, r.lifecycle.checkpoints, r.lifecycle.toolRegistry)
+	}
+}
+
+// WithLifecycleManager sets a custom lifecycle manager for the runner.
+// This allows full control over MCP servers, checkpoints, and tool registry.
+func WithLifecycleManager(lm *LifecycleManager) Option {
+	return func(r *Runner) {
+		r.lifecycle = lm
+	}
+}
+
+// WithStateManager sets a custom state manager for the runner.
+func WithStateManager(sm *StateManager) Option {
+	return func(r *Runner) {
+		r.state = sm
+	}
+}
+
+// WithLogAggregator sets a custom log aggregator for the runner.
+func WithLogAggregator(la *LogAggregator) Option {
+	return func(r *Runner) {
+		r.logs = la
+	}
+}
+
+// WithToolRegistry sets a custom tool registry.
+func WithToolRegistry(tr *tools.Registry) Option {
+	return func(r *Runner) {
+		// Create a new lifecycle manager with the provided tool registry
+		r.lifecycle = NewLifecycleManager(r.lifecycle.mcpManager, r.lifecycle.checkpoints, tr)
+	}
+}
+
+// WithCheckpointManager sets a custom checkpoint manager.
+func WithCheckpointManager(cm *checkpoint.Manager) Option {
+	return func(r *Runner) {
+		// Create a new lifecycle manager with the provided checkpoint manager
+		r.lifecycle = NewLifecycleManager(r.lifecycle.mcpManager, cm, r.lifecycle.toolRegistry)
 	}
 }
