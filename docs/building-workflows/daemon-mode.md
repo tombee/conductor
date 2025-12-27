@@ -36,6 +36,28 @@ Use daemon mode when you need:
 - Local development and testing
 - Personal automation (CLI is simpler)
 
+**Consider local execution** when the trigger environment already has what you need:
+- CI runners with code already checked out (e.g., GitHub Actions) - running `conductor run` locally avoids re-cloning
+- Environments where files are already available on disk
+
+## Considerations
+
+### Filesystem Access
+
+When running in daemon mode (especially on a remote server), workflows execute on the daemon's filesystem, not the client's. This has implications for workflows that need access to local files:
+
+**Works well:**
+- Git-native workflows that clone repositories (the daemon clones from the same remote)
+- Webhook-triggered workflows where context comes from the webhook payload
+- Workflows that fetch data via HTTP APIs
+
+**Requires local execution:**
+- Reviewing uncommitted local changes
+- Processing files that exist only on your machine
+- Workflows that need access to local development environments
+
+For code review workflows, push changes to a branch first - the daemon can then clone and review from git. This mirrors how CI systems (GitHub Actions, etc.) handle the same challenge.
+
 ## Quick Start
 
 ### Install conductord
