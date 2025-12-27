@@ -15,7 +15,7 @@ Conductor can be configured via YAML configuration file or environment variables
 ```yaml
 # Server configuration
 server:
-  port_range: [9876, 9899]
+  port: 9876
   health_check_interval: 500ms
   shutdown_timeout: 5s
   read_timeout: 10s
@@ -63,20 +63,19 @@ daemon:
 
 Configuration for the Conductor server (when running as a daemon).
 
-### server.port_range
+### server.port
 
-**Type:** `array` of integers
-**Default:** `[9876, 9899]`
-**Environment:** `SERVER_PORT_MIN`, `SERVER_PORT_MAX`
+**Type:** `integer`
+**Default:** `9876`
 
-Port for the daemon server. To use a specific port:
+Port for the daemon server. To use a different port:
 
 ```yaml
 server:
-  port_range: [8080, 8080]  # Use port 8080
+  port: 8080
 ```
 
-The range format allows fallback to alternate ports if the primary is in use (useful during development).
+If the port is already in use, the daemon will fail immediately with a clear error message indicating the port number and suggesting diagnostic commands (`lsof -i :PORT` or `ss -tlnp`) to identify the conflicting service.
 
 ### server.health_check_interval
 
@@ -476,8 +475,6 @@ All configuration options can be set via environment variables. Environment vari
 
 | Variable | Description |
 |----------|-------------|
-| `SERVER_PORT_MIN` | Minimum port in range |
-| `SERVER_PORT_MAX` | Maximum port in range |
 | `SERVER_HEALTH_CHECK_INTERVAL` | Health check interval |
 | `SERVER_SHUTDOWN_TIMEOUT` | Shutdown timeout |
 | `SERVER_READ_TIMEOUT` | Read timeout |
@@ -569,7 +566,7 @@ providers:
 
 ```yaml
 server:
-  port_range: [9876, 9899]
+  port: 9876
   shutdown_timeout: 30s
 
 auth:

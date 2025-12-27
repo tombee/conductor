@@ -366,10 +366,9 @@ type RedactionPattern struct {
 
 // ServerConfig configures the RPC server behavior.
 type ServerConfig struct {
-	// PortRange specifies the range of ports to try (inclusive).
-	// Environment: SERVER_PORT_MIN, SERVER_PORT_MAX
-	// Default: [9876, 9899]
-	PortRange [2]int `yaml:"port_range"`
+	// Port specifies the port to bind to.
+	// Default: 9876
+	Port int `yaml:"port"`
 
 	// HealthCheckInterval is the interval between health check polls.
 	// Environment: SERVER_HEALTH_CHECK_INTERVAL
@@ -474,7 +473,7 @@ func Default() *Config {
 
 	return &Config{
 		Server: ServerConfig{
-			PortRange:           [2]int{9876, 9899},
+			Port:                9876,
 			HealthCheckInterval: 500 * time.Millisecond,
 			ShutdownTimeout:     5 * time.Second,
 			ReadTimeout:         10 * time.Second,
@@ -618,11 +617,8 @@ func (c *Config) applyDefaults() {
 	defaults := Default()
 
 	// Server defaults
-	if c.Server.PortRange[0] == 0 {
-		c.Server.PortRange[0] = defaults.Server.PortRange[0]
-	}
-	if c.Server.PortRange[1] == 0 {
-		c.Server.PortRange[1] = defaults.Server.PortRange[1]
+	if c.Server.Port == 0 {
+		c.Server.Port = defaults.Server.Port
 	}
 	if c.Server.HealthCheckInterval == 0 {
 		c.Server.HealthCheckInterval = defaults.Server.HealthCheckInterval
@@ -775,16 +771,6 @@ func (c *Config) loadFromFile(path string) error {
 // loadFromEnv loads configuration from environment variables.
 func (c *Config) loadFromEnv() {
 	// Server configuration
-	if val := os.Getenv("SERVER_PORT_MIN"); val != "" {
-		if port, err := strconv.Atoi(val); err == nil {
-			c.Server.PortRange[0] = port
-		}
-	}
-	if val := os.Getenv("SERVER_PORT_MAX"); val != "" {
-		if port, err := strconv.Atoi(val); err == nil {
-			c.Server.PortRange[1] = port
-		}
-	}
 	if val := os.Getenv("SERVER_HEALTH_CHECK_INTERVAL"); val != "" {
 		if duration, err := time.ParseDuration(val); err == nil {
 			c.Server.HealthCheckInterval = duration
@@ -935,14 +921,8 @@ func (c *Config) Validate() error {
 	var errs []string
 
 	// Validate server configuration
-	if c.Server.PortRange[0] < 1024 || c.Server.PortRange[0] > 65535 {
-		errs = append(errs, fmt.Sprintf("server.port_range[0] must be between 1024 and 65535, got %d", c.Server.PortRange[0]))
-	}
-	if c.Server.PortRange[1] < 1024 || c.Server.PortRange[1] > 65535 {
-		errs = append(errs, fmt.Sprintf("server.port_range[1] must be between 1024 and 65535, got %d", c.Server.PortRange[1]))
-	}
-	if c.Server.PortRange[0] > c.Server.PortRange[1] {
-		errs = append(errs, fmt.Sprintf("server.port_range[0] (%d) must be <= port_range[1] (%d)", c.Server.PortRange[0], c.Server.PortRange[1]))
+	if c.Server.Port < 1024 || c.Server.Port > 65535 {
+		errs = append(errs, fmt.Sprintf("server.port must be between 1024 and 65535, got %d", c.Server.Port))
 	}
 	if c.Server.HealthCheckInterval <= 0 {
 		errs = append(errs, fmt.Sprintf("server.health_check_interval must be positive, got %v", c.Server.HealthCheckInterval))

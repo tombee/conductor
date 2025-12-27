@@ -22,6 +22,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,8 +33,11 @@ var (
 	// ErrServerClosed is returned when operations are attempted on a closed server.
 	ErrServerClosed = errors.New("rpc: server closed")
 
-	// ErrNoPortAvailable is returned when no port in the configured range is available.
-	ErrNoPortAvailable = errors.New("rpc: no port available in range")
+	// ErrPortInUse is returned when the configured port is already in use.
+	ErrPortInUse = errors.New("rpc: port already in use")
+
+	// ErrPortPermissionDenied is returned when binding to port fails due to permissions.
+	ErrPortPermissionDenied = errors.New("rpc: permission denied binding to port")
 
 	// ErrShutdownTimeout is returned when graceful shutdown exceeds the timeout.
 	ErrShutdownTimeout = errors.New("rpc: shutdown timeout exceeded")
@@ -41,9 +45,9 @@ var (
 
 // ServerConfig configures the RPC server.
 type ServerConfig struct {
-	// PortRange specifies the range of ports to try (inclusive).
-	// Default: [9876, 9899]
-	PortRange [2]int
+	// Port specifies the port to bind to.
+	// Default: 9876
+	Port int
 
 	// ShutdownTimeout is the maximum duration to wait for graceful shutdown.
 	// Default: 5 seconds
@@ -61,7 +65,7 @@ type ServerConfig struct {
 // DefaultConfig returns a ServerConfig with sensible defaults.
 func DefaultConfig() *ServerConfig {
 	return &ServerConfig{
-		PortRange:       [2]int{9876, 9899},
+		Port:            9876,
 		ShutdownTimeout: 5 * time.Second,
 		Logger:          slog.Default(),
 	}
@@ -105,8 +109,8 @@ func NewServer(config *ServerConfig) *Server {
 		config.ShutdownTimeout = 5 * time.Second
 	}
 
-	if config.PortRange[0] == 0 {
-		config.PortRange = [2]int{9876, 9899}
+	if config.Port == 0 {
+		config.Port = 9876
 	}
 
 	s := &Server{
@@ -145,14 +149,14 @@ func (s *Server) Start(ctx context.Context) (int, error) {
 		return s.port, nil // Already started
 	}
 
-	// Find an available port
-	port, listener, err := s.findAvailablePort()
+	// Bind to the configured port
+	listener, err := s.bindPort()
 	if err != nil {
 		return 0, err
 	}
 
 	s.listener = listener
-	s.port = port
+	s.port = s.config.Port
 
 	// Create HTTP server
 	mux := http.NewServeMux()
@@ -168,8 +172,7 @@ func (s *Server) Start(ctx context.Context) (int, error) {
 	// Start HTTP server in background
 	go func() {
 		s.logger.Info("rpc server starting",
-			"port", port,
-			"portRange", s.config.PortRange)
+			"port", s.port)
 
 		if err := s.httpServer.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			s.logger.Error("rpc server error", "error", err)
@@ -177,27 +180,33 @@ func (s *Server) Start(ctx context.Context) (int, error) {
 	}()
 
 	// Output port for Electron to discover
-	fmt.Printf("CONDUCTOR_BACKEND_PORT=%d\n", port)
+	fmt.Printf("CONDUCTOR_BACKEND_PORT=%d\n", s.port)
 
-	s.logger.Info("rpc server started", "port", port)
-	return port, nil
+	s.logger.Info("rpc server started", "port", s.port)
+	return s.port, nil
 }
 
-// findAvailablePort attempts to find an available port in the configured range.
-func (s *Server) findAvailablePort() (int, net.Listener, error) {
-	startPort := s.config.PortRange[0]
-	endPort := s.config.PortRange[1]
+// bindPort attempts to bind to the configured port and returns clear error messages on failure.
+func (s *Server) bindPort() (net.Listener, error) {
+	port := s.config.Port
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
 
-	for port := startPort; port <= endPort; port++ {
-		addr := fmt.Sprintf("127.0.0.1:%d", port)
-		listener, err := net.Listen("tcp", addr)
-		if err == nil {
-			return port, listener, nil
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		// Determine the specific error type and provide helpful message
+		if strings.Contains(err.Error(), "address already in use") {
+			return nil, fmt.Errorf("%w: port %d is already in use. Check if the daemon is already running or use `lsof -i :%d` or `ss -tlnp | grep %d` to identify the conflicting service",
+				ErrPortInUse, port, port, port)
 		}
-		s.logger.Debug("port unavailable", "port", port, "error", err)
+		if strings.Contains(err.Error(), "permission denied") {
+			return nil, fmt.Errorf("%w: cannot bind to port %d (ports below 1024 require root privileges)",
+				ErrPortPermissionDenied, port)
+		}
+		// Generic binding error
+		return nil, fmt.Errorf("failed to bind to port %d: %w", port, err)
 	}
 
-	return 0, nil, ErrNoPortAvailable
+	return listener, nil
 }
 
 // Port returns the port the server is listening on, or 0 if not started.

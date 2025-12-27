@@ -30,7 +30,7 @@ import (
 
 // Serve command flags
 var (
-	servePortRange string
+	servePort int
 )
 
 // NewServeCommand creates the serve command
@@ -45,12 +45,12 @@ execution requests from clients.`,
 		Example: `  # Start server with default settings
   conductor serve
 
-  # Start server with specific port range
-  conductor serve --port-range 8080-8090`,
+  # Start server with specific port
+  conductor serve --port 8080`,
 		RunE: runServe,
 	}
 
-	cmd.Flags().StringVar(&servePortRange, "port-range", "", "Port range to use (e.g., 8080-8090)")
+	cmd.Flags().IntVar(&servePort, "port", 0, "Port to bind to (default: 9876)")
 
 	return cmd
 }
@@ -62,13 +62,9 @@ func runServe(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	// Override port range if specified
-	if servePortRange != "" {
-		var start, end int
-		if _, err := fmt.Sscanf(servePortRange, "%d-%d", &start, &end); err != nil {
-			return fmt.Errorf("invalid port range format (expected: start-end): %w", err)
-		}
-		cfg.Server.PortRange = [2]int{start, end}
+	// Override port if specified
+	if servePort != 0 {
+		cfg.Server.Port = servePort
 	}
 
 	// Create logger from configuration
@@ -86,7 +82,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	// Create RPC server with configuration
 	serverConfig := rpc.DefaultConfig()
 	serverConfig.Logger = logger
-	serverConfig.PortRange = cfg.Server.PortRange
+	serverConfig.Port = cfg.Server.Port
 	serverConfig.ShutdownTimeout = cfg.Server.ShutdownTimeout
 
 	server := rpc.NewServer(serverConfig)

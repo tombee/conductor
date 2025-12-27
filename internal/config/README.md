@@ -24,7 +24,7 @@ if err != nil {
 }
 
 // Access configuration
-fmt.Printf("Server port range: %v\n", cfg.Server.PortRange)
+fmt.Printf("Server port: %d\n", cfg.Server.Port)
 fmt.Printf("Log level: %s\n", cfg.Log.Level)
 ```
 
@@ -51,7 +51,7 @@ See `config.example.yaml` in the project root for a complete example.
 
 ```yaml
 server:
-  port_range: [9876, 9899]
+  port: 9876
   health_check_interval: 500ms
   shutdown_timeout: 5s
 
@@ -68,7 +68,7 @@ Controls RPC server behavior.
 
 | Field | Type | Default | Environment Variable | Description |
 |-------|------|---------|---------------------|-------------|
-| `port_range` | `[2]int` | `[9876, 9899]` | `SERVER_PORT_MIN`, `SERVER_PORT_MAX` | Port range to try |
+| `port` | `int` | `9876` | - | Port to bind to |
 | `health_check_interval` | `time.Duration` | `500ms` | `SERVER_HEALTH_CHECK_INTERVAL` | Health check polling interval |
 | `shutdown_timeout` | `time.Duration` | `5s` | `SERVER_SHUTDOWN_TIMEOUT` | Graceful shutdown timeout |
 | `read_timeout` | `time.Duration` | `10s` | `SERVER_READ_TIMEOUT` | Request read timeout |
@@ -136,8 +136,6 @@ Environment variables always take precedence over file-based configuration:
 ```bash
 export LOG_LEVEL=debug
 export LOG_FORMAT=text
-export SERVER_PORT_MIN=9900
-export SERVER_PORT_MAX=9910
 ./conduct
 ```
 
@@ -146,7 +144,7 @@ export SERVER_PORT_MAX=9910
 ```yaml
 # /etc/conductor/config.yaml
 server:
-  port_range: [8000, 8100]
+  port: 8000
   shutdown_timeout: 30s
 
 log:

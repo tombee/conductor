@@ -47,12 +47,8 @@ func waitForServerReady(t *testing.T, port int) {
 func TestServerConfig_Defaults(t *testing.T) {
 	config := DefaultConfig()
 
-	if config.PortRange[0] != 9876 {
-		t.Errorf("expected default start port 9876, got %d", config.PortRange[0])
-	}
-
-	if config.PortRange[1] != 9899 {
-		t.Errorf("expected default end port 9899, got %d", config.PortRange[1])
+	if config.Port != 9876 {
+		t.Errorf("expected default port 9876, got %d", config.Port)
 	}
 
 	if config.ShutdownTimeout != 5*time.Second {
@@ -75,7 +71,7 @@ func TestNewServer(t *testing.T) {
 		},
 		{
 			name:   "with custom config",
-			config: &ServerConfig{PortRange: [2]int{10000, 10010}},
+			config: &ServerConfig{Port: 10000},
 		},
 	}
 
@@ -104,8 +100,8 @@ func TestNewServer(t *testing.T) {
 func TestServer_StartAndPort(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	config := &ServerConfig{
-		PortRange: [2]int{19876, 19899}, // Use high port range for testing
-		Logger:    logger,
+		Port:   19876, // Use high port for testing
+		Logger: logger,
 	}
 
 	server := NewServer(config)
@@ -117,9 +113,9 @@ func TestServer_StartAndPort(t *testing.T) {
 		t.Fatalf("failed to start server: %v", err)
 	}
 
-	if port < config.PortRange[0] || port > config.PortRange[1] {
-		t.Errorf("port %d outside configured range [%d, %d]",
-			port, config.PortRange[0], config.PortRange[1])
+	if port != config.Port {
+		t.Errorf("port %d does not match configured port %d",
+			port, config.Port)
 	}
 
 	if server.Port() != port {
@@ -137,11 +133,11 @@ func TestServer_StartAndPort(t *testing.T) {
 	}
 }
 
-func TestServer_NoPortAvailable(t *testing.T) {
+func TestServer_PortBindingFailure(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	config := &ServerConfig{
-		PortRange: [2]int{1, 1}, // Port 1 requires root, will fail
-		Logger:    logger,
+		Port:   1, // Port 1 requires root, will fail
+		Logger: logger,
 	}
 
 	server := NewServer(config)
@@ -150,18 +146,19 @@ func TestServer_NoPortAvailable(t *testing.T) {
 	ctx := context.Background()
 	_, err := server.Start(ctx)
 	if err == nil {
-		t.Fatal("expected error when no ports available")
+		t.Fatal("expected error when binding to privileged port")
 	}
 
-	if err != ErrNoPortAvailable {
-		t.Errorf("expected ErrNoPortAvailable, got %v", err)
+	// Should be either permission denied or port in use
+	if !strings.Contains(err.Error(), "permission denied") && !strings.Contains(err.Error(), "already in use") {
+		t.Errorf("expected port binding error, got %v", err)
 	}
 }
 
 func TestServer_HealthEndpoint(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	config := &ServerConfig{
-		PortRange: [2]int{19900, 19920},
+		Port: 19900,
 		Logger:    logger,
 	}
 
@@ -209,7 +206,7 @@ func TestServer_HealthEndpoint(t *testing.T) {
 func TestServer_HealthEndpoint_AfterShutdown(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	config := &ServerConfig{
-		PortRange:       [2]int{19921, 19940},
+		Port:            19921,
 		ShutdownTimeout: 1 * time.Second,
 		Logger:          logger,
 	}
@@ -250,7 +247,7 @@ func TestServer_HealthEndpoint_AfterShutdown(t *testing.T) {
 func TestServer_WebSocketUpgrade(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	config := &ServerConfig{
-		PortRange: [2]int{19941, 19960},
+		Port: 19941,
 		Logger:    logger,
 	}
 
@@ -284,7 +281,7 @@ func TestServer_WebSocketAuth(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	authToken := "test-secret-token-12345"
 	config := &ServerConfig{
-		PortRange: [2]int{19961, 19980},
+		Port: 19961,
 		AuthToken: authToken,
 		Logger:    logger,
 	}
@@ -348,7 +345,7 @@ func TestServer_RateLimiting(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	authToken := "test-secret-token-rate-limit"
 	config := &ServerConfig{
-		PortRange: [2]int{20021, 20040},
+		Port: 20021,
 		AuthToken: authToken,
 		Logger:    logger,
 	}
@@ -406,7 +403,7 @@ func TestServer_RateLimiting(t *testing.T) {
 func TestServer_Shutdown(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	config := &ServerConfig{
-		PortRange:       [2]int{19981, 20000},
+		Port:            19981,
 		ShutdownTimeout: 2 * time.Second,
 		Logger:          logger,
 	}
@@ -442,7 +439,7 @@ func TestServer_Shutdown(t *testing.T) {
 func TestServer_ShutdownWithConnections(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	config := &ServerConfig{
-		PortRange:       [2]int{20001, 20020},
+		Port:            20001,
 		ShutdownTimeout: 2 * time.Second,
 		Logger:          logger,
 	}
@@ -483,7 +480,7 @@ func TestServer_ShutdownWithConnections(t *testing.T) {
 func TestServer_PortDiscovery(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	config := &ServerConfig{
-		PortRange: [2]int{20021, 20040},
+		Port: 20021,
 		Logger:    logger,
 	}
 

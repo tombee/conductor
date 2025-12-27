@@ -8,10 +8,9 @@
 
 # Server configuration
 server:
-  # Port range to try when starting the server (inclusive)
-  # Environment: SERVER_PORT_MIN, SERVER_PORT_MAX
-  # Default: [9876, 9899]
-  port_range: [9876, 9899]
+  # Port to bind to when starting the server
+  # Default: 9876
+  port: 9876
 
   # Health check interval for Electron polling
   # Environment: SERVER_HEALTH_CHECK_INTERVAL

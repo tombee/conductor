@@ -26,11 +26,8 @@ func TestDefault(t *testing.T) {
 	cfg := Default()
 
 	// Server defaults
-	if cfg.Server.PortRange[0] != 9876 {
-		t.Errorf("expected port range start 9876, got %d", cfg.Server.PortRange[0])
-	}
-	if cfg.Server.PortRange[1] != 9899 {
-		t.Errorf("expected port range end 9899, got %d", cfg.Server.PortRange[1])
+	if cfg.Server.Port != 9876 {
+		t.Errorf("expected port 9876, got %d", cfg.Server.Port)
 	}
 	if cfg.Server.HealthCheckInterval != 500*time.Millisecond {
 		t.Errorf("expected health check interval 500ms, got %v", cfg.Server.HealthCheckInterval)
@@ -104,44 +101,20 @@ func TestValidate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "invalid port range start too low",
+			name: "invalid port too low",
 			modify: func(c *Config) {
-				c.Server.PortRange[0] = 1023
+				c.Server.Port = 1023
 			},
 			wantErr: true,
-			errText: "port_range[0] must be between 1024 and 65535",
+			errText: "server.port must be between 1024 and 65535",
 		},
 		{
-			name: "invalid port range start too high",
+			name: "invalid port too high",
 			modify: func(c *Config) {
-				c.Server.PortRange[0] = 65536
+				c.Server.Port = 65536
 			},
 			wantErr: true,
-			errText: "port_range[0] must be between 1024 and 65535",
-		},
-		{
-			name: "invalid port range end too low",
-			modify: func(c *Config) {
-				c.Server.PortRange[1] = 1023
-			},
-			wantErr: true,
-			errText: "port_range[1] must be between 1024 and 65535",
-		},
-		{
-			name: "invalid port range end too high",
-			modify: func(c *Config) {
-				c.Server.PortRange[1] = 65536
-			},
-			wantErr: true,
-			errText: "port_range[1] must be between 1024 and 65535",
-		},
-		{
-			name: "invalid port range reversed",
-			modify: func(c *Config) {
-				c.Server.PortRange = [2]int{9899, 9876}
-			},
-			wantErr: true,
-			errText: "port_range[0] (9899) must be <= port_range[1] (9876)",
+			errText: "server.port must be between 1024 and 65535",
 		},
 		{
 			name: "invalid health check interval",
@@ -306,8 +279,6 @@ func TestLoadFromEnv(t *testing.T) {
 
 	// Set test environment variables
 	envVars := map[string]string{
-		"SERVER_PORT_MIN":                  "8000",
-		"SERVER_PORT_MAX":                  "8100",
 		"SERVER_HEALTH_CHECK_INTERVAL":     "1s",
 		"SERVER_SHUTDOWN_TIMEOUT":          "10s",
 		"SERVER_READ_TIMEOUT":              "5s",
@@ -337,11 +308,9 @@ func TestLoadFromEnv(t *testing.T) {
 	}
 
 	// Verify server config
-	if cfg.Server.PortRange[0] != 8000 {
-		t.Errorf("expected port range start 8000, got %d", cfg.Server.PortRange[0])
-	}
-	if cfg.Server.PortRange[1] != 8100 {
-		t.Errorf("expected port range end 8100, got %d", cfg.Server.PortRange[1])
+	// Port should use default (no env var for port)
+	if cfg.Server.Port != 9876 {
+		t.Errorf("expected default port 9876, got %d", cfg.Server.Port)
 	}
 	if cfg.Server.HealthCheckInterval != 1*time.Second {
 		t.Errorf("expected health check interval 1s, got %v", cfg.Server.HealthCheckInterval)
@@ -409,7 +378,7 @@ func TestLoadFromFile(t *testing.T) {
 
 	yamlContent := `
 server:
-  port_range: [8080, 8090]
+  port: 8080
   health_check_interval: 2s
   shutdown_timeout: 15s
   read_timeout: 20s
@@ -450,11 +419,8 @@ llm:
 	}
 
 	// Verify loaded values
-	if cfg.Server.PortRange[0] != 8080 {
-		t.Errorf("expected port range start 8080, got %d", cfg.Server.PortRange[0])
-	}
-	if cfg.Server.PortRange[1] != 8090 {
-		t.Errorf("expected port range end 8090, got %d", cfg.Server.PortRange[1])
+	if cfg.Server.Port != 8080 {
+		t.Errorf("expected port 8080, got %d", cfg.Server.Port)
 	}
 	if cfg.Auth.TokenLength != 48 {
 		t.Errorf("expected token length 48, got %d", cfg.Auth.TokenLength)
@@ -474,7 +440,7 @@ func TestLoadFromFileWithEnvOverride(t *testing.T) {
 
 	yamlContent := `
 server:
-  port_range: [8080, 8090]
+  port: 8080
 log:
   level: info
 `
@@ -490,7 +456,6 @@ log:
 
 	// Set env var to override file value
 	os.Setenv("LOG_LEVEL", "debug")
-	os.Setenv("SERVER_PORT_MIN", "7000")
 
 	cfg, err := Load(configPath)
 	if err != nil {
@@ -501,12 +466,9 @@ log:
 	if cfg.Log.Level != "debug" {
 		t.Errorf("expected log level 'debug' from env, got %q", cfg.Log.Level)
 	}
-	if cfg.Server.PortRange[0] != 7000 {
-		t.Errorf("expected port range start 7000 from env, got %d", cfg.Server.PortRange[0])
-	}
-	// File value should still be used for port_range[1]
-	if cfg.Server.PortRange[1] != 8090 {
-		t.Errorf("expected port range end 8090 from file, got %d", cfg.Server.PortRange[1])
+	// Port should use file value (no env var override for port)
+	if cfg.Server.Port != 8080 {
+		t.Errorf("expected port 8080 from file, got %d", cfg.Server.Port)
 	}
 }
 
@@ -538,7 +500,7 @@ func TestLoadValidationFailure(t *testing.T) {
 	// Config with invalid values
 	yamlContent := `
 server:
-  port_range: [100, 200]  # Too low
+  port: 100  # Too low
 `
 
 	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
@@ -580,7 +542,7 @@ func restoreEnv(env map[string]string) {
 
 func clearConfigEnv() {
 	envVars := []string{
-		"SERVER_PORT_MIN", "SERVER_PORT_MAX", "SERVER_HEALTH_CHECK_INTERVAL",
+		"SERVER_HEALTH_CHECK_INTERVAL",
 		"SERVER_SHUTDOWN_TIMEOUT", "SERVER_READ_TIMEOUT",
 		"AUTH_TOKEN_LENGTH", "AUTH_RATE_LIMIT_MAX_ATTEMPTS",
 		"AUTH_RATE_LIMIT_WINDOW", "AUTH_RATE_LIMIT_LOCKOUT",
@@ -623,8 +585,8 @@ func TestMinimalConfigRoundTrip(t *testing.T) {
 	}
 
 	// Verify defaults were applied
-	if cfg.Server.PortRange[0] != 9876 {
-		t.Errorf("expected port range start 9876, got %d", cfg.Server.PortRange[0])
+	if cfg.Server.Port != 9876 {
+		t.Errorf("expected port 9876, got %d", cfg.Server.Port)
 	}
 	if cfg.Server.HealthCheckInterval != 500*time.Millisecond {
 		t.Errorf("expected health check interval 500ms, got %v", cfg.Server.HealthCheckInterval)
