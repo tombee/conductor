@@ -22,7 +22,7 @@ import (
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "security",
-		Short: "Manage Conductor security settings and permissions",
+		Short: "Manage security settings and permissions",
 		Annotations: map[string]string{
 			"group": "configuration",
 		},

@@ -29,7 +29,7 @@ var mcpTestKeep bool
 func newMCPTestCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "test <name>",
-		Short: "Test an MCP server by starting it and checking connectivity",
+		Short: "Test MCP server connectivity",
 		Long: `Test an MCP server by starting it and verifying it responds correctly.
 
 The test will:
