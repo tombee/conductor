@@ -6,6 +6,7 @@ This guide covers deploying Conductor in production environments using Docker, K
 
 Choose the deployment method that best fits your infrastructure:
 
+- **[exe.dev](../../../deploy/exe.dev/)** - Fastest path to production for individuals and small teams
 - **Docker** - Simple containerized deployment for single-node setups
 - **Kubernetes** - Scalable orchestration for multi-node production environments
 - **Bare Metal** - Direct installation on servers for maximum control
