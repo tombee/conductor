@@ -15,6 +15,8 @@
 package runner
 
 import (
+	"github.com/tombee/conductor/internal/binding"
+	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/internal/daemon/checkpoint"
 	"github.com/tombee/conductor/internal/mcp"
 	"github.com/tombee/conductor/pkg/tools"
@@ -67,5 +69,19 @@ func WithCheckpointManager(cm *checkpoint.Manager) Option {
 	return func(r *Runner) {
 		// Create a new lifecycle manager with the provided checkpoint manager
 		r.lifecycle = NewLifecycleManager(r.lifecycle.mcpManager, cm, r.lifecycle.toolRegistry)
+	}
+}
+
+// WithConfig sets the daemon configuration for profile resolution (SPEC-130).
+func WithConfig(cfg *config.Config) Option {
+	return func(r *Runner) {
+		r.config = cfg
+	}
+}
+
+// WithBindingResolver sets the binding resolver for profile-based configuration (SPEC-130).
+func WithBindingResolver(resolver *binding.Resolver) Option {
+	return func(r *Runner) {
+		r.resolver = resolver
 	}
 }
