@@ -21,6 +21,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/tombee/conductor/internal/commands/shared"
+	"github.com/tombee/conductor/internal/config"
 )
 // newMCPAddCommand creates the 'mcp add' command.
 func newMCPAddCommand() *cobra.Command {
@@ -30,6 +32,7 @@ func newMCPAddCommand() *cobra.Command {
 		env       []string
 		timeout   int
 		autoStart bool
+		dryRun    bool
 	)
 
 	cmd := &cobra.Command{
@@ -45,7 +48,7 @@ Examples:
   conductor mcp add db --command ./db-server --timeout 60 --auto-start`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			return runMCPAdd(cmdArgs[0], command, args, env, timeout, autoStart)
+			return runMCPAdd(cmdArgs[0], command, args, env, timeout, autoStart, dryRun)
 		},
 	}
 
@@ -54,13 +57,19 @@ Examples:
 	cmd.Flags().StringArrayVar(&env, "env", nil, "Environment variables in KEY=VALUE format (can be repeated)")
 	cmd.Flags().IntVar(&timeout, "timeout", 30, "Timeout for tool calls in seconds")
 	cmd.Flags().BoolVar(&autoStart, "auto-start", false, "Start automatically when daemon starts")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be added without executing")
 
 	cmd.MarkFlagRequired("command")
 
 	return cmd
 }
 
-func runMCPAdd(name, command string, args, env []string, timeout int, autoStart bool) error {
+func runMCPAdd(name, command string, args, env []string, timeout int, autoStart bool, dryRun bool) error {
+	// Handle dry-run mode
+	if dryRun {
+		return mcpAddDryRun(name, command, args, env, timeout, autoStart)
+	}
+
 	client := newMCPAPIClient()
 	ctx := context.Background()
 
@@ -119,5 +128,57 @@ func runMCPRemove(name string) error {
 	}
 
 	fmt.Printf("Removed MCP server: %s\n", name)
+	return nil
+}
+
+// mcpAddDryRun shows what would be added when registering an MCP server
+func mcpAddDryRun(name, command string, args, env []string, timeout int, autoStart bool) error {
+	// Get config directory for placeholder
+	configDir, err := config.ConfigDir()
+	if err != nil {
+		return fmt.Errorf("failed to get config directory: %w", err)
+	}
+
+	output := shared.NewDryRunOutput()
+
+	// Build MCP config path placeholder
+	mcpConfigPath := "<config-dir>/mcp.yaml"
+
+	// Build description of what would be added
+	description := fmt.Sprintf("register MCP server '%s' (command: %s", name, command)
+	if len(args) > 0 {
+		description += fmt.Sprintf(", args: %v", args)
+	}
+	if len(env) > 0 {
+		// Mask environment variables that might contain sensitive data
+		maskedEnv := make([]string, len(env))
+		for i, e := range env {
+			parts := strings.SplitN(e, "=", 2)
+			if len(parts) == 2 {
+				maskedValue := shared.MaskSensitiveData(parts[0], parts[1])
+				maskedEnv[i] = parts[0] + "=" + maskedValue
+			} else {
+				maskedEnv[i] = e
+			}
+		}
+		description += fmt.Sprintf(", env: %v", maskedEnv)
+	}
+	if timeout != 30 {
+		description += fmt.Sprintf(", timeout: %ds", timeout)
+	}
+	if autoStart {
+		description += ", auto-start: true"
+	}
+	description += ")"
+
+	// Since the config might not exist, use MODIFY (updates or creates)
+	output.DryRunModify(mcpConfigPath, description)
+
+	// Print the output
+	fmt.Println(output.String())
+
+	// Suppress unused variable warning
+	_ = configDir
+
 	return nil
 }

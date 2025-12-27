@@ -43,6 +43,9 @@ func NewCostsCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "costs",
+		Annotations: map[string]string{
+			"group": "workflow",
+		},
 		Short: "View cost and usage statistics",
 		Long: `View aggregated cost and token usage statistics.
 

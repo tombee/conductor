@@ -36,6 +36,9 @@ func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "mcp-server",
 		Short: "Start the Conductor MCP server",
+		Annotations: map[string]string{
+			"group": "mcp",
+		},
 		Long: `Start the Conductor MCP (Model Context Protocol) server.
 
 The MCP server exposes Conductor functionality as tools that AI coding assistants

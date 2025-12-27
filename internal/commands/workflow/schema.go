@@ -36,6 +36,9 @@ func NewSchemaCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "schema",
+		Annotations: map[string]string{
+			"group": "workflow",
+		},
 		Short: "Output the workflow JSON Schema",
 		Long: `Output the embedded JSON Schema for Conductor workflow definitions.
 
@@ -43,7 +46,24 @@ The schema can be used for IDE autocompletion, validation, and AI-assisted
 workflow authoring. By default, it outputs to stdout in JSON format.
 
 Use the --write flag to save the schema to ./schemas/workflow.schema.json
-in the current directory.`,
+in the current directory.
+
+See also: conductor validate, conductor examples list`,
+		Example: `  # Example 1: Output schema to stdout
+  conductor schema
+
+  # Example 2: Save schema to file for IDE integration
+  conductor schema --write
+
+  # Example 3: Output schema in YAML format
+  conductor schema --output yaml
+
+  # Example 4: Extract specific schema properties
+  conductor schema | jq '.properties.steps'
+
+  # Example 5: Validate workflow using extracted schema
+  conductor schema > workflow-schema.json
+  conductor validate workflow.yaml --schema workflow-schema.json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get the embedded schema
 			schemaBytes := schema.GetEmbeddedSchema()

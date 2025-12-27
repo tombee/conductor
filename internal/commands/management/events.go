@@ -39,6 +39,9 @@ var (
 func NewEventsCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "events",
+		Annotations: map[string]string{
+			"group": "management",
+		},
 		Short: "View workflow events",
 		Long:  `View and stream workflow execution events for real-time monitoring.`,
 		RunE:  runEventsList,

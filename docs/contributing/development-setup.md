@@ -74,6 +74,95 @@ type Provider interface { ... }
 type Provider interface { ... }
 ```
 
+## Agent-Friendly CLI Development
+
+Conductor's CLI is designed to be fully usable by LLM coding agents like Claude Code, GitHub Copilot, and Cursor. When modifying or adding commands, follow these guidelines to maintain agent discoverability and usability.
+
+For complete design principles and patterns, see [Agent-Friendly CLI Design](../design/agent-friendly-cli.md).
+
+### Help Text Requirements
+
+All commands must have:
+
+1. **3+ usage examples** in the `Example` field showing:
+   - Basic usage
+   - JSON output for parsing (`--json`)
+   - Pipeline integration (e.g., with `jq`)
+
+2. **Short descriptions < 50 characters** for clean command listings
+
+3. **Safe example data**:
+   - Use `@example.com` for email addresses
+   - Use `192.0.2.x` (TEST-NET-1) for IP addresses
+   - Never include real API keys, tokens, or credentials
+
+**Example:**
+
+```go
+cmd := &cobra.Command{
+    Use:   "validate <workflow>",
+    Short: "Validate workflow YAML syntax and schema",
+    Example: `  # Example 1: Basic validation
+  conductor validate workflow.yaml
+
+  # Example 2: Validate with JSON output for parsing
+  conductor validate workflow.yaml --json
+
+  # Example 3: Validate and extract workflow metadata
+  conductor validate workflow.yaml --json | jq '.workflow'`,
+}
+```
+
+### JSON Output
+
+All commands that output data must support `--json` flag:
+
+- Use `shared.EmitJSON()` for consistent envelope structure
+- Include `@version`, `command`, `success` fields in envelope
+- Return errors as structured JSON with codes and suggestions
+
+```go
+if jsonOutput {
+    return shared.EmitJSON(data, err)
+}
+```
+
+### Dry-Run Support
+
+Commands with side effects (create, modify, delete) must support `--dry-run`:
+
+- Output planned actions with CREATE/MODIFY/DELETE prefixes
+- Use placeholder paths (`<config-dir>`, `<workflow-dir>`)
+- Mask sensitive values with `[REDACTED]`
+- Return exit code 0 without executing
+
+```go
+if dryRun {
+    fmt.Printf("CREATE: <config-dir>/workflow.yaml\n")
+    return nil
+}
+```
+
+### Non-Interactive Mode
+
+Commands must gracefully handle non-interactive contexts (CI/CD, agents):
+
+- Detect via `shared.IsNonInteractive()` (checks CI env vars and TTY)
+- Return clear error messages when interactive input is required
+- Support `--yes` flag for automatic confirmations
+- Exit with code 2 for missing required inputs
+
+### Lint Validation
+
+Before submitting a PR:
+
+```bash
+# Run help text linter locally
+./scripts/lint-help-text.sh
+```
+
+The CI will automatically run this check and block PRs with violations.
+
 ## Testing Requirements
 
 All contributions must meet these testing standards:
@@ -176,6 +265,9 @@ Before submitting, verify:
 - [ ] All tests pass locally (`go test ./...`)
 - [ ] Linter passes (`golangci-lint run`)
 - [ ] No project-specific imports in `pkg/*` packages
+- [ ] Help text linter passes (`./scripts/lint-help-text.sh`)
+- [ ] New/modified commands have 3+ examples and `--json` support
+- [ ] Commands with side effects support `--dry-run`
 
 ## Documentation Requirements
 

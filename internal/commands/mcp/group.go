@@ -22,6 +22,9 @@ import (
 func NewMCPCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "mcp",
+		Annotations: map[string]string{
+			"group": "mcp",
+		},
 		Short: "Manage MCP (Model Context Protocol) servers",
 		Long: `Manage MCP servers for use in Conductor workflows.
 

@@ -18,6 +18,9 @@ import (
 func NewExamplesCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "examples",
+		Annotations: map[string]string{
+			"group": "workflow",
+		},
 		Short: "Manage example workflows",
 		Long: `Browse, view, run, and copy example workflows.
 
@@ -44,7 +47,20 @@ func newExamplesListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List available example workflows",
-		Long:  "List all embedded example workflows with their descriptions.",
+		Long: `List all embedded example workflows with their descriptions.
+
+See also: conductor examples show, conductor examples run`,
+		Example: `  # Example 1: List all examples
+  conductor examples list
+
+  # Example 2: Get examples as JSON
+  conductor examples list --json
+
+  # Example 3: Extract example names for scripting
+  conductor examples list --json | jq -r '.[].name'
+
+  # Example 4: Find examples by description keyword
+  conductor examples list --json | jq '.[] | select(.description | contains("API"))'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			examplesList, err := examples.List()
 			if err != nil {
@@ -87,7 +103,17 @@ func newExamplesShowCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "show <name>",
 		Short: "Display an example workflow",
-		Long:  "Display the YAML content of an example workflow with syntax highlighting.",
+		Long: `Display the YAML content of an example workflow with syntax highlighting.
+
+See also: conductor examples list, conductor examples copy, conductor validate`,
+		Example: `  # Example 1: View an example workflow
+  conductor examples show hello-world
+
+  # Example 2: Show and pipe to a file
+  conductor examples show api-request > my-workflow.yaml
+
+  # Example 3: View example and extract step names
+  conductor examples show data-pipeline | grep "id:"`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
@@ -121,7 +147,20 @@ func newExamplesRunCmd() *cobra.Command {
 		Long: `Run an embedded example workflow.
 
 This command executes the example with default settings. You can pass
-additional flags like --verbose or --dry-run.`,
+additional flags like --verbose or --dry-run.
+
+See also: conductor examples list, conductor run, conductor validate`,
+		Example: `  # Example 1: Run an example workflow
+  conductor examples run hello-world
+
+  # Example 2: Preview execution without running
+  conductor examples run api-request --dry-run
+
+  # Example 3: Run with verbose output
+  conductor examples run data-pipeline --verbose
+
+  # Example 4: Run with JSON output
+  conductor examples run hello-world --json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
@@ -186,7 +225,20 @@ func newExamplesCopyCmd() *cobra.Command {
 		Long: `Copy an embedded example workflow to the local filesystem.
 
 If no destination is specified, the example is copied to the current directory
-with the name '<name>.yaml'.`,
+with the name '<name>.yaml'.
+
+See also: conductor examples show, conductor examples list, conductor init`,
+		Example: `  # Example 1: Copy to current directory
+  conductor examples copy hello-world
+
+  # Example 2: Copy to specific file
+  conductor examples copy api-request my-api-workflow.yaml
+
+  # Example 3: Copy to a directory
+  conductor examples copy data-pipeline ./workflows/
+
+  # Example 4: Copy and immediately validate
+  conductor examples copy hello-world && conductor validate hello-world.yaml`,
 		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]

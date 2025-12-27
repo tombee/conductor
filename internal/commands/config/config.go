@@ -30,6 +30,9 @@ import (
 func NewConfigCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
+		Annotations: map[string]string{
+			"group": "configuration",
+		},
 		Short: "View and manage configuration",
 		Long: `View and manage Conductor configuration.
 
@@ -57,7 +60,20 @@ func newConfigShowCommand() *cobra.Command {
 		Long: `Display the current effective configuration.
 
 Sensitive values (API keys) are masked for security.
-Use --json for machine-readable output.`,
+Use --json for machine-readable output.
+
+See also: conductor config path, conductor doctor, conductor init`,
+		Example: `  # Example 1: View current configuration
+  conductor config show
+
+  # Example 2: Get configuration as JSON
+  conductor config show --json
+
+  # Example 3: Extract default provider from config
+  conductor config show --json | jq -r '.default_provider'
+
+  # Example 4: List all configured providers
+  conductor config show --json | jq -r '.providers | keys[]'`,
 		RunE: runConfigShow,
 	}
 

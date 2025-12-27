@@ -48,6 +48,9 @@ func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run <workflow>",
 		Short: "Execute a workflow",
+		Annotations: map[string]string{
+			"group": "execution",
+		},
 		Long: `Run executes a Conductor workflow with provider resolution.
 
 Provider Resolution Order:

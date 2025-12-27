@@ -33,7 +33,7 @@ var (
 func newSecurityGenerateProfileCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "generate-profile <workflow>",
-		Short: "Generate a custom security profile from workflow analysis",
+		Short: "Generate security profile from workflow",
 		Long: `Analyze a workflow and generate a custom security profile based on its requirements.
 
 This command examines the workflow and creates a profile that:

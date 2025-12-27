@@ -33,6 +33,9 @@ type VersionInfo struct {
 func NewVersionCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
+		Annotations: map[string]string{
+			"group": "system",
+		},
 		Short: "Show version information",
 		Long:  `Display version, commit hash, and build date for Conductor.`,
 		RunE:  runVersion,

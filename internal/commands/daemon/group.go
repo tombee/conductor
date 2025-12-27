@@ -30,6 +30,9 @@ import (
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "daemon",
+		Annotations: map[string]string{
+			"group": "system",
+		},
 		Short: "Manage the conductor daemon",
 		Long: `Commands for managing the conductor daemon (conductord).
 
@@ -47,7 +50,20 @@ func newDaemonStatusCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
 		Short: "Show daemon status and version",
-		Long:  `Display the status, version, and health of the conductor daemon.`,
+		Long: `Display the status, version, and health of the conductor daemon.
+
+See also: conductor daemon ping, conductor doctor, conductor runs list`,
+		Example: `  # Example 1: Check daemon status
+  conductor daemon status
+
+  # Example 2: Get daemon info as JSON
+  conductor daemon status --json
+
+  # Example 3: Extract daemon version
+  conductor daemon status --json | jq -r '.version'
+
+  # Example 4: Check daemon uptime
+  conductor daemon status --json | jq -r '.uptime'`,
 		RunE:  runDaemonStatus,
 	}
 }

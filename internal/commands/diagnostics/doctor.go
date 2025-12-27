@@ -59,6 +59,9 @@ type ProviderHealth struct {
 func NewDoctorCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "doctor",
+		Annotations: map[string]string{
+			"group": "diagnostics",
+		},
 		Short: "Check system health and configuration",
 		Long: `Perform a comprehensive health check of Conductor configuration and providers.
 
@@ -68,7 +71,20 @@ This command checks:
   - All providers are healthy and can connect
   - Common configuration issues
 
-Provides actionable recommendations for fixing any issues found.`,
+Provides actionable recommendations for fixing any issues found.
+
+See also: conductor init, conductor providers test, conductor config show`,
+		Example: `  # Example 1: Basic health check
+  conductor doctor
+
+  # Example 2: Get health status as JSON for automation
+  conductor doctor --json
+
+  # Example 3: Check health and extract provider status
+  conductor doctor --json | jq '.provider_results'
+
+  # Example 4: Use in CI to verify configuration
+  conductor doctor --json | jq -e '.overall_healthy'`,
 		RunE: runDoctor,
 	}
 

@@ -50,6 +50,9 @@ type PingResult struct {
 func NewPingCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ping [provider]",
+		Annotations: map[string]string{
+			"group": "diagnostics",
+		},
 		Short: "Quick health check for LLM provider",
 		Long: `Test connectivity and authentication with an LLM provider.
 

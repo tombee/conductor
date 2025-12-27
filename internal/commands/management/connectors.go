@@ -57,11 +57,18 @@ func newConnectorsListCommand() *cobra.Command {
 Without a workflow argument, lists only builtin connectors.
 With a workflow, also shows connectors configured in that workflow.
 
-Examples:
+See also: conductor connectors show, conductor examples list`,
+		Example: `  # Example 1: List builtin connectors
   conductor connectors list
+
+  # Example 2: List connectors from a workflow
   conductor connectors list workflow.yaml
-  conductor connectors list workflow.yaml --json
-`,
+
+  # Example 3: Get connector list as JSON
+  conductor connectors list --json
+
+  # Example 4: Extract connector names for scripting
+  conductor connectors list --json | jq -r '.connectors[].name'`,
 		Args:         cobra.MaximumNArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -87,11 +94,18 @@ func newConnectorsShowCommand() *cobra.Command {
 For builtin connectors (file, shell, http, transform), no workflow is needed.
 For configured connectors, provide the workflow path.
 
-Examples:
+See also: conductor connectors list, conductor connectors operation`,
+		Example: `  # Example 1: Show builtin connector operations
   conductor connectors show file
+
+  # Example 2: Show configured connector from workflow
   conductor connectors show github workflow.yaml
-  conductor connectors show slack workflow.yaml --json
-`,
+
+  # Example 3: Get connector details as JSON
+  conductor connectors show http --json
+
+  # Example 4: List all operations for a connector
+  conductor connectors show transform --json | jq -r '.connector.operations[]'`,
 		Args:         cobra.RangeArgs(1, 2),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {

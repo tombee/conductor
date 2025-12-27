@@ -28,6 +28,9 @@ import (
 func NewCacheCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cache",
+		Annotations: map[string]string{
+			"group": "management",
+		},
 		Short: "Manage remote workflow cache",
 		Long: `Manage the cache for remote workflows.
 
@@ -44,8 +47,9 @@ subsequent runs. This command helps manage the cache.`,
 // newCacheClearCommand creates the cache clear subcommand.
 func newCacheClearCommand() *cobra.Command {
 	var (
-		owner string
-		repo  string
+		owner  string
+		repo   string
+		dryRun bool
 	)
 
 	cmd := &cobra.Command{
@@ -53,17 +57,26 @@ func newCacheClearCommand() *cobra.Command {
 		Short: "Clear cached workflows",
 		Long: `Clear cached remote workflows.
 
-Examples:
-  conductor cache clear                   Clear entire cache
-  conductor cache clear --owner user      Clear all repos for user
-  conductor cache clear --owner user --repo repo  Clear specific repo`,
+See also: conductor cache list, conductor run`,
+		Example: `  # Example 1: Clear entire cache
+  conductor cache clear
+
+  # Example 2: Clear all repos for a user
+  conductor cache clear --owner myuser
+
+  # Example 3: Clear specific repository cache
+  conductor cache clear --owner myuser --repo myrepo
+
+  # Example 4: Clear and confirm with JSON output
+  conductor cache clear --owner myuser --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return clearCache(owner, repo)
+			return clearCache(owner, repo, dryRun)
 		},
 	}
 
 	cmd.Flags().StringVar(&owner, "owner", "", "Repository owner/organization")
 	cmd.Flags().StringVar(&repo, "repo", "", "Repository name (requires --owner)")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be cleared without executing")
 
 	return cmd
 }
@@ -80,8 +93,18 @@ func newCacheListCommand() *cobra.Command {
 		Short: "List cached workflows",
 		Long: `List cached remote workflows for a repository.
 
-Example:
-  conductor cache list --owner user --repo repo`,
+See also: conductor cache clear, conductor run`,
+		Example: `  # Example 1: List cached workflows for a repository
+  conductor cache list --owner myuser --repo myrepo
+
+  # Example 2: Get cache list as JSON
+  conductor cache list --owner myuser --repo myrepo --json
+
+  # Example 3: Extract commit SHAs from cache
+  conductor cache list --owner myuser --repo myrepo --json | jq -r '.entries[].CommitSHA'
+
+  # Example 4: Check cache size
+  conductor cache list --owner myuser --repo myrepo --json | jq '.count'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if owner == "" || repo == "" {
 				return fmt.Errorf("both --owner and --repo are required")
@@ -99,11 +122,16 @@ Example:
 }
 
 // clearCache clears the workflow cache.
-func clearCache(owner, repo string) error {
+func clearCache(owner, repo string, dryRun bool) error {
 	// Initialize cache
 	workflowCache, err := cache.NewWorkflowCache(cache.Config{})
 	if err != nil {
 		return fmt.Errorf("failed to initialize cache: %w", err)
+	}
+
+	// Handle dry-run mode
+	if dryRun {
+		return cacheClearDryRun(workflowCache, owner, repo)
 	}
 
 	// Clear cache
@@ -175,6 +203,47 @@ func listCache(owner, repo string) error {
 		fmt.Printf("  Size:        %d bytes\n", entry.Size)
 		fmt.Println()
 	}
+
+	return nil
+}
+
+// cacheClearDryRun shows what would be cleared from the cache
+func cacheClearDryRun(workflowCache *cache.WorkflowCache, owner, repo string) error {
+	output := shared.NewDryRunOutput()
+
+	// Determine what would be cleared
+	var count int
+	var description string
+
+	if owner == "" && repo == "" {
+		description = "all cached workflows"
+		count = -1 // Indicate "all"
+	} else if repo == "" {
+		// Try to estimate by listing all repos for the owner (not implemented in cache yet)
+		description = fmt.Sprintf("all repositories owned by %s", owner)
+		count = -1
+	} else {
+		// Get specific repo entries
+		entries, err := workflowCache.List(owner, repo)
+		if err != nil {
+			return fmt.Errorf("failed to list cache: %w", err)
+		}
+		count = len(entries)
+		description = fmt.Sprintf("%s/%s", owner, repo)
+	}
+
+	// Build the action
+	if count == -1 {
+		output.DryRunDelete("<cache-dir>/" + description)
+	} else if count == 0 {
+		fmt.Println("Dry run: No cached entries to delete")
+		return nil
+	} else {
+		output.DryRunDeleteWithCount("<cache-dir>/"+description, fmt.Sprintf("%d entries", count))
+	}
+
+	// Print the output
+	fmt.Println(output.String())
 
 	return nil
 }

@@ -34,10 +34,18 @@ func newMCPListCommand() *cobra.Command {
 		Short: "List all registered MCP servers",
 		Long: `List all registered MCP servers with their status.
 
-Examples:
-  conductor mcp list              # List global servers
-  conductor mcp list --all        # Include workflow-scoped servers
-  conductor mcp list --json       # Output as JSON`,
+See also: conductor mcp add, conductor mcp status, conductor daemon status`,
+		Example: `  # Example 1: List registered MCP servers
+  conductor mcp list
+
+  # Example 2: Include workflow-scoped servers
+  conductor mcp list --all
+
+  # Example 3: Get server list as JSON
+  conductor mcp list --json
+
+  # Example 4: Extract server names for scripting
+  conductor mcp list --json | jq -r '.servers[].name'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runMCPList(jsonOutput, showAll)
 		},
