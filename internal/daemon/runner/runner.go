@@ -602,13 +602,8 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 		}
 	} else {
 		run.Status = RunStatusCompleted
-		if result != nil {
-			// Use typed StepOutput if available, fall back to legacy Output
-			if result.StepOutput != nil {
-				run.Output = outputToMap(*result.StepOutput)
-			} else {
-				run.Output = result.Output
-			}
+		if result != nil && result.StepOutput != nil {
+			run.Output = stepOutputToMap(result.StepOutput)
 		}
 	}
 
@@ -846,4 +841,32 @@ func (r *Runner) toBackendRun(run *Run) *backend.Run {
 		beRun.CompletedAt = run.CompletedAt
 	}
 	return beRun
+}
+
+// stepOutputToMap converts a typed StepOutput to the map format for API responses.
+func stepOutputToMap(output *workflow.StepOutput) map[string]interface{} {
+	if output == nil {
+		return nil
+	}
+
+	result := make(map[string]interface{})
+
+	if output.Text != "" {
+		result["text"] = output.Text
+	}
+
+	if output.Error != "" {
+		result["error"] = output.Error
+	}
+
+	// If Data is already a map, merge it
+	if dataMap, ok := output.Data.(map[string]interface{}); ok {
+		for k, v := range dataMap {
+			result[k] = v
+		}
+	} else if output.Data != nil {
+		result["data"] = output.Data
+	}
+
+	return result
 }

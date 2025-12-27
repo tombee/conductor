@@ -52,11 +52,7 @@ type ExecutionOptions struct {
 
 // ExecutionResult contains the aggregated results of a workflow execution.
 type ExecutionResult struct {
-	// Output contains the final workflow output (from the last step or output definitions)
-	// Note: Deprecated in favor of StepOutput. Kept for backward compatibility during migration.
-	Output map[string]any
-
-	// StepOutput contains the typed final workflow output (SPEC-40 migration)
+	// StepOutput contains the typed final workflow output
 	StepOutput *workflow.StepOutput
 
 	// Duration is the total wall-clock time for the workflow execution
@@ -107,7 +103,6 @@ func (a *StepExecutorAdapter) ExecuteWorkflow(ctx context.Context, def *workflow
 		StepOutputs: make(map[string]any),
 	}
 
-	var lastOutput map[string]any
 	var lastStepOutput workflow.StepOutput
 	totalSteps := len(def.Steps)
 
@@ -168,9 +163,8 @@ func (a *StepExecutorAdapter) ExecuteWorkflow(ctx context.Context, def *workflow
 			workflowContext["steps"].(map[string]interface{})[step.ID] = stepResult.Output
 			templateCtx.SetStepOutput(step.ID, stepResult.Output)
 			result.StepOutputs[step.ID] = stepResult.Output
-			lastOutput = stepResult.Output
 
-			// Convert to typed StepOutput (SPEC-40 migration)
+			// Convert to typed StepOutput
 			lastStepOutput = stepResultToOutput(stepResult)
 		}
 
@@ -183,8 +177,7 @@ func (a *StepExecutorAdapter) ExecuteWorkflow(ctx context.Context, def *workflow
 		}
 	}
 
-	// Set final output (both legacy and typed formats)
-	result.Output = lastOutput
+	// Set final output
 	result.StepOutput = &lastStepOutput
 	result.Duration = time.Since(startTime)
 
@@ -220,30 +213,6 @@ func stepResultToOutput(result *workflow.StepResult) workflow.StepOutput {
 	return output
 }
 
-// outputToMap converts a typed workflow.StepOutput back to the legacy map format.
-// This helper ensures backward compatibility during migration.
-func outputToMap(output workflow.StepOutput) map[string]interface{} {
-	result := make(map[string]interface{})
-
-	if output.Text != "" {
-		result["text"] = output.Text
-	}
-
-	if output.Error != "" {
-		result["error"] = output.Error
-	}
-
-	// If Data is already a map, merge it
-	if dataMap, ok := output.Data.(map[string]interface{}); ok {
-		for k, v := range dataMap {
-			result[k] = v
-		}
-	} else if output.Data != nil {
-		result["data"] = output.Data
-	}
-
-	return result
-}
 
 // MockExecutionAdapter is a test double for ExecutionAdapter.
 type MockExecutionAdapter struct {
@@ -276,7 +245,6 @@ func (m *MockExecutionAdapter) ExecuteWorkflow(ctx context.Context, def *workflo
 
 	// Default: return empty success result
 	return &ExecutionResult{
-		Output:      make(map[string]any),
 		Duration:    time.Millisecond,
 		Steps:       []workflow.StepResult{},
 		StepOutputs: make(map[string]any),

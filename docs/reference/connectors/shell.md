@@ -24,7 +24,6 @@ Execute a shell command and capture output.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `command` | string or array | Yes | Command to execute |
-| `args` | array | No | Command arguments (deprecated - use array form of `command`) |
 
 **Command Forms:**
 

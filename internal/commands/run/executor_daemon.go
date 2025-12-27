@@ -211,14 +211,10 @@ func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, ou
 		return shared.NewProviderError("failed to submit workflow", err)
 	}
 
-	// The /v1/runs endpoint returns "id" not "run_id"
+	// The /v1/runs endpoint returns "id"
 	runID, _ := resp["id"].(string)
 	if runID == "" {
-		// Try legacy "run_id" field as fallback
-		runID, _ = resp["run_id"].(string)
-		if runID == "" {
-			return shared.NewExecutionError("daemon did not return run ID", nil)
-		}
+		return shared.NewExecutionError("daemon did not return run ID", nil)
 	}
 
 	// If --background, just print run ID and exit

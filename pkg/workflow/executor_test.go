@@ -183,7 +183,7 @@ func TestStepExecutor_ExecuteLLMStep(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if !result.Success {
+	if result.Status != StepStatusSuccess {
 		t.Error("Result should be successful")
 	}
 
@@ -221,7 +221,7 @@ func TestStepExecutor_ExecuteConditionStep(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if !result.Success {
+	if result.Status != StepStatusSuccess {
 		t.Error("Result should be successful")
 	}
 
@@ -261,7 +261,7 @@ func TestStepExecutor_ExecuteParallelStep(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if !result.Success {
+	if result.Status != StepStatusSuccess {
 		t.Error("Result should be successful")
 	}
 
@@ -303,7 +303,7 @@ func TestStepExecutor_ExecuteWithRetry(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if !result.Success {
+	if result.Status != StepStatusSuccess {
 		t.Error("Result should be successful after retry")
 	}
 
@@ -342,7 +342,7 @@ func TestStepExecutor_RetryExhaustion(t *testing.T) {
 		t.Error("Execute() should return error after retry exhaustion")
 	}
 
-	if result.Success {
+	if result.Status == StepStatusSuccess {
 		t.Error("Result should not be successful")
 	}
 
@@ -375,7 +375,7 @@ func TestStepExecutor_Timeout(t *testing.T) {
 		t.Error("Execute() should return error on timeout")
 	}
 
-	if result.Success {
+	if result.Status == StepStatusSuccess {
 		t.Error("Result should not be successful after timeout")
 	}
 }
@@ -407,7 +407,7 @@ func TestStepExecutor_ErrorStrategyIgnore(t *testing.T) {
 		t.Fatalf("Execute() should not return error with ignore strategy: %v", err)
 	}
 
-	if !result.Success {
+	if result.Status != StepStatusSuccess {
 		t.Error("Result should be marked as successful with ignore strategy")
 	}
 
@@ -443,7 +443,7 @@ func TestStepExecutor_ErrorStrategyFail(t *testing.T) {
 		t.Error("Execute() should return error with fail strategy")
 	}
 
-	if result.Success {
+	if result.Status == StepStatusSuccess {
 		t.Error("Result should not be successful")
 	}
 }
@@ -476,7 +476,7 @@ func TestStepExecutor_ErrorStrategyFallback(t *testing.T) {
 		t.Error("Execute() should return error with fallback strategy")
 	}
 
-	if result.Success {
+	if result.Status == StepStatusSuccess {
 		t.Error("Result should not be successful")
 	}
 
@@ -702,7 +702,7 @@ func TestStepExecutor_LLMWithOptions(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if !result.Success {
+	if result.Status != StepStatusSuccess {
 		t.Error("Result should be successful")
 	}
 }
@@ -737,7 +737,7 @@ func TestStepExecutor_TemplateVariableResolution(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if !result.Success {
+	if result.Status != StepStatusSuccess {
 		t.Error("Result should be successful")
 	}
 }
@@ -773,7 +773,7 @@ func TestStepExecutor_TemplateStepOutputResolution(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if !result.Success {
+	if result.Status != StepStatusSuccess {
 		t.Error("Result should be successful")
 	}
 }
@@ -811,7 +811,7 @@ func TestStepExecutor_TemplateMultipleVariables(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if !result.Success {
+	if result.Status != StepStatusSuccess {
 		t.Error("Result should be successful")
 	}
 }
@@ -841,7 +841,7 @@ func TestStepExecutor_NoTemplateContext(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if !result.Success {
+	if result.Status != StepStatusSuccess {
 		t.Error("Result should be successful")
 	}
 }
@@ -882,7 +882,7 @@ func TestStepExecutor_SPEC2FormatMultiStepWorkflow(t *testing.T) {
 		t.Fatalf("Step 1 failed: %v", err)
 	}
 
-	if !result1.Success {
+	if result1.Status != StepStatusSuccess {
 		t.Error("Step 1 should be successful")
 	}
 
@@ -907,7 +907,7 @@ func TestStepExecutor_SPEC2FormatMultiStepWorkflow(t *testing.T) {
 		t.Fatalf("Step 2 failed: %v", err)
 	}
 
-	if !result2.Success {
+	if result2.Status != StepStatusSuccess {
 		t.Error("Step 2 should be successful")
 	}
 
@@ -944,7 +944,7 @@ func TestStepExecutor_PromptFieldWithTemplateVariables(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if !result.Success {
+	if result.Status != StepStatusSuccess {
 		t.Error("Result should be successful")
 	}
 }
@@ -976,7 +976,7 @@ func TestStepExecutor_SystemPromptWithTemplateVariables(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if !result.Success {
+	if result.Status != StepStatusSuccess {
 		t.Error("Result should be successful")
 	}
 }
@@ -1000,7 +1000,7 @@ func TestStepExecutor_ExecuteToolStep(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if !result.Success {
+	if result.Status != StepStatusSuccess {
 		t.Error("Result should be successful")
 	}
 
@@ -1114,7 +1114,7 @@ outputs:
 		t.Fatalf("Step 1 execution failed: %v", err)
 	}
 
-	if !result1.Success {
+	if result1.Status != StepStatusSuccess {
 		t.Error("Step 1 should be successful")
 	}
 
@@ -1144,7 +1144,7 @@ outputs:
 		t.Fatalf("Step 2 execution failed: %v", err)
 	}
 
-	if !result2.Success {
+	if result2.Status != StepStatusSuccess {
 		t.Error("Step 2 should be successful")
 	}
 
@@ -1197,7 +1197,7 @@ func TestStepExecutor_DefaultTimeoutAndRetry(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if !result.Success {
+	if result.Status != StepStatusSuccess {
 		t.Error("Result should be successful")
 	}
 
@@ -1250,7 +1250,7 @@ func TestStructuredOutputSuccess(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if !result.Success {
+	if result.Status != StepStatusSuccess {
 		t.Errorf("Result should be successful, got error: %s", result.Error)
 	}
 
@@ -1338,7 +1338,7 @@ func TestStructuredOutputRetry(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if !result.Success {
+	if result.Status != StepStatusSuccess {
 		t.Error("Result should be successful after retries")
 	}
 
@@ -1404,7 +1404,7 @@ func TestStructuredOutputValidationFailure(t *testing.T) {
 		t.Errorf("Error should be *SchemaValidationError, got %T", err)
 	}
 
-	if result.Success {
+	if result.Status == StepStatusSuccess {
 		t.Error("Result should not be successful")
 	}
 }
@@ -1571,7 +1571,7 @@ func TestUnstructuredOutput(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if !result.Success {
+	if result.Status != StepStatusSuccess {
 		t.Error("Result should be successful")
 	}
 

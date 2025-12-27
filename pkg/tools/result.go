@@ -16,18 +16,13 @@ package tools
 
 import "github.com/tombee/conductor/pkg/workflow"
 
-// ToolResult wraps tool execution results with both typed and legacy formats.
-// This struct facilitates the migration from map[string]interface{} to StepOutput (SPEC-40).
+// ToolResult wraps tool execution results.
 type ToolResult struct {
-	// Output contains the typed tool output (new format)
+	// Output contains the typed tool output
 	Output workflow.StepOutput
-
-	// RawOutput contains the legacy map format for backward compatibility
-	RawOutput map[string]interface{}
 }
 
-// NewToolResult creates a ToolResult from a legacy map output.
-// This helper converts old-style tool results to the new typed format.
+// NewToolResult creates a ToolResult from a map output.
 func NewToolResult(rawOutput map[string]interface{}) ToolResult {
 	output := workflow.StepOutput{
 		Data: rawOutput,
@@ -47,32 +42,6 @@ func NewToolResult(rawOutput map[string]interface{}) ToolResult {
 	}
 
 	return ToolResult{
-		Output:    output,
-		RawOutput: rawOutput,
+		Output: output,
 	}
-}
-
-// ToMap returns the legacy map format for backward compatibility.
-func (r ToolResult) ToMap() map[string]interface{} {
-	if r.RawOutput != nil {
-		return r.RawOutput
-	}
-
-	// Convert StepOutput back to map if RawOutput is not available
-	result := make(map[string]interface{})
-	if r.Output.Text != "" {
-		result["text"] = r.Output.Text
-	}
-	if r.Output.Error != "" {
-		result["error"] = r.Output.Error
-	}
-	if dataMap, ok := r.Output.Data.(map[string]interface{}); ok {
-		for k, v := range dataMap {
-			result[k] = v
-		}
-	} else if r.Output.Data != nil {
-		result["data"] = r.Output.Data
-	}
-
-	return result
 }

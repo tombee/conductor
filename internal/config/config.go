@@ -39,7 +39,7 @@ type Config struct {
 	Server   ServerConfig           `yaml:"server"`
 	Auth     AuthConfig             `yaml:"auth"`
 	Log      LogConfig              `yaml:"log"`
-	LLM      LLMConfig              `yaml:"llm"`      // Legacy field for backward compatibility
+	LLM      LLMConfig              `yaml:"llm"`      // Global LLM settings (timeouts, retries, etc.)
 	Daemon   DaemonConfig           `yaml:"daemon"`   // Daemon-related settings
 	Security security.SecurityConfig `yaml:"security"` // Security framework settings
 
@@ -666,11 +666,11 @@ func (c *Config) applyDefaults() {
 	}
 
 	// LLM defaults
-	// Clear legacy LLM.DefaultProvider if it conflicts with configured providers.
-	// The new multi-provider system uses the root-level DefaultProvider field.
+	// Clear LLM.DefaultProvider if it conflicts with configured providers.
+	// The multi-provider system uses the root-level DefaultProvider field.
 	if c.LLM.DefaultProvider != "" && len(c.Providers) > 0 {
 		if _, exists := c.Providers[c.LLM.DefaultProvider]; !exists {
-			// Legacy default conflicts with new provider config, clear it
+			// LLM.DefaultProvider conflicts with provider config, clear it
 			c.LLM.DefaultProvider = ""
 		}
 	}
