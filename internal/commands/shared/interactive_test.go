@@ -257,3 +257,135 @@ func TestIsCIEnvironment(t *testing.T) {
 // In a test environment, stdin may or may not be a TTY depending on how tests are run.
 // We skip comprehensive testing of isTerminal() itself and focus on the higher-level
 // IsNonInteractive() function which integrates all detection mechanisms.
+
+// TestNonInteractiveMissingInputError verifies error messages for missing inputs in non-interactive mode
+func TestNonInteractiveMissingInputError(t *testing.T) {
+	// Set up non-interactive environment
+	origEnv := os.Getenv("CONDUCTOR_NON_INTERACTIVE")
+	os.Setenv("CONDUCTOR_NON_INTERACTIVE", "true")
+	defer func() {
+		if origEnv == "" {
+			os.Unsetenv("CONDUCTOR_NON_INTERACTIVE")
+		} else {
+			os.Setenv("CONDUCTOR_NON_INTERACTIVE", origEnv)
+		}
+	}()
+
+	// Verify we're in non-interactive mode
+	if !IsNonInteractive() {
+		t.Fatal("Expected non-interactive mode")
+	}
+
+	// Test error creation for missing required input in non-interactive mode
+	exitErr := NewMissingInputNonInteractiveError("missing required input: workflow file", nil)
+	if exitErr == nil {
+		t.Fatal("Expected error, got nil")
+	}
+
+	if exitErr.Code != ExitMissingInputNonInteractive {
+		t.Errorf("exit code = %d, want %d", exitErr.Code, ExitMissingInputNonInteractive)
+	}
+}
+
+// TestNonInteractiveExitCodes verifies exit codes in non-interactive mode
+func TestNonInteractiveExitCodes(t *testing.T) {
+	tests := []struct {
+		name         string
+		errorType    string
+		expectedCode int
+	}{
+		{
+			name:         "missing input",
+			errorType:    "missing_input",
+			expectedCode: ExitMissingInput,
+		},
+		{
+			name:         "missing input non-interactive",
+			errorType:    "missing_input_non_interactive",
+			expectedCode: ExitMissingInputNonInteractive,
+		},
+		{
+			name:         "invalid workflow",
+			errorType:    "invalid_workflow",
+			expectedCode: ExitInvalidWorkflow,
+		},
+		{
+			name:         "execution failed",
+			errorType:    "execution_failed",
+			expectedCode: ExitExecutionFailed,
+		},
+		{
+			name:         "provider error",
+			errorType:    "provider_error",
+			expectedCode: ExitProviderError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var code int
+
+			switch tt.errorType {
+			case "missing_input":
+				code = ExitMissingInput
+			case "missing_input_non_interactive":
+				code = ExitMissingInputNonInteractive
+			case "invalid_workflow":
+				code = ExitInvalidWorkflow
+			case "execution_failed":
+				code = ExitExecutionFailed
+			case "provider_error":
+				code = ExitProviderError
+			}
+
+			if code != tt.expectedCode {
+				t.Errorf("exit code = %d, want %d", code, tt.expectedCode)
+			}
+		})
+	}
+}
+
+// TestNonInteractiveErrorFormat verifies the format of error messages in non-interactive mode
+func TestNonInteractiveErrorFormat(t *testing.T) {
+	tests := []struct {
+		name    string
+		message string
+	}{
+		{
+			name:    "missing workflow file",
+			message: "missing required input: workflow file",
+		},
+		{
+			name:    "missing provider configuration",
+			message: "missing required input: provider configuration",
+		},
+	}
+
+	// Set up non-interactive environment
+	origEnv := os.Getenv("CONDUCTOR_NON_INTERACTIVE")
+	os.Setenv("CONDUCTOR_NON_INTERACTIVE", "true")
+	defer func() {
+		if origEnv == "" {
+			os.Unsetenv("CONDUCTOR_NON_INTERACTIVE")
+		} else {
+			os.Setenv("CONDUCTOR_NON_INTERACTIVE", origEnv)
+		}
+	}()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			exitErr := NewMissingInputNonInteractiveError(tt.message, nil)
+			if exitErr == nil {
+				t.Fatal("Expected error, got nil")
+			}
+
+			if exitErr.Code != ExitMissingInputNonInteractive {
+				t.Errorf("exit code = %d, want %d", exitErr.Code, ExitMissingInputNonInteractive)
+			}
+
+			if exitErr.Message != tt.message {
+				t.Errorf("message = %q, want %q", exitErr.Message, tt.message)
+			}
+		})
+	}
+}

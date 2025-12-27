@@ -1,0 +1,34 @@
+name: Lint Help Text
+
+on:
+  pull_request:
+    paths:
+      - 'internal/commands/**/*.go'
+      - 'scripts/lint-help-text.sh'
+      - '.github/workflows/lint-help.yml'
+
+jobs:
+  lint-help-text:
+    name: Validate CLI Help Text
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run help text linter
+        run: |
+          chmod +x scripts/lint-help-text.sh
+          ./scripts/lint-help-text.sh
+
+      - name: Comment on PR (on failure)
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ **Help text validation failed**\n\nPlease ensure:\n- All commands have 3+ examples in help text\n- Short descriptions are < 50 characters\n- No API keys or real credentials in examples\n- Use @example.com for email addresses\n- Use 192.0.2.x (TEST-NET-1) for IP addresses\n\nRun `./scripts/lint-help-text.sh` locally to see details.'
+            })
