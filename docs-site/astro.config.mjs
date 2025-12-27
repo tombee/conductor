@@ -50,22 +50,11 @@ export default defineConfig({
           label: 'Examples',
           items: [
             { label: 'Overview', slug: 'examples' },
-            {
-              label: 'Code Review',
-              autogenerate: { directory: 'examples/code-review' },
-            },
-            {
-              label: 'DevOps',
-              autogenerate: { directory: 'examples/devops' },
-            },
-            {
-              label: 'Automation',
-              autogenerate: { directory: 'examples/automation' },
-            },
-            {
-              label: 'Templates',
-              autogenerate: { directory: 'examples/templates' },
-            },
+            { label: 'Code Review', slug: 'examples/code-review' },
+            { label: 'Issue Triage', slug: 'examples/issue-triage' },
+            { label: 'Slack Integration', slug: 'examples/slack-integration' },
+            { label: 'IaC Review', slug: 'examples/iac-review' },
+            { label: 'Write Song', slug: 'examples/write-song' },
           ],
         },
         {
