@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/tombee/conductor/internal/tracing"
 	"github.com/tombee/conductor/pkg/errors"
+	"github.com/tombee/conductor/pkg/httpclient"
 	"github.com/tombee/conductor/pkg/llm"
 )
 
@@ -76,22 +76,23 @@ func NewAnthropicProviderWithPool(apiKey string, poolConfig ConnectionPoolConfig
 		}
 	}
 
-	// Create HTTP client with connection pooling
-	transport := &http.Transport{
-		MaxIdleConns:          poolConfig.MaxIdleConns,
-		MaxIdleConnsPerHost:   poolConfig.MaxIdleConnsPerHost,
-		IdleConnTimeout:       poolConfig.IdleConnTimeout,
-		ResponseHeaderTimeout: poolConfig.ResponseHeaderTimeout,
-		DisableKeepAlives:     false, // Enable keep-alive for connection reuse
+	// Create HTTP client using shared httpclient package
+	cfg := httpclient.DefaultConfig()
+	cfg.Timeout = 5 * time.Second
+	cfg.UserAgent = "conductor-anthropic/1.0"
+	// Note: Retry logic will be handled by the LLM retry wrapper (pkg/llm/retry.go)
+	// which has Anthropic-specific error handling, so we disable retries here
+	cfg.RetryAttempts = 0
+
+	httpClient, err := httpclient.New(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create HTTP client: %w", err)
 	}
 
-	httpClient := &http.Client{
-		Transport: transport,
-		Timeout:   5 * time.Second, // Total request timeout
-	}
-
-	// Wrap HTTP client with correlation ID support for distributed tracing
-	httpClient = tracing.WrapHTTPClient(httpClient)
+	// Note: Connection pooling is handled by httpclient.New() with sensible defaults.
+	// The poolConfig parameter is kept for backward compatibility but connection pool
+	// settings are now managed by the shared httpclient package.
+	// Correlation ID propagation is automatically handled by httpclient's logging transport.
 
 	return &AnthropicProvider{
 		apiKey:     apiKey,
