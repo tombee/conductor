@@ -58,6 +58,11 @@ type Definition struct {
 
 	// CostLimits define cost constraints at the workflow level
 	CostLimits *CostLimits `yaml:"cost_limits,omitempty" json:"cost_limits,omitempty"`
+
+	// Requires declares abstract service dependencies for this workflow (SPEC-130)
+	// This enables portable workflow definitions that don't embed credentials.
+	// Runtime bindings are provided by execution profiles.
+	Requires *RequirementsDefinition `yaml:"requires,omitempty" json:"requires,omitempty"`
 }
 
 // TriggerDefinition defines how a workflow can be triggered.
@@ -608,6 +613,69 @@ const (
 	LimitBehaviorContinue LimitBehavior = "continue"
 )
 
+// RequirementsDefinition declares abstract service dependencies for a workflow (SPEC-130).
+// This enables portable workflow definitions that don't embed credentials.
+// Runtime bindings are provided by execution profiles.
+type RequirementsDefinition struct {
+	// Connectors lists required connector dependencies
+	Connectors []ConnectorRequirement `yaml:"connectors,omitempty" json:"connectors,omitempty"`
+
+	// MCPServers lists required MCP server dependencies
+	MCPServers []MCPServerRequirement `yaml:"mcp_servers,omitempty" json:"mcp_servers,omitempty"`
+}
+
+// ConnectorRequirement describes a required connector dependency.
+type ConnectorRequirement struct {
+	// Name is the connector identifier (must match profile binding key)
+	Name string `yaml:"name" json:"name"`
+
+	// Capabilities are optional hints about required operations
+	// Example: ["issues", "pull_requests"] for GitHub connector
+	Capabilities []string `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
+
+	// Optional indicates this connector is not required for the workflow to function
+	// Missing optional connectors will cause step-level errors, not submission-time errors
+	Optional bool `yaml:"optional,omitempty" json:"optional,omitempty"`
+}
+
+// MCPServerRequirement describes a required MCP server dependency.
+type MCPServerRequirement struct {
+	// Name is the MCP server identifier (must match profile binding key)
+	Name string `yaml:"name" json:"name"`
+
+	// Optional indicates this MCP server is not required for the workflow to function
+	Optional bool `yaml:"optional,omitempty" json:"optional,omitempty"`
+}
+
+// Validate checks if the requirements definition is valid.
+func (r *RequirementsDefinition) Validate() error {
+	// Validate connector requirements
+	connectorNames := make(map[string]bool)
+	for i, req := range r.Connectors {
+		if req.Name == "" {
+			return fmt.Errorf("connector requirement %d: name is required", i)
+		}
+		if connectorNames[req.Name] {
+			return fmt.Errorf("duplicate connector requirement: %s", req.Name)
+		}
+		connectorNames[req.Name] = true
+	}
+
+	// Validate MCP server requirements
+	mcpNames := make(map[string]bool)
+	for i, req := range r.MCPServers {
+		if req.Name == "" {
+			return fmt.Errorf("mcp_server requirement %d: name is required", i)
+		}
+		if mcpNames[req.Name] {
+			return fmt.Errorf("duplicate mcp_server requirement: %s", req.Name)
+		}
+		mcpNames[req.Name] = true
+	}
+
+	return nil
+}
+
 // ParseDefinition parses a workflow definition from YAML bytes.
 func ParseDefinition(data []byte) (*Definition, error) {
 	var def Definition
@@ -896,6 +964,13 @@ func (d *Definition) Validate() error {
 				}
 			}
 			// For package connectors, we can't validate operations at definition time
+		}
+	}
+
+	// Validate requirements section (SPEC-130)
+	if d.Requires != nil {
+		if err := d.Requires.Validate(); err != nil {
+			return fmt.Errorf("invalid requires section: %w", err)
 		}
 	}
 
