@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/tombee/conductor/pkg/errors"
 	"github.com/tombee/conductor/pkg/security"
 	"github.com/tombee/conductor/pkg/tools"
 )
@@ -142,13 +143,21 @@ func (t *FileTool) Execute(ctx context.Context, inputs map[string]interface{}) (
 	// Extract operation
 	operation, ok := inputs["operation"].(string)
 	if !ok {
-		return nil, fmt.Errorf("operation must be a string")
+		return nil, &errors.ValidationError{
+			Field:      "operation",
+			Message:    "operation must be a string",
+			Suggestion: "Provide a valid operation ('read' or 'write')",
+		}
 	}
 
 	// Extract path
 	path, ok := inputs["path"].(string)
 	if !ok {
-		return nil, fmt.Errorf("path must be a string")
+		return nil, &errors.ValidationError{
+			Field:      "path",
+			Message:    "path must be a string",
+			Suggestion: "Provide a valid file path",
+		}
 	}
 
 	// Execute based on operation
@@ -156,21 +165,29 @@ func (t *FileTool) Execute(ctx context.Context, inputs map[string]interface{}) (
 	case "read":
 		// Validate path for read access
 		if err := t.validatePath(path, security.ActionRead); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("read access validation failed for path %s: %w", path, err)
 		}
 		return t.read(ctx, path)
 	case "write":
 		content, ok := inputs["content"].(string)
 		if !ok {
-			return nil, fmt.Errorf("content must be a string for write operation")
+			return nil, &errors.ValidationError{
+				Field:      "content",
+				Message:    "content must be a string for write operation",
+				Suggestion: "Provide content as a string value",
+			}
 		}
 		// Validate path for write access
 		if err := t.validatePath(path, security.ActionWrite); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("write access validation failed for path %s: %w", path, err)
 		}
 		return t.write(ctx, path, content)
 	default:
-		return nil, fmt.Errorf("unsupported operation: %s (must be 'read' or 'write')", operation)
+		return nil, &errors.ValidationError{
+			Field:      "operation",
+			Message:    fmt.Sprintf("unsupported operation: %s", operation),
+			Suggestion: "Use 'read' or 'write' as the operation",
+		}
 	}
 }
 

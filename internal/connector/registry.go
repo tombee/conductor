@@ -62,7 +62,7 @@ func (r *Registry) Get(name string) (Connector, error) {
 		return nil, &Error{
 			Type:    ErrorTypeValidation,
 			Message: fmt.Sprintf("connector %q not found", name),
-			Suggestion: "Check that the connector is defined in the workflow connectors section",
+			SuggestText: "Check that the connector is defined in the workflow connectors section",
 		}
 	}
 

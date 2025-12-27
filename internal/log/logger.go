@@ -79,6 +79,7 @@ func DefaultConfig() *Config {
 
 // FromEnv creates a Config from environment variables.
 // Supported environment variables:
+//   - CONDUCTOR_DEBUG: true/1 to enable debug level and source logging (takes precedence)
 //   - CONDUCTOR_LOG_LEVEL: debug, info, warn, error (takes precedence over LOG_LEVEL)
 //   - LOG_LEVEL: debug, info, warn, error (default: info)
 //   - LOG_FORMAT: json, text (default: json)
@@ -86,11 +87,20 @@ func DefaultConfig() *Config {
 func FromEnv() *Config {
 	cfg := DefaultConfig()
 
-	// CONDUCTOR_LOG_LEVEL takes precedence over LOG_LEVEL
-	if level := os.Getenv("CONDUCTOR_LOG_LEVEL"); level != "" {
-		cfg.Level = strings.ToLower(level)
-	} else if level := os.Getenv("LOG_LEVEL"); level != "" {
-		cfg.Level = strings.ToLower(level)
+	// CONDUCTOR_DEBUG enables debug logging and source information
+	debug := os.Getenv("CONDUCTOR_DEBUG")
+	if debug == "true" || debug == "1" {
+		cfg.Level = "debug"
+		cfg.AddSource = true
+	}
+
+	// CONDUCTOR_LOG_LEVEL takes precedence over LOG_LEVEL (but not CONDUCTOR_DEBUG)
+	if debug == "" {
+		if level := os.Getenv("CONDUCTOR_LOG_LEVEL"); level != "" {
+			cfg.Level = strings.ToLower(level)
+		} else if level := os.Getenv("LOG_LEVEL"); level != "" {
+			cfg.Level = strings.ToLower(level)
+		}
 	}
 
 	if format := os.Getenv("LOG_FORMAT"); format != "" {

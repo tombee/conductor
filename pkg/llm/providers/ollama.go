@@ -3,9 +3,10 @@ package providers
 
 import (
 	"context"
-	"errors"
+	"net/http"
 	"sync"
 
+	"github.com/tombee/conductor/pkg/errors"
 	"github.com/tombee/conductor/pkg/llm"
 )
 
@@ -23,7 +24,12 @@ type OllamaProvider struct {
 // NewOllamaProvider creates a placeholder Ollama provider.
 // Returns an error indicating this provider is not yet implemented.
 func NewOllamaProvider(baseURL string) (*OllamaProvider, error) {
-	return nil, errors.New("Ollama provider not implemented in Phase 1")
+	return nil, &errors.ProviderError{
+		Provider:   "ollama",
+		StatusCode: http.StatusNotImplemented,
+		Message:    "Ollama provider not implemented in Phase 1",
+		Suggestion: "Use the Anthropic provider or wait for Ollama implementation in Phase 2",
+	}
 }
 
 // Name returns the provider identifier.
@@ -42,12 +48,22 @@ func (p *OllamaProvider) Capabilities() llm.Capabilities {
 
 // Complete is not implemented in Phase 1.
 func (p *OllamaProvider) Complete(ctx context.Context, req llm.CompletionRequest) (*llm.CompletionResponse, error) {
-	return nil, errors.New("Ollama provider not implemented in Phase 1")
+	return nil, &errors.ProviderError{
+		Provider:   "ollama",
+		StatusCode: http.StatusNotImplemented,
+		Message:    "Ollama provider not implemented in Phase 1",
+		Suggestion: "Use the Anthropic provider or wait for Ollama implementation in Phase 2",
+	}
 }
 
 // Stream is not implemented in Phase 1.
 func (p *OllamaProvider) Stream(ctx context.Context, req llm.CompletionRequest) (<-chan llm.StreamChunk, error) {
-	return nil, errors.New("Ollama provider not implemented in Phase 1")
+	return nil, &errors.ProviderError{
+		Provider:   "ollama",
+		StatusCode: http.StatusNotImplemented,
+		Message:    "Ollama provider not implemented in Phase 1",
+		Suggestion: "Use the Anthropic provider or wait for Ollama implementation in Phase 2",
+	}
 }
 
 // GetLastUsage returns the token usage from the most recent request.

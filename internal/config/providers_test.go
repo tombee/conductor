@@ -16,10 +16,13 @@ package config
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	conductorerrors "github.com/tombee/conductor/pkg/errors"
 )
 
 func TestResolveSecretReference(t *testing.T) {
@@ -84,8 +87,15 @@ func TestResolveSecretReference(t *testing.T) {
 					t.Errorf("ResolveSecretReference() expected error, got nil")
 					return
 				}
-				if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
-					t.Errorf("ResolveSecretReference() error = %v, want error containing %q", err, tt.errContains)
+				// Verify it's a ConfigError
+				var configErr *conductorerrors.ConfigError
+				if !errors.As(err, &configErr) {
+					t.Errorf("ResolveSecretReference() error should be ConfigError, got %T", err)
+					return
+				}
+				// Check that the cause contains the expected substring
+				if tt.errContains != "" && configErr.Cause != nil && !contains(configErr.Cause.Error(), tt.errContains) {
+					t.Errorf("ResolveSecretReference() error cause = %v, want error containing %q", configErr.Cause, tt.errContains)
 				}
 				return
 			}

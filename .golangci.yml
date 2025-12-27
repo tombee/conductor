@@ -18,6 +18,7 @@ linters:
     - revive        # Replacement for golint
     - gosec         # Security checks
     - unconvert     # Remove unnecessary type conversions
+    - wrapcheck     # Check that errors are wrapped with context
 
 linters-settings:
   errcheck:
@@ -33,6 +34,21 @@ linters-settings:
         arguments:
           - "checkPrivateReceivers"
           - "sayRepetitiveInsteadOfStutters"
+
+  wrapcheck:
+    # Allow errors from internal packages to pass through without wrapping
+    ignoreSigs:
+      - .Errorf(
+      - errors.New(
+      - errors.Unwrap(
+      - errors.Join(
+      - .Wrap(
+      - .Wrapf(
+    # Allow certain packages to return errors without wrapping
+    ignorePackageGlobs:
+      - github.com/tombee/conductor/pkg/errors
+      - github.com/tombee/conductor/internal/connector
+      - github.com/tombee/conductor/internal/mcp
 
 issues:
   exclude-use-default: false

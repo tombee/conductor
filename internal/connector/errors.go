@@ -58,8 +58,9 @@ type Error struct {
 	// RetryAfter indicates when to retry (for rate limit errors)
 	RetryAfter int
 
-	// Suggestion provides guidance on how to resolve the error
-	Suggestion string
+	// SuggestText provides guidance on how to resolve the error.
+	// Renamed from Suggestion to avoid conflict with Suggestion() method.
+	SuggestText string
 
 	// RequestID from the external service
 	RequestID string
@@ -109,6 +110,24 @@ func (e *Error) IsRetryable() bool {
 	}
 }
 
+// IsUserVisible implements pkg/errors.UserVisibleError.
+// Connector errors are always user-visible.
+func (e *Error) IsUserVisible() bool {
+	return true
+}
+
+// UserMessage implements pkg/errors.UserVisibleError.
+// Returns a user-friendly message without technical details.
+func (e *Error) UserMessage() string {
+	return e.Message
+}
+
+// Suggestion implements pkg/errors.UserVisibleError.
+// Returns actionable guidance for resolving the error.
+func (e *Error) Suggestion() string {
+	return e.SuggestText
+}
+
 // ClassifyHTTPError classifies an HTTP status code into an error type.
 func ClassifyHTTPError(statusCode int, responseBody string) ErrorType {
 	switch {
@@ -143,17 +162,17 @@ func ErrorFromHTTPStatus(statusCode int, statusText, responseBody, requestID str
 	// Add type-specific suggestions
 	switch errType {
 	case ErrorTypeAuth:
-		err.Suggestion = "Check authentication credentials and permissions"
+		err.SuggestText = "Check authentication credentials and permissions"
 	case ErrorTypeNotFound:
-		err.Suggestion = "Verify the resource exists and the path is correct"
+		err.SuggestText = "Verify the resource exists and the path is correct"
 	case ErrorTypeValidation:
-		err.Suggestion = "Check request inputs against operation schema. See logs for details"
+		err.SuggestText = "Check request inputs against operation schema. See logs for details"
 		// NOTE: Response body is intentionally NOT included in the error message
 		// It should be logged separately with request_id for debugging
 	case ErrorTypeRateLimit:
-		err.Suggestion = "Wait for rate limit window or configure rate_limit in connector"
+		err.SuggestText = "Wait for rate limit window or configure rate_limit in connector"
 	case ErrorTypeServer:
-		err.Suggestion = "Retry or contact the service provider"
+		err.SuggestText = "Retry or contact the service provider"
 	}
 
 	return err
@@ -162,10 +181,10 @@ func ErrorFromHTTPStatus(statusCode int, statusText, responseBody, requestID str
 // NewTransformError creates an error for response transform failures.
 func NewTransformError(expression string, cause error) *Error {
 	return &Error{
-		Type:       ErrorTypeTransform,
-		Message:    fmt.Sprintf("response transform failed: %s", expression),
-		Cause:      cause,
-		Suggestion: "Check jq expression syntax and ensure it matches the response structure",
+		Type:        ErrorTypeTransform,
+		Message:     fmt.Sprintf("response transform failed: %s", expression),
+		Cause:       cause,
+		SuggestText: "Check jq expression syntax and ensure it matches the response structure",
 	}
 }
 
@@ -184,9 +203,9 @@ func NewSSRFError(host string) *Error {
 	sanitizedHost := redactIPAddresses(host)
 
 	return &Error{
-		Type:       ErrorTypeSSRF,
-		Message:    fmt.Sprintf("request blocked by security policy (host: %s)", sanitizedHost),
-		Suggestion: "Add host to allowed_hosts if access is intentional",
+		Type:        ErrorTypeSSRF,
+		Message:     fmt.Sprintf("request blocked by security policy (host: %s)", sanitizedHost),
+		SuggestText: "Add host to allowed_hosts if access is intentional",
 	}
 }
 
@@ -194,27 +213,27 @@ func NewSSRFError(host string) *Error {
 // The error message does not include the full value to avoid leaking attempted attack vectors.
 func NewPathInjectionError(param, value string) *Error {
 	return &Error{
-		Type:       ErrorTypePathInjection,
-		Message:    fmt.Sprintf("path parameter %q contains invalid characters", param),
-		Suggestion: "Remove path traversal sequences (../, %2e%2e) from path parameters",
+		Type:        ErrorTypePathInjection,
+		Message:     fmt.Sprintf("path parameter %q contains invalid characters", param),
+		SuggestText: "Remove path traversal sequences (../, %2e%2e) from path parameters",
 	}
 }
 
 // NewConnectionError creates an error for network/DNS failures.
 func NewConnectionError(cause error) *Error {
 	return &Error{
-		Type:       ErrorTypeConnection,
-		Message:    "connection failed",
-		Cause:      cause,
-		Suggestion: "Check network connectivity and DNS resolution",
+		Type:        ErrorTypeConnection,
+		Message:     "connection failed",
+		Cause:       cause,
+		SuggestText: "Check network connectivity and DNS resolution",
 	}
 }
 
 // NewTimeoutError creates an error for operation timeouts.
 func NewTimeoutError(timeout int) *Error {
 	return &Error{
-		Type:       ErrorTypeTimeout,
-		Message:    fmt.Sprintf("operation timed out after %d seconds", timeout),
-		Suggestion: "Increase timeout or check service responsiveness",
+		Type:        ErrorTypeTimeout,
+		Message:     fmt.Sprintf("operation timed out after %d seconds", timeout),
+		SuggestText: "Increase timeout or check service responsiveness",
 	}
 }

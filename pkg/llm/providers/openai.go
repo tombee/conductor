@@ -3,9 +3,10 @@ package providers
 
 import (
 	"context"
-	"errors"
+	"net/http"
 	"sync"
 
+	"github.com/tombee/conductor/pkg/errors"
 	"github.com/tombee/conductor/pkg/llm"
 )
 
@@ -23,7 +24,12 @@ type OpenAIProvider struct {
 // NewOpenAIProvider creates a placeholder OpenAI provider.
 // Returns an error indicating this provider is not yet implemented.
 func NewOpenAIProvider(apiKey string) (*OpenAIProvider, error) {
-	return nil, errors.New("OpenAI provider not implemented in Phase 1")
+	return nil, &errors.ProviderError{
+		Provider:   "openai",
+		StatusCode: http.StatusNotImplemented,
+		Message:    "OpenAI provider not implemented in Phase 1",
+		Suggestion: "Use the Anthropic provider or wait for OpenAI implementation in Phase 2",
+	}
 }
 
 // Name returns the provider identifier.
@@ -42,12 +48,22 @@ func (p *OpenAIProvider) Capabilities() llm.Capabilities {
 
 // Complete is not implemented in Phase 1.
 func (p *OpenAIProvider) Complete(ctx context.Context, req llm.CompletionRequest) (*llm.CompletionResponse, error) {
-	return nil, errors.New("OpenAI provider not implemented in Phase 1")
+	return nil, &errors.ProviderError{
+		Provider:   "openai",
+		StatusCode: http.StatusNotImplemented,
+		Message:    "OpenAI provider not implemented in Phase 1",
+		Suggestion: "Use the Anthropic provider or wait for OpenAI implementation in Phase 2",
+	}
 }
 
 // Stream is not implemented in Phase 1.
 func (p *OpenAIProvider) Stream(ctx context.Context, req llm.CompletionRequest) (<-chan llm.StreamChunk, error) {
-	return nil, errors.New("OpenAI provider not implemented in Phase 1")
+	return nil, &errors.ProviderError{
+		Provider:   "openai",
+		StatusCode: http.StatusNotImplemented,
+		Message:    "OpenAI provider not implemented in Phase 1",
+		Suggestion: "Use the Anthropic provider or wait for OpenAI implementation in Phase 2",
+	}
 }
 
 // GetLastUsage returns the token usage from the most recent request.

@@ -219,7 +219,7 @@ func TestError_Messages(t *testing.T) {
 				t.Errorf("expected error type %s, got %s", tt.errorType, err.Type)
 			}
 
-			if tt.wantSuggestion && err.Suggestion == "" {
+			if tt.wantSuggestion && err.SuggestText == "" {
 				t.Errorf("expected suggestion for error type %s, got empty string", tt.errorType)
 			}
 		})
@@ -315,7 +315,7 @@ func TestNewTransformError(t *testing.T) {
 		t.Errorf("expected cause %v, got %v", cause, err.Cause)
 	}
 
-	if err.Suggestion == "" {
+	if err.SuggestText == "" {
 		t.Error("expected suggestion for transform error")
 	}
 
@@ -356,7 +356,7 @@ func TestNewSSRFError(t *testing.T) {
 				t.Errorf("expected type %s, got %s", ErrorTypeSSRF, err.Type)
 			}
 
-			if err.Suggestion == "" {
+			if err.SuggestText == "" {
 				t.Error("expected suggestion for SSRF error")
 			}
 
@@ -381,7 +381,7 @@ func TestNewPathInjectionError(t *testing.T) {
 		t.Errorf("expected type %s, got %s", ErrorTypePathInjection, err.Type)
 	}
 
-	if err.Suggestion == "" {
+	if err.SuggestText == "" {
 		t.Error("expected suggestion for path injection error")
 	}
 
@@ -404,7 +404,7 @@ func TestNewConnectionError(t *testing.T) {
 		t.Errorf("expected cause %v, got %v", cause, err.Cause)
 	}
 
-	if err.Suggestion == "" {
+	if err.SuggestText == "" {
 		t.Error("expected suggestion for connection error")
 	}
 }
@@ -417,7 +417,7 @@ func TestNewTimeoutError(t *testing.T) {
 		t.Errorf("expected type %s, got %s", ErrorTypeTimeout, err.Type)
 	}
 
-	if err.Suggestion == "" {
+	if err.SuggestText == "" {
 		t.Error("expected suggestion for timeout error")
 	}
 
@@ -481,7 +481,7 @@ func TestErrorFromHTTPStatus(t *testing.T) {
 				t.Errorf("expected request ID %s, got %s", tt.requestID, err.RequestID)
 			}
 
-			if err.Suggestion == "" {
+			if err.SuggestText == "" {
 				t.Error("expected suggestion in error")
 			}
 		})

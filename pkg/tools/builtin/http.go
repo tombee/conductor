@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/tombee/conductor/internal/tracing"
+	"github.com/tombee/conductor/pkg/errors"
 	"github.com/tombee/conductor/pkg/security"
 	"github.com/tombee/conductor/pkg/tools"
 )
@@ -234,18 +235,22 @@ func (t *HTTPTool) Execute(ctx context.Context, inputs map[string]interface{}) (
 	// Extract URL
 	url, ok := inputs["url"].(string)
 	if !ok {
-		return nil, fmt.Errorf("url must be a string")
+		return nil, &errors.ValidationError{
+			Field:      "url",
+			Message:    "url must be a string",
+			Suggestion: "Provide a valid URL as a string",
+		}
 	}
 
 	// Validate URL
 	if err := t.validateURL(url); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("URL validation failed: %w", err)
 	}
 
 	// Validate with security config
 	if t.securityConfig != nil {
 		if err := t.securityConfig.ValidateURL(url); err != nil {
-			return nil, fmt.Errorf("security validation failed: %w", err)
+			return nil, fmt.Errorf("security validation failed for URL %s: %w", url, err)
 		}
 	}
 
@@ -254,7 +259,11 @@ func (t *HTTPTool) Execute(ctx context.Context, inputs map[string]interface{}) (
 	if methodRaw, ok := inputs["method"]; ok {
 		method, ok = methodRaw.(string)
 		if !ok {
-			return nil, fmt.Errorf("method must be a string")
+			return nil, &errors.ValidationError{
+				Field:      "method",
+				Message:    "method must be a string",
+				Suggestion: "Provide HTTP method as a string (GET, POST, PUT, DELETE, etc.)",
+			}
 		}
 		method = strings.ToUpper(method)
 	}
@@ -262,7 +271,7 @@ func (t *HTTPTool) Execute(ctx context.Context, inputs map[string]interface{}) (
 	// Validate method with security config
 	if t.securityConfig != nil {
 		if err := t.securityConfig.ValidateMethod(method); err != nil {
-			return nil, fmt.Errorf("security validation failed: %w", err)
+			return nil, fmt.Errorf("security validation failed for method %s: %w", method, err)
 		}
 	}
 
@@ -271,7 +280,11 @@ func (t *HTTPTool) Execute(ctx context.Context, inputs map[string]interface{}) (
 	if bodyRaw, ok := inputs["body"]; ok {
 		bodyStr, ok := bodyRaw.(string)
 		if !ok {
-			return nil, fmt.Errorf("body must be a string")
+			return nil, &errors.ValidationError{
+				Field:      "body",
+				Message:    "body must be a string",
+				Suggestion: "Provide request body as a string",
+			}
 		}
 		body = bytes.NewBufferString(bodyStr)
 	}
@@ -289,12 +302,20 @@ func (t *HTTPTool) Execute(ctx context.Context, inputs map[string]interface{}) (
 	if headersRaw, ok := inputs["headers"]; ok {
 		headers, ok := headersRaw.(map[string]interface{})
 		if !ok {
-			return nil, fmt.Errorf("headers must be an object")
+			return nil, &errors.ValidationError{
+				Field:      "headers",
+				Message:    "headers must be an object",
+				Suggestion: "Provide headers as a map of header names to values",
+			}
 		}
 		for key, value := range headers {
 			valueStr, ok := value.(string)
 			if !ok {
-				return nil, fmt.Errorf("header values must be strings")
+				return nil, &errors.ValidationError{
+					Field:      fmt.Sprintf("headers.%s", key),
+					Message:    "header values must be strings",
+					Suggestion: "Ensure all header values are strings",
+				}
 			}
 			req.Header.Set(key, valueStr)
 		}

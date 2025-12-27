@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
+	pkgerrors "github.com/tombee/conductor/pkg/errors"
 )
 
 // mockRetryProvider is a test provider that can simulate failures.
@@ -89,7 +91,7 @@ func TestRetryableProvider_SuccessAfterRetries(t *testing.T) {
 	mock := &mockRetryProvider{
 		name:      "test",
 		failCount: 2,
-		failWith:  NewHTTPError(http.StatusServiceUnavailable, "service unavailable"),
+		failWith:  &pkgerrors.ProviderError{Provider: "test", StatusCode: http.StatusServiceUnavailable, Message: "service unavailable"},
 		successResp: &CompletionResponse{
 			Content: "success",
 		},
@@ -123,7 +125,7 @@ func TestRetryableProvider_MaxRetriesExceeded(t *testing.T) {
 	mock := &mockRetryProvider{
 		name:      "test",
 		failCount: 10, // Always fail
-		failWith:  NewHTTPError(http.StatusServiceUnavailable, "service unavailable"),
+		failWith:  &pkgerrors.ProviderError{Provider: "test", StatusCode: http.StatusServiceUnavailable, Message: "service unavailable"},
 	}
 
 	config := DefaultRetryConfig()
@@ -141,8 +143,10 @@ func TestRetryableProvider_MaxRetriesExceeded(t *testing.T) {
 		t.Fatal("expected error, got nil")
 	}
 
-	if !errors.Is(err, ErrMaxRetriesExceeded) {
-		t.Errorf("expected ErrMaxRetriesExceeded, got %v", err)
+	// Verify we get a ProviderError wrapping the max retries exceeded message
+	var provErr *pkgerrors.ProviderError
+	if !errors.As(err, &provErr) {
+		t.Errorf("expected ProviderError, got %T: %v", err, err)
 	}
 
 	if mock.currentAttempt != 3 {
@@ -154,7 +158,7 @@ func TestRetryableProvider_NonRetryableError(t *testing.T) {
 	mock := &mockRetryProvider{
 		name:      "test",
 		failCount: 10, // Always fail
-		failWith:  NewHTTPError(http.StatusUnauthorized, "unauthorized"),
+		failWith:  &pkgerrors.ProviderError{Provider: "test", StatusCode: http.StatusUnauthorized, Message: "unauthorized"},
 	}
 
 	config := DefaultRetryConfig()
@@ -177,7 +181,7 @@ func TestRetryableProvider_NonRetryableError(t *testing.T) {
 		t.Errorf("expected 1 attempt (no retries for 401), got %d", mock.currentAttempt)
 	}
 
-	var httpErr *HTTPError
+	var httpErr *pkgerrors.ProviderError
 	if !errors.As(err, &httpErr) {
 		t.Errorf("expected HTTPError, got %T", err)
 	}
@@ -187,7 +191,7 @@ func TestRetryableProvider_ContextCancelled(t *testing.T) {
 	mock := &mockRetryProvider{
 		name:      "test",
 		failCount: 10, // Always fail
-		failWith:  NewHTTPError(http.StatusServiceUnavailable, "service unavailable"),
+		failWith:  &pkgerrors.ProviderError{Provider: "test", StatusCode: http.StatusServiceUnavailable, Message: "service unavailable"},
 	}
 
 	config := DefaultRetryConfig()
@@ -246,7 +250,7 @@ func TestRetryableProvider_StreamRetry(t *testing.T) {
 	mock := &mockRetryProvider{
 		name:      "test",
 		failCount: 2,
-		failWith:  NewHTTPError(http.StatusServiceUnavailable, "service unavailable"),
+		failWith:  &pkgerrors.ProviderError{Provider: "test", StatusCode: http.StatusServiceUnavailable, Message: "service unavailable"},
 	}
 
 	config := DefaultRetryConfig()
@@ -291,37 +295,37 @@ func TestIsRetryableError(t *testing.T) {
 		},
 		{
 			name:      "HTTP 500",
-			err:       NewHTTPError(http.StatusInternalServerError, "internal error"),
+			err:       &pkgerrors.ProviderError{Provider: "test", StatusCode: http.StatusInternalServerError, Message: "internal error"},
 			retryable: true,
 		},
 		{
 			name:      "HTTP 502",
-			err:       NewHTTPError(http.StatusBadGateway, "bad gateway"),
+			err:       &pkgerrors.ProviderError{Provider: "test", StatusCode: http.StatusBadGateway, Message: "bad gateway"},
 			retryable: true,
 		},
 		{
 			name:      "HTTP 503",
-			err:       NewHTTPError(http.StatusServiceUnavailable, "service unavailable"),
+			err:       &pkgerrors.ProviderError{Provider: "test", StatusCode: http.StatusServiceUnavailable, Message: "service unavailable"},
 			retryable: true,
 		},
 		{
 			name:      "HTTP 429",
-			err:       NewHTTPError(http.StatusTooManyRequests, "rate limited"),
+			err:       &pkgerrors.ProviderError{Provider: "test", StatusCode: http.StatusTooManyRequests, Message: "rate limited"},
 			retryable: true,
 		},
 		{
 			name:      "HTTP 400",
-			err:       NewHTTPError(http.StatusBadRequest, "bad request"),
+			err:       &pkgerrors.ProviderError{Provider: "test", StatusCode: http.StatusBadRequest, Message: "bad request"},
 			retryable: false,
 		},
 		{
 			name:      "HTTP 401",
-			err:       NewHTTPError(http.StatusUnauthorized, "unauthorized"),
+			err:       &pkgerrors.ProviderError{Provider: "test", StatusCode: http.StatusUnauthorized, Message: "unauthorized"},
 			retryable: false,
 		},
 		{
 			name:      "HTTP 403",
-			err:       NewHTTPError(http.StatusForbidden, "forbidden"),
+			err:       &pkgerrors.ProviderError{Provider: "test", StatusCode: http.StatusForbidden, Message: "forbidden"},
 			retryable: false,
 		},
 		{

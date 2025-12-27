@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tombee/conductor/pkg/errors"
 	"github.com/tombee/conductor/pkg/workflow/expression"
 	"github.com/tombee/conductor/pkg/workflow/schema"
 )
@@ -317,7 +318,11 @@ func (e *StepExecutor) executeStep(ctx context.Context, step *StepDefinition, wo
 		resolvedStep.Connector = resolvedStep.BuiltinConnector + "." + resolvedStep.BuiltinOperation
 		return e.executeConnector(ctx, &resolvedStep, inputs)
 	default:
-		return nil, fmt.Errorf("unsupported step type: %s", step.Type)
+		return nil, &errors.ValidationError{
+			Field:      "type",
+			Message:    fmt.Sprintf("unsupported step type: %s", step.Type),
+			Suggestion: "use one of: llm, condition, parallel, connector, builtin",
+		}
 	}
 }
 
@@ -373,12 +378,19 @@ func (e *StepExecutor) executeWithRetry(ctx context.Context, step *StepDefinitio
 func (e *StepExecutor) executeConnector(ctx context.Context, step *StepDefinition, inputs map[string]interface{}) (map[string]interface{}, error) {
 	// Check if connector registry is configured
 	if e.connectorRegistry == nil {
-		return nil, fmt.Errorf("connector registry not configured")
+		return nil, &errors.ConfigError{
+			Key:    "connector_registry",
+			Reason: "connector registry not configured for workflow executor",
+		}
 	}
 
 	// Validate connector field is present
 	if step.Connector == "" {
-		return nil, fmt.Errorf("connector field is required for connector step")
+		return nil, &errors.ValidationError{
+			Field:      "connector",
+			Message:    "connector field is required for connector step",
+			Suggestion: "specify connector in format 'connector_name.operation_name'",
+		}
 	}
 
 	// Log connector execution start with structured logging
@@ -495,7 +507,10 @@ func stringContains(s, substr string) bool {
 // Supports structured output validation via OutputSchema (SPEC-6).
 func (e *StepExecutor) executeLLM(ctx context.Context, step *StepDefinition, inputs map[string]interface{}) (map[string]interface{}, error) {
 	if e.llmProvider == nil {
-		return nil, fmt.Errorf("LLM provider not configured")
+		return nil, &errors.ConfigError{
+			Key:    "llm_provider",
+			Reason: "LLM provider not configured for workflow executor",
+		}
 	}
 
 	// SPEC-40: Wrap inputs in type-safe context for safer access
@@ -508,7 +523,11 @@ func (e *StepExecutor) executeLLM(ctx context.Context, step *StepDefinition, inp
 		// Legacy format: prompt from inputs (type-safe accessor)
 		promptInput, err := inputCtx.GetString("prompt")
 		if err != nil {
-			return nil, fmt.Errorf("prompt is required for LLM step and must be a string")
+			return nil, &errors.ValidationError{
+				Field:      "prompt",
+				Message:    "prompt is required for LLM step and must be a string",
+				Suggestion: "add 'prompt' field to step definition or inputs",
+			}
 		}
 		prompt = promptInput
 	}
@@ -664,7 +683,11 @@ func (e *StepExecutor) filterTools(toolNames []string) []map[string]interface{} 
 // Note: No type assertions on inputs - expression layer migration is Phase 3 (SPEC-40).
 func (e *StepExecutor) executeCondition(ctx context.Context, step *StepDefinition, inputs map[string]interface{}, workflowContext map[string]interface{}) (map[string]interface{}, error) {
 	if step.Condition == nil {
-		return nil, fmt.Errorf("condition is required for condition step")
+		return nil, &errors.ValidationError{
+			Field:      "condition",
+			Message:    "condition is required for condition step",
+			Suggestion: "add 'condition' field with expression and then/else steps",
+		}
 	}
 
 	// Evaluate condition expression
@@ -685,7 +708,11 @@ func (e *StepExecutor) executeCondition(ctx context.Context, step *StepDefinitio
 // executeParallel executes nested steps concurrently and aggregates results.
 func (e *StepExecutor) executeParallel(ctx context.Context, step *StepDefinition, inputs map[string]interface{}, workflowContext map[string]interface{}) (map[string]interface{}, error) {
 	if len(step.Steps) == 0 {
-		return nil, fmt.Errorf("parallel step has no nested steps")
+		return nil, &errors.ValidationError{
+			Field:      "steps",
+			Message:    "parallel step has no nested steps",
+			Suggestion: "add at least one nested step to execute in parallel",
+		}
 	}
 
 	// Handle foreach iteration if specified
@@ -864,7 +891,11 @@ func (e *StepExecutor) executeForeach(ctx context.Context, step *StepDefinition,
 				typeName = "boolean"
 			}
 		}
-		return nil, fmt.Errorf("foreach requires array input, got %s", typeName)
+		return nil, &errors.ValidationError{
+			Field:      "foreach",
+			Message:    fmt.Sprintf("foreach requires array input, got %s", typeName),
+			Suggestion: "ensure the foreach expression resolves to an array value",
+		}
 	}
 
 	// Handle empty array case - return empty results
@@ -1179,7 +1210,10 @@ func (e *StepExecutor) handleError(ctx context.Context, step *StepDefinition, re
 func (e *StepExecutor) resolveForeachValue(expr string, workflowContext map[string]interface{}) (interface{}, error) {
 	templateCtx, ok := workflowContext["_templateContext"].(*TemplateContext)
 	if !ok {
-		return nil, fmt.Errorf("template context not available")
+		return nil, &errors.ConfigError{
+			Key:    "_templateContext",
+			Reason: "template context not available in workflow context",
+		}
 	}
 
 	// Directly look up the value from the context by parsing the expression path
@@ -1199,7 +1233,11 @@ func (e *StepExecutor) resolveForeachValue(expr string, workflowContext map[stri
 	// Split path by dots
 	parts := strings.Split(path, ".")
 	if len(parts) == 0 {
-		return nil, fmt.Errorf("invalid expression: %s", expr)
+		return nil, &errors.ValidationError{
+			Field:      "foreach",
+			Message:    fmt.Sprintf("invalid expression: %s", expr),
+			Suggestion: "use template syntax like {{.steps.step_id.field}}",
+		}
 	}
 
 	// Navigate through the context
@@ -1212,18 +1250,30 @@ func (e *StepExecutor) resolveForeachValue(expr string, workflowContext map[stri
 		case map[string]interface{}:
 			val, ok := v[part]
 			if !ok {
-				return nil, fmt.Errorf("field %s not found in context", part)
+				return nil, &errors.ValidationError{
+					Field:      "foreach",
+					Message:    fmt.Sprintf("field %s not found in context", part),
+					Suggestion: fmt.Sprintf("check that the path %s exists in workflow context", expr),
+				}
 			}
 			current = val
 		case map[string]map[string]interface{}:
 			// Handle the Steps field which is map[string]map[string]interface{}
 			val, ok := v[part]
 			if !ok {
-				return nil, fmt.Errorf("field %s not found in context", part)
+				return nil, &errors.ValidationError{
+					Field:      "foreach",
+					Message:    fmt.Sprintf("field %s not found in context", part),
+					Suggestion: fmt.Sprintf("check that the path %s exists in workflow context", expr),
+				}
 			}
 			current = val
 		default:
-			return nil, fmt.Errorf("cannot access field %s on non-object (type %T)", part, current)
+			return nil, &errors.ValidationError{
+				Field:      "foreach",
+				Message:    fmt.Sprintf("cannot access field %s on non-object (type %T)", part, current),
+				Suggestion: "ensure the expression path references object fields only",
+			}
 		}
 	}
 

@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/tombee/conductor/pkg/errors"
 	"github.com/tombee/conductor/pkg/security"
 	"github.com/tombee/conductor/pkg/tools"
 )
@@ -125,7 +126,11 @@ func (t *ShellTool) Execute(ctx context.Context, inputs map[string]interface{}) 
 	// Extract command
 	command, ok := inputs["command"].(string)
 	if !ok {
-		return nil, fmt.Errorf("command must be a string")
+		return nil, &errors.ValidationError{
+			Field:      "command",
+			Message:    "command must be a string",
+			Suggestion: "Provide the command as a string",
+		}
 	}
 
 	// Extract arguments (optional)
@@ -133,13 +138,21 @@ func (t *ShellTool) Execute(ctx context.Context, inputs map[string]interface{}) 
 	if argsRaw, ok := inputs["args"]; ok {
 		argsSlice, ok := argsRaw.([]interface{})
 		if !ok {
-			return nil, fmt.Errorf("args must be an array")
+			return nil, &errors.ValidationError{
+				Field:      "args",
+				Message:    "args must be an array",
+				Suggestion: "Provide arguments as an array of strings",
+			}
 		}
 		args = make([]string, len(argsSlice))
 		for i, arg := range argsSlice {
 			argStr, ok := arg.(string)
 			if !ok {
-				return nil, fmt.Errorf("all args must be strings")
+				return nil, &errors.ValidationError{
+					Field:      fmt.Sprintf("args[%d]", i),
+					Message:    "all args must be strings",
+					Suggestion: "Ensure all arguments are strings",
+				}
 			}
 			args[i] = argStr
 		}
@@ -147,13 +160,13 @@ func (t *ShellTool) Execute(ctx context.Context, inputs map[string]interface{}) 
 
 	// Validate command
 	if err := t.validateCommand(command); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("command validation failed: %w", err)
 	}
 
 	// Validate with security config
 	if t.securityConfig != nil {
 		if err := t.securityConfig.ValidateCommand(command, args); err != nil {
-			return nil, fmt.Errorf("security validation failed: %w", err)
+			return nil, fmt.Errorf("security validation failed for command %s: %w", command, err)
 		}
 	}
 

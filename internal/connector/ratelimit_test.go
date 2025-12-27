@@ -132,7 +132,7 @@ func TestRateLimit_TimeoutEnforced(t *testing.T) {
 		t.Errorf("expected timeout after ~1s, took %v", elapsed)
 	}
 
-	if connErr.Suggestion == "" {
+	if connErr.SuggestText == "" {
 		t.Error("expected suggestion in timeout error")
 	}
 }

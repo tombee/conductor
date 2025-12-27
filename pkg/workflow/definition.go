@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/tombee/conductor/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
 
@@ -737,23 +738,39 @@ func (d *Definition) autoGenerateStepIDs() {
 // Validate checks if the workflow definition is valid.
 func (d *Definition) Validate() error {
 	if d.Name == "" {
-		return fmt.Errorf("workflow name is required")
+		return &errors.ValidationError{
+			Field:      "name",
+			Message:    "workflow name is required",
+			Suggestion: "add a descriptive name for the workflow",
+		}
 	}
 
 	// Version is now optional (removed validation check)
 
 	if len(d.Steps) == 0 {
-		return fmt.Errorf("workflow must have at least one step")
+		return &errors.ValidationError{
+			Field:      "steps",
+			Message:    "workflow must have at least one step",
+			Suggestion: "add at least one step to the workflow definition",
+		}
 	}
 
 	// Validate step IDs are unique
 	stepIDs := make(map[string]bool)
 	for _, step := range d.Steps {
 		if step.ID == "" {
-			return fmt.Errorf("step ID is required")
+			return &errors.ValidationError{
+				Field:      "id",
+				Message:    "step ID is required",
+				Suggestion: "add an 'id' field to each step",
+			}
 		}
 		if stepIDs[step.ID] {
-			return fmt.Errorf("duplicate step ID: %s", step.ID)
+			return &errors.ValidationError{
+				Field:      "id",
+				Message:    fmt.Sprintf("duplicate step ID: %s", step.ID),
+				Suggestion: "ensure each step has a unique ID",
+			}
 		}
 		stepIDs[step.ID] = true
 
@@ -775,7 +792,11 @@ func (d *Definition) Validate() error {
 		// Validate agent reference exists if specified
 		if step.Agent != "" {
 			if _, exists := d.Agents[step.Agent]; !exists {
-				return fmt.Errorf("step %s references undefined agent: %s", step.ID, step.Agent)
+				return &errors.ValidationError{
+					Field:      "agent",
+					Message:    fmt.Sprintf("step %s references undefined agent: %s", step.ID, step.Agent),
+					Suggestion: "define the agent in the workflow's agents section",
+				}
 			}
 		}
 	}

@@ -1,6 +1,226 @@
 # Error Codes Reference
 
-This reference documents all error codes used by Conductor with descriptions and resolution steps.
+This reference documents all error codes and error types used by Conductor with descriptions and resolution steps.
+
+## Typed Error System
+
+Conductor uses a typed error system (`pkg/errors`) for structured error handling. These errors provide rich context and actionable suggestions.
+
+### Core Error Types
+
+#### ValidationError
+
+Represents user input validation failures, malformed data, or constraint violations.
+
+**Fields:**
+- `Field` (string): Which input field failed validation
+- `Message` (string): Human-readable error description
+- `Suggestion` (string): Actionable guidance for fixing the error
+
+**Example:**
+```go
+&conductorerrors.ValidationError{
+    Field:      "workflow_name",
+    Message:    "name cannot contain special characters",
+    Suggestion: "Use only alphanumeric characters and hyphens",
+}
+```
+
+**Error output:**
+```
+validation failed on workflow_name: name cannot contain special characters
+```
+
+**When to use:**
+- Invalid user input in commands
+- Malformed workflow definitions
+- Schema constraint violations
+- Expression parsing errors
+
+#### NotFoundError
+
+Represents a resource not found error.
+
+**Fields:**
+- `Resource` (string): Type of resource (e.g., "workflow", "tool", "connector")
+- `ID` (string): Identifier that was not found
+
+**Example:**
+```go
+&conductorerrors.NotFoundError{
+    Resource: "workflow",
+    ID:       "my-workflow",
+}
+```
+
+**Error output:**
+```
+workflow not found: my-workflow
+```
+
+**When to use:**
+- Workflow not found in store
+- Tool not registered
+- Connector not configured
+- MCP server not found
+
+#### ProviderError
+
+Represents LLM provider failures from external services.
+
+**Fields:**
+- `Provider` (string): Name of the LLM provider (e.g., "anthropic", "openai")
+- `Code` (int): Provider-specific error code
+- `StatusCode` (int): HTTP status code (if applicable)
+- `Message` (string): Human-readable error message
+- `Suggestion` (string): Actionable guidance for resolution
+- `RequestID` (string): Correlates error with provider logs
+- `Cause` (error): Underlying error (supports `Unwrap()`)
+
+**Example:**
+```go
+&conductorerrors.ProviderError{
+    Provider:   "anthropic",
+    StatusCode: 429,
+    Message:    "rate limit exceeded",
+    RequestID:  "req_abc123",
+    Suggestion: "Wait 60 seconds before retrying",
+    Cause:      originalErr,
+}
+```
+
+**Error output:**
+```
+provider anthropic error [HTTP 429]: rate limit exceeded (request-id: req_abc123)
+```
+
+**When to use:**
+- API request failures
+- Authentication errors
+- Rate limit errors
+- Provider timeouts
+- Invalid API responses
+
+#### ConfigError
+
+Represents configuration problems.
+
+**Fields:**
+- `Key` (string): Configuration key with the problem (e.g., "api_key", "database.host")
+- `Reason` (string): Explains what's wrong with the configuration
+- `Cause` (error): Underlying error (supports `Unwrap()`)
+
+**Example:**
+```go
+&conductorerrors.ConfigError{
+    Key:    "providers.anthropic.api_key",
+    Reason: "API key is required but not set",
+    Cause:  nil,
+}
+```
+
+**Error output:**
+```
+config error at providers.anthropic.api_key: API key is required but not set
+```
+
+**When to use:**
+- Missing configuration files
+- Invalid YAML/JSON syntax
+- Missing required settings
+- Invalid configuration values
+- Environment variable not set
+
+#### TimeoutError
+
+Represents operation timeouts.
+
+**Fields:**
+- `Operation` (string): Describes what timed out (e.g., "LLM request", "workflow step")
+- `Duration` (time.Duration): How long the operation ran before timing out
+- `Cause` (error): Underlying error (supports `Unwrap()`)
+
+**Example:**
+```go
+&conductorerrors.TimeoutError{
+    Operation: "LLM request",
+    Duration:  30 * time.Second,
+    Cause:     context.DeadlineExceeded,
+}
+```
+
+**Error output:**
+```
+LLM request operation timed out after 30s
+```
+
+**When to use:**
+- LLM request timeouts
+- Workflow step timeouts
+- Tool execution timeouts
+- Connector operation timeouts
+
+### Error Interfaces
+
+#### UserVisibleError
+
+Errors implementing this interface are formatted with user-friendly messages and suggestions:
+
+```go
+type UserVisibleError interface {
+    error
+    IsUserVisible() bool
+    UserMessage() string
+    Suggestion() string
+}
+```
+
+**Implementations:**
+- `connector.Error`
+- `mcp.MCPError`
+- `file.OperationError`
+
+#### ErrorClassifier
+
+For programmatic error handling and retry logic:
+
+```go
+type ErrorClassifier interface {
+    error
+    ErrorType() string
+    IsRetryable() bool
+}
+```
+
+**Implementations:**
+- `connector.Error` (classifies HTTP errors, timeouts, etc.)
+
+### Error Wrapping
+
+All errors should be wrapped with context using `pkg/errors` helpers:
+
+```go
+import conductorerrors "github.com/tombee/conductor/pkg/errors"
+
+// Wrap with static context
+if err != nil {
+    return conductorerrors.Wrap(err, "loading workflow")
+}
+
+// Wrap with formatted context
+if err != nil {
+    return conductorerrors.Wrapf(err, "loading workflow %s", id)
+}
+```
+
+This creates error chains that preserve type information for `errors.Is()` and `errors.As()`:
+
+```go
+var notFoundErr *conductorerrors.NotFoundError
+if errors.As(err, &notFoundErr) {
+    // Handle not found error
+}
+```
 
 ## CLI Exit Codes
 

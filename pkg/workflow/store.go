@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/tombee/conductor/pkg/errors"
 )
 
 // Store defines the interface for workflow persistence.
@@ -50,10 +52,16 @@ func NewMemoryStore() *MemoryStore {
 // Create creates a new workflow.
 func (s *MemoryStore) Create(ctx context.Context, workflow *Workflow) error {
 	if workflow == nil {
-		return fmt.Errorf("workflow cannot be nil")
+		return &errors.ValidationError{
+			Field:   "workflow",
+			Message: "workflow cannot be nil",
+		}
 	}
 	if workflow.ID == "" {
-		return fmt.Errorf("workflow ID cannot be empty")
+		return &errors.ValidationError{
+			Field:   "id",
+			Message: "workflow ID cannot be empty",
+		}
 	}
 
 	s.mu.Lock()
@@ -61,7 +69,11 @@ func (s *MemoryStore) Create(ctx context.Context, workflow *Workflow) error {
 
 	// Check if workflow already exists
 	if _, exists := s.workflows[workflow.ID]; exists {
-		return fmt.Errorf("workflow with ID %s already exists", workflow.ID)
+		return &errors.ValidationError{
+			Field:      "id",
+			Message:    fmt.Sprintf("workflow with ID %s already exists", workflow.ID),
+			Suggestion: "use a unique workflow ID or call Update instead",
+		}
 	}
 
 	// Set timestamps
@@ -92,7 +104,10 @@ func (s *MemoryStore) Create(ctx context.Context, workflow *Workflow) error {
 // Get retrieves a workflow by ID.
 func (s *MemoryStore) Get(ctx context.Context, id string) (*Workflow, error) {
 	if id == "" {
-		return nil, fmt.Errorf("workflow ID cannot be empty")
+		return nil, &errors.ValidationError{
+			Field:   "id",
+			Message: "workflow ID cannot be empty",
+		}
 	}
 
 	s.mu.RLock()
@@ -100,7 +115,10 @@ func (s *MemoryStore) Get(ctx context.Context, id string) (*Workflow, error) {
 
 	workflow, exists := s.workflows[id]
 	if !exists {
-		return nil, fmt.Errorf("workflow not found: %s", id)
+		return nil, &errors.NotFoundError{
+			Resource: "workflow",
+			ID:       id,
+		}
 	}
 
 	// Return a copy to prevent external modifications
@@ -110,10 +128,16 @@ func (s *MemoryStore) Get(ctx context.Context, id string) (*Workflow, error) {
 // Update updates an existing workflow.
 func (s *MemoryStore) Update(ctx context.Context, workflow *Workflow) error {
 	if workflow == nil {
-		return fmt.Errorf("workflow cannot be nil")
+		return &errors.ValidationError{
+			Field:   "workflow",
+			Message: "workflow cannot be nil",
+		}
 	}
 	if workflow.ID == "" {
-		return fmt.Errorf("workflow ID cannot be empty")
+		return &errors.ValidationError{
+			Field:   "id",
+			Message: "workflow ID cannot be empty",
+		}
 	}
 
 	s.mu.Lock()
@@ -121,7 +145,10 @@ func (s *MemoryStore) Update(ctx context.Context, workflow *Workflow) error {
 
 	// Check if workflow exists
 	if _, exists := s.workflows[workflow.ID]; !exists {
-		return fmt.Errorf("workflow not found: %s", workflow.ID)
+		return &errors.NotFoundError{
+			Resource: "workflow",
+			ID:       workflow.ID,
+		}
 	}
 
 	// Update timestamp
@@ -136,7 +163,10 @@ func (s *MemoryStore) Update(ctx context.Context, workflow *Workflow) error {
 // Delete deletes a workflow by ID.
 func (s *MemoryStore) Delete(ctx context.Context, id string) error {
 	if id == "" {
-		return fmt.Errorf("workflow ID cannot be empty")
+		return &errors.ValidationError{
+			Field:   "id",
+			Message: "workflow ID cannot be empty",
+		}
 	}
 
 	s.mu.Lock()
@@ -144,7 +174,10 @@ func (s *MemoryStore) Delete(ctx context.Context, id string) error {
 
 	// Check if workflow exists
 	if _, exists := s.workflows[id]; !exists {
-		return fmt.Errorf("workflow not found: %s", id)
+		return &errors.NotFoundError{
+			Resource: "workflow",
+			ID:       id,
+		}
 	}
 
 	delete(s.workflows, id)

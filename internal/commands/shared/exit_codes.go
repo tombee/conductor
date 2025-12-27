@@ -18,6 +18,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+
+	pkgerrors "github.com/tombee/conductor/pkg/errors"
 )
 
 // Exit codes for conductor run command
@@ -106,10 +108,38 @@ func HandleExitError(err error) {
 		if len(msg) > 0 {
 			fmt.Fprintln(os.Stderr, "Error:", msg)
 		}
+
+		// Check if the error (or any in the chain) implements UserVisibleError
+		printUserVisibleSuggestion(err)
+
 		os.Exit(exitErr.Code)
 	}
 
 	// Default to execution failed
 	fmt.Fprintln(os.Stderr, "Error:", err.Error())
+
+	// Check if the error implements UserVisibleError
+	printUserVisibleSuggestion(err)
+
 	os.Exit(ExitExecutionFailed)
+}
+
+// printUserVisibleSuggestion checks if an error implements UserVisibleError
+// and prints the suggestion if available.
+func printUserVisibleSuggestion(err error) {
+	// Walk the error chain to find a UserVisibleError
+	for err != nil {
+		if userErr, ok := err.(pkgerrors.UserVisibleError); ok {
+			if userErr.IsUserVisible() {
+				suggestion := userErr.Suggestion()
+				if suggestion != "" {
+					fmt.Fprintf(os.Stderr, "\nSuggestion: %s\n", suggestion)
+				}
+			}
+			return
+		}
+
+		// Continue unwrapping
+		err = errors.Unwrap(err)
+	}
 }

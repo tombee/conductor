@@ -10,6 +10,8 @@ import (
 	"context"
 	"fmt"
 	"sync"
+
+	"github.com/tombee/conductor/pkg/errors"
 )
 
 // Tool represents an executable tool that can be used in workflows or by agents.
@@ -136,7 +138,10 @@ func (r *Registry) Unregister(name string) error {
 	defer r.mu.Unlock()
 
 	if _, exists := r.tools[name]; !exists {
-		return fmt.Errorf("tool not found: %s", name)
+		return &errors.NotFoundError{
+			Resource: "tool",
+			ID:       name,
+		}
 	}
 
 	delete(r.tools, name)
@@ -150,7 +155,10 @@ func (r *Registry) Get(name string) (Tool, error) {
 
 	tool, exists := r.tools[name]
 	if !exists {
-		return nil, fmt.Errorf("tool not found: %s", name)
+		return nil, &errors.NotFoundError{
+			Resource: "tool",
+			ID:       name,
+		}
 	}
 
 	return tool, nil
@@ -200,7 +208,11 @@ func (r *Registry) Execute(ctx context.Context, name string, inputs map[string]i
 
 	// Validate inputs against schema
 	if err := r.validateInputs(tool, inputs); err != nil {
-		return nil, fmt.Errorf("input validation failed for tool %s: %w", name, err)
+		return nil, &errors.ValidationError{
+			Field:      "inputs",
+			Message:    fmt.Sprintf("input validation failed for tool %s: %v", name, err),
+			Suggestion: "Check the tool schema for required inputs and correct types",
+		}
 	}
 
 	// Call security interceptor before execution
@@ -210,7 +222,7 @@ func (r *Registry) Execute(ctx context.Context, name string, inputs map[string]i
 
 	if interceptor != nil {
 		if err := interceptor.Intercept(ctx, tool, inputs); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("security validation failed for tool %s: %w", name, err)
 		}
 	}
 

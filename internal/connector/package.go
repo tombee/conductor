@@ -54,7 +54,7 @@ func loadPackage(from string) (*PackageDefinition, error) {
 	return nil, &Error{
 		Type:       ErrorTypeNotImplemented,
 		Message:    fmt.Sprintf("connector package source %q not yet supported", from),
-		Suggestion: "use bundled connectors (from: connectors/<name>) or inline definitions",
+		SuggestText: "use bundled connectors (from: connectors/<name>) or inline definitions",
 	}
 }
 
@@ -91,7 +91,7 @@ func loadBundledPackage(from string) (*PackageDefinition, error) {
 			return nil, &Error{
 				Type:       ErrorTypeNotFound,
 				Message:    fmt.Sprintf("bundled connector %q not found", connectorName),
-				Suggestion: "available bundled connectors: github, slack, jira, discord, jenkins",
+				SuggestText: "available bundled connectors: github, slack, jira, discord, jenkins",
 			}
 		}
 		return nil, &Error{
@@ -225,7 +225,7 @@ func loadLocalPackage(path string) (*PackageDefinition, error) {
 			return nil, &Error{
 				Type:       ErrorTypeNotFound,
 				Message:    fmt.Sprintf("connector file not found: %s", absPath),
-				Suggestion: "check that the file exists and the path is correct",
+				SuggestText: "check that the file exists and the path is correct",
 			}
 		}
 		return nil, &Error{
