@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/tombee/conductor/pkg/errors"
@@ -65,4 +66,85 @@ func ValidateNestedForeach(step *StepDefinition, inForeachContext bool) error {
 	}
 
 	return nil
+}
+
+// PlaintextCredentialPattern represents a pattern for detecting plaintext credentials in workflows.
+type PlaintextCredentialPattern struct {
+	Name    string
+	Pattern *regexp.Regexp
+}
+
+var (
+	// workflowCredentialPatterns contains patterns for detecting embedded credentials in workflow definitions.
+	// These patterns warn users to use the `requires` section and profiles instead of embedding credentials.
+	workflowCredentialPatterns = []PlaintextCredentialPattern{
+		{
+			Name:    "GitHub Token",
+			Pattern: regexp.MustCompile(`\b(ghp_|gho_|ghu_|ghs_|ghr_)[a-zA-Z0-9]{36,}\b`),
+		},
+		{
+			Name:    "Anthropic API Key",
+			Pattern: regexp.MustCompile(`\bsk-ant-[a-zA-Z0-9-]{95,}\b`),
+		},
+		{
+			Name:    "OpenAI API Key",
+			Pattern: regexp.MustCompile(`\bsk-[a-zA-Z0-9]{20,}\b`),
+		},
+		{
+			Name:    "AWS Access Key",
+			Pattern: regexp.MustCompile(`\bAKIA[0-9A-Z]{16}\b`),
+		},
+		{
+			Name:    "Slack Token",
+			Pattern: regexp.MustCompile(`\b(xoxb-|xoxp-|xoxa-|xoxr-)[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24,}\b`),
+		},
+	}
+)
+
+// DetectEmbeddedCredentials checks the workflow definition for embedded plaintext credentials.
+// Returns warnings about found credentials. This is a non-blocking warning - workflows with
+// embedded credentials are still valid, but users are warned to use profiles instead (SPEC-130).
+func DetectEmbeddedCredentials(def *Definition) []string {
+	var warnings []string
+
+	// Helper to check a string value for credentials
+	checkValue := func(location, value string) {
+		for _, pattern := range workflowCredentialPatterns {
+			if pattern.Pattern.MatchString(value) {
+				warnings = append(warnings, fmt.Sprintf(
+					"%s contains %s - consider using `requires` section with profile bindings instead of embedding credentials",
+					location, pattern.Name,
+				))
+			}
+		}
+	}
+
+	// Check connectors for embedded auth
+	for name, connector := range def.Connectors {
+		if connector.Auth != nil {
+			// Check all auth fields
+			if connector.Auth.Token != "" {
+				checkValue(fmt.Sprintf("connectors.%s.auth.token", name), connector.Auth.Token)
+			}
+			if connector.Auth.Username != "" {
+				checkValue(fmt.Sprintf("connectors.%s.auth.username", name), connector.Auth.Username)
+			}
+			if connector.Auth.Password != "" {
+				checkValue(fmt.Sprintf("connectors.%s.auth.password", name), connector.Auth.Password)
+			}
+			if connector.Auth.Value != "" {
+				checkValue(fmt.Sprintf("connectors.%s.auth.value", name), connector.Auth.Value)
+			}
+		}
+	}
+
+	// Check MCP servers for embedded credentials in env
+	for i, server := range def.MCPServers {
+		for _, envVar := range server.Env {
+			// Env vars are in "KEY=value" format
+			checkValue(fmt.Sprintf("mcp_servers[%d].env", i), envVar)
+		}
+	}
+
+	return warnings
 }
