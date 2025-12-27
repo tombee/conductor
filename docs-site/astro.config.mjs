@@ -103,10 +103,20 @@ export default defineConfig({
           label: 'Deployment',
           items: [
             { label: 'Overview', slug: 'deployment' },
-            { label: 'exe.dev', slug: 'deployment/exe-dev' },
-            { label: 'Docker', slug: 'deployment/docker' },
-            { label: 'Kubernetes', slug: 'deployment/kubernetes' },
-            { label: 'Bare Metal', slug: 'deployment/bare-metal' },
+            {
+              label: 'Platforms',
+              items: [
+                { label: 'exe.dev', slug: 'deployment/exe-dev' },
+                { label: 'Kubernetes', slug: 'deployment/kubernetes' },
+              ],
+            },
+            {
+              label: 'Modes',
+              items: [
+                { label: 'Docker', slug: 'deployment/docker' },
+                { label: 'Bare Metal', slug: 'deployment/bare-metal' },
+              ],
+            },
           ],
         },
         {

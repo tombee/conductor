@@ -2,13 +2,22 @@
 
 Deploy Conductor to production using the method that best fits your infrastructure.
 
-## Choose Your Platform
+## Platforms
+
+Where you deploy Conductor—managed infrastructure and orchestration systems.
 
 | Platform | Best For | Complexity |
 |----------|----------|------------|
 | [exe.dev](exe-dev.md) | Individuals, small teams | Simple |
-| [Docker](docker.md) | Single-node, containerized environments | Simple |
 | [Kubernetes](kubernetes.md) | Multi-node, scalable production | Moderate |
+
+## Modes
+
+How you run Conductor—the runtime packaging and process model.
+
+| Mode | Best For | Complexity |
+|------|----------|------------|
+| [Docker](docker.md) | Containerized environments, CI/CD | Simple |
 | [Bare Metal](bare-metal.md) | Maximum control, existing servers | Moderate |
 
 ## Resource Requirements
