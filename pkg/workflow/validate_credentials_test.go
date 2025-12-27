@@ -49,7 +49,7 @@ func TestDetectEmbeddedCredentials(t *testing.T) {
 					"github": {
 						Name: "github",
 						Auth: &AuthDefinition{
-							Token: "ghp_1234567890123456789012345678901234567890",
+							Token: "ghp_FAKEtestTOKENnotREAL000000000000000000",
 						},
 					},
 				},
@@ -65,7 +65,7 @@ func TestDetectEmbeddedCredentials(t *testing.T) {
 					"anthropic": {
 						Name: "anthropic",
 						Auth: &AuthDefinition{
-							Value: "sk-ant-api03-1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890",
+							Value: "sk-ant-api03-FAKEtestKEYnotREAL000000000000000000000000000000000000000000000000000000000000000000000000000000",
 						},
 					},
 				},
@@ -98,7 +98,7 @@ func TestDetectEmbeddedCredentials(t *testing.T) {
 						Name:    "slack-server",
 						Command: "slack-mcp",
 						Env: []string{
-							"SLACK_TOKEN=xoxb-1234567890-1234567890-1234567890123456789012345678",
+							"SLACK_TOKEN=xoxb-1234567890-1234567890-NOTrealTESTtoken12345678",
 						},
 					},
 				},
@@ -114,13 +114,13 @@ func TestDetectEmbeddedCredentials(t *testing.T) {
 					"github": {
 						Name: "github",
 						Auth: &AuthDefinition{
-							Token: "ghp_1234567890123456789012345678901234567890",
+							Token: "ghp_FAKEtestTOKENnotREAL000000000000000000",
 						},
 					},
 					"slack": {
 						Name: "slack",
 						Auth: &AuthDefinition{
-							Token: "xoxb-1234567890-1234567890-1234567890123456789012345678",
+							Token: "xoxb-1234567890-1234567890-NOTrealTESTtoken12345678",
 						},
 					},
 				},

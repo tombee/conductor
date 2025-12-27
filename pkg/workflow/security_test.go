@@ -165,7 +165,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 				Connectors: map[string]ConnectorDefinition{
 					"github": {
 						Auth: &AuthDefinition{
-							Token: "ghp_1234567890abcdefghijklmnopqrstuvwxyz",
+							Token: "ghp_FAKE_TEST_TOKEN_NOT_REAL_00000000000",
 						},
 					},
 				},
@@ -197,7 +197,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 				Connectors: map[string]ConnectorDefinition{
 					"anthropic": {
 						Auth: &AuthDefinition{
-							Token: "sk-ant-api03-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+							Token: "sk-ant-api03-FAKE_TEST_KEY_NOT_REAL_00000000000000000000000000000000000000000000000000000000000000000000000000",
 						},
 					},
 				},
@@ -213,7 +213,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 				Connectors: map[string]ConnectorDefinition{
 					"slack": {
 						Auth: &AuthDefinition{
-							Token: "xoxb-fake-test-token-for-unit-tests",
+							Token: "xoxb-0000000000-0000000000-FAKE_NOT_REAL_TEST",
 						},
 					},
 				},
@@ -340,7 +340,7 @@ func TestIsSecretReference(t *testing.T) {
 		},
 		{
 			name:  "plaintext value",
-			value: "ghp_1234567890",
+			value: "ghp_FAKE_TEST_00",
 			want:  false,
 		},
 		{
@@ -650,7 +650,7 @@ func TestValidateSecurity_Integration(t *testing.T) {
 			"github": {
 				BaseURL: "https://api.github.com",
 				Auth: &AuthDefinition{
-					Token: "ghp_1234567890abcdefghijklmnopqrstuvwxyz",
+					Token: "ghp_FAKE_TEST_TOKEN_NOT_REAL_00000000000",
 				},
 			},
 			"slack": {
