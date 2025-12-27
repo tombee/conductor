@@ -30,9 +30,11 @@ func (r *Runner) execute(run *Run) {
 	// Check if cancelled before even starting
 	select {
 	case <-run.stopped:
+		run.mu.Lock()
 		run.Status = RunStatusCancelled
 		now := time.Now()
 		run.CompletedAt = &now
+		run.mu.Unlock()
 		r.addLog(run, "info", "Run cancelled before execution started", "")
 		return
 	default:
@@ -43,17 +45,21 @@ func (r *Runner) execute(run *Run) {
 	case r.semaphore <- struct{}{}:
 		defer func() { <-r.semaphore }()
 	case <-run.stopped:
+		run.mu.Lock()
 		run.Status = RunStatusCancelled
 		now := time.Now()
 		run.CompletedAt = &now
+		run.mu.Unlock()
 		r.addLog(run, "info", "Run cancelled while waiting for semaphore", "")
 		return
 	}
 
 	// Update status to running
+	run.mu.Lock()
 	run.Status = RunStatusRunning
 	now := time.Now()
 	run.StartedAt = &now
+	run.mu.Unlock()
 
 	// Record run start for metrics and decrement queue depth (no longer pending)
 	r.mu.RLock()
@@ -80,10 +86,12 @@ func (r *Runner) execute(run *Run) {
 	// Start MCP servers using LifecycleManager
 	mcpServerNames, err := r.lifecycle.StartMCPServers(run.ctx, run.definition, logFn)
 	if err != nil {
+		run.mu.Lock()
 		run.Status = RunStatusFailed
 		run.Error = fmt.Sprintf("Failed to start MCP servers: %v", err)
 		completedAt := time.Now()
 		run.CompletedAt = &completedAt
+		run.mu.Unlock()
 		r.addLog(run, "error", fmt.Sprintf("Failed to start MCP servers: %v", err), "")
 		return
 	}
@@ -98,10 +106,12 @@ func (r *Runner) execute(run *Run) {
 
 	if adapter == nil {
 		// No adapter configured - workflow execution will fail
+		run.mu.Lock()
 		run.Status = RunStatusFailed
 		run.Error = "no execution adapter configured - check daemon initialization"
 		completedAt := time.Now()
 		run.CompletedAt = &completedAt
+		run.mu.Unlock()
 		r.addLog(run, "error", "No execution adapter configured for step execution", "")
 
 		// Update backend
@@ -121,8 +131,10 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 	opts := ExecutionOptions{
 		RunID: run.ID,
 		OnStepStart: func(stepID string, stepIndex int, total int) {
+			run.mu.Lock()
 			run.Progress.CurrentStep = stepID
 			run.Progress.Completed = stepIndex
+			run.mu.Unlock()
 
 			// Save checkpoint before step using LifecycleManager
 			workflowCtx := make(map[string]any)
@@ -157,6 +169,7 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 	result, err := adapter.ExecuteWorkflow(run.ctx, run.definition, run.Inputs, opts)
 
 	// Update final status
+	run.mu.Lock()
 	completedAt := time.Now()
 	run.CompletedAt = &completedAt
 	run.Progress.Completed = len(run.definition.Steps)
@@ -183,6 +196,7 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 	}
 
 	status := string(run.Status)
+	run.mu.Unlock()
 
 	// Record run completion for metrics
 	r.mu.RLock()

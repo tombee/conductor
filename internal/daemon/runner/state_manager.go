@@ -158,9 +158,12 @@ func (s *StateManager) Snapshot(run *Run) *RunSnapshot {
 	return s.snapshotRun(run)
 }
 
-// snapshotRun creates an immutable deep copy of a Run (must hold lock).
+// snapshotRun creates an immutable deep copy of a Run (must hold StateManager lock).
 // Returns a snapshot with NO aliasing to internal mutable state.
 func (s *StateManager) snapshotRun(run *Run) *RunSnapshot {
+	run.mu.RLock()
+	defer run.mu.RUnlock()
+
 	// Deep copy logs slice
 	logs := make([]LogEntry, len(run.Logs))
 	copy(logs, run.Logs)
@@ -209,7 +212,11 @@ func (s *StateManager) snapshotRun(run *Run) *RunSnapshot {
 }
 
 // toBackendRun converts a Run to a backend.Run.
+// Must acquire run.mu.RLock to safely read mutable fields.
 func (s *StateManager) toBackendRun(run *Run) *backend.Run {
+	run.mu.RLock()
+	defer run.mu.RUnlock()
+
 	beRun := &backend.Run{
 		ID:            run.ID,
 		WorkflowID:    run.WorkflowID,

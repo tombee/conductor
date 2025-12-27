@@ -67,6 +67,7 @@ type Run struct {
 	SourceURL     string         `json:"source_url,omitempty"` // Remote workflow source (for provenance)
 
 	// Internal
+	mu         sync.RWMutex // Protects mutable fields (Status, Progress, Output, Error, etc.)
 	ctx        context.Context
 	cancel     context.CancelFunc
 	definition *workflow.Definition

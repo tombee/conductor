@@ -34,6 +34,7 @@ func NewLogAggregator() *LogAggregator {
 
 // AddLog adds a log entry to a run and notifies subscribers.
 // The run's Logs slice is appended with the new entry.
+// Thread-safe: acquires run.mu for log slice modification.
 func (l *LogAggregator) AddLog(run *Run, level, message, stepID string) {
 	entry := LogEntry{
 		Timestamp:     time.Now(),
@@ -43,23 +44,33 @@ func (l *LogAggregator) AddLog(run *Run, level, message, stepID string) {
 		CorrelationID: run.CorrelationID,
 	}
 
-	// Append to run's logs (caller must handle run mutex if needed)
+	// Append to run's logs under lock
+	run.mu.Lock()
 	run.Logs = append(run.Logs, entry)
+	run.mu.Unlock()
 
-	// Notify subscribers
+	// Notify subscribers (outside lock to avoid blocking)
 	l.notifySubscribers(run.ID, entry)
 }
 
 // AddLogEntry adds a pre-constructed log entry to a run and notifies subscribers.
+// Thread-safe: acquires run.mu for log slice modification.
 func (l *LogAggregator) AddLogEntry(run *Run, entry LogEntry) {
+	run.mu.Lock()
 	run.Logs = append(run.Logs, entry)
+	run.mu.Unlock()
+
 	l.notifySubscribers(run.ID, entry)
 }
 
 // notifySubscribers sends a log entry to all subscribers for a run.
+// Makes a copy of the subscriber slice to avoid race with unsubscribe.
 func (l *LogAggregator) notifySubscribers(runID string, entry LogEntry) {
 	l.mu.RLock()
-	subs := l.subscribers[runID]
+	origSubs := l.subscribers[runID]
+	// Make a copy to avoid race with unsubscribe modifying the slice
+	subs := make([]chan LogEntry, len(origSubs))
+	copy(subs, origSubs)
 	l.mu.RUnlock()
 
 	for _, ch := range subs {
@@ -80,7 +91,9 @@ func (l *LogAggregator) Subscribe(runID string) (<-chan LogEntry, func()) {
 	l.subscribers[runID] = append(l.subscribers[runID], ch)
 	l.mu.Unlock()
 
-	// Unsubscribe function
+	// Unsubscribe function removes the channel from the subscriber map.
+	// Note: We don't close the channel to avoid race conditions with concurrent senders.
+	// The channel will be garbage collected when no longer referenced.
 	unsub := func() {
 		l.mu.Lock()
 		defer l.mu.Unlock()
@@ -92,7 +105,6 @@ func (l *LogAggregator) Subscribe(runID string) (<-chan LogEntry, func()) {
 				break
 			}
 		}
-		close(ch)
 	}
 
 	return ch, unsub

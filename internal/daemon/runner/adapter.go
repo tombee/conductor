@@ -17,6 +17,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/tombee/conductor/pkg/workflow"
@@ -216,6 +217,8 @@ func stepResultToOutput(result *workflow.StepResult) workflow.StepOutput {
 
 // MockExecutionAdapter is a test double for ExecutionAdapter.
 type MockExecutionAdapter struct {
+	mu sync.Mutex
+
 	// ExecuteWorkflowFunc is called when ExecuteWorkflow is invoked.
 	// Set this to control the mock's behavior in tests.
 	ExecuteWorkflowFunc func(ctx context.Context, def *workflow.Definition, inputs map[string]any, opts ExecutionOptions) (*ExecutionResult, error)
@@ -233,11 +236,13 @@ type ExecuteWorkflowCall struct {
 
 // ExecuteWorkflow implements ExecutionAdapter for testing.
 func (m *MockExecutionAdapter) ExecuteWorkflow(ctx context.Context, def *workflow.Definition, inputs map[string]any, opts ExecutionOptions) (*ExecutionResult, error) {
+	m.mu.Lock()
 	m.Calls = append(m.Calls, ExecuteWorkflowCall{
 		Def:    def,
 		Inputs: inputs,
 		Opts:   opts,
 	})
+	m.mu.Unlock()
 
 	if m.ExecuteWorkflowFunc != nil {
 		return m.ExecuteWorkflowFunc(ctx, def, inputs, opts)
