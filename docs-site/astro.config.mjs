@@ -30,6 +30,7 @@ export default defineConfig({
           label: 'Building Workflows',
           items: [
             { label: 'Overview', slug: 'building-workflows' },
+            { label: 'Patterns', slug: 'building-workflows/patterns' },
             { label: 'Flow Control', slug: 'building-workflows/flow-control' },
             { label: 'Error Handling', slug: 'building-workflows/error-handling' },
             { label: 'Testing', slug: 'building-workflows/testing' },
@@ -50,6 +51,7 @@ export default defineConfig({
             { label: 'CLI', slug: 'reference/cli' },
             { label: 'Workflow Schema', slug: 'reference/workflow-schema' },
             { label: 'Configuration', slug: 'reference/configuration' },
+            { label: 'Cheatsheet', slug: 'reference/cheatsheet' },
             { label: 'API', slug: 'reference/api' },
             { label: 'Error Codes', slug: 'reference/error-codes' },
             {
@@ -94,6 +96,7 @@ export default defineConfig({
             { label: 'Monitoring', slug: 'production/monitoring' },
             { label: 'Startup', slug: 'production/startup' },
             { label: 'Troubleshooting', slug: 'production/troubleshooting' },
+            { label: 'Upgrade Guide', slug: 'production/upgrade-guide' },
           ],
         },
         {
@@ -106,6 +109,7 @@ export default defineConfig({
             { label: 'Embedding', slug: 'contributing/embedding' },
           ],
         },
+        { label: 'FAQ', slug: 'faq' },
         {
           label: 'Architecture',
           collapsed: true,
