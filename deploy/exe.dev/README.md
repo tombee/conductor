@@ -84,6 +84,7 @@ export CONDUCTOR_HOST=https://conductor-abc123.exe.dev
 export CONDUCTOR_API_KEY=<your-api-key-from-step-2>
 
 # Add to shell profile for persistence
+# Use ~/.zshrc on macOS (zsh) or ~/.bashrc on Linux (bash)
 cat >> ~/.bashrc << EOF
 export CONDUCTOR_HOST=https://conductor-abc123.exe.dev
 export CONDUCTOR_API_KEY=<your-api-key>

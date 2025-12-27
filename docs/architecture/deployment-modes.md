@@ -8,6 +8,7 @@ Conductor supports multiple deployment topologies for different use cases.
 |------|----------|---------------|---------|
 | Local CLI | Development, one-off runs | SQLite | Single process |
 | Single-node Daemon | Small teams, CI/CD | SQLite | Single process |
+| [exe.dev](/deploy/exe.dev/) | Quick demos, experiments | SQLite | Single VM |
 | Distributed | Production, high availability | PostgreSQL | Horizontal |
 | Kubernetes | Cloud-native deployment | PostgreSQL | Auto-scaling |
 
@@ -249,6 +250,52 @@ spec:
 - Secrets via Kubernetes Secrets
 - Prometheus metrics at `/metrics`
 
+## exe.dev Deployment
+
+Lightweight VM hosting with minimal setup.
+
+```mermaid
+graph LR
+    subgraph Local["Local Machine"]
+        CLI["conductor CLI"]
+    end
+
+    subgraph ExeDev["exe.dev VM"]
+        Daemon["conductord<br/>:9000"]
+        SQLite["SQLite"]
+        Daemon --> SQLite
+    end
+
+    subgraph External["External Services"]
+        LLM["LLM API"]
+    end
+
+    CLI -->|HTTPS| Daemon
+    Daemon --> LLM
+```
+
+**Setup:**
+```bash
+# Create VM
+ssh exe.dev new --name=conductor
+
+# Install (see deploy/exe.dev/README.md for full instructions)
+ssh exe.dev ssh conductor
+curl -fsSL .../install-conductor.sh | bash
+
+# Configure local CLI
+export CONDUCTOR_HOST=https://conductor-xxx.exe.dev
+export CONDUCTOR_API_KEY=<key-from-install>
+```
+
+**Characteristics:**
+- Deploy in under 5 minutes
+- Persistent disk for SQLite storage
+- API key authentication required
+- Best for demos, experiments, and small teams
+
+See [deploy/exe.dev/](/deploy/exe.dev/) for complete setup guide.
+
 ## Choosing a Mode
 
 ```mermaid
@@ -256,7 +303,9 @@ graph TD
     Start["Start Here"]
 
     Start --> Q1{"Production<br/>deployment?"}
-    Q1 -->|No| Local["Local CLI Mode"]
+    Q1 -->|No| Q1a{"Quick demo<br/>or experiment?"}
+    Q1a -->|Yes| ExeDev["exe.dev"]
+    Q1a -->|No| Local["Local CLI Mode"]
     Q1 -->|Yes| Q2{"Multiple<br/>instances needed?"}
 
     Q2 -->|No| Single["Single-node Daemon"]
