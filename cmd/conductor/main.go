@@ -19,6 +19,7 @@ import (
 	"github.com/tombee/conductor/internal/commands/config"
 	"github.com/tombee/conductor/internal/commands/daemon"
 	"github.com/tombee/conductor/internal/commands/diagnostics"
+	"github.com/tombee/conductor/internal/commands/docs"
 	"github.com/tombee/conductor/internal/commands/management"
 	"github.com/tombee/conductor/internal/commands/mcp"
 	"github.com/tombee/conductor/internal/commands/mcpserver"
@@ -81,6 +82,9 @@ func main() {
 	rootCmd.AddCommand(diagnostics.NewPingCommand())
 	rootCmd.AddCommand(diagnostics.NewProvidersCommand())
 	rootCmd.AddCommand(diagnostics.NewCompletionCommand())
+
+	// Documentation command
+	rootCmd.AddCommand(docs.NewDocsCommand())
 
 	// Version command
 	rootCmd.AddCommand(versioncmd.NewVersionCommand())
