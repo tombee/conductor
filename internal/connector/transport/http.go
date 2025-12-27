@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/tombee/conductor/pkg/httpclient"
 )
 
 // HTTPTransport implements the Transport interface for HTTP/HTTPS requests.
@@ -179,11 +181,27 @@ func NewHTTPTransport(config *HTTPTransportConfig) (*HTTPTransport, error) {
 		timeout = 30 * time.Second
 	}
 
-	// Create HTTP client with custom transport for TLS settings
-	client := &http.Client{
-		Timeout: timeout,
-		Transport: &http.Transport{
-			// Connection pool settings
+	// Create HTTP client using shared httpclient package for logging and correlation ID support
+	cfg := httpclient.DefaultConfig()
+	cfg.Timeout = timeout
+	cfg.UserAgent = "conductor-connector-http/1.0"
+	// Note: Retry logic is handled by the connector's Execute() method in transport/retry.go
+	// which has sophisticated Retry-After header handling, so we disable retries here
+	cfg.RetryAttempts = 0
+
+	client, err := httpclient.New(cfg)
+	if err != nil {
+		// Fallback to basic client if creation fails
+		client = &http.Client{Timeout: timeout}
+	}
+
+	// Override transport with TLS configuration if TLSInsecure is set
+	// This allows testing against self-signed certificates in dev/test environments
+	if config.TLSInsecure {
+		// We need to override the transport to set InsecureSkipVerify
+		// Keep the rest of httpclient's transport configuration
+		client.Transport = &http.Transport{
+			// Connection pool settings (match httpclient defaults)
 			MaxIdleConns:        100,
 			MaxIdleConnsPerHost: 10,
 			IdleConnTimeout:     90 * time.Second,
@@ -197,11 +215,11 @@ func NewHTTPTransport(config *HTTPTransportConfig) (*HTTPTransport, error) {
 			ResponseHeaderTimeout: timeout,
 			ExpectContinueTimeout: 1 * time.Second,
 
-			// TLS configuration
+			// TLS configuration with InsecureSkipVerify
 			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: config.TLSInsecure,
+				InsecureSkipVerify: true,
 			},
-		},
+		}
 	}
 
 	return &HTTPTransport{
