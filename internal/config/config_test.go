@@ -478,3 +478,127 @@ func TestMinimalConfigRoundTrip(t *testing.T) {
 		t.Errorf("expected provider type 'claude-code', got %q", cfg.Providers["claude"].Type)
 	}
 }
+
+// TestPublicAPIConfig tests the public API configuration (SPEC-137).
+func TestPublicAPIConfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		modify  func(*Config)
+		wantErr bool
+		errText string
+	}{
+		{
+			name: "public API disabled by default",
+			modify: func(c *Config) {
+				// Default config should have public API disabled
+			},
+			wantErr: false,
+		},
+		{
+			name: "public API enabled with TCP address",
+			modify: func(c *Config) {
+				c.Daemon.Listen.PublicAPI.Enabled = true
+				c.Daemon.Listen.PublicAPI.TCP = ":9001"
+			},
+			wantErr: false,
+		},
+		{
+			name: "public API enabled without TCP address",
+			modify: func(c *Config) {
+				c.Daemon.Listen.PublicAPI.Enabled = true
+				c.Daemon.Listen.PublicAPI.TCP = ""
+			},
+			wantErr: true,
+			errText: "daemon.listen.public_api.tcp is required when public_api.enabled is true",
+		},
+		{
+			name: "public API disabled with TCP address",
+			modify: func(c *Config) {
+				c.Daemon.Listen.PublicAPI.Enabled = false
+				c.Daemon.Listen.PublicAPI.TCP = ":9001"
+			},
+			wantErr: false, // TCP can be set but ignored when disabled
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := Default()
+			tt.modify(cfg)
+
+			err := cfg.Validate()
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("expected validation error, got nil")
+				} else if tt.errText != "" && !strings.Contains(err.Error(), tt.errText) {
+					t.Errorf("expected error containing %q, got %q", tt.errText, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected validation error: %v", err)
+				}
+			}
+		})
+	}
+}
+
+// TestPublicAPIFromEnv tests loading public API config from environment variables.
+func TestPublicAPIFromEnv(t *testing.T) {
+	// Save and restore environment
+	oldEnv := saveEnv()
+	defer restoreEnv(oldEnv)
+	clearConfigEnv()
+
+	// Set public API environment variables
+	os.Setenv("CONDUCTOR_PUBLIC_API_ENABLED", "true")
+	os.Setenv("CONDUCTOR_PUBLIC_API_TCP", ":9001")
+
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !cfg.Daemon.Listen.PublicAPI.Enabled {
+		t.Errorf("expected public API enabled, got disabled")
+	}
+	if cfg.Daemon.Listen.PublicAPI.TCP != ":9001" {
+		t.Errorf("expected TCP :9001, got %q", cfg.Daemon.Listen.PublicAPI.TCP)
+	}
+}
+
+// TestPublicAPIFromFile tests loading public API config from YAML file.
+func TestPublicAPIFromFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	yamlContent := `
+daemon:
+  listen:
+    socket_path: /tmp/conductor.sock
+    tcp_addr: :9000
+    public_api:
+      enabled: true
+      tcp: :9001
+`
+
+	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
+	// Save and restore environment
+	oldEnv := saveEnv()
+	defer restoreEnv(oldEnv)
+	clearConfigEnv()
+
+	cfg, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !cfg.Daemon.Listen.PublicAPI.Enabled {
+		t.Errorf("expected public API enabled, got disabled")
+	}
+	if cfg.Daemon.Listen.PublicAPI.TCP != ":9001" {
+		t.Errorf("expected TCP :9001, got %q", cfg.Daemon.Listen.PublicAPI.TCP)
+	}
+}
