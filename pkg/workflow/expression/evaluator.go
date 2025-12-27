@@ -6,6 +6,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/tombee/conductor/pkg/errors"
 )
 
 // Evaluator evaluates condition expressions against a workflow context.
@@ -43,7 +44,11 @@ func (e *Evaluator) Evaluate(expression string, ctx map[string]interface{}) (boo
 
 	program, err := e.compile(expression)
 	if err != nil {
-		return false, fmt.Errorf("compile expression %q: %w", expression, err)
+		return false, &errors.ValidationError{
+			Field:      "expression",
+			Message:    fmt.Sprintf("failed to compile expression: %s", err.Error()),
+			Suggestion: "check expression syntax and ensure all referenced variables exist",
+		}
 	}
 
 	// Merge custom functions into context for runtime
@@ -58,12 +63,20 @@ func (e *Evaluator) Evaluate(expression string, ctx map[string]interface{}) (boo
 
 	result, err := expr.Run(program, evalCtx)
 	if err != nil {
-		return false, fmt.Errorf("evaluate expression %q: %w", expression, err)
+		return false, &errors.ValidationError{
+			Field:      "expression",
+			Message:    fmt.Sprintf("expression evaluation failed: %s", err.Error()),
+			Suggestion: "verify that all referenced variables exist in the workflow context",
+		}
 	}
 
 	boolResult, ok := result.(bool)
 	if !ok {
-		return false, fmt.Errorf("expression %q must return boolean, got %T (%v)", expression, result, result)
+		return false, &errors.ValidationError{
+			Field:      "expression",
+			Message:    fmt.Sprintf("expression must return boolean, got %T (%v)", result, result),
+			Suggestion: "use comparison operators (==, !=, <, >, etc.) or boolean functions",
+		}
 	}
 
 	return boolResult, nil

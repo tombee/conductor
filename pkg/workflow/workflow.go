@@ -14,6 +14,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/tombee/conductor/pkg/errors"
 )
 
 // State represents a workflow state.
@@ -173,7 +175,11 @@ func (sm *StateMachine) Trigger(ctx context.Context, w *Workflow, event string) 
 	// Find transition for event
 	transition, ok := sm.transitions[event]
 	if !ok {
-		return fmt.Errorf("unknown event: %s", event)
+		return &errors.ValidationError{
+			Field:      "event",
+			Message:    fmt.Sprintf("unknown event: %s", event),
+			Suggestion: "use one of the valid events for the current state",
+		}
 	}
 
 	// Check if transition is allowed
@@ -187,7 +193,11 @@ func (sm *StateMachine) Trigger(ctx context.Context, w *Workflow, event string) 
 		return fmt.Errorf("transition guard error: %w", err)
 	}
 	if !allowed {
-		return fmt.Errorf("transition not allowed: from %s on event %s", w.State, event)
+		return &errors.ValidationError{
+			Field:      "state",
+			Message:    fmt.Sprintf("transition not allowed: from %s on event %s", w.State, event),
+			Suggestion: fmt.Sprintf("workflow must be in correct state to trigger event %s", event),
+		}
 	}
 
 	// Store old state for hook

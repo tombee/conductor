@@ -3,6 +3,8 @@ package workflow
 import (
 	"fmt"
 	"strings"
+
+	"github.com/tombee/conductor/pkg/errors"
 )
 
 // ValidateExpressionInjection checks for template expressions in expr fields.
@@ -26,7 +28,11 @@ func ValidateExpressionInjection(step *StepDefinition) error {
 
 	// Check if expr contains template expression markers
 	if strings.Contains(exprStr, "{{") && strings.Contains(exprStr, "}}") {
-		return fmt.Errorf("expression injection risk: expr field cannot contain template expressions")
+		return &errors.ValidationError{
+			Field:      "expr",
+			Message:    "expression injection risk: expr field cannot contain template expressions",
+			Suggestion: "use static expressions only; pass dynamic values through inputs instead",
+		}
 	}
 
 	return nil
@@ -39,7 +45,11 @@ func ValidateNestedForeach(step *StepDefinition, inForeachContext bool) error {
 	// Check if this step has foreach
 	if step.Foreach != "" {
 		if inForeachContext {
-			return fmt.Errorf("nested foreach not supported: step '%s' uses foreach inside foreach context", step.ID)
+			return &errors.ValidationError{
+				Field:      "foreach",
+				Message:    fmt.Sprintf("nested foreach not supported: step '%s' uses foreach inside foreach context", step.ID),
+				Suggestion: "flatten nested iterations or use a separate workflow step",
+			}
 		}
 		// This step starts a foreach context
 		inForeachContext = true
