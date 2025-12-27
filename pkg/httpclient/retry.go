@@ -58,8 +58,8 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			// Check for Retry-After header from previous response
 			if lastResp != nil {
 				if retryAfter := t.parseRetryAfter(lastResp); retryAfter > 0 {
-					// Use Retry-After if it's less than our calculated delay
-					if retryAfter < delay {
+					// Respect server's Retry-After if longer than our calculated delay
+					if retryAfter > delay {
 						delay = retryAfter
 					}
 				}
