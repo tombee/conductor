@@ -6,7 +6,7 @@ Deploy Conductor to production using the method that best fits your infrastructu
 
 | Platform | Best For | Complexity |
 |----------|----------|------------|
-| [exe.dev](exe-dev.md) | Individuals, small teams, demos | Simple |
+| [exe.dev](exe-dev.md) | Individuals, small teams | Simple |
 | [Docker](docker.md) | Single-node, containerized environments | Simple |
 | [Kubernetes](kubernetes.md) | Multi-node, scalable production | Moderate |
 | [Bare Metal](bare-metal.md) | Maximum control, existing servers | Moderate |
