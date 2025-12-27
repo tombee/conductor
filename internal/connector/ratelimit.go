@@ -84,7 +84,7 @@ func (rl *RateLimiter) Wait(ctx context.Context) error {
 			return &Error{
 				Type:       ErrorTypeRateLimit,
 				Message:    fmt.Sprintf("rate limit timeout after %v", timeout),
-				Suggestion: "Increase rate_limit.timeout or reduce request frequency",
+				SuggestText: "Increase rate_limit.timeout or reduce request frequency",
 			}
 		}
 

@@ -50,7 +50,9 @@ type OperationError struct {
 	Message    string
 	ErrorType  ErrorType
 	Cause      error
-	Suggestion string
+	// SuggestText provides actionable guidance for resolving the error.
+	// Renamed from Suggestion to avoid conflict with Suggestion() method.
+	SuggestText string
 }
 
 // Error implements the error interface.
@@ -69,4 +71,52 @@ func (e *OperationError) Unwrap() error {
 // IsRetryable returns true if the error may succeed on retry.
 func (e *OperationError) IsRetryable() bool {
 	return e.ErrorType == ErrorTypeDiskFull
+}
+
+// IsUserVisible implements pkg/errors.UserVisibleError.
+// File operation errors are always user-visible.
+func (e *OperationError) IsUserVisible() bool {
+	return true
+}
+
+// UserMessage implements pkg/errors.UserVisibleError.
+// Returns a user-friendly message without technical details.
+func (e *OperationError) UserMessage() string {
+	return e.Message
+}
+
+// Suggestion implements pkg/errors.UserVisibleError.
+// Returns actionable guidance for resolving the error.
+func (e *OperationError) Suggestion() string {
+	// Return existing suggestion if set, otherwise provide default based on error type
+	if e.SuggestText != "" {
+		return e.SuggestText
+	}
+
+	switch e.ErrorType {
+	case ErrorTypeFileNotFound:
+		return "Check that the file path is correct and the file exists"
+	case ErrorTypePermissionDenied:
+		return "Check file permissions or run with appropriate access rights"
+	case ErrorTypeDiskFull:
+		return "Free up disk space and retry the operation"
+	case ErrorTypeEncodingError:
+		return "Ensure the file uses UTF-8 encoding"
+	case ErrorTypeParseError:
+		return "Verify the file format is valid JSON, YAML, or CSV"
+	case ErrorTypePathTraversal:
+		return "Use paths within the allowed directories only"
+	case ErrorTypeFileTooLarge:
+		return "Use a smaller file or increase size limits in configuration"
+	case ErrorTypeSymlinkDenied:
+		return "Symlinks are not allowed - use direct file paths instead"
+	case ErrorTypeValidation:
+		return "Check input parameters against operation requirements"
+	case ErrorTypeConfiguration:
+		return "Review file connector configuration settings"
+	case ErrorTypeNotImplemented:
+		return "This operation is not yet supported"
+	default:
+		return ""
+	}
 }

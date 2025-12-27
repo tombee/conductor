@@ -94,6 +94,32 @@ func (e *MCPError) Unwrap() error {
 	return e.Cause
 }
 
+// IsUserVisible implements pkg/errors.UserVisibleError.
+// MCP errors are always user-visible.
+func (e *MCPError) IsUserVisible() bool {
+	return true
+}
+
+// UserMessage implements pkg/errors.UserVisibleError.
+// Returns a user-friendly message without technical details.
+func (e *MCPError) UserMessage() string {
+	if e.Detail != "" {
+		return fmt.Sprintf("%s: %s", e.Message, e.Detail)
+	}
+	return e.Message
+}
+
+// Suggestion implements pkg/errors.UserVisibleError.
+// Returns actionable guidance for resolving the error.
+func (e *MCPError) Suggestion() string {
+	if len(e.Suggestions) == 0 {
+		return ""
+	}
+	// Return the first suggestion as a simple string
+	// The full list is available in Error() output
+	return e.Suggestions[0]
+}
+
 // NewMCPError creates a new MCPError.
 func NewMCPError(code MCPErrorCode, message string) *MCPError {
 	return &MCPError{
