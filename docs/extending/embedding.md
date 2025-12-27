@@ -140,7 +140,7 @@ import (
 )
 
 type WorkflowService struct {
-    engine   *workflow.Engine
+    engine   *workflow.Executor
     store    workflow.Store
     eventBus *workflow.EventBus
 }
@@ -159,8 +159,8 @@ func NewWorkflowService(llmProvider llm.Provider, dbPath string) (*WorkflowServi
         fmt.Printf("Workflow %s: %s -> %s\n", e.WorkflowID, e.OldState, e.NewState)
     })
 
-    // Create workflow engine
-    engine := workflow.NewEngine(
+    // Create workflow executor
+    engine := workflow.NewExecutor(
         workflow.WithLLMProvider(llmProvider),
         workflow.WithToolRegistry(registry),
         workflow.WithEventBus(bus),
@@ -711,7 +711,7 @@ func TestWorkflowExecution(t *testing.T) {
     defer llm.Unregister("mock")
 
     // Create engine with mock
-    engine := workflow.NewEngine(
+    engine := workflow.NewExecutor(
         workflow.WithLLMProvider(mock),
     )
 

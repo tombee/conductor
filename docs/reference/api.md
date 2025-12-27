@@ -330,7 +330,7 @@ Execute workflows:
 
 ```go
 // Create engine
-engine := workflow.NewEngine(
+engine := workflow.NewExecutor(
     workflow.WithLLMProvider(llmProvider),
     workflow.WithToolRegistry(toolRegistry),
 )
@@ -424,7 +424,7 @@ bus.Subscribe(workflow.EventTypeError, func(event workflow.Event) {
 })
 
 // Create engine with event bus
-engine := workflow.NewEngine(
+engine := workflow.NewExecutor(
     workflow.WithEventBus(bus),
 )
 ```
@@ -809,7 +809,7 @@ for i := 0; i < 10; i++ {
 }
 wg.Wait()
 
-// Same for workflow engine and tool registry
+// Same for workflow executor and tool registry
 ```
 
 ## Context Cancellation

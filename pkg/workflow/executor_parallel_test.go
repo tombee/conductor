@@ -14,7 +14,7 @@ import (
 // Note: mockLLMProvider is defined in executor_test.go
 
 func TestExecuteParallel_AllSuccess(t *testing.T) {
-	executor := NewStepExecutor(nil, &mockLLMProvider{response: "test response"})
+	executor := NewExecutor(nil, &mockLLMProvider{response: "test response"})
 
 	step := &StepDefinition{
 		ID:   "parallel_step",
@@ -54,7 +54,7 @@ func TestExecuteParallel_AllSuccess(t *testing.T) {
 }
 
 func TestExecuteParallel_WithConditions(t *testing.T) {
-	executor := NewStepExecutor(nil, &mockLLMProvider{response: "test response"})
+	executor := NewExecutor(nil, &mockLLMProvider{response: "test response"})
 
 	step := &StepDefinition{
 		ID:   "parallel_step",
@@ -124,7 +124,7 @@ func TestExecuteParallel_OneFailsFailFast(t *testing.T) {
 		},
 	}
 
-	executor := NewStepExecutor(nil, provider)
+	executor := NewExecutor(nil, provider)
 
 	step := &StepDefinition{
 		ID:   "parallel_step",
@@ -170,7 +170,7 @@ func TestExecuteParallel_OneFailsContinue(t *testing.T) {
 		},
 	}
 
-	executor := NewStepExecutor(nil, provider)
+	executor := NewExecutor(nil, provider)
 
 	step := &StepDefinition{
 		ID:   "parallel_step",
@@ -218,7 +218,7 @@ func TestExecuteParallel_Timeout(t *testing.T) {
 		response: "delayed response",
 	}
 
-	executor := NewStepExecutor(nil, provider)
+	executor := NewExecutor(nil, provider)
 
 	step := &StepDefinition{
 		ID:      "parallel_step",
@@ -263,7 +263,7 @@ func TestExecuteParallel_ConcurrencyLimit(t *testing.T) {
 	}
 
 	// Set concurrency limit to 2 via executor config
-	executor := NewStepExecutor(nil, provider).WithParallelConcurrency(2)
+	executor := NewExecutor(nil, provider).WithParallelConcurrency(2)
 
 	// Create 5 parallel steps
 	step := &StepDefinition{
@@ -310,7 +310,7 @@ func TestExecuteParallel_StepLevelConcurrency(t *testing.T) {
 	}
 
 	// Executor has default concurrency (3), but step overrides to 1
-	executor := NewStepExecutor(nil, provider)
+	executor := NewExecutor(nil, provider)
 
 	// Create 5 parallel steps with step-level max_concurrency of 1
 	step := &StepDefinition{
@@ -335,7 +335,7 @@ func TestExecuteParallel_StepLevelConcurrency(t *testing.T) {
 }
 
 func TestExecuteParallel_EmptySteps(t *testing.T) {
-	executor := NewStepExecutor(nil, &mockLLMProvider{response: "test"})
+	executor := NewExecutor(nil, &mockLLMProvider{response: "test"})
 
 	step := &StepDefinition{
 		ID:    "parallel_step",
@@ -352,7 +352,7 @@ func TestExecuteParallel_EmptySteps(t *testing.T) {
 }
 
 func TestExecuteParallel_NestedParallel(t *testing.T) {
-	executor := NewStepExecutor(nil, &mockLLMProvider{response: "test response"})
+	executor := NewExecutor(nil, &mockLLMProvider{response: "test response"})
 
 	step := &StepDefinition{
 		ID:   "outer_parallel",

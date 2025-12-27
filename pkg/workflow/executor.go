@@ -64,8 +64,8 @@ type StepResult struct {
 // Can be overridden via WithParallelConcurrency() or per-step MaxConcurrency field.
 const DefaultParallelConcurrency = 3
 
-// StepExecutor executes individual workflow steps.
-type StepExecutor struct {
+// Executor executes individual workflow steps.
+type Executor struct {
 	// toolRegistry provides access to registered tools for action steps
 	toolRegistry ToolRegistry
 
@@ -141,9 +141,9 @@ type ConnectorResult interface {
 	GetMetadata() map[string]interface{}
 }
 
-// NewStepExecutor creates a new step executor.
-func NewStepExecutor(toolRegistry ToolRegistry, llmProvider LLMProvider) *StepExecutor {
-	return &StepExecutor{
+// NewExecutor creates a new step executor.
+func NewExecutor(toolRegistry ToolRegistry, llmProvider LLMProvider) *Executor {
+	return &Executor{
 		toolRegistry: toolRegistry,
 		llmProvider:  llmProvider,
 		exprEval:     expression.New(),
@@ -153,19 +153,19 @@ func NewStepExecutor(toolRegistry ToolRegistry, llmProvider LLMProvider) *StepEx
 }
 
 // WithLogger sets a custom logger for the executor.
-func (e *StepExecutor) WithLogger(logger *slog.Logger) *StepExecutor {
+func (e *Executor) WithLogger(logger *slog.Logger) *Executor {
 	e.logger = logger
 	return e
 }
 
 // WithConnectorRegistry sets the connector registry for the executor.
-func (e *StepExecutor) WithConnectorRegistry(registry ConnectorRegistry) *StepExecutor {
+func (e *Executor) WithConnectorRegistry(registry ConnectorRegistry) *Executor {
 	e.connectorRegistry = registry
 	return e
 }
 
 // WithParallelConcurrency sets the maximum number of concurrent parallel steps.
-func (e *StepExecutor) WithParallelConcurrency(max int) *StepExecutor {
+func (e *Executor) WithParallelConcurrency(max int) *Executor {
 	if max <= 0 {
 		max = DefaultParallelConcurrency
 	}
@@ -188,7 +188,7 @@ func SetDefaultActionRegistryFactory(factory ActionRegistryFactory) {
 
 // WithWorkflowDir sets the workflow directory and initializes the builtin action registry.
 // Actions like file.read and shell.run will resolve paths relative to this directory.
-func (e *StepExecutor) WithWorkflowDir(workflowDir string) *StepExecutor {
+func (e *Executor) WithWorkflowDir(workflowDir string) *Executor {
 	if defaultActionRegistryFactory == nil {
 		e.logger.Warn("action registry factory not configured, actions will not be available")
 		return e
@@ -205,7 +205,7 @@ func (e *StepExecutor) WithWorkflowDir(workflowDir string) *StepExecutor {
 }
 
 // Execute executes a single workflow step.
-func (e *StepExecutor) Execute(ctx context.Context, step *StepDefinition, workflowContext map[string]interface{}) (*StepResult, error) {
+func (e *Executor) Execute(ctx context.Context, step *StepDefinition, workflowContext map[string]interface{}) (*StepResult, error) {
 	result := &StepResult{
 		StepID:    step.ID,
 		Status:    StepStatusRunning,
@@ -290,7 +290,7 @@ func (e *StepExecutor) Execute(ctx context.Context, step *StepDefinition, workfl
 }
 
 // executeStep executes a step once without retry logic.
-func (e *StepExecutor) executeStep(ctx context.Context, step *StepDefinition, workflowContext map[string]interface{}) (map[string]interface{}, error) {
+func (e *Executor) executeStep(ctx context.Context, step *StepDefinition, workflowContext map[string]interface{}) (map[string]interface{}, error) {
 	// Resolve inputs (substitute context variables)
 	inputs, err := e.resolveInputs(step.Inputs, workflowContext)
 	if err != nil {
@@ -327,7 +327,7 @@ func (e *StepExecutor) executeStep(ctx context.Context, step *StepDefinition, wo
 }
 
 // executeWithRetry executes a step with retry logic.
-func (e *StepExecutor) executeWithRetry(ctx context.Context, step *StepDefinition, workflowContext map[string]interface{}, result *StepResult, retry *RetryDefinition) (map[string]interface{}, error) {
+func (e *Executor) executeWithRetry(ctx context.Context, step *StepDefinition, workflowContext map[string]interface{}, result *StepResult, retry *RetryDefinition) (map[string]interface{}, error) {
 	// Don't retry parallel steps - they have their own internal error handling
 	// Retrying a parallel step would re-execute all nested steps unnecessarily
 	if step.Type == StepTypeParallel {
@@ -375,7 +375,7 @@ func (e *StepExecutor) executeWithRetry(ctx context.Context, step *StepDefinitio
 // executeConnector executes a connector step by invoking a connector operation.
 // The step.Connector field should be in format "connector_name.operation_name".
 // Note: No type assertions on inputs - inputs passed through to connector registry (SPEC-40).
-func (e *StepExecutor) executeConnector(ctx context.Context, step *StepDefinition, inputs map[string]interface{}) (map[string]interface{}, error) {
+func (e *Executor) executeConnector(ctx context.Context, step *StepDefinition, inputs map[string]interface{}) (map[string]interface{}, error) {
 	// Check if connector registry is configured
 	if e.connectorRegistry == nil {
 		return nil, &errors.ConfigError{
@@ -505,7 +505,7 @@ func stringContains(s, substr string) bool {
 
 // executeLLM executes an LLM step by making an LLM API call.
 // Supports structured output validation via OutputSchema (SPEC-6).
-func (e *StepExecutor) executeLLM(ctx context.Context, step *StepDefinition, inputs map[string]interface{}) (map[string]interface{}, error) {
+func (e *Executor) executeLLM(ctx context.Context, step *StepDefinition, inputs map[string]interface{}) (map[string]interface{}, error) {
 	if e.llmProvider == nil {
 		return nil, &errors.ConfigError{
 			Key:    "llm_provider",
@@ -575,7 +575,7 @@ func (e *StepExecutor) executeLLM(ctx context.Context, step *StepDefinition, inp
 
 // executeLLMWithSchema executes an LLM call with structured output validation and retry.
 // Implements T4.1-T4.8: schema-aware execution with validation and retry logic.
-func (e *StepExecutor) executeLLMWithSchema(ctx context.Context, basePrompt string, options map[string]interface{}, outputSchema map[string]interface{}) (map[string]interface{}, error) {
+func (e *Executor) executeLLMWithSchema(ctx context.Context, basePrompt string, options map[string]interface{}, outputSchema map[string]interface{}) (map[string]interface{}, error) {
 	const maxAttempts = 3
 	validator := schema.NewValidator()
 
@@ -652,7 +652,7 @@ func truncateString(s string, maxLen int) string {
 
 // filterTools returns tools filtered by the given tool names.
 // Returns tool descriptors suitable for LLM function calling.
-func (e *StepExecutor) filterTools(toolNames []string) []map[string]interface{} {
+func (e *Executor) filterTools(toolNames []string) []map[string]interface{} {
 	if e.toolRegistry == nil {
 		return nil
 	}
@@ -681,7 +681,7 @@ func (e *StepExecutor) filterTools(toolNames []string) []map[string]interface{} 
 
 // executeCondition executes a condition step by evaluating an expression.
 // Note: No type assertions on inputs - expression layer migration is Phase 3 (SPEC-40).
-func (e *StepExecutor) executeCondition(ctx context.Context, step *StepDefinition, inputs map[string]interface{}, workflowContext map[string]interface{}) (map[string]interface{}, error) {
+func (e *Executor) executeCondition(ctx context.Context, step *StepDefinition, inputs map[string]interface{}, workflowContext map[string]interface{}) (map[string]interface{}, error) {
 	if step.Condition == nil {
 		return nil, &errors.ValidationError{
 			Field:      "condition",
@@ -706,7 +706,7 @@ func (e *StepExecutor) executeCondition(ctx context.Context, step *StepDefinitio
 }
 
 // executeParallel executes nested steps concurrently and aggregates results.
-func (e *StepExecutor) executeParallel(ctx context.Context, step *StepDefinition, inputs map[string]interface{}, workflowContext map[string]interface{}) (map[string]interface{}, error) {
+func (e *Executor) executeParallel(ctx context.Context, step *StepDefinition, inputs map[string]interface{}, workflowContext map[string]interface{}) (map[string]interface{}, error) {
 	if len(step.Steps) == 0 {
 		return nil, &errors.ValidationError{
 			Field:      "steps",
@@ -865,7 +865,7 @@ func (e *StepExecutor) executeParallel(ctx context.Context, step *StepDefinition
 // executeForeach executes steps for each element in an array with context injection.
 // Implements fail-last error semantics: all iterations run to completion,
 // then the step fails if any iteration failed. Results are ordered by index.
-func (e *StepExecutor) executeForeach(ctx context.Context, step *StepDefinition, inputs map[string]interface{}, workflowContext map[string]interface{}) (map[string]interface{}, error) {
+func (e *Executor) executeForeach(ctx context.Context, step *StepDefinition, inputs map[string]interface{}, workflowContext map[string]interface{}) (map[string]interface{}, error) {
 	// Resolve the foreach expression to get the array value
 	arrayValue, err := e.resolveForeachValue(step.Foreach, workflowContext)
 	if err != nil {
@@ -1110,7 +1110,7 @@ func copyWorkflowContext(ctx map[string]interface{}) map[string]interface{} {
 //   - has(inputs.personas, "security")
 //   - inputs.mode == "strict"
 //   - inputs.count > 5 && inputs.enabled
-func (e *StepExecutor) evaluateCondition(expr string, workflowContext map[string]interface{}) (bool, error) {
+func (e *Executor) evaluateCondition(expr string, workflowContext map[string]interface{}) (bool, error) {
 	// Build expression context from workflow context
 	ctx := expression.BuildContext(workflowContext)
 
@@ -1130,7 +1130,7 @@ func (e *StepExecutor) evaluateCondition(expr string, workflowContext map[string
 
 // resolveInputs resolves input values by substituting context variables.
 // Uses Go template syntax ({{.variable}}) for variable resolution.
-func (e *StepExecutor) resolveInputs(inputs map[string]interface{}, workflowContext map[string]interface{}) (map[string]interface{}, error) {
+func (e *Executor) resolveInputs(inputs map[string]interface{}, workflowContext map[string]interface{}) (map[string]interface{}, error) {
 	// Extract template context from workflow context
 	ctx, ok := workflowContext["_templateContext"].(*TemplateContext)
 	if !ok || ctx == nil {
@@ -1143,7 +1143,7 @@ func (e *StepExecutor) resolveInputs(inputs map[string]interface{}, workflowCont
 }
 
 // resolveStepFields resolves template variables in step definition fields (prompt, system).
-func (e *StepExecutor) resolveStepFields(step *StepDefinition, workflowContext map[string]interface{}) error {
+func (e *Executor) resolveStepFields(step *StepDefinition, workflowContext map[string]interface{}) error {
 	// Extract template context from workflow context
 	ctx, ok := workflowContext["_templateContext"].(*TemplateContext)
 	if !ok || ctx == nil {
@@ -1173,7 +1173,7 @@ func (e *StepExecutor) resolveStepFields(step *StepDefinition, workflowContext m
 }
 
 // handleError handles step execution errors according to the step's error handling configuration.
-func (e *StepExecutor) handleError(ctx context.Context, step *StepDefinition, result *StepResult, err error) (*StepResult, error) {
+func (e *Executor) handleError(ctx context.Context, step *StepDefinition, result *StepResult, err error) (*StepResult, error) {
 	switch step.OnError.Strategy {
 	case ErrorStrategyFail:
 		// Default behavior: propagate error
@@ -1207,7 +1207,7 @@ func (e *StepExecutor) handleError(ctx context.Context, step *StepDefinition, re
 
 // resolveForeachValue resolves a template expression to get the actual value (not string).
 // This is needed for foreach to access array values from the context.
-func (e *StepExecutor) resolveForeachValue(expr string, workflowContext map[string]interface{}) (interface{}, error) {
+func (e *Executor) resolveForeachValue(expr string, workflowContext map[string]interface{}) (interface{}, error) {
 	templateCtx, ok := workflowContext["_templateContext"].(*TemplateContext)
 	if !ok {
 		return nil, &errors.ConfigError{

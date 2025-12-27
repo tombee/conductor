@@ -11,7 +11,7 @@ import (
 // Note: mockLLMProvider is defined in executor_test.go
 
 func TestExecute_ConditionTrue(t *testing.T) {
-	executor := NewStepExecutor(nil, &mockLLMProvider{response: "test response"})
+	executor := NewExecutor(nil, &mockLLMProvider{response: "test response"})
 
 	step := &StepDefinition{
 		ID:   "test_step",
@@ -37,7 +37,7 @@ func TestExecute_ConditionTrue(t *testing.T) {
 }
 
 func TestExecute_ConditionFalse_StepSkipped(t *testing.T) {
-	executor := NewStepExecutor(nil, &mockLLMProvider{response: "should not run"})
+	executor := NewExecutor(nil, &mockLLMProvider{response: "should not run"})
 
 	step := &StepDefinition{
 		ID:   "test_step",
@@ -64,7 +64,7 @@ func TestExecute_ConditionFalse_StepSkipped(t *testing.T) {
 }
 
 func TestExecute_NoCondition_StepRuns(t *testing.T) {
-	executor := NewStepExecutor(nil, &mockLLMProvider{response: "test response"})
+	executor := NewExecutor(nil, &mockLLMProvider{response: "test response"})
 
 	step := &StepDefinition{
 		ID:     "test_step",
@@ -83,7 +83,7 @@ func TestExecute_NoCondition_StepRuns(t *testing.T) {
 }
 
 func TestExecute_ConditionWithHasFunction(t *testing.T) {
-	executor := NewStepExecutor(nil, &mockLLMProvider{response: "test response"})
+	executor := NewExecutor(nil, &mockLLMProvider{response: "test response"})
 
 	step := &StepDefinition{
 		ID:   "test_step",
@@ -107,7 +107,7 @@ func TestExecute_ConditionWithHasFunction(t *testing.T) {
 }
 
 func TestExecute_ConditionWithEquality(t *testing.T) {
-	executor := NewStepExecutor(nil, &mockLLMProvider{response: "test response"})
+	executor := NewExecutor(nil, &mockLLMProvider{response: "test response"})
 
 	tests := []struct {
 		name       string
@@ -171,7 +171,7 @@ func TestExecute_ConditionWithEquality(t *testing.T) {
 }
 
 func TestExecute_ConditionWithStepReferences(t *testing.T) {
-	executor := NewStepExecutor(nil, &mockLLMProvider{response: "test response"})
+	executor := NewExecutor(nil, &mockLLMProvider{response: "test response"})
 
 	step := &StepDefinition{
 		ID:   "analyze_step",
@@ -199,7 +199,7 @@ func TestExecute_ConditionWithStepReferences(t *testing.T) {
 }
 
 func TestExecute_ConditionError(t *testing.T) {
-	executor := NewStepExecutor(nil, &mockLLMProvider{response: "test response"})
+	executor := NewExecutor(nil, &mockLLMProvider{response: "test response"})
 
 	step := &StepDefinition{
 		ID:   "test_step",
@@ -221,7 +221,7 @@ func TestExecute_ConditionError(t *testing.T) {
 }
 
 func TestExecute_EmptyConditionExpression(t *testing.T) {
-	executor := NewStepExecutor(nil, &mockLLMProvider{response: "test response"})
+	executor := NewExecutor(nil, &mockLLMProvider{response: "test response"})
 
 	step := &StepDefinition{
 		ID:   "test_step",
@@ -241,7 +241,7 @@ func TestExecute_EmptyConditionExpression(t *testing.T) {
 }
 
 func TestExecute_SkippedStepOutput(t *testing.T) {
-	executor := NewStepExecutor(nil, &mockLLMProvider{response: "should not run"})
+	executor := NewExecutor(nil, &mockLLMProvider{response: "should not run"})
 
 	step := &StepDefinition{
 		ID:   "skipped_step",

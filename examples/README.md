@@ -140,7 +140,7 @@ func main() {
     def, _ := workflow.ParseDefinition(data)
 
     // Create engine
-    engine := workflow.NewEngine()
+    engine := workflow.NewExecutor()
 
     // Execute workflow
     result, err := engine.Execute(context.Background(), def, map[string]interface{}{

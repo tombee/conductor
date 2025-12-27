@@ -141,13 +141,13 @@ func (m *mockFlakyLLMProvider) Complete(ctx context.Context, prompt string, opti
 	return "success", nil
 }
 
-func TestNewStepExecutor(t *testing.T) {
+func TestNewExecutor(t *testing.T) {
 	registry := newMockToolRegistry()
 	llm := &mockLLMProvider{}
 
-	executor := NewStepExecutor(registry, llm)
+	executor := NewExecutor(registry, llm)
 	if executor == nil {
-		t.Fatal("NewStepExecutor() returned nil")
+		t.Fatal("NewExecutor() returned nil")
 	}
 
 	if executor.toolRegistry == nil {
@@ -159,15 +159,15 @@ func TestNewStepExecutor(t *testing.T) {
 	}
 }
 
-// TestStepExecutor_ExecuteActionStep removed - type: tool is no longer supported
+// TestExecutor_ExecuteActionStep removed - type: tool is no longer supported
 // Use type: builtin with builtin_connector and builtin_operation instead
 
-func TestStepExecutor_ExecuteLLMStep(t *testing.T) {
+func TestExecutor_ExecuteLLMStep(t *testing.T) {
 	llm := &mockLLMProvider{
 		response: "LLM response",
 	}
 
-	executor := NewStepExecutor(nil, llm)
+	executor := NewExecutor(nil, llm)
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -197,8 +197,8 @@ func TestStepExecutor_ExecuteLLMStep(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_ExecuteConditionStep(t *testing.T) {
-	executor := NewStepExecutor(nil, nil)
+func TestExecutor_ExecuteConditionStep(t *testing.T) {
+	executor := NewExecutor(nil, nil)
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -235,8 +235,8 @@ func TestStepExecutor_ExecuteConditionStep(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_ExecuteParallelStep(t *testing.T) {
-	executor := NewStepExecutor(nil, &mockLLMProvider{response: "parallel response"})
+func TestExecutor_ExecuteParallelStep(t *testing.T) {
+	executor := NewExecutor(nil, &mockLLMProvider{response: "parallel response"})
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -274,7 +274,7 @@ func TestStepExecutor_ExecuteParallelStep(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_ExecuteWithRetry(t *testing.T) {
+func TestExecutor_ExecuteWithRetry(t *testing.T) {
 	// Use LLM provider that fails twice then succeeds
 	attemptCount := 0
 
@@ -282,7 +282,7 @@ func TestStepExecutor_ExecuteWithRetry(t *testing.T) {
 		attemptCount: &attemptCount,
 	}
 
-	executor := NewStepExecutor(nil, llm)
+	executor := NewExecutor(nil, llm)
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -312,7 +312,7 @@ func TestStepExecutor_ExecuteWithRetry(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_RetryExhaustion(t *testing.T) {
+func TestExecutor_RetryExhaustion(t *testing.T) {
 	registry := newMockToolRegistry()
 	tool := &mockTool{
 		name: "failing-tool",
@@ -320,7 +320,7 @@ func TestStepExecutor_RetryExhaustion(t *testing.T) {
 	}
 	registry.RegisterTool("failing-tool", tool)
 
-	executor := NewStepExecutor(registry, nil)
+	executor := NewExecutor(registry, nil)
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -351,14 +351,14 @@ func TestStepExecutor_RetryExhaustion(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_Timeout(t *testing.T) {
+func TestExecutor_Timeout(t *testing.T) {
 	registry := newMockToolRegistry()
 	slowTool := &mockSlowTool{
 		name: "slow-tool",
 	}
 	registry.RegisterTool("slow-tool", slowTool)
 
-	executor := NewStepExecutor(registry, nil)
+	executor := NewExecutor(registry, nil)
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -380,7 +380,7 @@ func TestStepExecutor_Timeout(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_ErrorStrategyIgnore(t *testing.T) {
+func TestExecutor_ErrorStrategyIgnore(t *testing.T) {
 	registry := newMockToolRegistry()
 	tool := &mockTool{
 		name: "failing-tool",
@@ -388,7 +388,7 @@ func TestStepExecutor_ErrorStrategyIgnore(t *testing.T) {
 	}
 	registry.RegisterTool("failing-tool", tool)
 
-	executor := NewStepExecutor(registry, nil)
+	executor := NewExecutor(registry, nil)
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -416,7 +416,7 @@ func TestStepExecutor_ErrorStrategyIgnore(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_ErrorStrategyFail(t *testing.T) {
+func TestExecutor_ErrorStrategyFail(t *testing.T) {
 	registry := newMockToolRegistry()
 	tool := &mockTool{
 		name: "failing-tool",
@@ -424,7 +424,7 @@ func TestStepExecutor_ErrorStrategyFail(t *testing.T) {
 	}
 	registry.RegisterTool("failing-tool", tool)
 
-	executor := NewStepExecutor(registry, nil)
+	executor := NewExecutor(registry, nil)
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -448,7 +448,7 @@ func TestStepExecutor_ErrorStrategyFail(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_ErrorStrategyFallback(t *testing.T) {
+func TestExecutor_ErrorStrategyFallback(t *testing.T) {
 	registry := newMockToolRegistry()
 	tool := &mockTool{
 		name: "failing-tool",
@@ -456,7 +456,7 @@ func TestStepExecutor_ErrorStrategyFallback(t *testing.T) {
 	}
 	registry.RegisterTool("failing-tool", tool)
 
-	executor := NewStepExecutor(registry, nil)
+	executor := NewExecutor(registry, nil)
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -490,8 +490,8 @@ func TestStepExecutor_ErrorStrategyFallback(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_UnsupportedStepType(t *testing.T) {
-	executor := NewStepExecutor(nil, nil)
+func TestExecutor_UnsupportedStepType(t *testing.T) {
+	executor := NewExecutor(nil, nil)
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -506,8 +506,8 @@ func TestStepExecutor_UnsupportedStepType(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_ActionWithoutToolRegistry(t *testing.T) {
-	executor := NewStepExecutor(nil, nil)
+func TestExecutor_ActionWithoutToolRegistry(t *testing.T) {
+	executor := NewExecutor(nil, nil)
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -524,8 +524,8 @@ func TestStepExecutor_ActionWithoutToolRegistry(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_LLMWithoutProvider(t *testing.T) {
-	executor := NewStepExecutor(nil, nil)
+func TestExecutor_LLMWithoutProvider(t *testing.T) {
+	executor := NewExecutor(nil, nil)
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -543,12 +543,12 @@ func TestStepExecutor_LLMWithoutProvider(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_LLMMissingPrompt(t *testing.T) {
+func TestExecutor_LLMMissingPrompt(t *testing.T) {
 	llm := &mockLLMProvider{
 		response: "response",
 	}
 
-	executor := NewStepExecutor(nil, llm)
+	executor := NewExecutor(nil, llm)
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -564,12 +564,12 @@ func TestStepExecutor_LLMMissingPrompt(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_LLMInvalidPromptType(t *testing.T) {
+func TestExecutor_LLMInvalidPromptType(t *testing.T) {
 	llm := &mockLLMProvider{
 		response: "response",
 	}
 
-	executor := NewStepExecutor(nil, llm)
+	executor := NewExecutor(nil, llm)
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -587,8 +587,8 @@ func TestStepExecutor_LLMInvalidPromptType(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_ConditionMissingConfig(t *testing.T) {
-	executor := NewStepExecutor(nil, nil)
+func TestExecutor_ConditionMissingConfig(t *testing.T) {
+	executor := NewExecutor(nil, nil)
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -604,8 +604,8 @@ func TestStepExecutor_ConditionMissingConfig(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_ResolveInputs(t *testing.T) {
-	executor := NewStepExecutor(nil, nil)
+func TestExecutor_ResolveInputs(t *testing.T) {
+	executor := NewExecutor(nil, nil)
 
 	inputs := map[string]interface{}{
 		"key1": "value1",
@@ -634,12 +634,12 @@ func TestStepExecutor_ResolveInputs(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_StepResult(t *testing.T) {
+func TestExecutor_StepResult(t *testing.T) {
 	llm := &mockLLMProvider{
 		response: "test response",
 	}
 
-	executor := NewStepExecutor(nil, llm)
+	executor := NewExecutor(nil, llm)
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -676,12 +676,12 @@ func TestStepExecutor_StepResult(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_LLMWithOptions(t *testing.T) {
+func TestExecutor_LLMWithOptions(t *testing.T) {
 	llm := &mockLLMProvider{
 		response: "response with options",
 	}
 
-	executor := NewStepExecutor(nil, llm)
+	executor := NewExecutor(nil, llm)
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -707,12 +707,12 @@ func TestStepExecutor_LLMWithOptions(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_TemplateVariableResolution(t *testing.T) {
+func TestExecutor_TemplateVariableResolution(t *testing.T) {
 	llm := &mockLLMProvider{
 		response: "Hello, Alice!",
 	}
 
-	executor := NewStepExecutor(nil, llm)
+	executor := NewExecutor(nil, llm)
 	ctx := context.Background()
 
 	// Create template context
@@ -742,12 +742,12 @@ func TestStepExecutor_TemplateVariableResolution(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_TemplateStepOutputResolution(t *testing.T) {
+func TestExecutor_TemplateStepOutputResolution(t *testing.T) {
 	llm := &mockLLMProvider{
 		response: "Summary complete",
 	}
 
-	executor := NewStepExecutor(nil, llm)
+	executor := NewExecutor(nil, llm)
 	ctx := context.Background()
 
 	// Create template context with previous step output
@@ -778,12 +778,12 @@ func TestStepExecutor_TemplateStepOutputResolution(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_TemplateMultipleVariables(t *testing.T) {
+func TestExecutor_TemplateMultipleVariables(t *testing.T) {
 	llm := &mockLLMProvider{
 		response: "Review complete",
 	}
 
-	executor := NewStepExecutor(nil, llm)
+	executor := NewExecutor(nil, llm)
 	ctx := context.Background()
 
 	// Create template context with inputs and step outputs
@@ -816,12 +816,12 @@ func TestStepExecutor_TemplateMultipleVariables(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_NoTemplateContext(t *testing.T) {
+func TestExecutor_NoTemplateContext(t *testing.T) {
 	llm := &mockLLMProvider{
 		response: "response",
 	}
 
-	executor := NewStepExecutor(nil, llm)
+	executor := NewExecutor(nil, llm)
 	ctx := context.Background()
 
 	// No template context provided
@@ -846,7 +846,7 @@ func TestStepExecutor_NoTemplateContext(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_SPEC2FormatMultiStepWorkflow(t *testing.T) {
+func TestExecutor_SPEC2FormatMultiStepWorkflow(t *testing.T) {
 	// This test demonstrates a complete SPEC-2 style workflow:
 	// 1. Step uses workflow input via {{.diff}}
 	// 2. Second step uses first step output via {{.steps.security.response}}
@@ -856,7 +856,7 @@ func TestStepExecutor_SPEC2FormatMultiStepWorkflow(t *testing.T) {
 		response: "Test response",
 	}
 
-	executor := NewStepExecutor(nil, llmProvider)
+	executor := NewExecutor(nil, llmProvider)
 	ctx := context.Background()
 
 	// Create template context with workflow inputs
@@ -917,12 +917,12 @@ func TestStepExecutor_SPEC2FormatMultiStepWorkflow(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_PromptFieldWithTemplateVariables(t *testing.T) {
+func TestExecutor_PromptFieldWithTemplateVariables(t *testing.T) {
 	llm := &mockLLMProvider{
 		response: "response",
 	}
 
-	executor := NewStepExecutor(nil, llm)
+	executor := NewExecutor(nil, llm)
 	ctx := context.Background()
 
 	templateCtx := NewTemplateContext()
@@ -949,12 +949,12 @@ func TestStepExecutor_PromptFieldWithTemplateVariables(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_SystemPromptWithTemplateVariables(t *testing.T) {
+func TestExecutor_SystemPromptWithTemplateVariables(t *testing.T) {
 	llm := &mockLLMProvider{
 		response: "response",
 	}
 
-	executor := NewStepExecutor(nil, llm)
+	executor := NewExecutor(nil, llm)
 	ctx := context.Background()
 
 	templateCtx := NewTemplateContext()
@@ -981,12 +981,12 @@ func TestStepExecutor_SystemPromptWithTemplateVariables(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_ExecuteToolStep(t *testing.T) {
+func TestExecutor_ExecuteToolStep(t *testing.T) {
 	llm := &mockLLMProvider{
 		response: "test response",
 	}
 
-	executor := NewStepExecutor(nil, llm)
+	executor := NewExecutor(nil, llm)
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -1019,8 +1019,8 @@ func TestStepExecutor_ExecuteToolStep(t *testing.T) {
 	}
 }
 
-func TestStepExecutor_ToolStepWithoutRegistry(t *testing.T) {
-	executor := NewStepExecutor(nil, nil)
+func TestExecutor_ToolStepWithoutRegistry(t *testing.T) {
+	executor := NewExecutor(nil, nil)
 	ctx := context.Background()
 
 	step := &StepDefinition{
@@ -1036,12 +1036,12 @@ func TestStepExecutor_ToolStepWithoutRegistry(t *testing.T) {
 	}
 }
 
-// TestStepExecutor_ToolStepMissingToolName removed - type: tool is no longer supported
+// TestExecutor_ToolStepMissingToolName removed - type: tool is no longer supported
 // Missing builtin_connector/builtin_operation is caught at definition validation level
 
-// TestStepExecutor_CompleteSPEC2WorkflowIntegration tests a complete SPEC-2 workflow
+// TestExecutor_CompleteSPEC2WorkflowIntegration tests a complete SPEC-2 workflow
 // by parsing YAML and executing multiple steps with template variable passing.
-func TestStepExecutor_CompleteSPEC2WorkflowIntegration(t *testing.T) {
+func TestExecutor_CompleteSPEC2WorkflowIntegration(t *testing.T) {
 	// Define a complete SPEC-2 workflow as YAML
 	workflowYAML := `
 name: code-review
@@ -1090,7 +1090,7 @@ outputs:
 	llmProvider := &mockLLMProvider{}
 
 	// Create executor
-	executor := NewStepExecutor(nil, llmProvider)
+	executor := NewExecutor(nil, llmProvider)
 	ctx := context.Background()
 
 	// Create template context with workflow inputs
@@ -1171,14 +1171,14 @@ outputs:
 	}
 }
 
-// TestStepExecutor_DefaultTimeoutAndRetry tests that default timeout and retry
+// TestExecutor_DefaultTimeoutAndRetry tests that default timeout and retry
 // are applied when not specified in the workflow definition.
-func TestStepExecutor_DefaultTimeoutAndRetry(t *testing.T) {
+func TestExecutor_DefaultTimeoutAndRetry(t *testing.T) {
 	llm := &mockLLMProvider{
 		response: "response",
 	}
 
-	executor := NewStepExecutor(nil, llm)
+	executor := NewExecutor(nil, llm)
 	ctx := context.Background()
 
 	// Create a step with no timeout or retry specified
@@ -1221,7 +1221,7 @@ func TestStructuredOutputSuccess(t *testing.T) {
 		response: `{"category": "bug", "priority": "high"}`,
 	}
 
-	executor := NewStepExecutor(nil, llm)
+	executor := NewExecutor(nil, llm)
 
 	step := &StepDefinition{
 		ID:     "classify",
@@ -1295,7 +1295,7 @@ func TestStructuredOutputRetry(t *testing.T) {
 	retryLLM := &retryMockLLM{attempts: &attemptCount}
 
 	// Replace the executor's Complete method
-	executor := &StepExecutor{
+	executor := &Executor{
 		llmProvider: &mockLLMProviderFunc{
 			completeFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
 				*retryLLM.attempts++
@@ -1365,7 +1365,7 @@ func TestStructuredOutputValidationFailure(t *testing.T) {
 		response: "This is always invalid",
 	}
 
-	executor := NewStepExecutor(nil, llm)
+	executor := NewExecutor(nil, llm)
 
 	step := &StepDefinition{
 		ID:     "classify",
@@ -1439,7 +1439,7 @@ func TestStructuredOutputJSONExtraction(t *testing.T) {
 				response: tt.llmResponse,
 			}
 
-			executor := NewStepExecutor(nil, llm)
+			executor := NewExecutor(nil, llm)
 
 			step := &StepDefinition{
 				ID:     "classify",
@@ -1534,7 +1534,7 @@ func TestStructuredOutputBuiltInTypes(t *testing.T) {
 				t.Fatalf("expandOutputType() error = %v", err)
 			}
 
-			executor := NewStepExecutor(nil, llm)
+			executor := NewExecutor(nil, llm)
 
 			ctx := context.Background()
 			result, err := executor.Execute(ctx, &tt.definition, map[string]interface{}{})
@@ -1555,7 +1555,7 @@ func TestUnstructuredOutput(t *testing.T) {
 		response: "This is a free-form response",
 	}
 
-	executor := NewStepExecutor(nil, llm)
+	executor := NewExecutor(nil, llm)
 
 	step := &StepDefinition{
 		ID:     "summarize",

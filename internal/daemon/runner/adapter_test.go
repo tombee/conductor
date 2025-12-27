@@ -35,21 +35,21 @@ func (m *MockLLMProvider) Complete(ctx context.Context, prompt string, options m
 	return "mock response", nil
 }
 
-func TestNewStepExecutorAdapter(t *testing.T) {
-	executor := workflow.NewStepExecutor(nil, &MockLLMProvider{})
-	adapter := NewStepExecutorAdapter(executor)
+func TestNewExecutorAdapter(t *testing.T) {
+	executor := workflow.NewExecutor(nil, &MockLLMProvider{})
+	adapter := NewExecutorAdapter(executor)
 
 	if adapter == nil {
-		t.Fatal("NewStepExecutorAdapter returned nil")
+		t.Fatal("NewExecutorAdapter returned nil")
 	}
 	if adapter.executor != executor {
 		t.Error("adapter.executor does not match provided executor")
 	}
 }
 
-func TestStepExecutorAdapter_ExecuteWorkflow_EmptyWorkflow(t *testing.T) {
-	executor := workflow.NewStepExecutor(nil, &MockLLMProvider{})
-	adapter := NewStepExecutorAdapter(executor)
+func TestExecutorAdapter_ExecuteWorkflow_EmptyWorkflow(t *testing.T) {
+	executor := workflow.NewExecutor(nil, &MockLLMProvider{})
+	adapter := NewExecutorAdapter(executor)
 
 	def := &workflow.Definition{
 		Name:  "test-workflow",
@@ -73,14 +73,14 @@ func TestStepExecutorAdapter_ExecuteWorkflow_EmptyWorkflow(t *testing.T) {
 	}
 }
 
-func TestStepExecutorAdapter_ExecuteWorkflow_SingleStep(t *testing.T) {
+func TestExecutorAdapter_ExecuteWorkflow_SingleStep(t *testing.T) {
 	provider := &MockLLMProvider{
 		CompleteFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
 			return "test response", nil
 		},
 	}
-	executor := workflow.NewStepExecutor(nil, provider)
-	adapter := NewStepExecutorAdapter(executor)
+	executor := workflow.NewExecutor(nil, provider)
+	adapter := NewExecutorAdapter(executor)
 
 	def := &workflow.Definition{
 		Name: "test-workflow",
@@ -115,14 +115,14 @@ func TestStepExecutorAdapter_ExecuteWorkflow_SingleStep(t *testing.T) {
 	}
 }
 
-func TestStepExecutorAdapter_ExecuteWorkflow_Callbacks(t *testing.T) {
+func TestExecutorAdapter_ExecuteWorkflow_Callbacks(t *testing.T) {
 	provider := &MockLLMProvider{
 		CompleteFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
 			return "response", nil
 		},
 	}
-	executor := workflow.NewStepExecutor(nil, provider)
-	adapter := NewStepExecutorAdapter(executor)
+	executor := workflow.NewExecutor(nil, provider)
+	adapter := NewExecutorAdapter(executor)
 
 	def := &workflow.Definition{
 		Name: "test-workflow",
@@ -170,7 +170,7 @@ func TestStepExecutorAdapter_ExecuteWorkflow_Callbacks(t *testing.T) {
 	}
 }
 
-func TestStepExecutorAdapter_ExecuteWorkflow_Cancellation(t *testing.T) {
+func TestExecutorAdapter_ExecuteWorkflow_Cancellation(t *testing.T) {
 	provider := &MockLLMProvider{
 		CompleteFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
 			// Simulate slow execution
@@ -182,8 +182,8 @@ func TestStepExecutorAdapter_ExecuteWorkflow_Cancellation(t *testing.T) {
 			}
 		},
 	}
-	executor := workflow.NewStepExecutor(nil, provider)
-	adapter := NewStepExecutorAdapter(executor)
+	executor := workflow.NewExecutor(nil, provider)
+	adapter := NewExecutorAdapter(executor)
 
 	def := &workflow.Definition{
 		Name: "test-workflow",
@@ -211,15 +211,15 @@ func TestStepExecutorAdapter_ExecuteWorkflow_Cancellation(t *testing.T) {
 	}
 }
 
-func TestStepExecutorAdapter_ExecuteWorkflow_StepFailure(t *testing.T) {
+func TestExecutorAdapter_ExecuteWorkflow_StepFailure(t *testing.T) {
 	stepError := errors.New("step execution failed")
 	provider := &MockLLMProvider{
 		CompleteFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
 			return "", stepError
 		},
 	}
-	executor := workflow.NewStepExecutor(nil, provider)
-	adapter := NewStepExecutorAdapter(executor)
+	executor := workflow.NewExecutor(nil, provider)
+	adapter := NewExecutorAdapter(executor)
 
 	def := &workflow.Definition{
 		Name: "test-workflow",
@@ -247,7 +247,7 @@ func TestStepExecutorAdapter_ExecuteWorkflow_StepFailure(t *testing.T) {
 	}
 }
 
-func TestStepExecutorAdapter_ExecuteWorkflow_ErrorStrategyIgnore(t *testing.T) {
+func TestExecutorAdapter_ExecuteWorkflow_ErrorStrategyIgnore(t *testing.T) {
 	step1Called := false
 	step2Called := false
 	provider := &MockLLMProvider{
@@ -263,8 +263,8 @@ func TestStepExecutorAdapter_ExecuteWorkflow_ErrorStrategyIgnore(t *testing.T) {
 			return "success", nil
 		},
 	}
-	executor := workflow.NewStepExecutor(nil, provider)
-	adapter := NewStepExecutorAdapter(executor)
+	executor := workflow.NewExecutor(nil, provider)
+	adapter := NewExecutorAdapter(executor)
 
 	def := &workflow.Definition{
 		Name: "test-workflow",
@@ -296,14 +296,14 @@ func TestStepExecutorAdapter_ExecuteWorkflow_ErrorStrategyIgnore(t *testing.T) {
 	}
 }
 
-func TestStepExecutorAdapter_ExecuteWorkflow_StepOutputs(t *testing.T) {
+func TestExecutorAdapter_ExecuteWorkflow_StepOutputs(t *testing.T) {
 	provider := &MockLLMProvider{
 		CompleteFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
 			return "step output", nil
 		},
 	}
-	executor := workflow.NewStepExecutor(nil, provider)
-	adapter := NewStepExecutorAdapter(executor)
+	executor := workflow.NewExecutor(nil, provider)
+	adapter := NewExecutorAdapter(executor)
 
 	def := &workflow.Definition{
 		Name: "test-workflow",
@@ -380,15 +380,15 @@ func TestMockExecutionAdapter_DefaultBehavior(t *testing.T) {
 	}
 }
 
-// TestStepExecutorAdapter_TypedOutput verifies that typed StepOutput is populated correctly (SPEC-40).
-func TestStepExecutorAdapter_TypedOutput(t *testing.T) {
+// TestExecutorAdapter_TypedOutput verifies that typed StepOutput is populated correctly (SPEC-40).
+func TestExecutorAdapter_TypedOutput(t *testing.T) {
 	provider := &MockLLMProvider{
 		CompleteFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
 			return "typed response", nil
 		},
 	}
-	executor := workflow.NewStepExecutor(nil, provider)
-	adapter := NewStepExecutorAdapter(executor)
+	executor := workflow.NewExecutor(nil, provider)
+	adapter := NewExecutorAdapter(executor)
 
 	def := &workflow.Definition{
 		Name: "typed-workflow",
@@ -421,15 +421,15 @@ func TestStepExecutorAdapter_TypedOutput(t *testing.T) {
 	}
 }
 
-// TestStepExecutorAdapter_TypedInputsOutputs tests end-to-end workflow with typed inputs/outputs (SPEC-40).
-func TestStepExecutorAdapter_TypedInputsOutputs(t *testing.T) {
+// TestExecutorAdapter_TypedInputsOutputs tests end-to-end workflow with typed inputs/outputs (SPEC-40).
+func TestExecutorAdapter_TypedInputsOutputs(t *testing.T) {
 	provider := &MockLLMProvider{
 		CompleteFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
 			return "response from step", nil
 		},
 	}
-	executor := workflow.NewStepExecutor(nil, provider)
-	adapter := NewStepExecutorAdapter(executor)
+	executor := workflow.NewExecutor(nil, provider)
+	adapter := NewExecutorAdapter(executor)
 
 	def := &workflow.Definition{
 		Name: "multi-step-typed",

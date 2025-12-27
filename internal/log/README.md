@@ -169,7 +169,7 @@ The logging package is used throughout Conduct:
 
 - **RPC Server**: Logs connection lifecycle, requests, responses
 - **LLM Providers**: Logs API calls, failures, latencies
-- **Workflow Engine**: Logs state transitions, events
+- **Workflow Executor**: Logs state transitions, events
 - **Tools**: Logs tool execution, errors
 
 All logs include correlation IDs when available for end-to-end tracing.

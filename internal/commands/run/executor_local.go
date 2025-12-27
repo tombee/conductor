@@ -219,7 +219,7 @@ func executeWorkflow(def *workflow.Definition, cfg *config.Config, plan *Executi
 	adapter := internalllm.NewProviderAdapter(llmProvider)
 
 	// Create the step executor with actions initialized
-	executor := workflow.NewStepExecutor(nil, adapter).
+	executor := workflow.NewExecutor(nil, adapter).
 		WithWorkflowDir(workflowDir)
 
 	// Build template context from inputs

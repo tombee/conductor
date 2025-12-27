@@ -40,7 +40,7 @@ func TestConnectorStepIntegration(t *testing.T) {
 	}
 
 	// Create executor with connector registry
-	executor := NewStepExecutor(nil, nil).WithConnectorRegistry(mockRegistry)
+	executor := NewExecutor(nil, nil).WithConnectorRegistry(mockRegistry)
 
 	// Test 1: Execute a simple connector step
 	t.Run("simple connector step", func(t *testing.T) {
@@ -128,7 +128,7 @@ func TestConnectorStepIntegration(t *testing.T) {
 			},
 		}
 
-		retryExecutor := NewStepExecutor(nil, nil).WithConnectorRegistry(retryRegistry)
+		retryExecutor := NewExecutor(nil, nil).WithConnectorRegistry(retryRegistry)
 
 		step := &StepDefinition{
 			ID:        "retry_test",
@@ -201,7 +201,7 @@ func TestConnectorStep_OutputAvailableToNextStep(t *testing.T) {
 		},
 	}
 
-	executor := NewStepExecutor(nil, nil).WithConnectorRegistry(mockRegistry)
+	executor := NewExecutor(nil, nil).WithConnectorRegistry(mockRegistry)
 
 	// Step 1: Get user data
 	step1 := &StepDefinition{
@@ -265,7 +265,7 @@ func TestConnectorStep_ErrorFlowsToOnError(t *testing.T) {
 		},
 	}
 
-	executor := NewStepExecutor(nil, nil).WithConnectorRegistry(mockRegistry)
+	executor := NewExecutor(nil, nil).WithConnectorRegistry(mockRegistry)
 
 	// Step that will fail
 	step := &StepDefinition{
@@ -330,7 +330,7 @@ func TestConnectorStep_WithResponseTransform(t *testing.T) {
 		},
 	}
 
-	executor := NewStepExecutor(nil, nil).WithConnectorRegistry(mockRegistry)
+	executor := NewExecutor(nil, nil).WithConnectorRegistry(mockRegistry)
 
 	// Execute connector that returns transformed response
 	step := &StepDefinition{
@@ -401,7 +401,7 @@ func TestConnectorStep_InParallelExecution(t *testing.T) {
 		},
 	}
 
-	executor := NewStepExecutor(nil, nil).WithConnectorRegistry(mockRegistry)
+	executor := NewExecutor(nil, nil).WithConnectorRegistry(mockRegistry)
 
 	// Define parallel steps
 	steps := []*StepDefinition{

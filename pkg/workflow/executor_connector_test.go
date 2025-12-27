@@ -125,7 +125,7 @@ func TestExecuteConnector(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create executor
-			executor := NewStepExecutor(nil, nil)
+			executor := NewExecutor(nil, nil)
 			if tt.mockRegistry != nil {
 				executor = executor.WithConnectorRegistry(tt.mockRegistry)
 			}
