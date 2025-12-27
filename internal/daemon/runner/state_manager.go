@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/tombee/conductor/internal/binding"
 	"github.com/tombee/conductor/internal/daemon/backend"
 	"github.com/tombee/conductor/internal/tracing"
 	"github.com/tombee/conductor/pkg/workflow"
@@ -44,7 +45,7 @@ func NewStateManager(be backend.Backend) *StateManager {
 
 // CreateRun creates a new run and persists to backend (best-effort).
 // Returns the created Run (internal) for further processing.
-func (s *StateManager) CreateRun(ctx context.Context, def *workflow.Definition, inputs map[string]any, sourceURL string) (*Run, error) {
+func (s *StateManager) CreateRun(ctx context.Context, def *workflow.Definition, inputs map[string]any, sourceURL, workspace, profile string, bindings *binding.ResolvedBinding) (*Run, error) {
 	runID := uuid.New().String()[:8]
 	runCtx, cancel := context.WithCancel(ctx)
 
@@ -60,12 +61,15 @@ func (s *StateManager) CreateRun(ctx context.Context, def *workflow.Definition, 
 		Inputs:        inputs,
 		CreatedAt:     time.Now(),
 		SourceURL:     sourceURL,
+		Workspace:     workspace,
+		Profile:       profile,
 		Progress: &Progress{
 			Total: len(def.Steps),
 		},
 		ctx:        runCtx,
 		cancel:     cancel,
 		definition: def,
+		bindings:   bindings,
 		stopped:    make(chan struct{}),
 	}
 
@@ -208,6 +212,8 @@ func (s *StateManager) snapshotRun(run *Run) *RunSnapshot {
 		CreatedAt:     run.CreatedAt,
 		Logs:          logs,
 		SourceURL:     run.SourceURL,
+		Workspace:     run.Workspace,
+		Profile:       run.Profile,
 	}
 }
 

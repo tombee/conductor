@@ -21,6 +21,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/tombee/conductor/internal/binding"
+	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/internal/daemon/backend"
 	"github.com/tombee/conductor/internal/daemon/checkpoint"
 	daemonremote "github.com/tombee/conductor/internal/daemon/remote"
@@ -65,12 +67,15 @@ type Run struct {
 	CreatedAt     time.Time      `json:"created_at"`
 	Logs          []LogEntry     `json:"logs,omitempty"`
 	SourceURL     string         `json:"source_url,omitempty"` // Remote workflow source (for provenance)
+	Workspace     string         `json:"workspace,omitempty"`  // Workspace used for profile resolution (SPEC-130)
+	Profile       string         `json:"profile,omitempty"`    // Profile used for binding resolution (SPEC-130)
 
 	// Internal
 	mu         sync.RWMutex // Protects mutable fields (Status, Progress, Output, Error, etc.)
 	ctx        context.Context
 	cancel     context.CancelFunc
 	definition *workflow.Definition
+	bindings   *binding.ResolvedBinding // Resolved bindings from profile (SPEC-130)
 	cancelOnce sync.Once
 	stopped    chan struct{}
 }
@@ -92,6 +97,8 @@ type RunSnapshot struct {
 	CreatedAt     time.Time      `json:"created_at"`
 	Logs          []LogEntry     `json:"logs,omitempty"`
 	SourceURL     string         `json:"source_url,omitempty"`
+	Workspace     string         `json:"workspace,omitempty"` // Workspace used for profile resolution (SPEC-130)
+	Profile       string         `json:"profile,omitempty"`   // Profile used for binding resolution (SPEC-130)
 }
 
 // Progress tracks workflow execution progress.
@@ -132,6 +139,12 @@ type SubmitRequest struct {
 	RemoteRef string
 	// NoCache forces a fresh fetch of remote workflows, bypassing cache
 	NoCache bool
+	// Workspace selects the workspace for profile resolution (SPEC-130)
+	// If empty, uses the default workspace
+	Workspace string
+	// Profile selects the profile within the workspace (SPEC-130)
+	// If empty, uses the workspace's default profile
+	Profile string
 }
 
 // Runner manages workflow executions by composing focused components.
@@ -154,6 +167,12 @@ type Runner struct {
 
 	// Metrics collector for observability (optional)
 	metrics MetricsCollector
+
+	// Configuration for profile resolution (SPEC-130)
+	config *config.Config
+
+	// Binding resolver for profile-based configuration (SPEC-130)
+	resolver *binding.Resolver
 
 	// draining indicates the runner is in graceful shutdown mode
 	draining atomic.Bool
@@ -251,8 +270,14 @@ func (r *Runner) Submit(ctx context.Context, req SubmitRequest) (*RunSnapshot, e
 		return nil, fmt.Errorf("failed to parse workflow: %w", err)
 	}
 
+	// Resolve profile and bindings (SPEC-130)
+	workspace, profile, resolvedBindings, err := r.resolveProfile(ctx, req.Workspace, req.Profile, def)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve profile bindings: %w", err)
+	}
+
 	// Create run via StateManager
-	run, err := r.state.CreateRun(ctx, def, req.Inputs, sourceURL)
+	run, err := r.state.CreateRun(ctx, def, req.Inputs, sourceURL, workspace, profile, resolvedBindings)
 	if err != nil {
 		return nil, err
 	}
@@ -272,6 +297,66 @@ func (r *Runner) Submit(ctx context.Context, req SubmitRequest) (*RunSnapshot, e
 	go r.execute(run)
 
 	return snapshot, nil
+}
+
+// resolveProfile determines the workspace and profile to use, then resolves bindings.
+// Returns: workspace, profile, resolvedBindings, error
+func (r *Runner) resolveProfile(ctx context.Context, requestedWorkspace, requestedProfile string, def *workflow.Definition) (string, string, *binding.ResolvedBinding, error) {
+	// If no resolver configured, skip profile resolution (backward compatibility)
+	r.mu.RLock()
+	resolver := r.resolver
+	cfg := r.config
+	r.mu.RUnlock()
+
+	if resolver == nil || cfg == nil {
+		// No profile support - return empty workspace/profile and nil bindings
+		return "", "", nil, nil
+	}
+
+	// Determine workspace (default to "default" if not specified)
+	workspace := requestedWorkspace
+	if workspace == "" {
+		workspace = "default"
+	}
+
+	// Look up workspace in config
+	ws, exists := cfg.Workspaces[workspace]
+	if !exists {
+		return "", "", nil, fmt.Errorf("workspace not found: %s", workspace)
+	}
+
+	// Determine profile within workspace
+	profileName := requestedProfile
+	if profileName == "" {
+		// Use workspace's default profile
+		if ws.DefaultProfile != "" {
+			profileName = ws.DefaultProfile
+		} else {
+			profileName = "default"
+		}
+	}
+
+	// Look up profile in workspace
+	prof, exists := ws.Profiles[profileName]
+	if !exists {
+		return "", "", nil, fmt.Errorf("profile not found: %s/%s", workspace, profileName)
+	}
+
+	// Create resolution context
+	resCtx := &binding.ResolutionContext{
+		Profile:   &prof,
+		Workflow:  def,
+		RunID:     "", // Will be set by CreateRun
+		Workspace: workspace,
+	}
+
+	// Resolve bindings using the resolver
+	resolvedBindings, err := resolver.Resolve(ctx, resCtx)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("binding resolution failed for profile %s/%s: %w", workspace, profileName, err)
+	}
+
+	return workspace, profileName, resolvedBindings, nil
 }
 
 // Get returns an immutable snapshot of a run by ID.

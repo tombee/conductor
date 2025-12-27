@@ -32,8 +32,17 @@ import (
 )
 
 // runWorkflowViaDaemon submits a workflow to the daemon for execution
-func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, outputFile string, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs bool, provider, model, timeout string) error {
+func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, outputFile string, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs bool, provider, model, timeout, workspace, profile string) error {
 	ctx := context.Background()
+
+	// Apply environment variable defaults for workspace and profile (SPEC-130)
+	// CLI flags take precedence over env vars
+	if workspace == "" {
+		workspace = os.Getenv("CONDUCTOR_WORKSPACE")
+	}
+	if profile == "" {
+		profile = os.Getenv("CONDUCTOR_PROFILE")
+	}
 
 	var data []byte
 	var isRemote bool
@@ -200,6 +209,14 @@ func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, ou
 		if noCache {
 			params.Add("no_cache", "true")
 		}
+	}
+
+	// Add workspace and profile parameters (SPEC-130)
+	if workspace != "" {
+		params.Add("workspace", workspace)
+	}
+	if profile != "" {
+		params.Add("profile", profile)
 	}
 
 	if len(params) > 0 {

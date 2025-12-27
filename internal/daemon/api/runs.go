@@ -46,8 +46,10 @@ func (h *RunsHandler) RegisterRoutes(mux *http.ServeMux) {
 
 // CreateRunRequest is the request body for creating a run.
 type CreateRunRequest struct {
-	Workflow string         `json:"workflow"`
-	Inputs   map[string]any `json:"inputs,omitempty"`
+	Workflow  string         `json:"workflow"`
+	Inputs    map[string]any `json:"inputs,omitempty"`
+	Workspace string         `json:"workspace,omitempty"` // Workspace for profile resolution (SPEC-130)
+	Profile   string         `json:"profile,omitempty"`   // Profile for binding resolution (SPEC-130)
 }
 
 // handleCreate handles POST /v1/runs.
@@ -62,6 +64,8 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	// Check for remote reference in query params
 	remoteRef := r.URL.Query().Get("remote_ref")
 	noCache := r.URL.Query().Get("no_cache") == "true"
+	workspace := r.URL.Query().Get("workspace")
+	profile := r.URL.Query().Get("profile")
 
 	// If remote ref is provided, workflow YAML in body should be empty
 	if remoteRef != "" {
@@ -69,7 +73,7 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		// Parse inputs from query params (excluding reserved params)
 		inputs := make(map[string]any)
 		for key, values := range r.URL.Query() {
-			if key != "remote_ref" && key != "no_cache" && len(values) > 0 {
+			if key != "remote_ref" && key != "no_cache" && key != "workspace" && key != "profile" && len(values) > 0 {
 				inputs[key] = values[0]
 			}
 		}
@@ -79,6 +83,8 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 			RemoteRef: remoteRef,
 			NoCache:   noCache,
 			Inputs:    inputs,
+			Workspace: workspace,
+			Profile:   profile,
 		})
 		if err != nil {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("failed to submit run: %v", err))
@@ -156,9 +162,21 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Submit run
+	// Prefer workspace/profile from query params, fall back to request body
+	submitWorkspace := workspace
+	submitProfile := profile
+	if submitWorkspace == "" {
+		submitWorkspace = req.Workspace
+	}
+	if submitProfile == "" {
+		submitProfile = req.Profile
+	}
+
 	run, err := h.runner.Submit(r.Context(), runner.SubmitRequest{
 		WorkflowYAML: workflowYAML,
 		Inputs:       req.Inputs,
+		Workspace:    submitWorkspace,
+		Profile:      submitProfile,
 	})
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Sprintf("failed to submit run: %v", err))

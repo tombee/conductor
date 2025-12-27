@@ -76,7 +76,22 @@ func (r *Runner) execute(run *Run) {
 		_ = be.UpdateRun(context.Background(), beRun)
 	}
 
-	r.addLog(run, "info", fmt.Sprintf("Starting workflow: %s", run.Workflow), "")
+	// Log run start with profile context (SPEC-130)
+	startMsg := fmt.Sprintf("Starting workflow: %s", run.Workflow)
+	if run.Workspace != "" || run.Profile != "" {
+		profileInfo := ""
+		if run.Workspace != "" {
+			profileInfo = fmt.Sprintf("workspace=%s", run.Workspace)
+		}
+		if run.Profile != "" {
+			if profileInfo != "" {
+				profileInfo += ", "
+			}
+			profileInfo += fmt.Sprintf("profile=%s", run.Profile)
+		}
+		startMsg = fmt.Sprintf("%s (%s)", startMsg, profileInfo)
+	}
+	r.addLog(run, "info", startMsg, "")
 
 	// Create log function for lifecycle manager
 	logFn := func(level, message, stepID string) {
