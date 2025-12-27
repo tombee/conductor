@@ -25,6 +25,16 @@ import (
 	"github.com/tombee/conductor/internal/daemon/backend"
 )
 
+// Compile-time interface assertions.
+// Ensures Backend implements all segregated interfaces.
+var (
+	_ backend.RunStore        = (*Backend)(nil)
+	_ backend.RunLister       = (*Backend)(nil)
+	_ backend.CheckpointStore = (*Backend)(nil)
+	_ backend.Backend         = (*Backend)(nil)
+	_ backend.ScheduleBackend = (*Backend)(nil)
+)
+
 // Backend is a PostgreSQL storage backend.
 type Backend struct {
 	db *sql.DB
