@@ -21,12 +21,10 @@
       "default": "1.0",
       "examples": ["1.0", "1.1"]
     },
-    "triggers": {
-      "type": "array",
-      "description": "Defines how this workflow can be invoked (webhooks, schedules, manual execution). If not specified, workflow can only be triggered manually via CLI.",
-      "items": {
-        "$ref": "#/$defs/trigger"
-      }
+    "listen": {
+      "type": "object",
+      "description": "Defines how this workflow can be invoked (webhooks, API endpoints, schedules). Replaces the deprecated 'triggers' field. If not specified, workflow can only be triggered manually via CLI.",
+      "$ref": "#/$defs/listen_config"
     },
     "inputs": {
       "type": "array",
@@ -91,9 +89,43 @@
     }
   },
   "$defs": {
+    "listen_config": {
+      "type": "object",
+      "description": "Configuration for how this workflow can be invoked. Supports webhook listeners, API endpoints, and scheduled execution.",
+      "properties": {
+        "webhook": {
+          "$ref": "#/$defs/webhook_trigger",
+          "description": "Webhook listener configuration. Enables this workflow to be triggered by HTTP webhooks from GitHub, Slack, or generic sources."
+        },
+        "api": {
+          "$ref": "#/$defs/api_listener",
+          "description": "API endpoint listener configuration. Enables this workflow to be triggered via POST /v1/start/{workflow} with Bearer token authentication."
+        },
+        "schedule": {
+          "$ref": "#/$defs/schedule_trigger",
+          "description": "Schedule listener configuration. Enables cron-based scheduled execution of this workflow."
+        }
+      },
+      "additionalProperties": false
+    },
+    "api_listener": {
+      "type": "object",
+      "required": ["secret"],
+      "description": "API endpoint listener configuration for Bearer token authentication. Enables workflows to be triggered via POST /v1/start/{workflow}.",
+      "properties": {
+        "secret": {
+          "type": "string",
+          "description": "Bearer token required to trigger this workflow via API. Callers must provide this as 'Authorization: Bearer <secret>'. MUST use environment variable reference like ${API_SECRET} - never hardcode secrets. Recommended: at least 32 bytes of cryptographically random data (use: openssl rand -base64 32).",
+          "pattern": "^\\$\\{[A-Z_][A-Z0-9_]*\\}$",
+          "examples": ["${API_SECRET}", "${DEPLOY_SECRET}", "${TRIGGER_TOKEN}"]
+        }
+      },
+      "additionalProperties": false
+    },
     "trigger": {
       "type": "object",
       "required": ["type"],
+      "description": "DEPRECATED: Use 'listen:' instead. This trigger definition is kept for backward compatibility documentation only.",
       "properties": {
         "type": {
           "type": "string",

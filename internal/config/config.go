@@ -146,6 +146,25 @@ type DaemonListenConfig struct {
 
 	// TLSKey is the path to TLS key for HTTPS.
 	TLSKey string `yaml:"tls_key,omitempty"`
+
+	// PublicAPI configures an optional public-facing API server for webhooks and triggers.
+	PublicAPI PublicAPIConfig `yaml:"public_api,omitempty"`
+}
+
+// PublicAPIConfig configures the public-facing API server.
+// The public API serves webhooks and API-triggered workflows on a separate port
+// from the control plane, enabling secure deployments where management APIs
+// remain private while webhooks are publicly accessible.
+type PublicAPIConfig struct {
+	// Enabled activates the public API server (default: false).
+	// When disabled, webhook and API trigger endpoints are not available.
+	// Environment: CONDUCTOR_PUBLIC_API_ENABLED
+	Enabled bool `yaml:"enabled"`
+
+	// TCP is the TCP address to bind the public API server (e.g., ":9001", "0.0.0.0:9001").
+	// Required when Enabled is true.
+	// Environment: CONDUCTOR_PUBLIC_API_TCP
+	TCP string `yaml:"tcp,omitempty"`
 }
 
 // DaemonLogConfig configures daemon logging (separate from CLI logging).
@@ -873,6 +892,12 @@ func (c *Config) loadFromEnv() {
 	if val := os.Getenv("CONDUCTOR_TCP_ADDR"); val != "" {
 		c.Daemon.Listen.TCPAddr = val
 	}
+	if val := os.Getenv("CONDUCTOR_PUBLIC_API_ENABLED"); val != "" {
+		c.Daemon.Listen.PublicAPI.Enabled = val == "1" || strings.ToLower(val) == "true"
+	}
+	if val := os.Getenv("CONDUCTOR_PUBLIC_API_TCP"); val != "" {
+		c.Daemon.Listen.PublicAPI.TCP = val
+	}
 	if val := os.Getenv("CONDUCTOR_PID_FILE"); val != "" {
 		c.Daemon.PIDFile = val
 	}
@@ -1009,6 +1034,13 @@ func (c *Config) Validate() error {
 		validVerbosity := map[string]bool{"quiet": true, "normal": true, "verbose": true}
 		if !validVerbosity[c.DefaultVerbosity] {
 			errs = append(errs, fmt.Sprintf("default_verbosity must be one of [quiet, normal, verbose], got %q", c.DefaultVerbosity))
+		}
+	}
+
+	// Validate public API configuration
+	if c.Daemon.Listen.PublicAPI.Enabled {
+		if c.Daemon.Listen.PublicAPI.TCP == "" {
+			errs = append(errs, "daemon.listen.public_api.tcp is required when public_api.enabled is true")
 		}
 	}
 

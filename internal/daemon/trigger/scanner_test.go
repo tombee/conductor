@@ -45,11 +45,10 @@ func TestScanner_Scan_WorkflowWithWebhook(t *testing.T) {
 name: webhook-handler
 description: Handles webhook events
 
-triggers:
-  - type: webhook
-    webhook:
-      path: /webhooks/test
-      secret: ${WEBHOOK_SECRET}
+listen:
+  webhook:
+    path: /webhooks/test
+    secret: ${WEBHOOK_SECRET}
 
 steps:
   - id: process
@@ -93,11 +92,10 @@ func TestScanner_Scan_WorkflowWithSchedule(t *testing.T) {
 name: scheduled-task
 description: Runs on schedule
 
-triggers:
-  - type: schedule
-    schedule:
-      cron: "0 * * * *"
-      timezone: UTC
+listen:
+  schedule:
+    cron: "0 * * * *"
+    timezone: UTC
 
 steps:
   - id: run
@@ -138,13 +136,11 @@ func TestScanner_Scan_MultipleTriggers(t *testing.T) {
 name: multi-trigger
 description: Has both webhook and schedule
 
-triggers:
-  - type: webhook
-    webhook:
-      path: /webhooks/multi
-  - type: schedule
-    schedule:
-      cron: "0 0 * * *"
+listen:
+  webhook:
+    path: /webhooks/multi
+  schedule:
+    cron: "0 0 * * *"
 
 steps:
   - id: run
@@ -273,10 +269,9 @@ func TestScanner_Scan_NestedDirectories(t *testing.T) {
 	// Create workflow in nested directory
 	workflowContent := `
 name: nested-workflow
-triggers:
-  - type: webhook
-    webhook:
-      path: /webhooks/nested
+listen:
+  webhook:
+    path: /webhooks/nested
 steps:
   - id: run
     type: llm
@@ -304,10 +299,9 @@ func TestScanner_Scan_YMLExtension(t *testing.T) {
 	// Create workflow with .yml extension
 	workflowContent := `
 name: yml-workflow
-triggers:
-  - type: schedule
-    schedule:
-      cron: "0 0 * * *"
+listen:
+  schedule:
+    cron: "0 0 * * *"
 steps:
   - id: run
     type: llm
