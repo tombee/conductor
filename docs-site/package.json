@@ -12,7 +12,12 @@
   },
   "dependencies": {
     "@astrojs/starlight": "^0.31.0",
+    "@astrojs/tailwind": "^6.0.2",
     "astro": "^5.1.0",
-    "sharp": "^0.33.0"
+    "autoprefixer": "^10.4.23",
+    "lucide-astro": "^0.556.0",
+    "postcss": "^8.5.6",
+    "sharp": "^0.33.0",
+    "tailwindcss": "^3.4.19"
   }
 }

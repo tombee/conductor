@@ -1,58 +1,51 @@
 # Conductor Vision
 
-> **Tagline:** AI workflows as simple as shell scripts.
+> **Tagline:** Portable AI workflows in simple YAML.
 
 ## Executive Summary
 
-**What:** Conductor is a CLI tool and daemon for defining and running AI workflows as simple YAML files.
+**What:** Conductor is a platform for defining and running AI workflows as simple YAML files.
 
-**Why:** Every AI-powered task today requires building an app. Conductor lets you write a workflow file instead.
+**Why:** Managing multiple AI workflows shouldn't require building separate applications for each one. Conductor provides a unified platform with production features built-in.
 
-**End Goal:** Personal automation that happens to scale. Write workflows locally, share via git, deploy to production when needed.
+**End Goal:** A common platform for all your AI workflows—with observability, reliability, cost management, and portability included.
 
 ## The Problem We're Solving
 
-**Today:** Every AI task requires building an app
-```
-Want code review?      → Build a Python app
-Want issue triage?     → Build another Python app
-Want meeting summaries? → Build another Python app
-```
+Organizations and developers building AI-powered automation face common challenges:
 
-**Conductor's vision:** Workflows as lightweight as shell scripts
-```
-Want code review?      → Write a YAML file, run it
-Want issue triage?     → Write a YAML file, run it
-Share it?              → Push to GitHub, others run it too
-Useful enough?         → Deploy to daemon with webhooks
-```
+- **Fragmentation** - Each AI task becomes its own application with its own patterns
+- **Missing infrastructure** - Logging, metrics, error handling, and retries built from scratch each time
+- **Cost opacity** - No visibility into token usage across different workflows
+- **Provider lock-in** - Tightly coupled to specific LLM providers
+- **Security gaps** - Inconsistent secret management and execution controls
 
-## What Conductor Is
+## What Conductor Provides
 
-**Conductor is a personal automation tool for AI tasks.**
+**A unified platform for AI workflow management:**
 
-Like shell scripts automate command-line tasks, Conductor workflows automate AI tasks:
-
-| Shell Scripts | Conductor Workflows |
-|---------------|---------------------|
-| Automate CLI tasks | Automate AI tasks |
-| Text files you can share | YAML files you can share |
-| Run with `./script.sh` | Run with `conductor run` |
-| Just works | Just works |
+| Challenge | Conductor Solution |
+|-----------|-------------------|
+| Fragmentation | Single YAML format for all workflows |
+| Missing infrastructure | Built-in observability, retries, timeouts |
+| Cost opacity | Token tracking and budget controls |
+| Provider lock-in | Swap providers with a config change |
+| Security gaps | Sandboxed execution, secret management |
 
 ## Core Principles
 
-1. **Personal automation first** - Individual developers solving their own problems
-2. **As simple as shell scripts** - Plain YAML files you can read and edit
-3. **Local-first, daemon when needed** - Works on your laptop, scales if needed
-4. **Shareable by default** - Text files you can version, fork, share
-5. **Portable definitions** - YAML files that work anywhere
+1. **Declarative by design** - Workflows define *what* to do, not *how*—enabling testing, validation, and predictable execution
+2. **Platform features included** - Observability, reliability, and security out of the box
+3. **LLM-efficient** - Deterministic steps handle orchestration; LLMs focus on reasoning tasks
+4. **Provider portability** - Switch LLM providers without rewriting workflows
+5. **Local-first, daemon when needed** - Works on your laptop, scales to production
+6. **Shareable by default** - Text files you can version, fork, and share
 
 ## Sharing Model
 
 ### Via Git (Primary)
 
-Developers share workflows the same way they share shell scripts:
+Workflows are just files—share them like any other code:
 - Push workflow files to GitHub
 - Others run with `conductor run github:user/repo`
 - Fork, customize, share back
@@ -76,21 +69,20 @@ Unlike npm or Docker Hub, sharing doesn't require a central registry:
 - Time to first workflow < 15 minutes
 - Lines of YAML for common tasks < 20
 - Error messages that users can act on
-- Zero dependency hell - just the binary
+- Zero dependency hell—just the binary
 
 ## Messaging
 
 ### Do Say
-- "AI workflows as simple as shell scripts"
-- "Write once, run anywhere"
-- "Just YAML files"
-- "Personal automation for AI tasks"
+- "Portable AI workflows in simple YAML"
+- "One platform for all your AI workflows"
+- "Production features built-in"
+- "Switch providers without rewriting"
 
 ### Don't Say
 - "LangChain alternative"
 - "Enterprise AI platform"
 - "AI agent framework"
-- "Build production AI apps"
 
 ---
-*Last updated: 2025-12-22*
+*Last updated: 2025-12-27*

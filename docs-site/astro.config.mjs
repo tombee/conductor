@@ -1,10 +1,15 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import tailwind from '@astrojs/tailwind';
 
 export default defineConfig({
   site: 'https://tombee.github.io',
   base: '/conductor',
   integrations: [
+    tailwind({
+      // Don't inject base styles - we handle this in our landing page
+      applyBaseStyles: false,
+    }),
     starlight({
       title: 'Conductor',
       description: 'AI workflows as simple as shell scripts',

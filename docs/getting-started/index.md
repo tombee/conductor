@@ -1,16 +1,18 @@
 # What is Conductor?
 
-Conductor is a CLI tool for defining and running AI workflows as YAML files. Instead of writing Python scripts or building applications, you describe what you want in a workflow file and run it with `conductor run`.
+Conductor is a platform for defining and running AI workflows. You describe workflows in simple YAML files and run them via CLI, API, webhooks, or on a schedule—with production features built-in.
 
-## The Idea
+## Why Conductor?
 
-Every AI task today requires building an application:
+Conductor makes it easy to manage many AI workflows on a common platform. Instead of building individual applications for every AI task, you define workflows in simple YAML and get production features built-in:
 
-- Want code review? Build a Python script.
-- Want issue triage? Build another script.
-- Want meeting summaries? Build yet another script.
-
-Conductor's approach: workflows as lightweight as shell scripts.
+- **Declarative definitions** - Testable, validatable workflows with predictable execution
+- **LLM-efficient** - Deterministic steps handle orchestration; LLMs focus on reasoning
+- **Observability** - Structured logging, metrics, and tracing
+- **Reliability** - Retries, timeouts, and error handling
+- **Cost management** - Token tracking and budget controls
+- **Portability** - Switch LLM providers with a config change
+- **Security** - Sandboxed execution and secret management
 
 ```yaml
 # code-review.yaml

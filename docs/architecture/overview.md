@@ -11,9 +11,9 @@ This guide explains Conductor's internal architecture and design decisions. It's
 
 ## Overview
 
-Conductor is a workflow orchestration tool for AI tasks. It provides a daemon-first architecture where all operations go through `conductord`, enabling consistent execution, checkpointing, and an API for community tools.
+Conductor is a platform for AI workflow orchestration. It provides a daemon-first architecture where all operations go through `conductord`, enabling consistent execution, checkpointing, and an API for community tools.
 
-> **Tagline:** AI workflows as simple as shell scripts.
+> **Tagline:** Portable AI workflows in simple YAML.
 
 For vision and positioning, see [vision.md](../vision.md).
 
