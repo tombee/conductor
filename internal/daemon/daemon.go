@@ -34,6 +34,7 @@ import (
 	"github.com/tombee/conductor/internal/daemon/backend/memory"
 	"github.com/tombee/conductor/internal/daemon/backend/postgres"
 	"github.com/tombee/conductor/internal/daemon/checkpoint"
+	"github.com/tombee/conductor/internal/daemon/endpoint"
 	"github.com/tombee/conductor/internal/daemon/github"
 	"github.com/tombee/conductor/internal/daemon/leader"
 	"github.com/tombee/conductor/internal/daemon/listener"
@@ -64,14 +65,15 @@ type Daemon struct {
 	server       *http.Server
 	ln           net.Listener
 	pidFile      string
-	runner       *runner.Runner
-	backend      backend.Backend
-	checkpoints  *checkpoint.Manager
-	scheduler    *scheduler.Scheduler
-	authMw       *auth.Middleware
-	leader       *leader.Elector
-	mcpRegistry  *mcp.Registry
-	otelProvider *tracing.OTelProvider
+	runner          *runner.Runner
+	backend         backend.Backend
+	checkpoints     *checkpoint.Manager
+	scheduler       *scheduler.Scheduler
+	endpointHandler *endpoint.Handler
+	authMw          *auth.Middleware
+	leader          *leader.Elector
+	mcpRegistry     *mcp.Registry
+	otelProvider    *tracing.OTelProvider
 
 	mu      sync.Mutex
 	started bool
@@ -182,6 +184,18 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 		}
 	}
 
+	// Create endpoint handler if enabled
+	var endpointHandler *endpoint.Handler
+	if cfg.Daemon.Endpoints.Enabled {
+		registry, err := endpoint.LoadConfig(cfg.Daemon.Endpoints, cfg.Daemon.WorkflowsDir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load endpoints: %w", err)
+		}
+		endpointHandler = endpoint.NewHandler(registry, r, cfg.Daemon.WorkflowsDir)
+		logger.Info("endpoints loaded",
+			slog.Int("count", registry.Count()))
+	}
+
 	// Create auth middleware
 	apiKeys := make([]auth.APIKey, len(cfg.Daemon.DaemonAuth.APIKeys))
 	for i, key := range cfg.Daemon.DaemonAuth.APIKeys {
@@ -243,17 +257,18 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 	}
 
 	return &Daemon{
-		cfg:          cfg,
-		opts:         opts,
-		logger:       logger,
-		runner:       r,
-		backend:      be,
-		checkpoints:  cm,
-		scheduler:    sched,
-		authMw:       authMw,
-		leader:       elector,
-		mcpRegistry:  mcpRegistry,
-		otelProvider: otelProvider,
+		cfg:             cfg,
+		opts:            opts,
+		logger:          logger,
+		runner:          r,
+		backend:         be,
+		checkpoints:     cm,
+		scheduler:       sched,
+		endpointHandler: endpointHandler,
+		authMw:          authMw,
+		leader:          elector,
+		mcpRegistry:     mcpRegistry,
+		otelProvider:    otelProvider,
 	}, nil
 }
 
@@ -327,6 +342,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// Register schedules API
 	schedulesHandler := api.NewSchedulesHandler(d.scheduler)
 	schedulesHandler.RegisterRoutes(router.Mux())
+
+	// Register endpoint routes if enabled
+	if d.endpointHandler != nil {
+		d.endpointHandler.RegisterRoutes(router.Mux())
+	}
 
 	// Register MCP API if registry is available
 	if d.mcpRegistry != nil {
