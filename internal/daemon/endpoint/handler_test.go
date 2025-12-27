@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tombee/conductor/internal/daemon/auth"
 	"github.com/tombee/conductor/internal/daemon/backend/memory"
 	"github.com/tombee/conductor/internal/daemon/checkpoint"
 	"github.com/tombee/conductor/internal/daemon/runner"
@@ -392,6 +393,236 @@ func TestHandlerInvalidJSON(t *testing.T) {
 
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("expected status 400, got %d", rec.Code)
+	}
+}
+
+func TestHandlerScopeFiltering(t *testing.T) {
+	// Create registry with test endpoints
+	registry := NewRegistry()
+	registry.Add(&Endpoint{
+		Name:        "review-pr",
+		Description: "Review pull requests",
+		Workflow:    "review.yaml",
+	})
+	registry.Add(&Endpoint{
+		Name:        "review-main",
+		Description: "Review main branch",
+		Workflow:    "review-main.yaml",
+	})
+	registry.Add(&Endpoint{
+		Name:        "deploy-staging",
+		Description: "Deploy to staging",
+		Workflow:    "deploy.yaml",
+	})
+
+	r := createTestRunner(t)
+	handler := NewHandler(registry, r, ".")
+
+	mux := http.NewServeMux()
+	handler.RegisterRoutes(mux)
+
+	tests := []struct {
+		name           string
+		userScopes     []string
+		expectedCount  int
+		expectedNames  []string
+	}{
+		{
+			name:          "admin key sees all endpoints",
+			userScopes:    []string{},
+			expectedCount: 3,
+			expectedNames: []string{"review-pr", "review-main", "deploy-staging"},
+		},
+		{
+			name:          "wildcard scope matches multiple endpoints",
+			userScopes:    []string{"review-*"},
+			expectedCount: 2,
+			expectedNames: []string{"review-pr", "review-main"},
+		},
+		{
+			name:          "exact scope matches one endpoint",
+			userScopes:    []string{"review-pr"},
+			expectedCount: 1,
+			expectedNames: []string{"review-pr"},
+		},
+		{
+			name:          "multiple scopes show union of endpoints",
+			userScopes:    []string{"review-pr", "deploy-staging"},
+			expectedCount: 2,
+			expectedNames: []string{"review-pr", "deploy-staging"},
+		},
+		{
+			name:          "no matching scope shows no endpoints",
+			userScopes:    []string{"nonexistent"},
+			expectedCount: 0,
+			expectedNames: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create request with user context
+			req := httptest.NewRequest("GET", "/v1/endpoints", nil)
+			user := &auth.User{
+				ID:     "test-user",
+				Name:   "Test User",
+				Scopes: tt.userScopes,
+			}
+			ctx := auth.ContextWithUser(req.Context(), user)
+			req = req.WithContext(ctx)
+
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Errorf("expected status 200, got %d", rec.Code)
+			}
+
+			var response struct {
+				Endpoints []EndpointResponse `json:"endpoints"`
+			}
+			if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+				t.Fatalf("failed to decode response: %v", err)
+			}
+
+			if len(response.Endpoints) != tt.expectedCount {
+				t.Errorf("expected %d endpoints, got %d", tt.expectedCount, len(response.Endpoints))
+			}
+
+			// Check that expected endpoints are present
+			foundNames := make(map[string]bool)
+			for _, ep := range response.Endpoints {
+				foundNames[ep.Name] = true
+			}
+
+			for _, name := range tt.expectedNames {
+				if !foundNames[name] {
+					t.Errorf("expected endpoint %q not found in response", name)
+				}
+			}
+		})
+	}
+}
+
+func TestHandlerScopeAccess(t *testing.T) {
+	tmpDir := t.TempDir()
+	workflowPath := filepath.Join(tmpDir, "review.yaml")
+	workflowContent := `
+name: review
+steps:
+  - id: echo
+    type: llm
+    prompt: "review"
+`
+	if err := os.WriteFile(workflowPath, []byte(workflowContent), 0600); err != nil {
+		t.Fatalf("failed to write workflow file: %v", err)
+	}
+
+	registry := NewRegistry()
+	registry.Add(&Endpoint{
+		Name:     "review-pr",
+		Workflow: "review.yaml",
+	})
+	registry.Add(&Endpoint{
+		Name:     "deploy-staging",
+		Workflow: "deploy.yaml",
+	})
+
+	r := createTestRunner(t)
+	handler := NewHandler(registry, r, tmpDir)
+
+	mux := http.NewServeMux()
+	handler.RegisterRoutes(mux)
+
+	tests := []struct {
+		name         string
+		userScopes   []string
+		endpoint     string
+		expectedCode int
+	}{
+		{
+			name:         "admin key can access any endpoint",
+			userScopes:   []string{},
+			endpoint:     "review-pr",
+			expectedCode: http.StatusOK,
+		},
+		{
+			name:         "exact scope grants access",
+			userScopes:   []string{"review-pr"},
+			endpoint:     "review-pr",
+			expectedCode: http.StatusOK,
+		},
+		{
+			name:         "wildcard scope grants access",
+			userScopes:   []string{"review-*"},
+			endpoint:     "review-pr",
+			expectedCode: http.StatusOK,
+		},
+		{
+			name:         "no matching scope returns 404",
+			userScopes:   []string{"deploy-*"},
+			endpoint:     "review-pr",
+			expectedCode: http.StatusNotFound,
+		},
+		{
+			name:         "unauthorized access to create run returns 404",
+			userScopes:   []string{"deploy-*"},
+			endpoint:     "review-pr",
+			expectedCode: http.StatusNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test GET endpoint
+			req := httptest.NewRequest("GET", "/v1/endpoints/"+tt.endpoint, nil)
+			user := &auth.User{
+				ID:     "test-user",
+				Name:   "Test User",
+				Scopes: tt.userScopes,
+			}
+			ctx := auth.ContextWithUser(req.Context(), user)
+			req = req.WithContext(ctx)
+
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, req)
+
+			if rec.Code != tt.expectedCode {
+				t.Errorf("GET /v1/endpoints/%s: expected status %d, got %d", tt.endpoint, tt.expectedCode, rec.Code)
+			}
+
+			// Test POST run (only if endpoint has workflow file)
+			if tt.endpoint == "review-pr" {
+				req = httptest.NewRequest("POST", "/v1/endpoints/"+tt.endpoint+"/runs", nil)
+				req = req.WithContext(ctx)
+
+				rec = httptest.NewRecorder()
+				mux.ServeHTTP(rec, req)
+
+				// If access granted, should be 202 Accepted (not 404)
+				// If access denied, should be 404
+				if tt.expectedCode == http.StatusOK {
+					if rec.Code != http.StatusAccepted {
+						t.Errorf("POST /v1/endpoints/%s/runs: expected status 202, got %d", tt.endpoint, rec.Code)
+					}
+				} else {
+					if rec.Code != http.StatusNotFound {
+						t.Errorf("POST /v1/endpoints/%s/runs: expected status 404, got %d", tt.endpoint, rec.Code)
+					}
+				}
+			}
+
+			// Test GET runs
+			req = httptest.NewRequest("GET", "/v1/endpoints/"+tt.endpoint+"/runs", nil)
+			req = req.WithContext(ctx)
+
+			rec = httptest.NewRecorder()
+			mux.ServeHTTP(rec, req)
+
+			if rec.Code != tt.expectedCode {
+				t.Errorf("GET /v1/endpoints/%s/runs: expected status %d, got %d", tt.endpoint, tt.expectedCode, rec.Code)
+			}
+		})
 	}
 }
 

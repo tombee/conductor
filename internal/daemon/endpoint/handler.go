@@ -23,6 +23,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/tombee/conductor/internal/daemon/auth"
 	"github.com/tombee/conductor/internal/daemon/runner"
 )
 
@@ -61,17 +62,28 @@ type EndpointResponse struct {
 
 // handleList handles GET /v1/endpoints.
 // Returns a list of all available endpoints.
+// Filters endpoints based on the caller's scopes.
 func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 	endpoints := h.registry.List()
 
-	// Convert to response format
+	// Get user from context for scope filtering
+	user, _ := auth.UserFromContext(r.Context())
+	var userScopes []string
+	if user != nil {
+		userScopes = user.Scopes
+	}
+
+	// Convert to response format and filter by scopes
 	response := make([]EndpointResponse, 0, len(endpoints))
 	for _, ep := range endpoints {
-		response = append(response, EndpointResponse{
-			Name:        ep.Name,
-			Description: ep.Description,
-			Inputs:      ep.Inputs,
-		})
+		// Only include endpoints the user has access to
+		if auth.MatchesScope(userScopes, ep.Name) {
+			response = append(response, EndpointResponse{
+				Name:        ep.Name,
+				Description: ep.Description,
+				Inputs:      ep.Inputs,
+			})
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -81,6 +93,7 @@ func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 
 // handleGet handles GET /v1/endpoints/{name}.
 // Returns detailed metadata for a specific endpoint.
+// Returns 404 if the endpoint doesn't exist or caller lacks access (security by obscurity).
 func (h *Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
@@ -90,6 +103,24 @@ func (h *Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 
 	ep := h.registry.Get(name)
 	if ep == nil {
+		writeError(w, http.StatusNotFound, fmt.Sprintf("endpoint %q not found", name))
+		return
+	}
+
+	// Check scope access
+	user, _ := auth.UserFromContext(r.Context())
+	var userScopes []string
+	if user != nil {
+		userScopes = user.Scopes
+	}
+
+	if !auth.MatchesScope(userScopes, ep.Name) {
+		// Return 404 instead of 403 to avoid information disclosure
+		h.logger.Warn("Endpoint access denied due to scopes",
+			slog.String("endpoint", name),
+			slog.String("user", getUserID(user)),
+			slog.Any("user_scopes", userScopes),
+		)
 		writeError(w, http.StatusNotFound, fmt.Sprintf("endpoint %q not found", name))
 		return
 	}
@@ -127,6 +158,24 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 	// Get endpoint
 	ep := h.registry.Get(name)
 	if ep == nil {
+		writeError(w, http.StatusNotFound, fmt.Sprintf("endpoint %q not found", name))
+		return
+	}
+
+	// Check scope access
+	user, _ := auth.UserFromContext(r.Context())
+	var userScopes []string
+	if user != nil {
+		userScopes = user.Scopes
+	}
+
+	if !auth.MatchesScope(userScopes, ep.Name) {
+		// Return 404 instead of 403 to avoid information disclosure
+		h.logger.Warn("Endpoint access denied due to scopes",
+			slog.String("endpoint", name),
+			slog.String("user", getUserID(user)),
+			slog.Any("user_scopes", userScopes),
+		)
 		writeError(w, http.StatusNotFound, fmt.Sprintf("endpoint %q not found", name))
 		return
 	}
@@ -223,6 +272,24 @@ func (h *Handler) handleListRuns(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check scope access
+	user, _ := auth.UserFromContext(r.Context())
+	var userScopes []string
+	if user != nil {
+		userScopes = user.Scopes
+	}
+
+	if !auth.MatchesScope(userScopes, ep.Name) {
+		// Return 404 instead of 403 to avoid information disclosure
+		h.logger.Warn("Endpoint access denied due to scopes",
+			slog.String("endpoint", name),
+			slog.String("user", getUserID(user)),
+			slog.Any("user_scopes", userScopes),
+		)
+		writeError(w, http.StatusNotFound, fmt.Sprintf("endpoint %q not found", name))
+		return
+	}
+
 	// Get all runs (no filter)
 	runs := h.runner.List(runner.ListFilter{})
 
@@ -273,4 +340,11 @@ func containsPath(sourceURL, workflow string) bool {
 		return false
 	}
 	return sourceURL == workflow || strings.Contains(sourceURL, workflow)
+}
+
+func getUserID(user *auth.User) string {
+	if user == nil {
+		return "anonymous"
+	}
+	return user.ID
 }
