@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+
+	pkgerrors "github.com/tombee/conductor/pkg/errors"
 )
 
 var (
@@ -60,14 +62,17 @@ func (r *Registry) Register(p Provider) error {
 }
 
 // Get retrieves a provider by name.
-// Returns ErrProviderNotFound if the provider doesn't exist.
+// Returns NotFoundError if the provider doesn't exist.
 func (r *Registry) Get(name string) (Provider, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	p, exists := r.providers[name]
 	if !exists {
-		return nil, fmt.Errorf("%w: %s", ErrProviderNotFound, name)
+		return nil, &pkgerrors.NotFoundError{
+			Resource: "provider",
+			ID:       name,
+		}
 	}
 
 	return p, nil
@@ -85,7 +90,10 @@ func (r *Registry) GetDefault() (Provider, error) {
 
 	p, exists := r.providers[r.defaultProvider]
 	if !exists {
-		return nil, fmt.Errorf("%w: default provider %s not found", ErrProviderNotFound, r.defaultProvider)
+		return nil, &pkgerrors.NotFoundError{
+			Resource: "provider",
+			ID:       r.defaultProvider,
+		}
 	}
 
 	return p, nil
@@ -98,7 +106,10 @@ func (r *Registry) SetDefault(name string) error {
 	defer r.mu.Unlock()
 
 	if _, exists := r.providers[name]; !exists {
-		return fmt.Errorf("%w: %s", ErrProviderNotFound, name)
+		return &pkgerrors.NotFoundError{
+			Resource: "provider",
+			ID:       name,
+		}
 	}
 
 	r.defaultProvider = name
@@ -126,7 +137,10 @@ func (r *Registry) SetFailoverOrder(names []string) error {
 	// Validate all providers exist
 	for _, name := range names {
 		if _, exists := r.providers[name]; !exists {
-			return fmt.Errorf("%w: %s", ErrProviderNotFound, name)
+			return &pkgerrors.NotFoundError{
+				Resource: "provider",
+				ID:       name,
+			}
 		}
 	}
 
@@ -152,11 +166,18 @@ func (r *Registry) Unregister(name string) error {
 	defer r.mu.Unlock()
 
 	if _, exists := r.providers[name]; !exists {
-		return fmt.Errorf("%w: %s", ErrProviderNotFound, name)
+		return &pkgerrors.NotFoundError{
+			Resource: "provider",
+			ID:       name,
+		}
 	}
 
 	if r.defaultProvider == name {
-		return fmt.Errorf("cannot unregister default provider %s", name)
+		return &pkgerrors.ValidationError{
+			Field:      "provider",
+			Message:    fmt.Sprintf("cannot unregister default provider %s", name),
+			Suggestion: "Set a different default provider before unregistering this one",
+		}
 	}
 
 	delete(r.providers, name)

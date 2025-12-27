@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
+	pkgerrors "github.com/tombee/conductor/pkg/errors"
 )
 
 // mockFailoverProvider is a test provider that can simulate various failures.
@@ -109,7 +111,7 @@ func TestFailoverProvider_FailoverToSecondary(t *testing.T) {
 	primary := &mockFailoverProvider{
 		name:       "primary",
 		shouldFail: true,
-		failWith:   NewHTTPError(http.StatusServiceUnavailable, "service unavailable"),
+		failWith:   &pkgerrors.ProviderError{Provider: "test", StatusCode: http.StatusServiceUnavailable, Message: "service unavailable"},
 	}
 
 	secondary := &mockFailoverProvider{
@@ -170,13 +172,13 @@ func TestFailoverProvider_AllProvidersFail(t *testing.T) {
 	primary := &mockFailoverProvider{
 		name:       "primary",
 		shouldFail: true,
-		failWith:   NewHTTPError(http.StatusServiceUnavailable, "service unavailable"),
+		failWith:   &pkgerrors.ProviderError{Provider: "test", StatusCode: http.StatusServiceUnavailable, Message: "service unavailable"},
 	}
 
 	secondary := &mockFailoverProvider{
 		name:       "secondary",
 		shouldFail: true,
-		failWith:   NewHTTPError(http.StatusBadGateway, "bad gateway"),
+		failWith:   &pkgerrors.ProviderError{Provider: "test", StatusCode: http.StatusBadGateway, Message: "bad gateway"},
 	}
 
 	registry.Register(primary)
@@ -201,8 +203,10 @@ func TestFailoverProvider_AllProvidersFail(t *testing.T) {
 		t.Fatal("expected error when all providers fail, got nil")
 	}
 
-	if !errors.Is(err, ErrAllProvidersFailed) {
-		t.Errorf("expected ErrAllProvidersFailed, got %v", err)
+	// Verify we get a ProviderError wrapping the original errors
+	var provErr *pkgerrors.ProviderError
+	if !errors.As(err, &provErr) {
+		t.Errorf("expected ProviderError, got %T: %v", err, err)
 	}
 
 	if primary.callCount != 1 {
@@ -220,7 +224,11 @@ func TestFailoverProvider_NonRetryableError(t *testing.T) {
 	primary := &mockFailoverProvider{
 		name:       "primary",
 		shouldFail: true,
-		failWith:   NewHTTPError(http.StatusBadRequest, "bad request"),
+		failWith: &pkgerrors.ProviderError{
+			Provider:   "primary",
+			StatusCode: http.StatusBadRequest,
+			Message:    "bad request",
+		},
 	}
 
 	secondary := &mockFailoverProvider{
@@ -265,7 +273,7 @@ func TestFailoverProvider_CircuitBreaker(t *testing.T) {
 	primary := &mockFailoverProvider{
 		name:       "primary",
 		shouldFail: true,
-		failWith:   NewHTTPError(http.StatusServiceUnavailable, "service unavailable"),
+		failWith:   &pkgerrors.ProviderError{Provider: "test", StatusCode: http.StatusServiceUnavailable, Message: "service unavailable"},
 	}
 
 	secondary := &mockFailoverProvider{
@@ -361,7 +369,7 @@ func TestFailoverProvider_StreamFailover(t *testing.T) {
 	primary := &mockFailoverProvider{
 		name:       "primary",
 		shouldFail: true,
-		failWith:   NewHTTPError(http.StatusServiceUnavailable, "service unavailable"),
+		failWith:   &pkgerrors.ProviderError{Provider: "test", StatusCode: http.StatusServiceUnavailable, Message: "service unavailable"},
 	}
 
 	secondary := &mockFailoverProvider{
@@ -421,43 +429,75 @@ func TestShouldFailover(t *testing.T) {
 			expected: false,
 		},
 		{
-			name:     "HTTP 500",
-			err:      NewHTTPError(http.StatusInternalServerError, "internal error"),
+			name: "HTTP 500",
+			err: &pkgerrors.ProviderError{
+				Provider:   "test",
+				StatusCode: http.StatusInternalServerError,
+				Message:    "internal error",
+			},
 			expected: true,
 		},
 		{
-			name:     "HTTP 502",
-			err:      NewHTTPError(http.StatusBadGateway, "bad gateway"),
+			name: "HTTP 502",
+			err: &pkgerrors.ProviderError{
+				Provider:   "test",
+				StatusCode: http.StatusBadGateway,
+				Message:    "bad gateway",
+			},
 			expected: true,
 		},
 		{
-			name:     "HTTP 503",
-			err:      NewHTTPError(http.StatusServiceUnavailable, "service unavailable"),
+			name: "HTTP 503",
+			err: &pkgerrors.ProviderError{
+				Provider:   "test",
+				StatusCode: http.StatusServiceUnavailable,
+				Message:    "service unavailable",
+			},
 			expected: true,
 		},
 		{
-			name:     "HTTP 429",
-			err:      NewHTTPError(http.StatusTooManyRequests, "rate limited"),
+			name: "HTTP 429",
+			err: &pkgerrors.ProviderError{
+				Provider:   "test",
+				StatusCode: http.StatusTooManyRequests,
+				Message:    "rate limited",
+			},
 			expected: true,
 		},
 		{
-			name:     "HTTP 408",
-			err:      NewHTTPError(http.StatusRequestTimeout, "timeout"),
+			name: "HTTP 408",
+			err: &pkgerrors.ProviderError{
+				Provider:   "test",
+				StatusCode: http.StatusRequestTimeout,
+				Message:    "timeout",
+			},
 			expected: true,
 		},
 		{
-			name:     "HTTP 400",
-			err:      NewHTTPError(http.StatusBadRequest, "bad request"),
+			name: "HTTP 400",
+			err: &pkgerrors.ProviderError{
+				Provider:   "test",
+				StatusCode: http.StatusBadRequest,
+				Message:    "bad request",
+			},
 			expected: false,
 		},
 		{
-			name:     "HTTP 401",
-			err:      NewHTTPError(http.StatusUnauthorized, "unauthorized"),
+			name: "HTTP 401",
+			err: &pkgerrors.ProviderError{
+				Provider:   "test",
+				StatusCode: http.StatusUnauthorized,
+				Message:    "unauthorized",
+			},
 			expected: false,
 		},
 		{
-			name:     "HTTP 403",
-			err:      NewHTTPError(http.StatusForbidden, "forbidden"),
+			name: "HTTP 403",
+			err: &pkgerrors.ProviderError{
+				Provider:   "test",
+				StatusCode: http.StatusForbidden,
+				Message:    "forbidden",
+			},
 			expected: false,
 		},
 		{

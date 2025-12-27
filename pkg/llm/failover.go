@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	pkgerrors "github.com/tombee/conductor/pkg/errors"
 )
 
 var (
@@ -54,13 +56,16 @@ type FailoverProvider struct {
 // NewFailoverProvider creates a provider with automatic failover.
 func NewFailoverProvider(registry *Registry, config FailoverConfig) (*FailoverProvider, error) {
 	if len(config.ProviderOrder) == 0 {
-		return nil, errors.New("failover requires at least one provider")
+		return nil, &pkgerrors.ConfigError{
+			Key:    "failover.provider_order",
+			Reason: "failover requires at least one provider",
+		}
 	}
 
 	// Validate all providers exist
 	for _, name := range config.ProviderOrder {
 		if _, err := registry.Get(name); err != nil {
-			return nil, fmt.Errorf("provider %s not found in registry: %w", name, err)
+			return nil, fmt.Errorf("validating failover provider %s: %w", name, err)
 		}
 	}
 
@@ -136,8 +141,8 @@ func (f *FailoverProvider) Complete(ctx context.Context, req CompletionRequest) 
 
 		// Check if we should failover based on error type
 		if !shouldFailover(err) {
-			// Non-failover error (e.g., bad request) - don't try other providers
-			return nil, fmt.Errorf("provider %s failed with non-retryable error: %w", providerName, err)
+			// Non-failover error (e.g., bad request) - return original error preserving type
+			return nil, fmt.Errorf("provider %s: %w", providerName, err)
 		}
 
 		// Trigger failover callback
@@ -147,7 +152,17 @@ func (f *FailoverProvider) Complete(ctx context.Context, req CompletionRequest) 
 		}
 	}
 
-	return nil, fmt.Errorf("%w (tried: %v): %v", ErrAllProvidersFailed, attemptedProviders, lastErr)
+	// All providers failed - wrap last error in ProviderError if it isn't one already
+	var provErr *pkgerrors.ProviderError
+	if !errors.As(lastErr, &provErr) {
+		return nil, &pkgerrors.ProviderError{
+			Provider:   "failover",
+			Message:    fmt.Sprintf("all providers failed (tried: %v)", attemptedProviders),
+			Suggestion: "Check provider availability and configuration",
+			Cause:      lastErr,
+		}
+	}
+	return nil, fmt.Errorf("all providers failed (tried: %v): %w", attemptedProviders, lastErr)
 }
 
 // Stream tries providers in order until one succeeds.
@@ -190,7 +205,8 @@ func (f *FailoverProvider) Stream(ctx context.Context, req CompletionRequest) (<
 
 		// Check if we should failover
 		if !shouldFailover(err) {
-			return nil, fmt.Errorf("provider %s failed with non-retryable error: %w", providerName, err)
+			// Non-failover error - return original error preserving type
+			return nil, fmt.Errorf("provider %s: %w", providerName, err)
 		}
 
 		// Trigger failover callback
@@ -200,7 +216,17 @@ func (f *FailoverProvider) Stream(ctx context.Context, req CompletionRequest) (<
 		}
 	}
 
-	return nil, fmt.Errorf("%w (tried: %v): %v", ErrAllProvidersFailed, attemptedProviders, lastErr)
+	// All providers failed - wrap last error in ProviderError if it isn't one already
+	var provErr *pkgerrors.ProviderError
+	if !errors.As(lastErr, &provErr) {
+		return nil, &pkgerrors.ProviderError{
+			Provider:   "failover",
+			Message:    fmt.Sprintf("all providers failed (tried: %v)", attemptedProviders),
+			Suggestion: "Check provider availability and configuration",
+			Cause:      lastErr,
+		}
+	}
+	return nil, fmt.Errorf("all providers failed (tried: %v): %w", attemptedProviders, lastErr)
 }
 
 // GetCircuitBreakerStatus returns the current circuit breaker state for all providers.
@@ -222,13 +248,19 @@ func shouldFailover(err error) bool {
 		return false
 	}
 
-	// Check for HTTP status codes
-	var httpErr *HTTPError
-	if errors.As(err, &httpErr) {
+	// Check for ProviderError with HTTP status codes
+	var provErr *pkgerrors.ProviderError
+	if errors.As(err, &provErr) {
 		// Failover on server errors, timeouts, and rate limiting
-		return httpErr.StatusCode >= 500 ||
-			httpErr.StatusCode == http.StatusTooManyRequests ||
-			httpErr.StatusCode == http.StatusRequestTimeout
+		return provErr.StatusCode >= 500 ||
+			provErr.StatusCode == http.StatusTooManyRequests ||
+			provErr.StatusCode == http.StatusRequestTimeout
+	}
+
+	// Check for timeout errors
+	var timeoutErr *pkgerrors.TimeoutError
+	if errors.As(err, &timeoutErr) {
+		return true
 	}
 
 	// Check for context timeout (should failover)
@@ -249,10 +281,9 @@ func shouldFailover(err error) bool {
 		return temp.Temporary()
 	}
 
-	// Auth errors should not trigger failover
-	var httpErr2 *HTTPError
-	if errors.As(err, &httpErr2) {
-		if httpErr2.StatusCode == http.StatusUnauthorized || httpErr2.StatusCode == http.StatusForbidden {
+	// Auth errors (HTTP 401/403 in ProviderError) should not trigger failover
+	if provErr != nil {
+		if provErr.StatusCode == http.StatusUnauthorized || provErr.StatusCode == http.StatusForbidden {
 			return false
 		}
 	}

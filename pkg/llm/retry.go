@@ -8,6 +8,8 @@ import (
 	"math/rand"
 	"net/http"
 	"time"
+
+	pkgerrors "github.com/tombee/conductor/pkg/errors"
 )
 
 var (
@@ -101,6 +103,7 @@ func (r *RetryableProviderWrapper) Complete(ctx context.Context, req CompletionR
 
 		// Check if error is retryable
 		if !r.config.RetryableErrors(err) {
+			// Non-retryable error - return original error preserving type
 			return nil, err
 		}
 
@@ -110,7 +113,17 @@ func (r *RetryableProviderWrapper) Complete(ctx context.Context, req CompletionR
 		}
 	}
 
-	return nil, fmt.Errorf("%w after %d attempts: %v", ErrMaxRetriesExceeded, r.config.MaxRetries+1, lastErr)
+	// Max retries exceeded - wrap in ProviderError if not already one
+	var provErr *pkgerrors.ProviderError
+	if errors.As(lastErr, &provErr) {
+		return nil, fmt.Errorf("max retries exceeded after %d attempts: %w", r.config.MaxRetries+1, lastErr)
+	}
+	return nil, &pkgerrors.ProviderError{
+		Provider:   r.provider.Name(),
+		Message:    fmt.Sprintf("maximum retry attempts (%d) exceeded", r.config.MaxRetries+1),
+		Suggestion: "Check provider availability or increase retry limit",
+		Cause:      lastErr,
+	}
 }
 
 // Stream executes a streaming request with retry logic.
@@ -139,6 +152,7 @@ func (r *RetryableProviderWrapper) Stream(ctx context.Context, req CompletionReq
 
 		// Check if error is retryable
 		if !r.config.RetryableErrors(err) {
+			// Non-retryable error - return original error preserving type
 			return nil, err
 		}
 
@@ -148,7 +162,17 @@ func (r *RetryableProviderWrapper) Stream(ctx context.Context, req CompletionReq
 		}
 	}
 
-	return nil, fmt.Errorf("%w after %d attempts: %v", ErrMaxRetriesExceeded, r.config.MaxRetries+1, lastErr)
+	// Max retries exceeded - wrap in ProviderError if not already one
+	var provErr *pkgerrors.ProviderError
+	if errors.As(lastErr, &provErr) {
+		return nil, fmt.Errorf("max retries exceeded after %d attempts: %w", r.config.MaxRetries+1, lastErr)
+	}
+	return nil, &pkgerrors.ProviderError{
+		Provider:   r.provider.Name(),
+		Message:    fmt.Sprintf("maximum retry attempts (%d) exceeded", r.config.MaxRetries+1),
+		Suggestion: "Check provider availability or increase retry limit",
+		Cause:      lastErr,
+	}
 }
 
 // calculateBackoff computes the delay for a given attempt with jitter.
@@ -187,11 +211,17 @@ func isRetryableError(err error) bool {
 		return false
 	}
 
-	// Check for HTTP status codes
-	var httpErr *HTTPError
-	if errors.As(err, &httpErr) {
+	// Check for ProviderError with HTTP status codes
+	var provErr *pkgerrors.ProviderError
+	if errors.As(err, &provErr) {
 		// Retry on server errors and rate limiting
-		return httpErr.StatusCode >= 500 || httpErr.StatusCode == http.StatusTooManyRequests
+		return provErr.StatusCode >= 500 || provErr.StatusCode == http.StatusTooManyRequests
+	}
+
+	// Check for timeout errors
+	var timeoutErr *pkgerrors.TimeoutError
+	if errors.As(err, &timeoutErr) {
+		return true
 	}
 
 	// Check for temporary errors (network issues)
@@ -204,22 +234,4 @@ func isRetryableError(err error) bool {
 
 	// Default to not retrying unknown errors
 	return false
-}
-
-// HTTPError represents an HTTP error with status code.
-type HTTPError struct {
-	StatusCode int
-	Message    string
-}
-
-func (e *HTTPError) Error() string {
-	return fmt.Sprintf("HTTP %d: %s", e.StatusCode, e.Message)
-}
-
-// NewHTTPError creates a new HTTP error.
-func NewHTTPError(statusCode int, message string) *HTTPError {
-	return &HTTPError{
-		StatusCode: statusCode,
-		Message:    message,
-	}
 }

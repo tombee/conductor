@@ -4,7 +4,6 @@ package providers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/tombee/conductor/internal/tracing"
+	"github.com/tombee/conductor/pkg/errors"
 	"github.com/tombee/conductor/pkg/llm"
 )
 
@@ -70,7 +70,10 @@ func NewAnthropicProvider(apiKey string) (*AnthropicProvider, error) {
 // NewAnthropicProviderWithPool creates a new Anthropic provider with custom connection pool config.
 func NewAnthropicProviderWithPool(apiKey string, poolConfig ConnectionPoolConfig) (*AnthropicProvider, error) {
 	if apiKey == "" {
-		return nil, errors.New("anthropic API key is required")
+		return nil, &errors.ConfigError{
+			Key:    "anthropic.api_key",
+			Reason: "API key is required for Anthropic provider",
+		}
 	}
 
 	// Create HTTP client with connection pooling
@@ -119,19 +122,26 @@ func (p *AnthropicProvider) Complete(ctx context.Context, req llm.CompletionRequ
 
 	requestID := uuid.New().String()
 
-	// Resolve model - could be a tier or specific model ID
-	model := p.resolveModel(req.Model)
-
 	// Validate the request has messages
 	if len(req.Messages) == 0 {
 		p.metrics.incrementFailedRequests()
-		return nil, errors.New("completion request must have at least one message")
+		return nil, &errors.ValidationError{
+			Field:      "messages",
+			Message:    "completion request must have at least one message",
+			Suggestion: "Add at least one message to the completion request",
+		}
 	}
 
 	// TODO: Implement actual Anthropic API call
 	// For now, return an error indicating this needs real implementation
 	p.metrics.incrementFailedRequests()
-	return nil, fmt.Errorf("anthropic API integration not yet implemented (model: %s, requestID: %s)", model, requestID)
+	return nil, &errors.ProviderError{
+		Provider:   "anthropic",
+		StatusCode: http.StatusNotImplemented,
+		Message:    "Anthropic API integration not yet implemented",
+		Suggestion: "Use a mock provider for testing or wait for full API implementation",
+		RequestID:  requestID,
+	}
 }
 
 // Stream sends a streaming completion request.
@@ -147,7 +157,11 @@ func (p *AnthropicProvider) Stream(ctx context.Context, req llm.CompletionReques
 	// Validate the request
 	if len(req.Messages) == 0 {
 		p.metrics.incrementFailedRequests()
-		return nil, errors.New("completion request must have at least one message")
+		return nil, &errors.ValidationError{
+			Field:      "messages",
+			Message:    "completion request must have at least one message",
+			Suggestion: "Add at least one message to the completion request",
+		}
 	}
 
 	// Create output channel
@@ -158,8 +172,14 @@ func (p *AnthropicProvider) Stream(ctx context.Context, req llm.CompletionReques
 		defer close(chunks)
 		p.metrics.incrementFailedRequests()
 		chunks <- llm.StreamChunk{
-			RequestID:    requestID,
-			Error:        fmt.Errorf("anthropic streaming not yet implemented (model: %s)", model),
+			RequestID: requestID,
+			Error: &errors.ProviderError{
+				Provider:   "anthropic",
+				StatusCode: http.StatusNotImplemented,
+				Message:    fmt.Sprintf("Anthropic streaming not yet implemented (model: %s)", model),
+				Suggestion: "Use a mock provider for testing or wait for full API implementation",
+				RequestID:  requestID,
+			},
 			FinishReason: llm.FinishReasonError,
 		}
 	}()
@@ -212,7 +232,10 @@ func (p *AnthropicProvider) GetModelInfo(modelID string) (*llm.ModelInfo, error)
 			return &anthropicModels[i], nil
 		}
 	}
-	return nil, fmt.Errorf("model not found: %s", modelID)
+	return nil, &errors.NotFoundError{
+		Resource: "model",
+		ID:       modelID,
+	}
 }
 
 // anthropicModels contains metadata for all Claude models.
@@ -382,7 +405,7 @@ func CreateMockResponse(content string, model string) *llm.CompletionResponse {
 func MarshalToolInput(input interface{}) (string, error) {
 	data, err := json.Marshal(input)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal tool input: %w", err)
+		return "", fmt.Errorf("marshaling tool input: %w", err)
 	}
 	return string(data), nil
 }
@@ -390,7 +413,11 @@ func MarshalToolInput(input interface{}) (string, error) {
 // UnmarshalToolInput parses a tool Arguments JSON string into a struct.
 func UnmarshalToolInput(arguments string, output interface{}) error {
 	if err := json.Unmarshal([]byte(arguments), output); err != nil {
-		return fmt.Errorf("failed to unmarshal tool arguments: %w", err)
+		return &errors.ValidationError{
+			Field:      "tool_arguments",
+			Message:    fmt.Sprintf("failed to parse tool arguments: %v", err),
+			Suggestion: "Ensure tool arguments are valid JSON matching the expected schema",
+		}
 	}
 	return nil
 }
