@@ -1,8 +1,3 @@
-// Package connector provides runtime execution for declarative connectors.
-//
-// Connectors are deterministic, schema-validated operations that execute without
-// LLM involvement. They provide HTTP-based integrations with built-in auth,
-// rate limiting, response transforms, and retry logic.
 package connector
 
 import (
