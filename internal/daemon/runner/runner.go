@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package runner provides workflow execution for the daemon.
 package runner
 
 import (
