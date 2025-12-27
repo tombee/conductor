@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	conductorerrors "github.com/tombee/conductor/pkg/errors"
 	"github.com/tombee/conductor/pkg/security"
 	"gopkg.in/yaml.v3"
 )
@@ -568,7 +569,11 @@ func Load(configPath string) (*Config, error) {
 	// Load from file if path provided
 	if configPath != "" {
 		if err := cfg.loadFromFile(configPath); err != nil {
-			return nil, fmt.Errorf("failed to load config from file: %w", err)
+			return nil, &conductorerrors.ConfigError{
+				Key:    "config_file",
+				Reason: fmt.Sprintf("failed to load from %s", configPath),
+				Cause:  err,
+			}
 		}
 	}
 
@@ -580,7 +585,11 @@ func Load(configPath string) (*Config, error) {
 
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("config validation failed: %w", err)
+		return nil, &conductorerrors.ConfigError{
+			Key:    "validation",
+			Reason: "configuration validation failed",
+			Cause:  err,
+		}
 	}
 
 	return cfg, nil
@@ -598,7 +607,11 @@ func LoadWithSecrets(configPath string) (*Config, []string, error) {
 	ctx := context.Background()
 	warnings, err := ResolveSecretsInProviders(ctx, cfg.Providers)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to resolve secrets: %w", err)
+		return nil, nil, &conductorerrors.ConfigError{
+			Key:    "secrets",
+			Reason: "failed to resolve secret references",
+			Cause:  err,
+		}
 	}
 
 	return cfg, warnings, nil

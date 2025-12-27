@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"strings"
 
+	conductorerrors "github.com/tombee/conductor/pkg/errors"
 	"github.com/tombee/conductor/internal/secrets"
 )
 
@@ -86,7 +87,11 @@ func ResolveSecretReference(ctx context.Context, value string) (string, error) {
 	// Resolve the secret
 	secretValue, err := resolver.Get(ctx, key)
 	if err != nil {
-		return "", fmt.Errorf("failed to resolve secret reference %q: %w", key, err)
+		return "", &conductorerrors.ConfigError{
+			Key:    key,
+			Reason: fmt.Sprintf("failed to resolve secret reference %q", key),
+			Cause:  err,
+		}
 	}
 
 	return secretValue, nil
@@ -120,7 +125,11 @@ func (p *ProviderConfig) ResolveSecrets(ctx context.Context) (warnings []string,
 		// Resolve if it's a secret reference
 		resolved, err := ResolveSecretReference(ctx, p.APIKey)
 		if err != nil {
-			return warnings, fmt.Errorf("failed to resolve api_key: %w", err)
+			return warnings, &conductorerrors.ConfigError{
+				Key:    "api_key",
+				Reason: "failed to resolve API key secret reference",
+				Cause:  err,
+			}
 		}
 		p.APIKey = resolved
 	}
@@ -134,7 +143,11 @@ func ResolveSecretsInProviders(ctx context.Context, providers ProvidersMap) (war
 	for name, provider := range providers {
 		providerWarnings, err := provider.ResolveSecrets(ctx)
 		if err != nil {
-			return warnings, fmt.Errorf("provider %q: %w", name, err)
+			return warnings, &conductorerrors.ConfigError{
+				Key:    fmt.Sprintf("providers.%s", name),
+				Reason: "failed to resolve provider secrets",
+				Cause:  err,
+			}
 		}
 
 		// Prefix warnings with provider name
