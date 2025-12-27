@@ -24,6 +24,16 @@ import (
 	"github.com/tombee/conductor/internal/daemon/backend"
 )
 
+// Compile-time interface assertions.
+// Ensures Backend implements all segregated interfaces.
+var (
+	_ backend.RunStore        = (*Backend)(nil)
+	_ backend.RunLister       = (*Backend)(nil)
+	_ backend.CheckpointStore = (*Backend)(nil)
+	_ backend.Backend         = (*Backend)(nil)
+	_ backend.ScheduleBackend = (*Backend)(nil)
+)
+
 // Backend is an in-memory storage backend.
 type Backend struct {
 	mu          sync.RWMutex

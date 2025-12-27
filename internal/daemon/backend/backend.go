@@ -13,28 +13,82 @@
 // limitations under the License.
 
 // Package backend provides storage backends for the daemon.
+//
+// # Interface Hierarchy
+//
+// The backend package uses interface segregation to allow minimal implementations:
+//
+//   - RunStore (core, required): CreateRun, GetRun, UpdateRun
+//   - RunLister (optional): ListRuns, DeleteRun
+//   - CheckpointStore (optional): SaveCheckpoint, GetCheckpoint
+//   - io.Closer (optional): Close
+//
+// The Backend interface composes all of these for full-featured implementations.
+// Components can accept RunStore for minimal requirements and use type assertions
+// to detect optional capabilities at runtime.
 package backend
 
 import (
 	"context"
+	"io"
 	"time"
 )
 
-// Backend defines the interface for daemon storage.
-type Backend interface {
-	// Runs operations
+// RunStore is the core interface for run storage operations.
+// This is the minimal interface that backends must implement for basic operation.
+// Components that only need create/get/update operations should accept this interface.
+type RunStore interface {
+	// CreateRun creates a new run in storage.
 	CreateRun(ctx context.Context, run *Run) error
+
+	// GetRun retrieves a run by ID.
 	GetRun(ctx context.Context, id string) (*Run, error)
+
+	// UpdateRun updates an existing run.
 	UpdateRun(ctx context.Context, run *Run) error
+}
+
+// RunLister is an optional interface for listing and deleting runs.
+// Backends can implement this to support run listing and deletion.
+// Use type assertion to detect if a backend supports this capability:
+//
+//	if lister, ok := store.(RunLister); ok {
+//	    runs, err := lister.ListRuns(ctx, filter)
+//	}
+type RunLister interface {
+	// ListRuns lists runs with optional filtering.
 	ListRuns(ctx context.Context, filter RunFilter) ([]*Run, error)
+
+	// DeleteRun deletes a run by ID.
 	DeleteRun(ctx context.Context, id string) error
+}
 
-	// Checkpoint operations
+// CheckpointStore is an optional interface for checkpoint storage.
+// Backends can implement this to support checkpoint persistence.
+// Use type assertion to detect if a backend supports this capability:
+//
+//	if checkpointer, ok := store.(CheckpointStore); ok {
+//	    err := checkpointer.SaveCheckpoint(ctx, runID, checkpoint)
+//	}
+type CheckpointStore interface {
+	// SaveCheckpoint saves a checkpoint for a run.
 	SaveCheckpoint(ctx context.Context, runID string, checkpoint *Checkpoint) error
-	GetCheckpoint(ctx context.Context, runID string) (*Checkpoint, error)
 
-	// Lifecycle
-	Close() error
+	// GetCheckpoint retrieves a checkpoint for a run.
+	GetCheckpoint(ctx context.Context, runID string) (*Checkpoint, error)
+}
+
+// Backend defines the full interface for daemon storage.
+// This is a composite interface that embeds all segregated interfaces
+// plus io.Closer for lifecycle management.
+//
+// Existing backends (memory, postgres) implement all methods and satisfy
+// this interface. New minimal backends can implement just RunStore.
+type Backend interface {
+	RunStore
+	RunLister
+	CheckpointStore
+	io.Closer
 }
 
 // Run represents a workflow run in storage.
@@ -66,11 +120,11 @@ type RunFilter struct {
 
 // Checkpoint represents a workflow execution checkpoint.
 type Checkpoint struct {
-	RunID       string         `json:"run_id"`
-	StepID      string         `json:"step_id"`
-	StepIndex   int            `json:"step_index"`
-	Context     map[string]any `json:"context"`
-	CreatedAt   time.Time      `json:"created_at"`
+	RunID     string         `json:"run_id"`
+	StepID    string         `json:"step_id"`
+	StepIndex int            `json:"step_index"`
+	Context   map[string]any `json:"context"`
+	CreatedAt time.Time      `json:"created_at"`
 }
 
 // ScheduleState represents the persistent state of a schedule.
