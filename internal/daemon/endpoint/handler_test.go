@@ -626,6 +626,133 @@ steps:
 	}
 }
 
+// TestHandlerSyncModeAsync tests that without ?wait=true, requests remain async.
+func TestHandlerSyncModeAsync(t *testing.T) {
+	// Create workflow file
+	tmpDir := t.TempDir()
+	workflowPath := filepath.Join(tmpDir, "test.yaml")
+	workflowContent := `
+name: test
+steps:
+  - id: echo
+    type: llm
+    prompt: "test"
+`
+	if err := os.WriteFile(workflowPath, []byte(workflowContent), 0600); err != nil {
+		t.Fatalf("failed to write workflow file: %v", err)
+	}
+
+	registry := NewRegistry()
+	registry.Add(&Endpoint{
+		Name:     "test",
+		Workflow: "test.yaml",
+	})
+
+	r := createTestRunner(t)
+	handler := NewHandler(registry, r, tmpDir)
+
+	mux := http.NewServeMux()
+	handler.RegisterRoutes(mux)
+
+	// Test without ?wait parameter (async mode)
+	req := httptest.NewRequest("POST", "/v1/endpoints/test/runs", nil)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	// Should return 202 Accepted for async
+	if rec.Code != http.StatusAccepted {
+		t.Errorf("expected status 202 for async, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// Should have Location header
+	if rec.Header().Get("Location") == "" {
+		t.Error("expected Location header for async mode")
+	}
+}
+
+// TestHandlerSyncInvalidTimeout tests invalid timeout parameter handling.
+func TestHandlerSyncInvalidTimeout(t *testing.T) {
+	registry := NewRegistry()
+	registry.Add(&Endpoint{
+		Name:     "test",
+		Workflow: "test.yaml",
+	})
+
+	tmpDir := t.TempDir()
+	workflowPath := filepath.Join(tmpDir, "test.yaml")
+	testWorkflow := `
+name: test
+steps:
+  - id: test-step
+    type: llm
+    prompt: "test"
+`
+	if err := os.WriteFile(workflowPath, []byte(testWorkflow), 0644); err != nil {
+		t.Fatalf("failed to write workflow: %v", err)
+	}
+
+	r := createTestRunner(t)
+	handler := NewHandler(registry, r, tmpDir)
+
+	mux := http.NewServeMux()
+	handler.RegisterRoutes(mux)
+
+	tests := []struct {
+		name    string
+		timeout string
+		wantErr bool
+	}{
+		{
+			name:    "invalid duration format",
+			timeout: "invalid",
+			wantErr: true,
+		},
+		{
+			name:    "exceeds max timeout",
+			timeout: "10m",
+			wantErr: true,
+		},
+		{
+			name:    "valid duration",
+			timeout: "30s",
+			wantErr: false,
+		},
+		{
+			name:    "valid numeric seconds",
+			timeout: "45",
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("POST", "/v1/endpoints/test/runs?wait=true&timeout="+tt.timeout, nil)
+			rec := httptest.NewRecorder()
+
+			mux.ServeHTTP(rec, req)
+
+			if tt.wantErr && rec.Code == http.StatusOK {
+				t.Errorf("expected error for timeout %q, got success", tt.timeout)
+			}
+
+			if !tt.wantErr && rec.Code == http.StatusBadRequest {
+				t.Errorf("expected success for timeout %q, got bad request: %s", tt.timeout, rec.Body.String())
+			}
+		})
+	}
+}
+
+// Note: Full integration tests for sync execution and streaming would require
+// a complete execution backend setup. The core implementation is in place in
+// handleSyncExecution and streamRunExecution methods.
+// These methods handle:
+// - Timeout parsing and validation (tested via TestHandlerSyncInvalidTimeout)
+// - SSE streaming with proper headers
+// - Wait/completion detection via log subscription
+// - Timeout handling with 408 responses
+// - Background run continuation on timeout
+
 // Helper function to create a test runner
 func createTestRunner(t *testing.T) *runner.Runner {
 	t.Helper()

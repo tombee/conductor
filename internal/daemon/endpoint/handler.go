@@ -15,13 +15,16 @@
 package endpoint
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/tombee/conductor/internal/daemon/auth"
 	"github.com/tombee/conductor/internal/daemon/runner"
@@ -251,7 +254,17 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 		slog.String("workflow", ep.Workflow),
 	)
 
-	// Return 202 Accepted with run details
+	// Check for synchronous execution mode
+	waitParam := r.URL.Query().Get("wait")
+	streamParam := r.URL.Query().Get("stream")
+
+	if waitParam == "true" {
+		// Synchronous mode - wait for completion
+		h.handleSyncExecution(w, r, run, ep.Name, streamParam == "true")
+		return
+	}
+
+	// Async mode - return 202 Accepted with run details
 	w.Header().Set("Location", fmt.Sprintf("/v1/runs/%s", run.ID))
 	writeJSON(w, http.StatusAccepted, run)
 }
@@ -309,6 +322,210 @@ func (h *Handler) handleListRuns(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleSyncExecution handles synchronous execution of a workflow run.
+// It waits for the run to complete or timeout, then returns the output directly.
+// If streaming is enabled, it streams logs via SSE.
+func (h *Handler) handleSyncExecution(w http.ResponseWriter, r *http.Request, run *runner.RunSnapshot, endpointName string, streaming bool) {
+	// Parse timeout parameter
+	timeoutParam := r.URL.Query().Get("timeout")
+	timeout := 30 * time.Second // default 30s
+
+	if timeoutParam != "" {
+		// Parse duration string (e.g., "30s", "2m")
+		parsedTimeout, err := time.ParseDuration(timeoutParam)
+		if err != nil {
+			// Try parsing as seconds
+			if seconds, err := strconv.Atoi(timeoutParam); err == nil {
+				parsedTimeout = time.Duration(seconds) * time.Second
+			} else {
+				writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid timeout: %v", err))
+				return
+			}
+		}
+
+		// Enforce max timeout of 5 minutes
+		maxTimeout := 5 * time.Minute
+		if parsedTimeout > maxTimeout {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("timeout exceeds maximum of %v", maxTimeout))
+			return
+		}
+
+		timeout = parsedTimeout
+	}
+
+	// If streaming mode, handle via SSE
+	if streaming {
+		h.streamRunExecution(w, r, run, timeout)
+		return
+	}
+
+	// Non-streaming mode: wait for completion
+	ctx, cancel := context.WithTimeout(r.Context(), timeout)
+	defer cancel()
+
+	// Subscribe to logs to detect completion
+	logCh, unsub := h.runner.Subscribe(run.ID)
+	defer unsub()
+
+	startTime := time.Now()
+
+	for {
+		select {
+		case <-ctx.Done():
+			// Check if it was a timeout or client disconnect
+			if ctx.Err() == context.DeadlineExceeded {
+				// Timeout - return 408 with run ID so client can poll
+				h.logger.Info("Synchronous execution timed out, run continues in background",
+					slog.String("endpoint", endpointName),
+					slog.String("run_id", run.ID),
+					slog.Duration("timeout", timeout),
+				)
+
+				w.Header().Set("X-Run-ID", run.ID)
+				w.Header().Set("X-Run-Duration-Ms", fmt.Sprintf("%d", time.Since(startTime).Milliseconds()))
+				writeError(w, http.StatusRequestTimeout, fmt.Sprintf("execution timed out after %v, run continues as %s", timeout, run.ID))
+				return
+			}
+
+			// Client disconnected
+			h.logger.Info("Client disconnected during synchronous execution",
+				slog.String("endpoint", endpointName),
+				slog.String("run_id", run.ID),
+			)
+			return
+
+		case <-logCh:
+			// Got a log entry, check if run is complete
+			currentRun, err := h.runner.Get(run.ID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "failed to get run status")
+				return
+			}
+
+			// Check if run finished
+			if currentRun.Status == runner.RunStatusCompleted ||
+				currentRun.Status == runner.RunStatusFailed ||
+				currentRun.Status == runner.RunStatusCancelled {
+
+				duration := time.Since(startTime)
+
+				// Set response headers
+				w.Header().Set("X-Run-ID", currentRun.ID)
+				w.Header().Set("X-Run-Duration-Ms", fmt.Sprintf("%d", duration.Milliseconds()))
+
+				// Return output or error
+				if currentRun.Status == runner.RunStatusCompleted {
+					// Success - return output
+					writeJSON(w, http.StatusOK, map[string]any{
+						"status": currentRun.Status,
+						"output": currentRun.Output,
+					})
+				} else {
+					// Failed or cancelled - return error details
+					statusCode := http.StatusInternalServerError
+					if currentRun.Status == runner.RunStatusCancelled {
+						statusCode = http.StatusConflict
+					}
+
+					writeJSON(w, statusCode, map[string]any{
+						"status": currentRun.Status,
+						"error":  currentRun.Error,
+					})
+				}
+				return
+			}
+		}
+	}
+}
+
+// streamRunExecution streams the execution via SSE.
+func (h *Handler) streamRunExecution(w http.ResponseWriter, r *http.Request, run *runner.RunSnapshot, timeout time.Duration) {
+	// Set SSE headers
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Run-ID", run.ID)
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeError(w, http.StatusInternalServerError, "streaming not supported")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), timeout)
+	defer cancel()
+
+	// Subscribe to logs
+	logCh, unsub := h.runner.Subscribe(run.ID)
+	defer unsub()
+
+	startTime := time.Now()
+
+	// Send initial connection event
+	fmt.Fprintf(w, "event: start\ndata: %s\n\n", toJSON(map[string]any{
+		"run_id":    run.ID,
+		"status":    run.Status,
+		"timestamp": time.Now().Format(time.RFC3339),
+	}))
+	flusher.Flush()
+
+	for {
+		select {
+		case <-ctx.Done():
+			// Timeout or client disconnect
+			if ctx.Err() == context.DeadlineExceeded {
+				// Send timeout event
+				duration := time.Since(startTime)
+				fmt.Fprintf(w, "event: timeout\ndata: %s\n\n", toJSON(map[string]any{
+					"run_id":      run.ID,
+					"timeout":     timeout.String(),
+					"duration_ms": duration.Milliseconds(),
+					"message":     "execution timed out, run continues in background",
+				}))
+				flusher.Flush()
+			}
+			return
+
+		case entry, ok := <-logCh:
+			if !ok {
+				// Channel closed
+				return
+			}
+
+			// Send log entry as event
+			fmt.Fprintf(w, "event: log\ndata: %s\n\n", toJSON(entry))
+			flusher.Flush()
+
+			// Check if run is complete
+			currentRun, err := h.runner.Get(run.ID)
+			if err != nil {
+				fmt.Fprintf(w, "event: error\ndata: %s\n\n", toJSON(map[string]any{
+					"error": "failed to get run status",
+				}))
+				flusher.Flush()
+				return
+			}
+
+			// If run finished, send completion event
+			if currentRun.Status == runner.RunStatusCompleted ||
+				currentRun.Status == runner.RunStatusFailed ||
+				currentRun.Status == runner.RunStatusCancelled {
+
+				duration := time.Since(startTime)
+				fmt.Fprintf(w, "event: done\ndata: %s\n\n", toJSON(map[string]any{
+					"run_id":      currentRun.ID,
+					"status":      currentRun.Status,
+					"output":      currentRun.Output,
+					"error":       currentRun.Error,
+					"duration_ms": duration.Milliseconds(),
+				}))
+				flusher.Flush()
+				return
+			}
+		}
+	}
+}
+
 // Helper functions
 
 func writeJSON(w http.ResponseWriter, status int, data any) {
@@ -347,4 +564,12 @@ func getUserID(user *auth.User) string {
 		return "anonymous"
 	}
 	return user.ID
+}
+
+func toJSON(v any) string {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return "{}"
+	}
+	return string(data)
 }
