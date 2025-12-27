@@ -179,6 +179,7 @@ func newProvidersAddCmd() *cobra.Command {
 		providerType string
 		apiKey       string
 		configPath   string
+		dryRun       bool
 	)
 
 	cmd := &cobra.Command{
@@ -211,6 +212,11 @@ Examples:
 			// Check if provider already exists
 			if _, exists := cfg.Providers[providerName]; exists {
 				return fmt.Errorf("provider %q already exists. Use 'conductor providers remove %s' first to replace it", providerName, providerName)
+			}
+
+			// Dry-run mode requires --type to be specified (non-interactive)
+			if dryRun && providerType == "" {
+				return fmt.Errorf("--type is required in dry-run mode")
 			}
 
 			// Interactive mode if type not specified
@@ -324,8 +330,17 @@ Examples:
 			cfg.Providers[providerName] = providerCfg
 
 			// If this is the first provider, set as default
-			if len(cfg.Providers) == 1 || cfg.DefaultProvider == "" {
+			setAsDefault := len(cfg.Providers) == 1 || cfg.DefaultProvider == ""
+			if setAsDefault {
 				cfg.DefaultProvider = providerName
+			}
+
+			// Handle dry-run mode
+			if dryRun {
+				return providerAddDryRun(cfgPath, providerName, providerCfg, setAsDefault)
+			}
+
+			if setAsDefault {
 				fmt.Printf("\nSet %s as default provider\n", providerName)
 			}
 
@@ -348,6 +363,7 @@ Examples:
 	cmd.Flags().StringVar(&providerType, "type", "", "Provider type (claude-code, anthropic, openai, ollama)")
 	cmd.Flags().StringVar(&apiKey, "api-key", "", "API key for the provider (for API-based providers)")
 	cmd.Flags().StringVar(&configPath, "config-path", "", "Custom config path (for claude-code)")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be modified without executing")
 
 	return cmd
 }
@@ -673,4 +689,44 @@ func keysOf(m config.ProvidersMap) []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+// providerAddDryRun shows what would be modified when adding a provider
+func providerAddDryRun(cfgPath, providerName string, providerCfg config.ProviderConfig, setAsDefault bool) error {
+	// Get config directory for placeholder
+	configDir, err := config.ConfigDir()
+	if err != nil {
+		return fmt.Errorf("failed to get config directory: %w", err)
+	}
+
+	output := shared.NewDryRunOutput()
+
+	// Use placeholder path
+	placeholderPath := shared.PlaceholderPath(cfgPath, configDir, "<config-dir>")
+
+	// Build description with masked sensitive values
+	description := fmt.Sprintf("add provider '%s' (type: %s)", providerName, providerCfg.Type)
+
+	// Add information about API key if present (but mask it)
+	if providerCfg.APIKey != "" {
+		maskedKey := shared.MaskSensitiveData("api_key", providerCfg.APIKey)
+		description += fmt.Sprintf(", api_key: %s", maskedKey)
+	}
+
+	// Add information about config path if present
+	if providerCfg.ConfigPath != "" {
+		description += fmt.Sprintf(", config_path: %s", providerCfg.ConfigPath)
+	}
+
+	// Add default provider note
+	if setAsDefault {
+		description += ", set as default"
+	}
+
+	output.DryRunModify(placeholderPath, description)
+
+	// Print the output
+	fmt.Println(output.String())
+
+	return nil
 }

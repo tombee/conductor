@@ -29,6 +29,7 @@ import (
 	"golang.org/x/term"
 	"gopkg.in/yaml.v3"
 
+	"github.com/tombee/conductor/internal/commands/shared"
 	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/internal/secrets"
 )
@@ -79,6 +80,8 @@ Examples:
 }
 
 func newSecretsSetCommand() *cobra.Command {
+	var setDryRun bool
+
 	cmd := &cobra.Command{
 		Use:   "set <key>",
 		Short: "Store a secret securely",
@@ -104,10 +107,13 @@ Examples:
   conductor secrets set providers/openai/api_key --backend file
   echo "sk-..." | conductor secrets set providers/anthropic/api_key`,
 		Args: cobra.ExactArgs(1),
-		RunE: runSecretsSet,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runSecretsSet(cmd, args, setDryRun)
+		},
 	}
 
 	cmd.Flags().StringVar(&secretBackend, "backend", "", "Target backend (env, keychain, file)")
+	cmd.Flags().BoolVar(&setDryRun, "dry-run", false, "Show what would be stored without executing")
 
 	return cmd
 }
@@ -178,12 +184,17 @@ Examples:
 }
 
 // runSecretsSet handles the 'secrets set' command.
-func runSecretsSet(cmd *cobra.Command, args []string) error {
+func runSecretsSet(cmd *cobra.Command, args []string, dryRun bool) error {
 	key := args[0]
 
 	// Validate key format
 	if err := validateSecretKey(key); err != nil {
 		return err
+	}
+
+	// In dry-run mode, don't read the actual value - just simulate
+	if dryRun {
+		return secretsSetDryRun(key)
 	}
 
 	// Read secret value from stdin or prompt
@@ -597,5 +608,46 @@ func updateConfigKey(rawConfig map[string]interface{}, providerName, secretRef s
 	}
 
 	provider["api_key"] = secretRef
+	return nil
+}
+
+// secretsSetDryRun shows what would be stored when setting a secret
+func secretsSetDryRun(key string) error {
+	output := shared.NewDryRunOutput()
+
+	// Determine the backend that would be used
+	backendName := secretBackend
+	if backendName == "" {
+		// Find first writable backend
+		resolver := createResolver()
+		for _, b := range resolver.Backends() {
+			if ro, ok := b.(secrets.ReadOnlyBackend); !ok || !ro.ReadOnly() {
+				backendName = b.Name()
+				break
+			}
+		}
+	}
+
+	// Build description - always mask the value
+	description := fmt.Sprintf("store secret '%s' (value: [REDACTED], backend: %s)", key, backendName)
+
+	// The secret storage location depends on the backend, but we use a generic placeholder
+	var storagePath string
+	switch backendName {
+	case "keychain":
+		storagePath = "<system-keychain>"
+	case "file":
+		storagePath = "<config-dir>/secrets.encrypted"
+	case "env":
+		storagePath = "<environment-variable>"
+	default:
+		storagePath = "<secret-backend>"
+	}
+
+	output.DryRunModify(storagePath, description)
+
+	// Print the output
+	fmt.Println(output.String())
+
 	return nil
 }

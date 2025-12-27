@@ -37,6 +37,7 @@ var (
 	initTemplate string
 	initFile     string
 	initList     bool
+	initDryRun   bool
 )
 
 // workflowNameRegex validates workflow names to prevent path traversal and invalid filesystem characters
@@ -71,6 +72,7 @@ Examples:
 	cmd.Flags().StringVarP(&initTemplate, "template", "t", "blank", "Template to use for workflow creation")
 	cmd.Flags().StringVarP(&initFile, "file", "f", "", "Create single file instead of directory")
 	cmd.Flags().BoolVar(&initList, "list", false, "List available templates")
+	cmd.Flags().BoolVar(&initDryRun, "dry-run", false, "Show what would be created without executing")
 
 	return cmd
 }
@@ -143,6 +145,11 @@ func runInit(cmd *cobra.Command, args []string) error {
 }
 
 func runSimpleSetup(ctx context.Context, configPath string) error {
+	// Handle dry-run mode
+	if initDryRun {
+		return runSimpleSetupDryRun(configPath)
+	}
+
 	fmt.Println("Conductor Setup Wizard")
 	fmt.Println("======================")
 	fmt.Println()
@@ -234,6 +241,23 @@ func runSimpleSetup(ctx context.Context, configPath string) error {
 	} else {
 		fmt.Println("Setup complete!")
 	}
+
+	return nil
+}
+
+func runSimpleSetupDryRun(configPath string) error {
+	// Get config directory
+	configDir := filepath.Dir(configPath)
+
+	// Create dry-run output
+	output := shared.NewDryRunOutput()
+
+	// Use placeholder paths
+	placeholderConfigPath := shared.PlaceholderPath(configPath, configDir, "<config-dir>")
+	output.DryRunCreate(placeholderConfigPath)
+
+	// Print the output
+	fmt.Println(output.String())
 
 	return nil
 }
@@ -346,6 +370,11 @@ func runInitWorkflow(name string) error {
 		return fmt.Errorf("invalid workflow name derived from path: %w", err)
 	}
 
+	// Handle dry-run mode
+	if initDryRun {
+		return runInitWorkflowDryRun(name, targetPath)
+	}
+
 	// Check if target already exists
 	if _, err := os.Stat(targetPath); err == nil && !initForce {
 		return fmt.Errorf("file already exists: %s (use --force to overwrite)", targetPath)
@@ -397,6 +426,27 @@ func runInitWorkflow(name string) error {
 	fmt.Println("Next steps:")
 	fmt.Printf("  conductor validate %s\n", targetPath)
 	fmt.Printf("  conductor run %s\n", targetPath)
+
+	return nil
+}
+
+// runInitWorkflowDryRun shows what would be created for workflow initialization
+func runInitWorkflowDryRun(name, targetPath string) error {
+	output := shared.NewDryRunOutput()
+
+	// For single file mode, show just the file
+	if initFile != "" {
+		output.DryRunCreate(targetPath)
+	} else {
+		// For directory mode, show both directory and file
+		if name != "" {
+			output.DryRunCreate(name + "/")
+		}
+		output.DryRunCreate(targetPath)
+	}
+
+	// Print the output
+	fmt.Println(output.String())
 
 	return nil
 }
