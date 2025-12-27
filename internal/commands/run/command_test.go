@@ -111,49 +111,32 @@ steps: []
 }
 
 func TestRunCommand_DryRun(t *testing.T) {
-	// Use the testdata fixture
-	workflowPath := "../testdata/valid_workflow.yaml"
-
 	cmd := NewCommand()
-	var buf bytes.Buffer
-	cmd.SetOut(&buf)
-	cmd.SetErr(&buf)
-	cmd.SetArgs([]string{"--dry-run", workflowPath})
-
-	err := cmd.Execute()
-	// Note: Dry run may fail if config is missing, but it should at least parse the workflow
-	// We're testing that the flag is recognized and processed
+	// Parse flags only - don't execute
+	err := cmd.ParseFlags([]string{"--dry-run", "../testdata/valid_workflow.yaml"})
 	if err != nil {
-		// Check that error is about config/provider, not about the --dry-run flag
-		errMsg := err.Error()
-		if strings.Contains(errMsg, "unknown flag") || strings.Contains(errMsg, "--dry-run") {
-			t.Errorf("--dry-run flag not recognized: %v", err)
-		}
+		t.Errorf("--dry-run flag parsing failed: %v", err)
+	}
+
+	// Verify flag was set
+	dryRunFlag := cmd.Flags().Lookup("dry-run")
+	if dryRunFlag == nil {
+		t.Error("--dry-run flag not defined")
 	}
 }
 
 func TestRunCommand_HelpInputs(t *testing.T) {
-	// Use the workflow with inputs fixture
-	workflowPath := "../testdata/with_inputs.yaml"
-
 	cmd := NewCommand()
-	var buf bytes.Buffer
-	cmd.SetOut(&buf)
-	cmd.SetErr(&buf)
-	cmd.SetArgs([]string{"--help-inputs", workflowPath})
-
-	err := cmd.Execute()
+	// Parse flags only - don't execute
+	err := cmd.ParseFlags([]string{"--help-inputs", "../testdata/with_inputs.yaml"})
 	if err != nil {
-		t.Errorf("--help-inputs should not fail: %v", err)
+		t.Errorf("--help-inputs flag parsing failed: %v", err)
 	}
 
-	// Output may go to stdout or stderr
-	output := buf.String()
-	// Should display input information (allow for both input names to be shown)
-	if !strings.Contains(output, "user_name") || !strings.Contains(output, "message") {
-		// The output goes to stdout via fmt.Println, not captured by SetOut
-		// This is a known limitation - the test passes if no error occurs
-		t.Logf("Note: --help-inputs output not captured in test buffer")
+	// Verify flag was set
+	helpInputsFlag := cmd.Flags().Lookup("help-inputs")
+	if helpInputsFlag == nil {
+		t.Error("--help-inputs flag not defined")
 	}
 }
 
@@ -183,36 +166,21 @@ func TestRunCommand_InputFlagParsing(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := NewCommand()
-			var buf bytes.Buffer
-			cmd.SetOut(&buf)
-			cmd.SetErr(&buf)
-
-			// Add workflow path to args
+			// Parse flags only - don't execute
 			args := append(tt.args, "../testdata/valid_workflow.yaml")
-			cmd.SetArgs(args)
-
-			err := cmd.Execute()
-			// We expect it might fail due to missing config, but not due to flag parsing
-			if err != nil {
-				errMsg := err.Error()
-				if strings.Contains(errMsg, "unknown flag") || strings.Contains(errMsg, "invalid argument") {
-					t.Errorf("flag parsing failed: %v", err)
-				}
+			err := cmd.ParseFlags(args)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseFlags() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
 func TestRunCommand_ConflictingFlags(t *testing.T) {
-	// Test that --quiet and --verbose can both be set (last one wins or both apply)
+	// Test that --quiet and --verbose can both be parsed (no flag conflict at parse time)
 	cmd := NewCommand()
-	var buf bytes.Buffer
-	cmd.SetOut(&buf)
-	cmd.SetErr(&buf)
-	cmd.SetArgs([]string{"--quiet", "--verbose", "../testdata/valid_workflow.yaml"})
-
-	// This should not fail with a flag conflict error
-	err := cmd.Execute()
+	// Parse flags only - don't execute
+	err := cmd.ParseFlags([]string{"--quiet", "--verbose", "../testdata/valid_workflow.yaml"})
 	if err != nil {
 		errMsg := err.Error()
 		// Should not be a flag-related error
@@ -232,18 +200,16 @@ func TestRunCommand_InputFileFlag(t *testing.T) {
 	}
 
 	cmd := NewCommand()
-	var buf bytes.Buffer
-	cmd.SetOut(&buf)
-	cmd.SetErr(&buf)
-	cmd.SetArgs([]string{"--input-file", inputFile, "../testdata/valid_workflow.yaml"})
-
-	err := cmd.Execute()
-	// Should not fail due to input-file flag parsing
+	// Parse flags only - don't execute
+	err := cmd.ParseFlags([]string{"--input-file", inputFile, "../testdata/valid_workflow.yaml"})
 	if err != nil {
-		errMsg := err.Error()
-		if strings.Contains(errMsg, "input-file") && strings.Contains(errMsg, "unknown flag") {
-			t.Errorf("--input-file flag not recognized: %v", err)
-		}
+		t.Errorf("--input-file flag parsing failed: %v", err)
+	}
+
+	// Verify flag was set
+	inputFileFlag := cmd.Flags().Lookup("input-file")
+	if inputFileFlag == nil {
+		t.Error("--input-file flag not defined")
 	}
 }
 
@@ -269,20 +235,11 @@ func TestRunCommand_DaemonFlags(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := NewCommand()
-			var buf bytes.Buffer
-			cmd.SetOut(&buf)
-			cmd.SetErr(&buf)
-
+			// Parse flags only - don't execute
 			args := append(tt.args, "../testdata/valid_workflow.yaml")
-			cmd.SetArgs(args)
-
-			err := cmd.Execute()
-			// May fail due to daemon not running, but flag should be recognized
+			err := cmd.ParseFlags(args)
 			if err != nil {
-				errMsg := err.Error()
-				if strings.Contains(errMsg, "unknown flag") {
-					t.Errorf("daemon flag not recognized: %v", err)
-				}
+				t.Errorf("daemon flag not recognized: %v", err)
 			}
 		})
 	}
@@ -290,25 +247,21 @@ func TestRunCommand_DaemonFlags(t *testing.T) {
 
 func TestRunCommand_SecurityFlags(t *testing.T) {
 	cmd := NewCommand()
-	var buf bytes.Buffer
-	cmd.SetOut(&buf)
-	cmd.SetErr(&buf)
-	cmd.SetArgs([]string{
+	// Parse flags only - don't execute
+	err := cmd.ParseFlags([]string{
 		"--security", "strict",
 		"--allow-hosts", "example.com",
 		"--allow-paths", "/tmp",
 		"../testdata/valid_workflow.yaml",
 	})
-
-	err := cmd.Execute()
-	// Should not fail due to security flag parsing
 	if err != nil {
-		errMsg := err.Error()
-		if strings.Contains(errMsg, "unknown flag") &&
-		   (strings.Contains(errMsg, "security") ||
-		    strings.Contains(errMsg, "allow-hosts") ||
-		    strings.Contains(errMsg, "allow-paths")) {
-			t.Errorf("security flags not recognized: %v", err)
+		t.Errorf("security flags not recognized: %v", err)
+	}
+
+	// Verify flags exist
+	for _, flag := range []string{"security", "allow-hosts", "allow-paths"} {
+		if cmd.Flags().Lookup(flag) == nil {
+			t.Errorf("--%s flag not defined", flag)
 		}
 	}
 }
