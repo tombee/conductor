@@ -51,7 +51,23 @@ Profile Validation (SPEC-130):
   --profile, -p <name>     Profile to validate against workflow requirements
 
 When --profile is specified, validates that all workflow requirements
-are satisfied by the profile bindings.`,
+are satisfied by the profile bindings.
+
+See also: conductor run, conductor schema`,
+		Example: `  # Example 1: Basic validation
+  conductor validate workflow.yaml
+
+  # Example 2: Validate with JSON output for parsing
+  conductor validate workflow.yaml --json
+
+  # Example 3: Validate and extract workflow metadata
+  conductor validate workflow.yaml --json | jq '.workflow'
+
+  # Example 4: Validate with profile configuration
+  conductor validate workflow.yaml --workspace prod --profile default
+
+  # Example 5: Use custom schema for validation
+  conductor validate workflow.yaml --schema custom-schema.json`,
 		Args:          cobra.ExactArgs(1),
 		SilenceUsage:  true, // Don't print usage on validation errors
 		SilenceErrors: true, // Don't print error message (we handle it ourselves)

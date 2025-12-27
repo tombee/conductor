@@ -58,7 +58,20 @@ func newRunsListCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List workflow runs",
-		Long:  `List all workflow runs, optionally filtered by status or workflow.`,
+		Long: `List all workflow runs, optionally filtered by status or workflow.
+
+See also: conductor runs show, conductor run, conductor daemon status`,
+		Example: `  # Example 1: List all workflow runs
+  conductor runs list
+
+  # Example 2: Filter by status
+  conductor runs list --status running
+
+  # Example 3: Filter by workflow name
+  conductor runs list --workflow my-workflow
+
+  # Example 4: Get runs as JSON for monitoring
+  conductor runs list --json | jq '.runs[] | select(.status=="failed")'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runsList(status, workflow)
 		},
@@ -74,7 +87,20 @@ func newRunsShowCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "show <run-id>",
 		Short: "Show run details",
-		Long:  `Display detailed information about a specific workflow run.`,
+		Long: `Display detailed information about a specific workflow run.
+
+See also: conductor runs list, conductor runs logs, conductor runs output`,
+		Example: `  # Example 1: Show run details
+  conductor runs show abc123
+
+  # Example 2: Get run details as JSON
+  conductor runs show abc123 --json
+
+  # Example 3: Extract run status
+  conductor runs show abc123 --json | jq -r '.status'
+
+  # Example 4: Check if run is complete
+  conductor runs show abc123 --json | jq -e '.status == "completed"'`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runsShow(args[0])

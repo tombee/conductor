@@ -44,10 +44,18 @@ The command scaffolds a complete MCP server with:
 - Example tools to get started
 - Dependencies configuration (requirements.txt or package.json)
 
-Examples:
-  conductor mcp init my-server                    # Create Python MCP server
-  conductor mcp init my-server --lang typescript  # Create TypeScript server
-  conductor mcp init api-wrapper --template http  # Use HTTP wrapper template`,
+See also: conductor mcp add, conductor mcp list, conductor mcp test`,
+		Example: `  # Example 1: Create a Python MCP server
+  conductor mcp init my-server
+
+  # Example 2: Create a TypeScript server
+  conductor mcp init my-server --lang typescript
+
+  # Example 3: Use HTTP wrapper template
+  conductor mcp init api-wrapper --template http
+
+  # Example 4: Create and register server
+  conductor mcp init my-server && conductor mcp add my-server --command "python my-server/server.py"`,
 		Args: cobra.ExactArgs(1),
 		RunE: runMCPInit,
 	}

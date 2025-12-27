@@ -56,10 +56,18 @@ func newCacheClearCommand() *cobra.Command {
 		Short: "Clear cached workflows",
 		Long: `Clear cached remote workflows.
 
-Examples:
-  conductor cache clear                   Clear entire cache
-  conductor cache clear --owner user      Clear all repos for user
-  conductor cache clear --owner user --repo repo  Clear specific repo`,
+See also: conductor cache list, conductor run`,
+		Example: `  # Example 1: Clear entire cache
+  conductor cache clear
+
+  # Example 2: Clear all repos for a user
+  conductor cache clear --owner myuser
+
+  # Example 3: Clear specific repository cache
+  conductor cache clear --owner myuser --repo myrepo
+
+  # Example 4: Clear and confirm with JSON output
+  conductor cache clear --owner myuser --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return clearCache(owner, repo)
 		},
@@ -83,8 +91,18 @@ func newCacheListCommand() *cobra.Command {
 		Short: "List cached workflows",
 		Long: `List cached remote workflows for a repository.
 
-Example:
-  conductor cache list --owner user --repo repo`,
+See also: conductor cache clear, conductor run`,
+		Example: `  # Example 1: List cached workflows for a repository
+  conductor cache list --owner myuser --repo myrepo
+
+  # Example 2: Get cache list as JSON
+  conductor cache list --owner myuser --repo myrepo --json
+
+  # Example 3: Extract commit SHAs from cache
+  conductor cache list --owner myuser --repo myrepo --json | jq -r '.entries[].CommitSHA'
+
+  # Example 4: Check cache size
+  conductor cache list --owner myuser --repo myrepo --json | jq '.count'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if owner == "" || repo == "" {
 				return fmt.Errorf("both --owner and --repo are required")

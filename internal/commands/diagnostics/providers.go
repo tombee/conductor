@@ -441,9 +441,18 @@ Tests three aspects:
   2. Authenticated - Provider has valid credentials
   3. Working - Provider can make successful API calls
 
-Examples:
+See also: conductor providers list, conductor doctor, conductor providers add`,
+		Example: `  # Example 1: Test specific provider
   conductor providers test claude-code
-  conductor providers test --all`,
+
+  # Example 2: Test all configured providers
+  conductor providers test --all
+
+  # Example 3: Test and get JSON output
+  conductor providers test claude-code --json
+
+  # Example 4: Verify provider before running workflow
+  conductor providers test default && conductor run workflow.yaml`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Load configuration
