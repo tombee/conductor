@@ -114,6 +114,9 @@ type DaemonConfig struct {
 	// Schedules configures scheduled workflows (daemon-specific).
 	Schedules SchedulesConfig `yaml:"schedules,omitempty"`
 
+	// Endpoints configures named API endpoints (daemon-specific).
+	Endpoints EndpointsConfig `yaml:"endpoints,omitempty"`
+
 	// DaemonAuth configures daemon authentication (different from CLI auth).
 	DaemonAuth DaemonAuthConfig `yaml:"daemon_auth,omitempty"`
 
@@ -261,6 +264,42 @@ type ScheduleEntry struct {
 
 	// Timezone for cron evaluation.
 	Timezone string `yaml:"timezone,omitempty"`
+}
+
+// EndpointsConfig configures named API endpoints.
+type EndpointsConfig struct {
+	// Enabled controls whether endpoints are active.
+	Enabled bool `yaml:"enabled"`
+
+	// Endpoints defines the available API endpoints.
+	Endpoints []EndpointEntry `yaml:"endpoints,omitempty"`
+}
+
+// EndpointEntry defines a named API endpoint.
+type EndpointEntry struct {
+	// Name is the unique endpoint identifier.
+	Name string `yaml:"name"`
+
+	// Description provides documentation for this endpoint.
+	Description string `yaml:"description,omitempty"`
+
+	// Workflow is the workflow file to execute.
+	Workflow string `yaml:"workflow"`
+
+	// Inputs are default inputs merged with caller-provided inputs.
+	Inputs map[string]any `yaml:"inputs,omitempty"`
+
+	// Scopes defines which API key scopes can call this endpoint.
+	Scopes []string `yaml:"scopes,omitempty"`
+
+	// RateLimit specifies request limit (e.g., "100/hour", "10/minute").
+	RateLimit string `yaml:"rate_limit,omitempty"`
+
+	// Timeout is the maximum execution time.
+	Timeout time.Duration `yaml:"timeout,omitempty"`
+
+	// Public indicates this endpoint requires no authentication.
+	Public bool `yaml:"public,omitempty"`
 }
 
 // ObservabilityConfig configures tracing and observability.
@@ -973,6 +1012,39 @@ func (c *Config) Validate() error {
 		}
 	}
 
+	// Validate endpoints configuration
+	if c.Daemon.Endpoints.Enabled {
+		endpointNames := make(map[string]bool)
+		for i, ep := range c.Daemon.Endpoints.Endpoints {
+			// Validate required fields
+			if ep.Name == "" {
+				errs = append(errs, fmt.Sprintf("daemon.endpoints.endpoints[%d]: name is required", i))
+			} else {
+				// Check for duplicate names
+				if endpointNames[ep.Name] {
+					errs = append(errs, fmt.Sprintf("daemon.endpoints.endpoints[%d]: duplicate endpoint name %q", i, ep.Name))
+				}
+				endpointNames[ep.Name] = true
+			}
+
+			if ep.Workflow == "" {
+				errs = append(errs, fmt.Sprintf("daemon.endpoints.endpoints[%d] (%s): workflow is required", i, ep.Name))
+			}
+
+			// Validate timeout is non-negative
+			if ep.Timeout < 0 {
+				errs = append(errs, fmt.Sprintf("daemon.endpoints.endpoints[%d] (%s): timeout must be non-negative, got %v", i, ep.Name, ep.Timeout))
+			}
+
+			// Validate rate limit format if specified
+			if ep.RateLimit != "" {
+				if err := validateRateLimitFormat(ep.RateLimit); err != nil {
+					errs = append(errs, fmt.Sprintf("daemon.endpoints.endpoints[%d] (%s): %v", i, ep.Name, err))
+				}
+			}
+		}
+	}
+
 	if len(errs) > 0 {
 		return fmt.Errorf("%w:\n  - %s", ErrInvalidConfig, strings.Join(errs, "\n  - "))
 	}
@@ -987,6 +1059,33 @@ func keysOf(m ProvidersMap) []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+// validateRateLimitFormat validates rate limit string format (e.g., "100/hour", "10/minute")
+func validateRateLimitFormat(rateLimit string) error {
+	parts := strings.Split(rateLimit, "/")
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid rate_limit format %q, expected format: <count>/<unit> (e.g., 100/hour, 10/minute)", rateLimit)
+	}
+
+	// Validate count is a positive integer
+	count, err := strconv.Atoi(parts[0])
+	if err != nil || count <= 0 {
+		return fmt.Errorf("invalid rate_limit count %q, must be a positive integer", parts[0])
+	}
+
+	// Validate unit
+	validUnits := map[string]bool{
+		"second": true,
+		"minute": true,
+		"hour":   true,
+		"day":    true,
+	}
+	if !validUnits[parts[1]] {
+		return fmt.Errorf("invalid rate_limit unit %q, must be one of: second, minute, hour, day", parts[1])
+	}
+
+	return nil
 }
 
 // defaultSocketPath returns the default Unix socket path.

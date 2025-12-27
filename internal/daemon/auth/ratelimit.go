@@ -16,7 +16,10 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -175,4 +178,169 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// ParseRateLimit parses a rate limit string like "100/hour", "10/minute", "5/second"
+// and returns requests per second and burst size.
+// Returns an error if the format is invalid.
+func ParseRateLimit(limit string) (requestsPerSecond float64, burstSize int, err error) {
+	if limit == "" {
+		return 0, 0, fmt.Errorf("empty rate limit string")
+	}
+
+	parts := strings.Split(limit, "/")
+	if len(parts) != 2 {
+		return 0, 0, fmt.Errorf("invalid rate limit format: expected 'count/period' (e.g., '100/hour'), got %q", limit)
+	}
+
+	// Parse count
+	count, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+	if err != nil {
+		return 0, 0, fmt.Errorf("invalid count in rate limit %q: %w", limit, err)
+	}
+	if count <= 0 {
+		return 0, 0, fmt.Errorf("rate limit count must be positive, got %d", count)
+	}
+
+	// Parse period
+	period := strings.TrimSpace(strings.ToLower(parts[1]))
+	var seconds float64
+	switch period {
+	case "second", "sec", "s":
+		seconds = 1
+	case "minute", "min", "m":
+		seconds = 60
+	case "hour", "hr", "h":
+		seconds = 3600
+	case "day", "d":
+		seconds = 86400
+	default:
+		return 0, 0, fmt.Errorf("invalid period in rate limit %q: expected second/minute/hour/day, got %q", limit, period)
+	}
+
+	// Calculate requests per second
+	requestsPerSecond = float64(count) / seconds
+
+	// Set burst size to the count (allow full period worth of requests in burst)
+	// For example, "100/hour" allows bursting 100 requests immediately
+	burstSize = count
+
+	return requestsPerSecond, burstSize, nil
+}
+
+// NamedRateLimiter provides rate limiting with named buckets.
+// Each bucket can have different rate limits (e.g., per-endpoint, per-key).
+type NamedRateLimiter struct {
+	mu      sync.RWMutex
+	buckets map[string]*tokenBucket
+	configs map[string]RateLimitConfig
+}
+
+// NewNamedRateLimiter creates a new named rate limiter.
+func NewNamedRateLimiter() *NamedRateLimiter {
+	return &NamedRateLimiter{
+		buckets: make(map[string]*tokenBucket),
+		configs: make(map[string]RateLimitConfig),
+	}
+}
+
+// AddLimit adds or updates a named rate limit.
+// The limitStr should be in the format "count/period" (e.g., "100/hour").
+func (nrl *NamedRateLimiter) AddLimit(name string, limitStr string) error {
+	rps, burst, err := ParseRateLimit(limitStr)
+	if err != nil {
+		return err
+	}
+
+	nrl.mu.Lock()
+	defer nrl.mu.Unlock()
+
+	nrl.configs[name] = RateLimitConfig{
+		RequestsPerSecond: rps,
+		BurstSize:         burst,
+		Enabled:           true,
+	}
+
+	// Remove existing bucket to force recreation with new limits
+	delete(nrl.buckets, name)
+
+	return nil
+}
+
+// RemoveLimit removes a named rate limit.
+func (nrl *NamedRateLimiter) RemoveLimit(name string) {
+	nrl.mu.Lock()
+	defer nrl.mu.Unlock()
+
+	delete(nrl.configs, name)
+	delete(nrl.buckets, name)
+}
+
+// Allow checks if a request for the named limit is allowed.
+// Returns true if allowed, false if rate limit exceeded.
+func (nrl *NamedRateLimiter) Allow(name string) bool {
+	// Get or create bucket for this limit
+	nrl.mu.RLock()
+	config, hasConfig := nrl.configs[name]
+	bucket, hasBucket := nrl.buckets[name]
+	nrl.mu.RUnlock()
+
+	if !hasConfig {
+		// No limit configured for this name, allow by default
+		return true
+	}
+
+	if !hasBucket {
+		nrl.mu.Lock()
+		// Double-check after acquiring write lock
+		bucket, hasBucket = nrl.buckets[name]
+		if !hasBucket {
+			bucket = newTokenBucket(config.RequestsPerSecond, config.BurstSize)
+			nrl.buckets[name] = bucket
+		}
+		nrl.mu.Unlock()
+	}
+
+	return bucket.allow()
+}
+
+// GetStatus returns the current status of a named rate limit.
+// Returns remaining tokens, max tokens, and reset time.
+func (nrl *NamedRateLimiter) GetStatus(name string) (remaining float64, limit float64, resetAt time.Time, exists bool) {
+	nrl.mu.RLock()
+	defer nrl.mu.RUnlock()
+
+	config, hasConfig := nrl.configs[name]
+	bucket, hasBucket := nrl.buckets[name]
+
+	if !hasConfig {
+		return 0, 0, time.Time{}, false
+	}
+
+	if !hasBucket {
+		// No bucket yet, return full capacity
+		return float64(config.BurstSize), float64(config.BurstSize), time.Now(), true
+	}
+
+	bucket.mu.Lock()
+	defer bucket.mu.Unlock()
+
+	// Refill tokens to get current state
+	now := time.Now()
+	elapsed := now.Sub(bucket.lastRefillTime).Seconds()
+	tokens := bucket.tokens + elapsed*bucket.refillRate
+	if tokens > bucket.maxTokens {
+		tokens = bucket.maxTokens
+	}
+
+	// Calculate when bucket will be full again
+	if tokens >= bucket.maxTokens {
+		resetAt = now
+	} else {
+		tokensNeeded := bucket.maxTokens - tokens
+		secondsToFull := tokensNeeded / bucket.refillRate
+		resetAt = now.Add(time.Duration(secondsToFull * float64(time.Second)))
+	}
+
+	return tokens, bucket.maxTokens, resetAt, true
 }

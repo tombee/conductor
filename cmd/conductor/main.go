@@ -20,6 +20,7 @@ import (
 	"github.com/tombee/conductor/internal/commands/daemon"
 	"github.com/tombee/conductor/internal/commands/diagnostics"
 	"github.com/tombee/conductor/internal/commands/docs"
+	"github.com/tombee/conductor/internal/commands/endpoint"
 	"github.com/tombee/conductor/internal/commands/management"
 	"github.com/tombee/conductor/internal/commands/mcp"
 	"github.com/tombee/conductor/internal/commands/mcpserver"
@@ -71,6 +72,7 @@ func main() {
 	rootCmd.AddCommand(management.NewCacheCommand())
 	rootCmd.AddCommand(management.NewConnectorCommand())
 	rootCmd.AddCommand(management.NewConnectorsCommand())
+	rootCmd.AddCommand(endpoint.NewCommand())
 
 	// Configuration and security
 	rootCmd.AddCommand(config.NewConfigCommand())

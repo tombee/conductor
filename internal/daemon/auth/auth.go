@@ -48,6 +48,12 @@ func UserFromContext(ctx context.Context) (*User, bool) {
 	return user, ok
 }
 
+// ContextWithUser returns a new context with the given user.
+// This is primarily for testing purposes.
+func ContextWithUser(ctx context.Context, user *User) context.Context {
+	return context.WithValue(ctx, userContextKey, user)
+}
+
 // Config contains authentication configuration.
 type Config struct {
 	// Enabled controls whether authentication is required.
