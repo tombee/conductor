@@ -32,16 +32,22 @@ conductor/
 ├── cmd/
 │   ├── conductor/       # CLI client
 │   └── conductord/      # Daemon binary
-├── core/                # Embeddable workflow library
+├── pkg/                 # Public packages (embeddable)
 │   ├── workflow/        # Parser, executor
-│   ├── provider/        # LLM provider abstraction
-│   └── tools/           # Tool registry and execution
-├── daemon/              # Daemon-specific code
-│   ├── api/             # HTTP/socket API handlers
-│   ├── scheduler/       # Cron scheduling
-│   ├── webhooks/        # Webhook routing
-│   └── state/           # Persistence, checkpointing
-├── internal/            # Private implementation
+│   ├── llm/             # LLM provider abstraction
+│   ├── tools/           # Tool registry and execution
+│   ├── agent/           # Agent configuration
+│   ├── security/        # Security profiles, sandboxing
+│   └── errors/          # Typed error handling
+├── internal/
+│   ├── daemon/          # Daemon-specific code
+│   │   ├── api/         # HTTP/socket API handlers
+│   │   ├── scheduler/   # Cron scheduling
+│   │   ├── webhook/     # Webhook routing
+│   │   └── backend/     # Persistence, checkpointing
+│   ├── cli/             # CLI commands
+│   ├── connector/       # Integration connectors
+│   └── mcp/             # MCP server integration
 └── examples/            # Example workflows
 ```
 
@@ -64,9 +70,9 @@ conductor/
                            │ imports
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  conductor/core                                              │
+│  conductor/pkg                                               │
 │  - Workflow parser          - Step executor                 │
-│  - Tool system              - Provider abstraction          │
+│  - Tool system              - LLM provider abstraction      │
 │  - (Embeddable for advanced use cases)                      │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -125,7 +131,7 @@ GET    /v1/health                  # Health check
 
 ## Core Components
 
-### Workflow Parser & Executor (`core/workflow`)
+### Workflow Parser & Executor (`pkg/workflow`)
 
 Parses YAML workflow definitions and executes steps.
 
@@ -140,7 +146,7 @@ Parses YAML workflow definitions and executes steps.
 - Template interpolation (`{{.inputs.name}}`)
 - Error handling (fail, ignore, retry)
 
-### Provider Abstraction (`core/provider`)
+### LLM Provider Abstraction (`pkg/llm`)
 
 Unified interface for LLM providers.
 
@@ -164,7 +170,7 @@ Unified interface for LLM providers.
 - OpenAI
 - Ollama (local)
 
-### Tool System (`core/tools`)
+### Tool System (`pkg/tools`)
 
 Registry and execution framework for workflow tools.
 
@@ -178,7 +184,7 @@ Registry and execution framework for workflow tools.
 - Script tools (stdin/stdout)
 - MCP servers (via SPEC-9)
 
-### Scheduler (`daemon/scheduler`)
+### Scheduler (`internal/daemon/scheduler`)
 
 Cron-based workflow scheduling.
 
@@ -188,7 +194,7 @@ triggers:
     cron: "0 9 * * 1-5"  # 9am weekdays
 ```
 
-### Webhooks (`daemon/webhooks`)
+### Webhooks (`internal/daemon/webhook`)
 
 Receives and routes external events to workflows.
 
@@ -198,7 +204,7 @@ Receives and routes external events to workflows.
 - Discord (messages)
 - Generic HTTP webhooks
 
-### State & Checkpointing (`daemon/state`)
+### State & Checkpointing (`internal/daemon/backend`)
 
 Persists workflow state for crash recovery.
 
@@ -213,14 +219,16 @@ Persists workflow state for crash recovery.
 
 ## Embedding (Advanced)
 
-For advanced use cases, `conductor/core` can be embedded directly:
+For advanced use cases, `pkg/workflow` can be embedded directly:
 
 ```go
-import "github.com/conductor/conductor/core"
+import "github.com/tombee/conductor/pkg/workflow"
 
-result, err := core.RunWorkflow(ctx, workflowYAML, core.RunOptions{
-    Inputs:   map[string]any{"name": "Alice"},
-    Provider: myProvider,
+executor := workflow.NewExecutor(workflow.ExecutorConfig{
+    LLMProvider: myProvider,
+})
+result, err := executor.Execute(ctx, workflowDef, workflow.RunOptions{
+    Inputs: map[string]any{"name": "Alice"},
 })
 ```
 
