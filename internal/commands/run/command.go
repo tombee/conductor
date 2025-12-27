@@ -41,6 +41,8 @@ func NewCommand() *cobra.Command {
 		securityMode  string
 		allowHosts    []string
 		allowPaths    []string
+		workspace     string
+		profile       string
 	)
 
 	cmd := &cobra.Command{
@@ -57,6 +59,12 @@ Provider Resolution Order:
 Execution Modes:
   --daemon       Submit to conductord daemon for execution
   --background   Run asynchronously (implies --daemon), return run ID immediately
+
+Profile Selection (SPEC-130):
+  --workspace, -w <name>   Workspace for profile resolution (env: CONDUCTOR_WORKSPACE)
+  --profile, -p <name>     Profile for binding resolution (env: CONDUCTOR_PROFILE)
+
+  Selection Precedence: CLI flag > environment variable > default
 
 Remote Workflows:
   conductor run github:user/repo              Run from GitHub repo
@@ -83,7 +91,7 @@ Verbosity levels:
 				daemon = true // --mcp-dev requires daemon mode
 			}
 			if daemon {
-				return runWorkflowViaDaemon(args[0], inputs, inputFile, outputFile, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, provider, model, timeout)
+				return runWorkflowViaDaemon(args[0], inputs, inputFile, outputFile, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, provider, model, timeout, workspace, profile)
 			}
 			return runWorkflowLocal(args[0], inputs, inputFile, dryRun, quiet, verbose, noInteractive, helpInputs)
 		},
@@ -108,6 +116,8 @@ Verbosity levels:
 	cmd.Flags().StringVar(&securityMode, "security", "", "Security profile to use (unrestricted, standard, strict, air-gapped)")
 	cmd.Flags().StringSliceVar(&allowHosts, "allow-hosts", nil, "Additional allowed network hosts")
 	cmd.Flags().StringSliceVar(&allowPaths, "allow-paths", nil, "Additional allowed filesystem paths")
+	cmd.Flags().StringVarP(&workspace, "workspace", "w", "", "Workspace for profile resolution (env: CONDUCTOR_WORKSPACE)")
+	cmd.Flags().StringVarP(&profile, "profile", "p", "", "Profile for binding resolution (env: CONDUCTOR_PROFILE)")
 
 	return cmd
 }

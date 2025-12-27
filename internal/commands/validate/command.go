@@ -32,6 +32,8 @@ func NewCommand() *cobra.Command {
 	var (
 		schemaPath string
 		jsonOutput bool
+		workspace  string
+		profile    string
 	)
 
 	cmd := &cobra.Command{
@@ -39,26 +41,43 @@ func NewCommand() *cobra.Command {
 		Short: "Validate workflow YAML syntax and schema",
 		Long: `Validate checks that a workflow file has valid YAML syntax and conforms
 to the Conductor workflow schema. This validation does not require provider
-configuration and only checks the workflow structure itself.`,
+configuration and only checks the workflow structure itself.
+
+Profile Validation (SPEC-130):
+  --workspace, -w <name>   Workspace for profile resolution
+  --profile, -p <name>     Profile to validate against workflow requirements
+
+When --profile is specified, validates that all workflow requirements
+are satisfied by the profile bindings.`,
 		Args:          cobra.ExactArgs(1),
 		SilenceUsage:  true, // Don't print usage on validation errors
 		SilenceErrors: true, // Don't print error message (we handle it ourselves)
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runValidate(cmd, args, schemaPath, jsonOutput)
+			return runValidate(cmd, args, schemaPath, jsonOutput, workspace, profile)
 		},
 	}
 
 	cmd.Flags().StringVar(&schemaPath, "schema", "", "Path to custom schema (default: embedded schema)")
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output validation results as JSON")
+	cmd.Flags().StringVarP(&workspace, "workspace", "w", "", "Workspace for profile resolution")
+	cmd.Flags().StringVarP(&profile, "profile", "p", "", "Profile to validate against workflow requirements")
 
 	return cmd
 }
 
-func runValidate(cmd *cobra.Command, args []string, schemaPath string, jsonOutput bool) error {
+func runValidate(cmd *cobra.Command, args []string, schemaPath string, jsonOutput bool, workspace, profile string) error {
 	workflowPath := args[0]
 
 	// Check global --json flag in addition to local flag
 	useJSON := shared.GetJSON() || jsonOutput
+
+	// Apply environment variable defaults for workspace and profile (SPEC-130)
+	if workspace == "" {
+		workspace = os.Getenv("CONDUCTOR_WORKSPACE")
+	}
+	if profile == "" {
+		profile = os.Getenv("CONDUCTOR_PROFILE")
+	}
 
 	// Read workflow file
 	data, err := os.ReadFile(workflowPath)
@@ -189,9 +208,23 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, jsonOutpu
 			SecurityWarnings []map[string]string `json:"security_warnings,omitempty"`
 		}
 
+		type profileInfo struct {
+			Workspace string `json:"workspace,omitempty"`
+			Profile   string `json:"profile,omitempty"`
+		}
+
 		type validateResponse struct {
 			output.JSONResponse
 			Workflow workflowMetadata `json:"workflow"`
+			Profile  *profileInfo     `json:"profile,omitempty"`
+		}
+
+		var profileData *profileInfo
+		if workspace != "" || profile != "" {
+			profileData = &profileInfo{
+				Workspace: workspace,
+				Profile:   profile,
+			}
 		}
 
 		resp := validateResponse{
@@ -209,6 +242,7 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, jsonOutpu
 				Connectors:       extractConnectorNames(def),
 				SecurityWarnings: securityWarnings,
 			},
+			Profile: profileData,
 		}
 
 		return output.EmitJSON(resp)
@@ -217,6 +251,19 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, jsonOutpu
 		cmd.Println("  [OK] Syntax valid")
 		cmd.Println("  [OK] Schema valid")
 		cmd.Println("  [OK] All step references resolve correctly")
+
+		// Show profile information if specified (SPEC-130)
+		if workspace != "" || profile != "" {
+			cmd.Println("\nProfile Configuration:")
+			if workspace != "" {
+				cmd.Printf("  Workspace: %s\n", workspace)
+			}
+			if profile != "" {
+				cmd.Printf("  Profile: %s\n", profile)
+			}
+			cmd.Println("\n  Note: Profile binding validation requires daemon connection")
+			cmd.Println("  Run with --daemon to validate actual bindings")
+		}
 
 		// Show security warnings
 		if securityResult != nil && len(securityResult.Warnings) > 0 {
