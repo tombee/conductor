@@ -368,46 +368,23 @@ type RedactionPattern struct {
 // ServerConfig configures the RPC server behavior.
 type ServerConfig struct {
 	// Port specifies the port to bind to.
+	// Consumed by: internal/commands/daemon/serve.go:85
 	// Default: 9876
 	Port int `yaml:"port"`
 
-	// HealthCheckInterval is the interval between health check polls.
-	// Environment: SERVER_HEALTH_CHECK_INTERVAL
-	// Default: 500ms
-	HealthCheckInterval time.Duration `yaml:"health_check_interval"`
-
 	// ShutdownTimeout is the maximum duration to wait for graceful shutdown.
-	// Environment: SERVER_SHUTDOWN_TIMEOUT
+	// Consumed by: internal/commands/daemon/serve.go:86
 	// Default: 5s
 	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
-
-	// ReadTimeout is the maximum duration for reading requests.
-	// Environment: SERVER_READ_TIMEOUT
-	// Default: 10s
-	ReadTimeout time.Duration `yaml:"read_timeout"`
 }
 
 // AuthConfig configures authentication settings.
+// Note: Rate limiting is handled by internal/rpc/auth.go with hardcoded values.
 type AuthConfig struct {
 	// TokenLength is the length of generated auth tokens in bytes.
-	// Environment: AUTH_TOKEN_LENGTH
+	// Consumed by: token generation (validation only - actual token generation uses crypto/rand)
 	// Default: 32
 	TokenLength int `yaml:"token_length"`
-
-	// RateLimitMaxAttempts is the maximum failed auth attempts per window.
-	// Environment: AUTH_RATE_LIMIT_MAX_ATTEMPTS
-	// Default: 5
-	RateLimitMaxAttempts int `yaml:"rate_limit_max_attempts"`
-
-	// RateLimitWindow is the time window for rate limiting.
-	// Environment: AUTH_RATE_LIMIT_WINDOW
-	// Default: 1m
-	RateLimitWindow time.Duration `yaml:"rate_limit_window"`
-
-	// RateLimitLockout is the lockout duration after exceeding rate limit.
-	// Environment: AUTH_RATE_LIMIT_LOCKOUT
-	// Default: 60s
-	RateLimitLockout time.Duration `yaml:"rate_limit_lockout"`
 }
 
 // LogConfig configures logging behavior.
@@ -429,42 +406,31 @@ type LogConfig struct {
 }
 
 // LLMConfig configures LLM provider settings.
-// Prepared for Phase 1b implementation.
+// Note: Connection pooling and trace retention are handled by observability config.
 type LLMConfig struct {
 	// DefaultProvider is the default LLM provider to use.
+	// Consumed by: provider selection logic, multi-provider config
 	// Environment: LLM_DEFAULT_PROVIDER
 	// Default: anthropic
 	DefaultProvider string `yaml:"default_provider"`
 
 	// RequestTimeout is the maximum duration for LLM requests.
+	// Consumed by: LLM provider HTTP clients
 	// Environment: LLM_REQUEST_TIMEOUT
 	// Default: 5s
 	RequestTimeout time.Duration `yaml:"request_timeout"`
 
 	// MaxRetries is the maximum number of retry attempts for failed requests.
+	// Consumed by: LLM provider retry logic
 	// Environment: LLM_MAX_RETRIES
 	// Default: 3
 	MaxRetries int `yaml:"max_retries"`
 
 	// RetryBackoffBase is the base duration for exponential backoff.
+	// Consumed by: LLM provider retry logic
 	// Environment: LLM_RETRY_BACKOFF_BASE
 	// Default: 100ms
 	RetryBackoffBase time.Duration `yaml:"retry_backoff_base"`
-
-	// ConnectionPoolSize is the number of HTTP connections per provider.
-	// Environment: LLM_CONNECTION_POOL_SIZE
-	// Default: 10
-	ConnectionPoolSize int `yaml:"connection_pool_size"`
-
-	// ConnectionIdleTimeout is the idle timeout for pooled connections.
-	// Environment: LLM_CONNECTION_IDLE_TIMEOUT
-	// Default: 30s
-	ConnectionIdleTimeout time.Duration `yaml:"connection_idle_timeout"`
-
-	// TraceRetentionDays is the number of days to retain request traces.
-	// Environment: LLM_TRACE_RETENTION_DAYS
-	// Default: 7
-	TraceRetentionDays int `yaml:"trace_retention_days"`
 }
 
 // Default returns a Config with sensible defaults.
@@ -474,16 +440,11 @@ func Default() *Config {
 
 	return &Config{
 		Server: ServerConfig{
-			Port:                9876,
-			HealthCheckInterval: 500 * time.Millisecond,
-			ShutdownTimeout:     5 * time.Second,
-			ReadTimeout:         10 * time.Second,
+			Port:            9876,
+			ShutdownTimeout: 5 * time.Second,
 		},
 		Auth: AuthConfig{
-			TokenLength:          32,
-			RateLimitMaxAttempts: 5,
-			RateLimitWindow:      1 * time.Minute,
-			RateLimitLockout:     60 * time.Second,
+			TokenLength: 32,
 		},
 		Log: LogConfig{
 			Level:     "info",
@@ -491,13 +452,10 @@ func Default() *Config {
 			AddSource: false,
 		},
 		LLM: LLMConfig{
-			DefaultProvider:       "anthropic",
-			RequestTimeout:        5 * time.Second,
-			MaxRetries:            3,
-			RetryBackoffBase:      100 * time.Millisecond,
-			ConnectionPoolSize:    10,
-			ConnectionIdleTimeout: 30 * time.Second,
-			TraceRetentionDays:    7,
+			DefaultProvider:  "anthropic",
+			RequestTimeout:   5 * time.Second,
+			MaxRetries:       3,
+			RetryBackoffBase: 100 * time.Millisecond,
 		},
 		Security: security.SecurityConfig{
 			DefaultProfile: security.ProfileStandard,
@@ -633,28 +591,13 @@ func (c *Config) applyDefaults() {
 	if c.Server.Port == 0 {
 		c.Server.Port = defaults.Server.Port
 	}
-	if c.Server.HealthCheckInterval == 0 {
-		c.Server.HealthCheckInterval = defaults.Server.HealthCheckInterval
-	}
 	if c.Server.ShutdownTimeout == 0 {
 		c.Server.ShutdownTimeout = defaults.Server.ShutdownTimeout
-	}
-	if c.Server.ReadTimeout == 0 {
-		c.Server.ReadTimeout = defaults.Server.ReadTimeout
 	}
 
 	// Auth defaults
 	if c.Auth.TokenLength == 0 {
 		c.Auth.TokenLength = defaults.Auth.TokenLength
-	}
-	if c.Auth.RateLimitMaxAttempts == 0 {
-		c.Auth.RateLimitMaxAttempts = defaults.Auth.RateLimitMaxAttempts
-	}
-	if c.Auth.RateLimitWindow == 0 {
-		c.Auth.RateLimitWindow = defaults.Auth.RateLimitWindow
-	}
-	if c.Auth.RateLimitLockout == 0 {
-		c.Auth.RateLimitLockout = defaults.Auth.RateLimitLockout
 	}
 
 	// Log defaults
@@ -682,15 +625,6 @@ func (c *Config) applyDefaults() {
 	}
 	if c.LLM.RetryBackoffBase == 0 {
 		c.LLM.RetryBackoffBase = defaults.LLM.RetryBackoffBase
-	}
-	if c.LLM.ConnectionPoolSize == 0 {
-		c.LLM.ConnectionPoolSize = defaults.LLM.ConnectionPoolSize
-	}
-	if c.LLM.ConnectionIdleTimeout == 0 {
-		c.LLM.ConnectionIdleTimeout = defaults.LLM.ConnectionIdleTimeout
-	}
-	if c.LLM.TraceRetentionDays == 0 {
-		c.LLM.TraceRetentionDays = defaults.LLM.TraceRetentionDays
 	}
 
 	// Security defaults
@@ -784,19 +718,9 @@ func (c *Config) loadFromFile(path string) error {
 // loadFromEnv loads configuration from environment variables.
 func (c *Config) loadFromEnv() {
 	// Server configuration
-	if val := os.Getenv("SERVER_HEALTH_CHECK_INTERVAL"); val != "" {
-		if duration, err := time.ParseDuration(val); err == nil {
-			c.Server.HealthCheckInterval = duration
-		}
-	}
 	if val := os.Getenv("SERVER_SHUTDOWN_TIMEOUT"); val != "" {
 		if duration, err := time.ParseDuration(val); err == nil {
 			c.Server.ShutdownTimeout = duration
-		}
-	}
-	if val := os.Getenv("SERVER_READ_TIMEOUT"); val != "" {
-		if duration, err := time.ParseDuration(val); err == nil {
-			c.Server.ReadTimeout = duration
 		}
 	}
 
@@ -804,21 +728,6 @@ func (c *Config) loadFromEnv() {
 	if val := os.Getenv("AUTH_TOKEN_LENGTH"); val != "" {
 		if length, err := strconv.Atoi(val); err == nil {
 			c.Auth.TokenLength = length
-		}
-	}
-	if val := os.Getenv("AUTH_RATE_LIMIT_MAX_ATTEMPTS"); val != "" {
-		if attempts, err := strconv.Atoi(val); err == nil {
-			c.Auth.RateLimitMaxAttempts = attempts
-		}
-	}
-	if val := os.Getenv("AUTH_RATE_LIMIT_WINDOW"); val != "" {
-		if duration, err := time.ParseDuration(val); err == nil {
-			c.Auth.RateLimitWindow = duration
-		}
-	}
-	if val := os.Getenv("AUTH_RATE_LIMIT_LOCKOUT"); val != "" {
-		if duration, err := time.ParseDuration(val); err == nil {
-			c.Auth.RateLimitLockout = duration
 		}
 	}
 
@@ -912,21 +821,6 @@ func (c *Config) loadFromEnv() {
 			c.LLM.RetryBackoffBase = duration
 		}
 	}
-	if val := os.Getenv("LLM_CONNECTION_POOL_SIZE"); val != "" {
-		if size, err := strconv.Atoi(val); err == nil {
-			c.LLM.ConnectionPoolSize = size
-		}
-	}
-	if val := os.Getenv("LLM_CONNECTION_IDLE_TIMEOUT"); val != "" {
-		if duration, err := time.ParseDuration(val); err == nil {
-			c.LLM.ConnectionIdleTimeout = duration
-		}
-	}
-	if val := os.Getenv("LLM_TRACE_RETENTION_DAYS"); val != "" {
-		if days, err := strconv.Atoi(val); err == nil {
-			c.LLM.TraceRetentionDays = days
-		}
-	}
 }
 
 // Validate checks that the configuration is valid.
@@ -937,28 +831,13 @@ func (c *Config) Validate() error {
 	if c.Server.Port < 1024 || c.Server.Port > 65535 {
 		errs = append(errs, fmt.Sprintf("server.port must be between 1024 and 65535, got %d", c.Server.Port))
 	}
-	if c.Server.HealthCheckInterval <= 0 {
-		errs = append(errs, fmt.Sprintf("server.health_check_interval must be positive, got %v", c.Server.HealthCheckInterval))
-	}
 	if c.Server.ShutdownTimeout <= 0 {
 		errs = append(errs, fmt.Sprintf("server.shutdown_timeout must be positive, got %v", c.Server.ShutdownTimeout))
-	}
-	if c.Server.ReadTimeout <= 0 {
-		errs = append(errs, fmt.Sprintf("server.read_timeout must be positive, got %v", c.Server.ReadTimeout))
 	}
 
 	// Validate auth configuration
 	if c.Auth.TokenLength < 16 {
 		errs = append(errs, fmt.Sprintf("auth.token_length must be at least 16 bytes, got %d", c.Auth.TokenLength))
-	}
-	if c.Auth.RateLimitMaxAttempts <= 0 {
-		errs = append(errs, fmt.Sprintf("auth.rate_limit_max_attempts must be positive, got %d", c.Auth.RateLimitMaxAttempts))
-	}
-	if c.Auth.RateLimitWindow <= 0 {
-		errs = append(errs, fmt.Sprintf("auth.rate_limit_window must be positive, got %v", c.Auth.RateLimitWindow))
-	}
-	if c.Auth.RateLimitLockout <= 0 {
-		errs = append(errs, fmt.Sprintf("auth.rate_limit_lockout must be positive, got %v", c.Auth.RateLimitLockout))
 	}
 
 	// Validate log configuration
@@ -993,15 +872,6 @@ func (c *Config) Validate() error {
 	}
 	if c.LLM.RetryBackoffBase <= 0 {
 		errs = append(errs, fmt.Sprintf("llm.retry_backoff_base must be positive, got %v", c.LLM.RetryBackoffBase))
-	}
-	if c.LLM.ConnectionPoolSize <= 0 {
-		errs = append(errs, fmt.Sprintf("llm.connection_pool_size must be positive, got %d", c.LLM.ConnectionPoolSize))
-	}
-	if c.LLM.ConnectionIdleTimeout <= 0 {
-		errs = append(errs, fmt.Sprintf("llm.connection_idle_timeout must be positive, got %v", c.LLM.ConnectionIdleTimeout))
-	}
-	if c.LLM.TraceRetentionDays < 0 {
-		errs = append(errs, fmt.Sprintf("llm.trace_retention_days must be non-negative, got %d", c.LLM.TraceRetentionDays))
 	}
 
 	// Validate multi-provider configuration

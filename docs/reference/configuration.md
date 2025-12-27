@@ -16,16 +16,11 @@ Conductor can be configured via YAML configuration file or environment variables
 # Server configuration
 server:
   port: 9876
-  health_check_interval: 500ms
   shutdown_timeout: 5s
-  read_timeout: 10s
 
 # Authentication configuration
 auth:
   token_length: 32
-  rate_limit_max_attempts: 5
-  rate_limit_window: 1m
-  rate_limit_lockout: 60s
 
 # Logging configuration
 log:
@@ -39,9 +34,6 @@ llm:
   request_timeout: 5s
   max_retries: 3
   retry_backoff_base: 100ms
-  connection_pool_size: 10
-  connection_idle_timeout: 30s
-  trace_retention_days: 7
 
 # Provider configurations
 providers:
@@ -77,19 +69,6 @@ server:
 
 If the port is already in use, the daemon will fail immediately with a clear error message indicating the port number and suggesting diagnostic commands (`lsof -i :PORT` or `ss -tlnp`) to identify the conflicting service.
 
-### server.health_check_interval
-
-**Type:** `duration`
-**Default:** `500ms`
-**Environment:** `SERVER_HEALTH_CHECK_INTERVAL`
-
-Interval for health check polling.
-
-```yaml
-server:
-  health_check_interval: 500ms
-```
-
 ### server.shutdown_timeout
 
 **Type:** `duration`
@@ -101,19 +80,6 @@ Maximum duration to wait for graceful shutdown.
 ```yaml
 server:
   shutdown_timeout: 5s
-```
-
-### server.read_timeout
-
-**Type:** `duration`
-**Default:** `10s`
-**Environment:** `SERVER_READ_TIMEOUT`
-
-Maximum duration for reading requests.
-
-```yaml
-server:
-  read_timeout: 10s
 ```
 
 ---
@@ -133,45 +99,6 @@ Length of generated auth tokens in bytes.
 ```yaml
 auth:
   token_length: 32
-```
-
-### auth.rate_limit_max_attempts
-
-**Type:** `integer`
-**Default:** `5`
-**Environment:** `AUTH_RATE_LIMIT_MAX_ATTEMPTS`
-
-Maximum failed authentication attempts before rate limiting kicks in.
-
-```yaml
-auth:
-  rate_limit_max_attempts: 5
-```
-
-### auth.rate_limit_window
-
-**Type:** `duration`
-**Default:** `1m`
-**Environment:** `AUTH_RATE_LIMIT_WINDOW`
-
-Time window for counting failed attempts.
-
-```yaml
-auth:
-  rate_limit_window: 1m
-```
-
-### auth.rate_limit_lockout
-
-**Type:** `duration`
-**Default:** `60s`
-**Environment:** `AUTH_RATE_LIMIT_LOCKOUT`
-
-Lockout duration after exceeding rate limit.
-
-```yaml
-auth:
-  rate_limit_lockout: 60s
 ```
 
 ---
@@ -289,45 +216,6 @@ llm:
 ```
 
 With `max_retries: 3` and `retry_backoff_base: 100ms`, retries occur at: 100ms, 200ms, 400ms.
-
-### llm.connection_pool_size
-
-**Type:** `integer`
-**Default:** `10`
-**Environment:** `LLM_CONNECTION_POOL_SIZE`
-
-Number of HTTP connections per provider.
-
-```yaml
-llm:
-  connection_pool_size: 10
-```
-
-### llm.connection_idle_timeout
-
-**Type:** `duration`
-**Default:** `30s`
-**Environment:** `LLM_CONNECTION_IDLE_TIMEOUT`
-
-Idle timeout for pooled connections.
-
-```yaml
-llm:
-  connection_idle_timeout: 30s
-```
-
-### llm.trace_retention_days
-
-**Type:** `integer`
-**Default:** `7`
-**Environment:** `LLM_TRACE_RETENTION_DAYS`
-
-Number of days to retain request traces.
-
-```yaml
-llm:
-  trace_retention_days: 7
-```
 
 ---
 
@@ -475,18 +363,13 @@ All configuration options can be set via environment variables. Environment vari
 
 | Variable | Description |
 |----------|-------------|
-| `SERVER_HEALTH_CHECK_INTERVAL` | Health check interval |
 | `SERVER_SHUTDOWN_TIMEOUT` | Shutdown timeout |
-| `SERVER_READ_TIMEOUT` | Read timeout |
 
 ### Authentication
 
 | Variable | Description |
 |----------|-------------|
 | `AUTH_TOKEN_LENGTH` | Auth token length in bytes |
-| `AUTH_RATE_LIMIT_MAX_ATTEMPTS` | Max auth attempts before lockout |
-| `AUTH_RATE_LIMIT_WINDOW` | Time window for counting attempts |
-| `AUTH_RATE_LIMIT_LOCKOUT` | Lockout duration |
 
 ### LLM
 
@@ -496,9 +379,6 @@ All configuration options can be set via environment variables. Environment vari
 | `LLM_REQUEST_TIMEOUT` | Request timeout duration |
 | `LLM_MAX_RETRIES` | Maximum retry attempts |
 | `LLM_RETRY_BACKOFF_BASE` | Backoff base duration |
-| `LLM_CONNECTION_POOL_SIZE` | HTTP connection pool size |
-| `LLM_CONNECTION_IDLE_TIMEOUT` | Idle connection timeout |
-| `LLM_TRACE_RETENTION_DAYS` | Days to retain traces |
 
 ### Provider API Keys
 
@@ -569,10 +449,6 @@ server:
   port: 9876
   shutdown_timeout: 30s
 
-auth:
-  rate_limit_max_attempts: 10
-  rate_limit_window: 5m
-
 log:
   level: info
   format: json
@@ -582,8 +458,6 @@ llm:
   default_provider: anthropic
   request_timeout: 30s
   max_retries: 5
-  connection_pool_size: 20
-  trace_retention_days: 30
 
 providers:
   anthropic:

@@ -52,7 +52,6 @@ See `config.example.yaml` in the project root for a complete example.
 ```yaml
 server:
   port: 9876
-  health_check_interval: 500ms
   shutdown_timeout: 5s
 
 log:
@@ -69,20 +68,15 @@ Controls RPC server behavior.
 | Field | Type | Default | Environment Variable | Description |
 |-------|------|---------|---------------------|-------------|
 | `port` | `int` | `9876` | - | Port to bind to |
-| `health_check_interval` | `time.Duration` | `500ms` | `SERVER_HEALTH_CHECK_INTERVAL` | Health check polling interval |
 | `shutdown_timeout` | `time.Duration` | `5s` | `SERVER_SHUTDOWN_TIMEOUT` | Graceful shutdown timeout |
-| `read_timeout` | `time.Duration` | `10s` | `SERVER_READ_TIMEOUT` | Request read timeout |
 
 ### Auth Configuration
 
-Controls authentication and rate limiting.
+Controls authentication settings.
 
 | Field | Type | Default | Environment Variable | Description |
 |-------|------|---------|---------------------|-------------|
 | `token_length` | `int` | `32` | `AUTH_TOKEN_LENGTH` | Auth token length in bytes (min: 16) |
-| `rate_limit_max_attempts` | `int` | `5` | `AUTH_RATE_LIMIT_MAX_ATTEMPTS` | Max failed auth attempts |
-| `rate_limit_window` | `time.Duration` | `1m` | `AUTH_RATE_LIMIT_WINDOW` | Rate limit time window |
-| `rate_limit_lockout` | `time.Duration` | `60s` | `AUTH_RATE_LIMIT_LOCKOUT` | Lockout duration |
 
 ### Log Configuration
 
@@ -96,7 +90,7 @@ Controls logging output.
 
 ### LLM Configuration
 
-Controls LLM provider settings (Phase 1b).
+Controls LLM provider settings.
 
 | Field | Type | Default | Environment Variable | Description |
 |-------|------|---------|---------------------|-------------|
@@ -104,19 +98,14 @@ Controls LLM provider settings (Phase 1b).
 | `request_timeout` | `time.Duration` | `5s` | `LLM_REQUEST_TIMEOUT` | Request timeout |
 | `max_retries` | `int` | `3` | `LLM_MAX_RETRIES` | Max retry attempts |
 | `retry_backoff_base` | `time.Duration` | `100ms` | `LLM_RETRY_BACKOFF_BASE` | Exponential backoff base |
-| `connection_pool_size` | `int` | `10` | `LLM_CONNECTION_POOL_SIZE` | HTTP connection pool size |
-| `connection_idle_timeout` | `time.Duration` | `30s` | `LLM_CONNECTION_IDLE_TIMEOUT` | Connection idle timeout |
-| `trace_retention_days` | `int` | `7` | `LLM_TRACE_RETENTION_DAYS` | Request trace retention |
 
 ## Validation Rules
 
 The configuration is validated on load with the following rules:
 
 - Server ports must be in range 1024-65535
-- Port range start must be <= end
 - All durations must be positive
 - Token length must be >= 16 bytes
-- Rate limit values must be positive
 - Log level must be one of: debug, info, warn, warning, error
 - Log format must be one of: json, text
 - LLM default provider must reference a configured provider name

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **Config Definition Audit (SPEC-51)**: Removed unused and dead-code configuration fields
+  - `server.health_check_interval` - Defined but never consumed
+  - `server.read_timeout` - Defined but hardcoded values used in RPC server
+  - `auth.rate_limit_max_attempts` - Dead code (internal/rpc/auth.go uses hardcoded `MaxFailedAttempts = 5`)
+  - `auth.rate_limit_window` - Dead code (internal/rpc/auth.go uses hardcoded `RateLimitWindow = 1 * time.Minute`)
+  - `auth.rate_limit_lockout` - Dead code (internal/rpc/auth.go uses hardcoded `RateLimitLockout = 60 * time.Second`)
+  - `llm.connection_pool_size` - Phase 1b placeholder never implemented
+  - `llm.connection_idle_timeout` - Phase 1b placeholder never implemented
+  - `llm.trace_retention_days` - Phase 1b placeholder never implemented
+
+  **Migration**: If you have these fields in your config files, they will be safely ignored. Remove them to clean up your configuration.
+
 ### Security
 
 - **HTTP Tool SSRF Protection (SPEC-24)**: Fixed critical Server-Side Request Forgery vulnerability in HTTP tool
