@@ -48,14 +48,8 @@ export default defineConfig({
         },
         {
           label: 'Examples',
-          items: [
-            { label: 'Overview', slug: 'examples' },
-            { label: 'Code Review', slug: 'examples/code-review' },
-            { label: 'Issue Triage', slug: 'examples/issue-triage' },
-            { label: 'Slack Integration', slug: 'examples/slack-integration' },
-            { label: 'IaC Review', slug: 'examples/iac-review' },
-            { label: 'Write Song', slug: 'examples/write-song' },
-          ],
+          collapsed: true,
+          autogenerate: { directory: 'examples' },
         },
         {
           label: 'Reference',
