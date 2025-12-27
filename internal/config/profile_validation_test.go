@@ -37,7 +37,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 					Connectors: map[string]profile.ConnectorBinding{
 						"github": {
 							Auth: profile.AuthBinding{
-								Token: "ghp_1234567890123456789012345678901234567890",
+								Token: "ghp_FAKEtestTOKENnotREAL000000000000000000",
 							},
 						},
 					},
@@ -54,7 +54,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 					Connectors: map[string]profile.ConnectorBinding{
 						"api": {
 							Auth: profile.AuthBinding{
-								Token: "sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwx",
+								Token: "sk-ant-api03-FAKEtestKEYnotREAL000000000000000000000000000000000000000000000000000000000000000000000000",
 							},
 						},
 					},
@@ -90,7 +90,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 						"slack-bot": {
 							Command: "node",
 							Env: map[string]string{
-								"SLACK_TOKEN": "xoxb-1234567890-1234567890-abcdefghijklmnopqrstuvwx",
+								"SLACK_TOKEN": "xoxb-1234567890-1234567890-NOTrealTESTtoken12345678",
 							},
 						},
 					},
@@ -446,7 +446,7 @@ func TestValidateProfiles(t *testing.T) {
 								Connectors: map[string]profile.ConnectorBinding{
 									"github": {
 										Auth: profile.AuthBinding{
-											Token: "ghp_1234567890123456789012345678901234567890",
+											Token: "ghp_FAKEtestTOKENnotREAL000000000000000000",
 										},
 									},
 								},
@@ -543,7 +543,7 @@ func TestIsSecretReference(t *testing.T) {
 		},
 		{
 			name:  "plaintext value",
-			value: "ghp_1234567890123456789012345678901234567890",
+			value: "ghp_FAKEtestTOKENnotREAL000000000000000000",
 			want:  false,
 		},
 		{

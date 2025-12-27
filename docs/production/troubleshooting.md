@@ -807,6 +807,6 @@ Running with `--log-level debug` provides detailed information about what Conduc
 
 ## Related Resources
 
-- [Error Handling Guide](../guides/error-handling.md) - Retry and fallback strategies
+- [Error Handling Guide](../building-workflows/error-handling.md) - Retry and fallback strategies
 - [Configuration Reference](../reference/configuration.md) - API keys and providers
-- [Workflows and Steps](../learn/concepts/workflows-steps.md) - Workflow structure
+- [Workflows and Steps](../getting-started/concepts.md) - Workflow structure

@@ -52,6 +52,6 @@ All deployment methods require:
 
 After deployment:
 
-- Set up [monitoring](../operations/monitoring.md)
-- Review [security hardening](../operations/security.md)
-- Configure [webhook integrations](../reference/connectors/github.md)
+- Set up [monitoring](../monitoring.md)
+- Review [security hardening](../security.md)
+- Configure [webhook integrations](../../reference/connectors/github.md)

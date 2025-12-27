@@ -626,9 +626,9 @@ Challenge yourself:
 
 ### Advanced Topics
 
-- **[Flow Control](../../guides/flow-control.md)** — Parallel execution and conditionals
-- **[Connectors](../../reference/connectors/index.md)** — Integrate GitHub, Jira, Slack
-- **[Testing](../../guides/testing.md)** — Build reliable automation
+- **[Flow Control](../building-workflows/flow-control.md)** — Parallel execution and conditionals
+- **[Connectors](../reference/connectors/index.md)** — Integrate GitHub, Jira, Slack
+- **[Testing](../building-workflows/testing.md)** — Build reliable automation
 
 ---
 
