@@ -1966,3 +1966,158 @@ steps:
 		}
 	}
 }
+
+func TestParseDefinition_ListenConfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		yaml    string
+		wantErr bool
+		check   func(t *testing.T, def *Definition)
+	}{
+		{
+			name: "webhook listener",
+			yaml: `
+name: test-workflow
+version: "1.0"
+listen:
+  webhook:
+    path: /webhooks/github/test
+    source: github
+    secret: ${GITHUB_SECRET}
+steps:
+  - id: step1
+    type: llm
+    prompt: "test"
+`,
+			wantErr: false,
+			check: func(t *testing.T, def *Definition) {
+				if def.Listen == nil {
+					t.Fatal("Listen config is nil")
+				}
+				if def.Listen.Webhook == nil {
+					t.Fatal("Webhook listener is nil")
+				}
+				if def.Listen.Webhook.Path != "/webhooks/github/test" {
+					t.Errorf("Expected path /webhooks/github/test, got %s", def.Listen.Webhook.Path)
+				}
+				if def.Listen.Webhook.Source != "github" {
+					t.Errorf("Expected source github, got %s", def.Listen.Webhook.Source)
+				}
+				if def.Listen.Webhook.Secret != "${GITHUB_SECRET}" {
+					t.Errorf("Expected secret ${GITHUB_SECRET}, got %s", def.Listen.Webhook.Secret)
+				}
+			},
+		},
+		{
+			name: "api listener",
+			yaml: `
+name: test-workflow
+version: "1.0"
+listen:
+  api:
+    secret: ${API_SECRET}
+steps:
+  - id: step1
+    type: llm
+    prompt: "test"
+`,
+			wantErr: false,
+			check: func(t *testing.T, def *Definition) {
+				if def.Listen == nil {
+					t.Fatal("Listen config is nil")
+				}
+				if def.Listen.API == nil {
+					t.Fatal("API listener is nil")
+				}
+				if def.Listen.API.Secret != "${API_SECRET}" {
+					t.Errorf("Expected secret ${API_SECRET}, got %s", def.Listen.API.Secret)
+				}
+			},
+		},
+		{
+			name: "combined listeners",
+			yaml: `
+name: test-workflow
+version: "1.0"
+listen:
+  webhook:
+    path: /webhooks/github/test
+    source: github
+    secret: ${GITHUB_SECRET}
+  api:
+    secret: ${API_SECRET}
+  schedule:
+    cron: "0 9 * * *"
+    timezone: "America/New_York"
+steps:
+  - id: step1
+    type: llm
+    prompt: "test"
+`,
+			wantErr: false,
+			check: func(t *testing.T, def *Definition) {
+				if def.Listen == nil {
+					t.Fatal("Listen config is nil")
+				}
+				if def.Listen.Webhook == nil {
+					t.Error("Webhook listener is nil")
+				}
+				if def.Listen.API == nil {
+					t.Error("API listener is nil")
+				}
+				if def.Listen.Schedule == nil {
+					t.Error("Schedule listener is nil")
+				}
+				if def.Listen.Schedule != nil && def.Listen.Schedule.Cron != "0 9 * * *" {
+					t.Errorf("Expected cron '0 9 * * *', got %s", def.Listen.Schedule.Cron)
+				}
+			},
+		},
+		{
+			name: "triggers key returns error",
+			yaml: `
+name: test-workflow
+version: "1.0"
+triggers:
+  - type: webhook
+    webhook:
+      path: /webhooks/test
+      source: github
+      secret: ${SECRET}
+steps:
+  - id: step1
+    type: llm
+    prompt: "test"
+`,
+			wantErr: true,
+			check: func(t *testing.T, def *Definition) {
+				// Definition should be nil due to parse error
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			def, err := ParseDefinition([]byte(tt.yaml))
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseDefinition() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && tt.check != nil {
+				tt.check(t, def)
+			}
+			if tt.wantErr && err != nil {
+				// Verify the error mentions triggers being deprecated
+				errStr := err.Error()
+				if tt.name == "triggers key returns error" {
+					if !regexp.MustCompile(`triggers.*no longer supported`).MatchString(errStr) {
+						t.Errorf("Expected error to mention 'triggers' being deprecated, got: %s", errStr)
+					}
+					if !regexp.MustCompile(`listen:`).MatchString(errStr) {
+						t.Errorf("Expected error to mention 'listen:' migration, got: %s", errStr)
+					}
+				}
+			}
+		})
+	}
+}
