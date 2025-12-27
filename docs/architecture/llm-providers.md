@@ -820,7 +820,6 @@ func main() {
 
 ## See Also
 
-- [Workflow Engine](workflow-engine.md) - How workflows execute LLM steps
-- [Cost Tracking](../cost-tracking.md) - Detailed cost tracking documentation
+- [Execution Flow](execution-flow.md) - How workflows execute LLM steps
 - [Embedding Guide](../extending/embedding.md) - Using providers in Go applications
 - [Configuration Reference](../reference/configuration.md) - Provider configuration options
