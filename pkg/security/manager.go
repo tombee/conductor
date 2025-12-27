@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/tombee/conductor/pkg/errors"
 )
 
 // Manager orchestrates security across the system.
@@ -78,7 +80,10 @@ func NewManager(config *SecurityConfig) (Manager, error) {
 func (m *manager) LoadProfile(name string) (*SecurityProfile, error) {
 	profile, err := LoadProfile(name, m.customProfiles)
 	if err != nil {
-		return nil, err
+		return nil, &errors.NotFoundError{
+			Resource: "security profile",
+			ID:       name,
+		}
 	}
 
 	m.mu.Lock()
@@ -159,7 +164,7 @@ func (m *manager) checkFileAccess(profile *SecurityProfile, req AccessRequest) A
 	if err != nil {
 		return AccessDecision{
 			Allowed: false,
-			Reason:  fmt.Sprintf("failed to resolve path: %v", err),
+			Reason:  "failed to resolve path",
 			Profile: profile.Name,
 		}
 	}
@@ -172,7 +177,7 @@ func (m *manager) checkFileAccess(profile *SecurityProfile, req AccessRequest) A
 		if matchesPath(absPath, denyPattern) {
 			return AccessDecision{
 				Allowed: false,
-				Reason:  fmt.Sprintf("path is explicitly denied: %s", path),
+				Reason:  "path is explicitly denied by security policy",
 				Profile: profile.Name,
 			}
 		}
@@ -225,7 +230,7 @@ func (m *manager) checkFileAccess(profile *SecurityProfile, req AccessRequest) A
 
 	return AccessDecision{
 		Allowed: false,
-		Reason:  fmt.Sprintf("path not in allowlist: %s", path),
+		Reason:  "path not allowed by security policy",
 		Profile: profile.Name,
 	}
 }
@@ -276,7 +281,7 @@ func (m *manager) checkNetworkAccess(profile *SecurityProfile, req AccessRequest
 
 	return AccessDecision{
 		Allowed: false,
-		Reason:  fmt.Sprintf("host not in allowlist: %s", host),
+		Reason:  "host not allowed by security policy",
 		Profile: profile.Name,
 	}
 }
@@ -285,15 +290,12 @@ func (m *manager) checkNetworkAccess(profile *SecurityProfile, req AccessRequest
 func (m *manager) checkCommandAccess(profile *SecurityProfile, req AccessRequest) AccessDecision {
 	command := req.Resource
 
-	// Extract base command from full command string
-	baseCommand := extractBaseCommand(command)
-
 	// Check deny list first (highest priority)
 	for _, deniedCmd := range profile.Execution.DeniedCommands {
 		if matchesCommand(command, deniedCmd) {
 			return AccessDecision{
 				Allowed: false,
-				Reason:  fmt.Sprintf("command is explicitly denied: %s", deniedCmd),
+				Reason:  "command is explicitly denied by security policy",
 				Profile: profile.Name,
 			}
 		}
@@ -321,7 +323,7 @@ func (m *manager) checkCommandAccess(profile *SecurityProfile, req AccessRequest
 
 	return AccessDecision{
 		Allowed: false,
-		Reason:  fmt.Sprintf("command not in allowlist: %s (base: %s)", command, baseCommand),
+		Reason:  "command not allowed by security policy",
 		Profile: profile.Name,
 	}
 }

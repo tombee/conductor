@@ -42,6 +42,146 @@ golangci-lint run
 - Keep functions focused and testable
 - Prefer interfaces over concrete types in public APIs
 
+### Error Handling Conventions
+
+Conductor uses a typed error system for consistent, user-friendly error handling:
+
+#### Use Typed Errors
+
+Return typed errors from `pkg/errors` for expected failure modes:
+
+```go
+import conductorerrors "github.com/tombee/conductor/pkg/errors"
+
+// GOOD: Typed error for expected failure
+func GetWorkflow(id string) (*Workflow, error) {
+    wf := store.Find(id)
+    if wf == nil {
+        return nil, &conductorerrors.NotFoundError{
+            Resource: "workflow",
+            ID:       id,
+        }
+    }
+    return wf, nil
+}
+
+// BAD: Generic error string
+func GetWorkflow(id string) (*Workflow, error) {
+    wf := store.Find(id)
+    if wf == nil {
+        return nil, errors.New("not found")
+    }
+    return wf, nil
+}
+```
+
+**Available error types:**
+- `ValidationError`: User input validation failures
+- `NotFoundError`: Resource not found
+- `ProviderError`: LLM provider failures
+- `ConfigError`: Configuration problems
+- `TimeoutError`: Operation timeouts
+
+#### Always Wrap External Errors
+
+Wrap errors from external packages with context (enforced by `wrapcheck` linter):
+
+```go
+// GOOD: Wrapped with context
+data, err := os.ReadFile(path)
+if err != nil {
+    return conductorerrors.Wrapf(err, "reading config file %s", path)
+}
+
+// BAD: No context (wrapcheck violation)
+data, err := os.ReadFile(path)
+if err != nil {
+    return err
+}
+```
+
+#### Provide Actionable Suggestions
+
+Include suggestions that users can act on:
+
+```go
+// GOOD: Actionable suggestion via typed error
+return &conductorerrors.ValidationError{
+    Field:      "workflow_name",
+    Message:    "name cannot contain special characters",
+    Suggestion: "Use only alphanumeric characters and hyphens",
+}
+
+// GOOD: Actionable suggestion via UserVisibleError
+return &connector.Error{
+    Type:        connector.ErrorTypeAuth,
+    Message:     "Authentication failed",
+    SuggestText: "Check API key in config.yaml or GITHUB_TOKEN environment variable",
+}
+```
+
+#### Preserve Error Chains
+
+Use errors that support `Unwrap()` to preserve error chains:
+
+```go
+// GOOD: Preserves cause for errors.Is/As
+return &conductorerrors.ProviderError{
+    Provider:  "anthropic",
+    Message:   "request failed",
+    Cause:     originalErr,  // Supports errors.Is/As
+}
+
+// BAD: Loses original error type
+return &conductorerrors.ProviderError{
+    Provider: "anthropic",
+    Message:  fmt.Sprintf("request failed: %v", originalErr),
+}
+```
+
+#### Check Error Types Correctly
+
+Use `errors.As()` for typed errors, `errors.Is()` for sentinel errors:
+
+```go
+import (
+    "errors"
+    conductorerrors "github.com/tombee/conductor/pkg/errors"
+)
+
+// GOOD: Type-safe error checking
+var notFoundErr *conductorerrors.NotFoundError
+if errors.As(err, &notFoundErr) {
+    log.Printf("Resource not found: %s/%s", notFoundErr.Resource, notFoundErr.ID)
+    return
+}
+
+// BAD: String matching
+if strings.Contains(err.Error(), "not found") {
+    // Fragile and breaks with wrapping
+}
+```
+
+#### Domain-Specific Errors
+
+Existing domain errors should implement `UserVisibleError` for CLI integration:
+
+```go
+type MyError struct {
+    Message     string
+    SuggestText string
+}
+
+func (e *MyError) Error() string { return e.Message }
+func (e *MyError) IsUserVisible() bool { return true }
+func (e *MyError) UserMessage() string { return e.Message }
+func (e *MyError) Suggestion() string { return e.SuggestText }
+```
+
+For more details, see:
+- [Error Handling Guide](docs/guides/error-handling.md) - Comprehensive developer guide
+- [Error Codes Reference](docs/reference/error-codes.md) - Catalog of error types
+
 ### Naming Conventions
 
 - **Packages**: Short, lowercase, single-word names (e.g., `workflow`, `llm`, `agent`)

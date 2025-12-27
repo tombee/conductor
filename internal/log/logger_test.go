@@ -871,3 +871,142 @@ func TestCombinedContextHelpers(t *testing.T) {
 		t.Errorf("expected %s to be 'anthropic', got: %v", ProviderKey, logEntry[ProviderKey])
 	}
 }
+
+// Test CONDUCTOR_DEBUG environment variable
+func TestFromEnv_ConductorDebug(t *testing.T) {
+	tests := []struct {
+		name              string
+		conductorDebug    string
+		conductorLogLevel string
+		expectedLevel     string
+		expectedAddSource bool
+	}{
+		{
+			name:              "CONDUCTOR_DEBUG=true enables debug and source",
+			conductorDebug:    "true",
+			conductorLogLevel: "",
+			expectedLevel:     "debug",
+			expectedAddSource: true,
+		},
+		{
+			name:              "CONDUCTOR_DEBUG=1 enables debug and source",
+			conductorDebug:    "1",
+			conductorLogLevel: "",
+			expectedLevel:     "debug",
+			expectedAddSource: true,
+		},
+		{
+			name:              "CONDUCTOR_DEBUG takes precedence over CONDUCTOR_LOG_LEVEL",
+			conductorDebug:    "true",
+			conductorLogLevel: "error",
+			expectedLevel:     "debug",
+			expectedAddSource: true,
+		},
+		{
+			name:              "CONDUCTOR_DEBUG=false does not enable debug",
+			conductorDebug:    "false",
+			conductorLogLevel: "info",
+			expectedLevel:     "info",
+			expectedAddSource: false,
+		},
+		{
+			name:              "CONDUCTOR_DEBUG unset uses CONDUCTOR_LOG_LEVEL",
+			conductorDebug:    "",
+			conductorLogLevel: "warn",
+			expectedLevel:     "warn",
+			expectedAddSource: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Clean slate
+			os.Unsetenv("CONDUCTOR_DEBUG")
+			os.Unsetenv("CONDUCTOR_LOG_LEVEL")
+			os.Unsetenv("LOG_LEVEL")
+			os.Unsetenv("LOG_SOURCE")
+
+			// Set environment variables
+			if tt.conductorDebug != "" {
+				os.Setenv("CONDUCTOR_DEBUG", tt.conductorDebug)
+			}
+			if tt.conductorLogLevel != "" {
+				os.Setenv("CONDUCTOR_LOG_LEVEL", tt.conductorLogLevel)
+			}
+
+			defer func() {
+				os.Unsetenv("CONDUCTOR_DEBUG")
+				os.Unsetenv("CONDUCTOR_LOG_LEVEL")
+				os.Unsetenv("LOG_LEVEL")
+				os.Unsetenv("LOG_SOURCE")
+			}()
+
+			cfg := FromEnv()
+
+			if cfg.Level != tt.expectedLevel {
+				t.Errorf("expected level %q, got %q", tt.expectedLevel, cfg.Level)
+			}
+
+			if cfg.AddSource != tt.expectedAddSource {
+				t.Errorf("expected AddSource %v, got %v", tt.expectedAddSource, cfg.AddSource)
+			}
+		})
+	}
+}
+
+// Test that CONDUCTOR_DEBUG actually produces source information in logs
+func TestConductorDebug_SourceInOutput(t *testing.T) {
+	// Clean slate
+	os.Unsetenv("CONDUCTOR_DEBUG")
+	os.Unsetenv("LOG_SOURCE")
+
+	os.Setenv("CONDUCTOR_DEBUG", "true")
+	defer os.Unsetenv("CONDUCTOR_DEBUG")
+
+	var buf bytes.Buffer
+
+	// Use FromEnv to get config with CONDUCTOR_DEBUG
+	cfg := FromEnv()
+	cfg.Output = &buf
+
+	logger := New(cfg)
+	logger.Info("test message with source")
+
+	output := buf.String()
+
+	// Verify it's valid JSON
+	var logEntry map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &logEntry); err != nil {
+		t.Fatalf("expected valid JSON output: %v", err)
+	}
+
+	// Should have debug level
+	if cfg.Level != "debug" {
+		t.Errorf("expected level to be 'debug', got %q", cfg.Level)
+	}
+
+	// Should have source information
+	source, ok := logEntry["source"]
+	if !ok {
+		t.Errorf("expected source field to be present in log output")
+	}
+
+	sourceMap, ok := source.(map[string]interface{})
+	if !ok {
+		t.Errorf("expected source to be a map, got: %T", source)
+	}
+
+	if _, ok := sourceMap["file"]; !ok {
+		t.Errorf("expected source.file to be present")
+	}
+
+	if _, ok := sourceMap["line"]; !ok {
+		t.Errorf("expected source.line to be present")
+	}
+
+	// Verify the file contains "logger_test.go"
+	file, _ := sourceMap["file"].(string)
+	if !strings.Contains(file, "logger_test.go") {
+		t.Errorf("expected file to contain 'logger_test.go', got: %s", file)
+	}
+}
