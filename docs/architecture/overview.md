@@ -17,6 +17,14 @@ Conductor is a workflow orchestration tool for AI tasks. It provides a daemon-fi
 
 For vision and positioning, see [vision.md](../vision.md).
 
+:::tip[Visual Diagrams]
+For visual architecture diagrams, see:
+- [System Context](system-context.md) - High-level view
+- [Components](components.md) - Package structure
+- [Execution Flow](execution-flow.md) - Runtime sequences
+- [Deployment Modes](deployment-modes.md) - Infrastructure topologies
+:::
+
 ## Package Structure
 
 ```
