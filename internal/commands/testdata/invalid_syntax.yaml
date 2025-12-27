@@ -1,0 +1,7 @@
+# Invalid YAML - unclosed string
+name: test-workflow
+description: "This string is not closed
+steps:
+  - id: step1
+    type: llm
+    prompt: "test"

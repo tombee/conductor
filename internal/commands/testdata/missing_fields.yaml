@@ -1,0 +1,8 @@
+# Valid YAML but missing required fields (no name)
+description: Test workflow without name
+version: "1.0"
+
+steps:
+  - id: step1
+    type: llm
+    prompt: "test"
