@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/tombee/conductor/internal/remote"
+	"github.com/tombee/conductor/pkg/httpclient"
 )
 
 // Client is a GitHub API client for fetching repository content.
@@ -62,8 +63,16 @@ func NewClient(cfg Config) *Client {
 	// Use default HTTP client if not provided
 	httpClient := cfg.HTTPClient
 	if httpClient == nil {
-		httpClient = &http.Client{
-			Timeout: 30 * time.Second,
+		httpCfg := httpclient.DefaultConfig()
+		httpCfg.Timeout = 30 * time.Second
+		httpCfg.UserAgent = "conductor-github-client/1.0"
+
+		client, err := httpclient.New(httpCfg)
+		if err != nil {
+			// Fallback to basic client
+			httpClient = &http.Client{Timeout: 30 * time.Second}
+		} else {
+			httpClient = client
 		}
 	}
 

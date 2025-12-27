@@ -21,6 +21,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+
+	"github.com/tombee/conductor/pkg/httpclient"
 )
 
 // BuildAPIURL constructs a full API URL with query parameters
@@ -69,7 +71,16 @@ func MakeAPIRequest(method, url string, body []byte) ([]byte, error) {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
-	client := &http.Client{}
+	// Create HTTP client using shared httpclient package
+	cfg := httpclient.DefaultConfig()
+	cfg.UserAgent = "conductor-cli/1.0"
+
+	client, err := httpclient.New(cfg)
+	if err != nil {
+		// Fallback to basic client
+		client = &http.Client{}
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
