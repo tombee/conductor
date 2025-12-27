@@ -72,22 +72,22 @@ type ExecutionResult struct {
 	FinalError error
 }
 
-// StepExecutorAdapter implements ExecutionAdapter using the workflow.StepExecutor.
+// ExecutorAdapter implements ExecutionAdapter using the workflow.Executor.
 // It bridges the daemon Runner with the workflow execution layer.
-type StepExecutorAdapter struct {
+type ExecutorAdapter struct {
 	// executor is the underlying step executor from pkg/workflow
-	executor *workflow.StepExecutor
+	executor *workflow.Executor
 }
 
-// NewStepExecutorAdapter creates a new adapter wrapping the given StepExecutor.
-func NewStepExecutorAdapter(executor *workflow.StepExecutor) *StepExecutorAdapter {
-	return &StepExecutorAdapter{
+// NewExecutorAdapter creates a new adapter wrapping the given Executor.
+func NewExecutorAdapter(executor *workflow.Executor) *ExecutorAdapter {
+	return &ExecutorAdapter{
 		executor: executor,
 	}
 }
 
 // ExecuteWorkflow implements ExecutionAdapter by executing each step in sequence.
-func (a *StepExecutorAdapter) ExecuteWorkflow(ctx context.Context, def *workflow.Definition, inputs map[string]any, opts ExecutionOptions) (*ExecutionResult, error) {
+func (a *ExecutorAdapter) ExecuteWorkflow(ctx context.Context, def *workflow.Definition, inputs map[string]any, opts ExecutionOptions) (*ExecutionResult, error) {
 	startTime := time.Now()
 
 	// Build workflow context (same pattern as CLI in internal/cli/run.go)

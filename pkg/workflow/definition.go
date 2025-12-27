@@ -17,7 +17,7 @@ import (
 
 // Definition represents a YAML-based workflow definition.
 // It defines the structure, steps, conditions, and outputs of a workflow
-// that can be loaded from a YAML file and executed by the workflow engine.
+// that can be loaded from a YAML file and executed by the workflow executor.
 //
 // Following SPEC-2, the Version field is optional and will default to "1.0"
 // if not specified. This allows for minimal workflow definitions that only

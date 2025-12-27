@@ -47,7 +47,7 @@ func main() {
     def, _ := workflow.ParseDefinition(data)
 
     // Create engine
-    engine := workflow.NewEngine()
+    engine := workflow.NewExecutor()
 
     // Execute workflow
     result, err := engine.Execute(context.Background(), def, map[string]interface{}{
@@ -298,7 +298,7 @@ But rely on human judgment for:
 
 ## Requirements
 
-- Conductor workflow engine
+- Conductor workflow executor
 - Anthropic API key (set in environment or credentials)
 - GitHub CLI (optional, for automation examples)
 

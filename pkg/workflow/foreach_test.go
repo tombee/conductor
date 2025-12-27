@@ -13,7 +13,7 @@ func TestExecutor_Foreach(t *testing.T) {
 		Level: slog.LevelError,
 	}))
 
-	executor := NewStepExecutor(nil, nil).WithLogger(logger)
+	executor := NewExecutor(nil, nil).WithLogger(logger)
 
 	tests := []struct {
 		name           string

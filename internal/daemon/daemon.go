@@ -147,8 +147,8 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 			providerAdapter := internalllm.NewProviderAdapter(llmProvider)
 			// TODO(SPEC-36): Wire up tool registry once tool types are unified
 			// For now, pass nil as tool registry (like CLI does)
-			executor := workflow.NewStepExecutor(nil, providerAdapter)
-			executionAdapter := runner.NewStepExecutorAdapter(executor)
+			executor := workflow.NewExecutor(nil, providerAdapter)
+			executionAdapter := runner.NewExecutorAdapter(executor)
 			r.SetAdapter(executionAdapter)
 
 			logger.Info("workflow execution adapter initialized",

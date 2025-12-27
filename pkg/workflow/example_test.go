@@ -132,7 +132,7 @@ func Example_templateVariables() {
 	}
 
 	// Create executor
-	executor := workflow.NewStepExecutor(nil, llmProvider)
+	executor := workflow.NewExecutor(nil, llmProvider)
 
 	// Create template context with workflow inputs
 	templateCtx := workflow.NewTemplateContext()
