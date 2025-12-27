@@ -122,6 +122,11 @@ func (c *HTTPTransportConfig) Validate() error {
 	return nil
 }
 
+// hasEnvVarSyntax checks if a string uses ${VAR_NAME} syntax for environment variable substitution.
+func hasEnvVarSyntax(s string) bool {
+	return strings.HasPrefix(s, "${") && strings.HasSuffix(s, "}")
+}
+
 // Validate checks if the auth configuration is valid.
 func (a *AuthConfig) Validate() error {
 	switch a.Type {
@@ -129,8 +134,9 @@ func (a *AuthConfig) Validate() error {
 		if a.Token == "" {
 			return fmt.Errorf("token is required for bearer auth")
 		}
-		// Note: In production, we would validate ${ENV_VAR} syntax here
-		// For now, we allow any token format
+		if !hasEnvVarSyntax(a.Token) {
+			return fmt.Errorf("token must use ${VAR_NAME} syntax for security (NFR7)")
+		}
 
 	case "basic":
 		if a.Username == "" {
@@ -139,7 +145,9 @@ func (a *AuthConfig) Validate() error {
 		if a.Password == "" {
 			return fmt.Errorf("password is required for basic auth")
 		}
-		// Note: In production, we would validate ${ENV_VAR} syntax for password
+		if !hasEnvVarSyntax(a.Password) {
+			return fmt.Errorf("password must use ${VAR_NAME} syntax for security (NFR7)")
+		}
 
 	case "api_key":
 		if a.HeaderName == "" {
@@ -148,7 +156,9 @@ func (a *AuthConfig) Validate() error {
 		if a.HeaderValue == "" {
 			return fmt.Errorf("header_value is required for api_key auth")
 		}
-		// Note: In production, we would validate ${ENV_VAR} syntax for header_value
+		if !hasEnvVarSyntax(a.HeaderValue) {
+			return fmt.Errorf("header_value must use ${VAR_NAME} syntax for security (NFR7)")
+		}
 
 	default:
 		return fmt.Errorf("invalid auth type: %q (must be bearer, basic, or api_key)", a.Type)
@@ -293,6 +303,10 @@ func (t *HTTPTransport) executeOnce(ctx context.Context, req *Request) (*Respons
 
 	// Check if response indicates an error
 	if httpResp.StatusCode >= 400 {
+		// Extract Retry-After header for rate limit responses
+		if retryAfter := httpResp.Header.Get("Retry-After"); retryAfter != "" {
+			resp.Metadata["retry_after"] = retryAfter
+		}
 		return nil, t.classifyHTTPStatusError(httpResp.StatusCode, body, resp.Metadata)
 	}
 

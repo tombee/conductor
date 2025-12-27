@@ -453,8 +453,18 @@ type ConnectorDefinition struct {
 	// BaseURL is the base URL for all operations (required for inline connectors)
 	BaseURL string `yaml:"base_url,omitempty" json:"base_url,omitempty"`
 
-	// Auth defines authentication configuration
+	// Transport specifies which transport to use ("http", "aws_sigv4", "oauth2")
+	// Defaults to "http" if not specified
+	Transport string `yaml:"transport,omitempty" json:"transport,omitempty"`
+
+	// Auth defines authentication configuration (for http transport)
 	Auth *AuthDefinition `yaml:"auth,omitempty" json:"auth,omitempty"`
+
+	// AWS defines AWS SigV4 transport configuration (for aws_sigv4 transport)
+	AWS *AWSConfig `yaml:"aws,omitempty" json:"aws,omitempty"`
+
+	// OAuth2 defines OAuth2 transport configuration (for oauth2 transport)
+	OAuth2 *OAuth2Config `yaml:"oauth2,omitempty" json:"oauth2,omitempty"`
 
 	// Headers are default headers applied to all operations
 	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
@@ -536,6 +546,36 @@ type RateLimitConfig struct {
 
 	// Timeout is the maximum time to wait for rate limit (in seconds, default 30)
 	Timeout int `yaml:"timeout,omitempty" json:"timeout,omitempty"`
+}
+
+// AWSConfig defines AWS SigV4 transport configuration.
+type AWSConfig struct {
+	// Service is the AWS service name (e.g., "s3", "dynamodb", "sqs")
+	Service string `yaml:"service" json:"service"`
+
+	// Region is the AWS region (e.g., "us-east-1", "eu-west-1")
+	Region string `yaml:"region" json:"region"`
+}
+
+// OAuth2Config defines OAuth2 transport configuration.
+type OAuth2Config struct {
+	// Flow is the OAuth2 flow ("client_credentials" or "authorization_code")
+	Flow string `yaml:"flow" json:"flow"`
+
+	// ClientID is the OAuth2 client ID (must use ${ENV_VAR} syntax)
+	ClientID string `yaml:"client_id" json:"client_id"`
+
+	// ClientSecret is the OAuth2 client secret (must use ${ENV_VAR} syntax)
+	ClientSecret string `yaml:"client_secret" json:"client_secret"`
+
+	// TokenURL is the OAuth2 token endpoint URL
+	TokenURL string `yaml:"token_url" json:"token_url"`
+
+	// Scopes are the OAuth2 scopes to request
+	Scopes []string `yaml:"scopes,omitempty" json:"scopes,omitempty"`
+
+	// RefreshToken is the refresh token for authorization_code flow (must use ${ENV_VAR} syntax)
+	RefreshToken string `yaml:"refresh_token,omitempty" json:"refresh_token,omitempty"`
 }
 
 // CostLimits defines cost constraints for a workflow or step.

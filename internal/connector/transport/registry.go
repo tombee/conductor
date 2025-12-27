@@ -109,3 +109,38 @@ func (r *Registry) Has(name string) bool {
 	_, exists := r.transports[name]
 	return exists
 }
+
+// NewDefaultRegistry creates a registry with built-in transports pre-registered.
+// This includes: http, aws_sigv4, and oauth2 transports.
+func NewDefaultRegistry() *Registry {
+	registry := NewRegistry()
+
+	// Register HTTP transport
+	registry.Register("http", func(config TransportConfig) (Transport, error) {
+		httpConfig, ok := config.(*HTTPTransportConfig)
+		if !ok {
+			return nil, fmt.Errorf("expected HTTPTransportConfig, got %T", config)
+		}
+		return NewHTTPTransport(httpConfig)
+	})
+
+	// Register AWS SigV4 transport
+	registry.Register("aws_sigv4", func(config TransportConfig) (Transport, error) {
+		awsConfig, ok := config.(*AWSTransportConfig)
+		if !ok {
+			return nil, fmt.Errorf("expected AWSTransportConfig, got %T", config)
+		}
+		return NewAWSTransport(awsConfig)
+	})
+
+	// Register OAuth2 transport
+	registry.Register("oauth2", func(config TransportConfig) (Transport, error) {
+		oauth2Config, ok := config.(*OAuth2TransportConfig)
+		if !ok {
+			return nil, fmt.Errorf("expected OAuth2TransportConfig, got %T", config)
+		}
+		return NewOAuth2Transport(oauth2Config)
+	})
+
+	return registry
+}
