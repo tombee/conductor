@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// MCP server lifecycle and configuration management.
+// Manages starting, stopping, monitoring, and health checks for MCP servers,
+// with automatic restart logic and exponential backoff on failures.
 package mcp
 
 import (
