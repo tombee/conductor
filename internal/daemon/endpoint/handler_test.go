@@ -28,6 +28,7 @@ import (
 	"github.com/tombee/conductor/internal/daemon/backend/memory"
 	"github.com/tombee/conductor/internal/daemon/checkpoint"
 	"github.com/tombee/conductor/internal/daemon/runner"
+	"github.com/tombee/conductor/pkg/workflow"
 )
 
 func TestHandlerListEndpoints(t *testing.T) {
@@ -770,4 +771,303 @@ func createTestRunner(t *testing.T) *runner.Runner {
 		MaxParallel:    1,
 		DefaultTimeout: 30 * time.Second,
 	}, backend, cm)
+}
+
+// TestValidateInputs tests the input validation function.
+func TestValidateInputs(t *testing.T) {
+	tests := []struct {
+		name      string
+		inputs    map[string]any
+		inputDefs []workflow.InputDefinition
+		wantErr   bool
+		errMsg    string
+	}{
+		{
+			name: "valid required string input",
+			inputs: map[string]any{
+				"name": "test",
+			},
+			inputDefs: []workflow.InputDefinition{
+				{Name: "name", Type: "string", Required: true},
+			},
+			wantErr: false,
+		},
+		{
+			name:   "missing required input",
+			inputs: map[string]any{},
+			inputDefs: []workflow.InputDefinition{
+				{Name: "name", Type: "string", Required: true},
+			},
+			wantErr: true,
+			errMsg:  "required input \"name\" is missing",
+		},
+		{
+			name: "optional input not provided",
+			inputs: map[string]any{
+				"required": "value",
+			},
+			inputDefs: []workflow.InputDefinition{
+				{Name: "required", Type: "string", Required: true},
+				{Name: "optional", Type: "string", Required: false},
+			},
+			wantErr: false,
+		},
+		{
+			name: "wrong type for string input",
+			inputs: map[string]any{
+				"name": 123,
+			},
+			inputDefs: []workflow.InputDefinition{
+				{Name: "name", Type: "string"},
+			},
+			wantErr: true,
+			errMsg:  "must be a string",
+		},
+		{
+			name: "valid number input (int)",
+			inputs: map[string]any{
+				"count": 42,
+			},
+			inputDefs: []workflow.InputDefinition{
+				{Name: "count", Type: "number"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid number input (float)",
+			inputs: map[string]any{
+				"count": 42.5,
+			},
+			inputDefs: []workflow.InputDefinition{
+				{Name: "count", Type: "number"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid number input",
+			inputs: map[string]any{
+				"count": "not-a-number",
+			},
+			inputDefs: []workflow.InputDefinition{
+				{Name: "count", Type: "number"},
+			},
+			wantErr: true,
+			errMsg:  "must be a number",
+		},
+		{
+			name: "valid boolean input",
+			inputs: map[string]any{
+				"enabled": true,
+			},
+			inputDefs: []workflow.InputDefinition{
+				{Name: "enabled", Type: "boolean"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid boolean input",
+			inputs: map[string]any{
+				"enabled": "true",
+			},
+			inputDefs: []workflow.InputDefinition{
+				{Name: "enabled", Type: "boolean"},
+			},
+			wantErr: true,
+			errMsg:  "must be a boolean",
+		},
+		{
+			name: "valid array input",
+			inputs: map[string]any{
+				"items": []any{"a", "b", "c"},
+			},
+			inputDefs: []workflow.InputDefinition{
+				{Name: "items", Type: "array"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid object input",
+			inputs: map[string]any{
+				"config": map[string]any{"key": "value"},
+			},
+			inputDefs: []workflow.InputDefinition{
+				{Name: "config", Type: "object"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid enum input",
+			inputs: map[string]any{
+				"priority": "high",
+			},
+			inputDefs: []workflow.InputDefinition{
+				{Name: "priority", Type: "enum", Enum: []string{"low", "medium", "high"}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid enum value",
+			inputs: map[string]any{
+				"priority": "critical",
+			},
+			inputDefs: []workflow.InputDefinition{
+				{Name: "priority", Type: "enum", Enum: []string{"low", "medium", "high"}},
+			},
+			wantErr: true,
+			errMsg:  "must be one of",
+		},
+		{
+			name: "input with default not required",
+			inputs: map[string]any{},
+			inputDefs: []workflow.InputDefinition{
+				{Name: "optional", Type: "string", Required: true, Default: "default-value"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "unknown input allowed",
+			inputs: map[string]any{
+				"unknown": "value",
+			},
+			inputDefs: []workflow.InputDefinition{},
+			wantErr:   false,
+		},
+		{
+			name: "nil value allowed",
+			inputs: map[string]any{
+				"optional": nil,
+			},
+			inputDefs: []workflow.InputDefinition{
+				{Name: "optional", Type: "string"},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateInputs(tt.inputs, tt.inputDefs)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("expected error containing %q, got nil", tt.errMsg)
+				} else if tt.errMsg != "" && !containsString(err.Error(), tt.errMsg) {
+					t.Errorf("expected error containing %q, got %q", tt.errMsg, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("expected no error, got %v", err)
+				}
+			}
+		})
+	}
+}
+
+// TestHandlerInputValidation tests the handler's input validation integration.
+func TestHandlerInputValidation(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a workflow with input definitions
+	workflowPath := filepath.Join(tmpDir, "test.yaml")
+	workflowContent := `
+name: test
+inputs:
+  - name: message
+    type: string
+    required: true
+  - name: count
+    type: number
+    required: false
+    default: 1
+steps:
+  - id: echo
+    type: llm
+    prompt: "{{.message}}"
+`
+	if err := os.WriteFile(workflowPath, []byte(workflowContent), 0600); err != nil {
+		t.Fatalf("failed to write workflow file: %v", err)
+	}
+
+	registry := NewRegistry()
+	registry.Add(&Endpoint{
+		Name:     "test",
+		Workflow: "test.yaml",
+	})
+
+	r := createTestRunner(t)
+	handler := NewHandler(registry, r, tmpDir)
+
+	mux := http.NewServeMux()
+	handler.RegisterRoutes(mux)
+
+	tests := []struct {
+		name         string
+		requestBody  map[string]any
+		expectedCode int
+	}{
+		{
+			name: "valid inputs",
+			requestBody: map[string]any{
+				"inputs": map[string]any{
+					"message": "hello",
+					"count":   5,
+				},
+			},
+			expectedCode: http.StatusAccepted,
+		},
+		{
+			name: "missing required input",
+			requestBody: map[string]any{
+				"inputs": map[string]any{},
+			},
+			expectedCode: http.StatusBadRequest,
+		},
+		{
+			name: "wrong type for input",
+			requestBody: map[string]any{
+				"inputs": map[string]any{
+					"message": 123,
+				},
+			},
+			expectedCode: http.StatusBadRequest,
+		},
+		{
+			name: "optional input omitted uses default",
+			requestBody: map[string]any{
+				"inputs": map[string]any{
+					"message": "hello",
+				},
+			},
+			expectedCode: http.StatusAccepted,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body, _ := json.Marshal(tt.requestBody)
+			req := httptest.NewRequest("POST", "/v1/endpoints/test/runs", bytes.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+
+			mux.ServeHTTP(rec, req)
+
+			if rec.Code != tt.expectedCode {
+				t.Errorf("expected status %d, got %d: %s", tt.expectedCode, rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
+// Helper function for string contains check.
+func containsString(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
+		(len(s) > 0 && len(substr) > 0 && findSubstring(s, substr)))
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }

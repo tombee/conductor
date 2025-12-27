@@ -28,6 +28,10 @@ import (
 
 	"github.com/tombee/conductor/internal/daemon/auth"
 	"github.com/tombee/conductor/internal/daemon/runner"
+	"github.com/tombee/conductor/pkg/workflow"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+	"gopkg.in/yaml.v3"
 )
 
 // Handler handles endpoint-related HTTP requests.
@@ -37,6 +41,11 @@ type Handler struct {
 	workflowsDir string
 	rateLimiter  *auth.NamedRateLimiter
 	logger       *slog.Logger
+
+	// Metrics
+	requestsTotal        metric.Int64Counter
+	requestDuration      metric.Float64Histogram
+	rateLimitExceeded    metric.Int64Counter
 }
 
 // NewHandler creates a new endpoint handler.
@@ -54,6 +63,42 @@ func NewHandler(registry *Registry, r *runner.Runner, workflowsDir string) *Hand
 // This allows external configuration of rate limits.
 func (h *Handler) SetRateLimiter(rl *auth.NamedRateLimiter) {
 	h.rateLimiter = rl
+}
+
+// SetMetrics initializes metrics for the handler using the given meter provider.
+func (h *Handler) SetMetrics(meterProvider metric.MeterProvider) error {
+	meter := meterProvider.Meter("conductor")
+
+	var err error
+
+	h.requestsTotal, err = meter.Int64Counter(
+		"conductor_endpoint_requests_total",
+		metric.WithDescription("Total number of endpoint requests"),
+		metric.WithUnit("{request}"),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create requests counter: %w", err)
+	}
+
+	h.requestDuration, err = meter.Float64Histogram(
+		"conductor_endpoint_request_duration_seconds",
+		metric.WithDescription("Endpoint request duration in seconds"),
+		metric.WithUnit("s"),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create duration histogram: %w", err)
+	}
+
+	h.rateLimitExceeded, err = meter.Int64Counter(
+		"conductor_endpoint_rate_limit_exceeded_total",
+		metric.WithDescription("Total number of rate limit exceeded events"),
+		metric.WithUnit("{event}"),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create rate limit counter: %w", err)
+	}
+
+	return nil
 }
 
 // RegisterRoutes registers endpoint API routes on the router.
@@ -153,23 +198,49 @@ type CreateRunRequest struct {
 // handleCreateRun handles POST /v1/endpoints/{name}/runs.
 // Creates a new workflow run for the specified endpoint.
 func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
+	startTime := time.Now()
+	name := r.PathValue("name")
+	var statusCode int
+
+	// Track metrics at the end of the request
+	defer func() {
+		duration := time.Since(startTime).Seconds()
+		if h.requestDuration != nil {
+			h.requestDuration.Record(r.Context(), duration,
+				metric.WithAttributes(
+					attribute.String("endpoint", name),
+					attribute.String("method", "POST"),
+				),
+			)
+		}
+		if h.requestsTotal != nil && statusCode > 0 {
+			h.requestsTotal.Add(r.Context(), 1,
+				metric.WithAttributes(
+					attribute.String("endpoint", name),
+					attribute.String("status", fmt.Sprintf("%d", statusCode)),
+				),
+			)
+		}
+	}()
+
 	// Check if runner is draining (graceful shutdown in progress)
 	if h.runner.IsDraining() {
+		statusCode = http.StatusServiceUnavailable
 		w.Header().Set("Retry-After", "10")
-		writeError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
+		writeError(w, statusCode, "daemon is shutting down gracefully")
 		return
 	}
-
-	name := r.PathValue("name")
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "endpoint name is required")
+		statusCode = http.StatusBadRequest
+		writeError(w, statusCode, "endpoint name is required")
 		return
 	}
 
 	// Get endpoint
 	ep := h.registry.Get(name)
 	if ep == nil {
-		writeError(w, http.StatusNotFound, fmt.Sprintf("endpoint %q not found", name))
+		statusCode = http.StatusNotFound
+		writeError(w, statusCode, fmt.Sprintf("endpoint %q not found", name))
 		return
 	}
 
@@ -187,28 +258,82 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 			slog.String("user", getUserID(user)),
 			slog.Any("user_scopes", userScopes),
 		)
-		writeError(w, http.StatusNotFound, fmt.Sprintf("endpoint %q not found", name))
+		statusCode = http.StatusNotFound
+		writeError(w, statusCode, fmt.Sprintf("endpoint %q not found", name))
 		return
 	}
 
 	// Check rate limit for this endpoint
-	if !h.checkRateLimit(w, ep.Name) {
+	if !h.checkRateLimit(w, r.Context(), ep.Name, &statusCode) {
 		return
 	}
 
 	// Parse request body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "failed to read request body")
+		statusCode = http.StatusBadRequest
+		writeError(w, statusCode, "failed to read request body")
 		return
 	}
 
 	var req CreateRunRequest
 	if len(body) > 0 {
 		if err := json.Unmarshal(body, &req); err != nil {
-			writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid JSON: %v", err))
+			statusCode = http.StatusBadRequest
+			writeError(w, statusCode, fmt.Sprintf("invalid JSON: %v", err))
 			return
 		}
+	}
+
+	// Find workflow file first (needed for validation)
+	workflowPath, err := findWorkflow(ep.Workflow, h.workflowsDir)
+	if err != nil {
+		h.logger.Error("Workflow not found for endpoint",
+			slog.String("endpoint", name),
+			slog.String("workflow", ep.Workflow),
+			slog.Any("error", err),
+		)
+		statusCode = http.StatusInternalServerError
+		writeError(w, statusCode, fmt.Sprintf("workflow %q not found", ep.Workflow))
+		return
+	}
+
+	// Read workflow file
+	workflowFile, err := os.Open(workflowPath)
+	if err != nil {
+		h.logger.Error("Failed to open workflow file",
+			slog.String("endpoint", name),
+			slog.String("path", workflowPath),
+			slog.Any("error", err),
+		)
+		statusCode = http.StatusInternalServerError
+		writeError(w, statusCode, "failed to read workflow file")
+		return
+	}
+	defer workflowFile.Close()
+
+	workflowYAML, err := io.ReadAll(workflowFile)
+	if err != nil {
+		h.logger.Error("Failed to read workflow file",
+			slog.String("endpoint", name),
+			slog.String("path", workflowPath),
+			slog.Any("error", err),
+		)
+		statusCode = http.StatusInternalServerError
+		writeError(w, statusCode, "failed to read workflow file")
+		return
+	}
+
+	// Parse workflow definition for input validation
+	var def workflow.Definition
+	if err := yaml.Unmarshal(workflowYAML, &def); err != nil {
+		h.logger.Error("Failed to parse workflow definition",
+			slog.String("endpoint", name),
+			slog.Any("error", err),
+		)
+		statusCode = http.StatusInternalServerError
+		writeError(w, statusCode, "failed to parse workflow definition")
+		return
 	}
 
 	// Merge endpoint default inputs with request inputs
@@ -221,27 +346,14 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 		inputs[k] = v
 	}
 
-	// Find workflow file
-	workflowPath, err := findWorkflow(ep.Workflow, h.workflowsDir)
-	if err != nil {
-		h.logger.Error("Workflow not found for endpoint",
+	// Validate inputs against workflow schema
+	if err := validateInputs(inputs, def.Inputs); err != nil {
+		h.logger.Warn("Input validation failed",
 			slog.String("endpoint", name),
-			slog.String("workflow", ep.Workflow),
 			slog.Any("error", err),
 		)
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("workflow %q not found", ep.Workflow))
-		return
-	}
-
-	// Read workflow file
-	workflowYAML, err := io.ReadAll(mustOpen(workflowPath))
-	if err != nil {
-		h.logger.Error("Failed to read workflow file",
-			slog.String("endpoint", name),
-			slog.String("path", workflowPath),
-			slog.Any("error", err),
-		)
-		writeError(w, http.StatusInternalServerError, "failed to read workflow file")
+		statusCode = http.StatusBadRequest
+		writeError(w, statusCode, fmt.Sprintf("input validation failed: %v", err))
 		return
 	}
 
@@ -257,7 +369,8 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 			slog.String("endpoint", name),
 			slog.Any("error", err),
 		)
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("failed to submit run: %v", err))
+		statusCode = http.StatusBadRequest
+		writeError(w, statusCode, fmt.Sprintf("failed to submit run: %v", err))
 		return
 	}
 
@@ -273,13 +386,16 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 
 	if waitParam == "true" {
 		// Synchronous mode - wait for completion
+		// Note: sync execution sets its own status codes
 		h.handleSyncExecution(w, r, run, ep.Name, streamParam == "true")
+		statusCode = http.StatusOK // Approximate - actual status set by handleSyncExecution
 		return
 	}
 
 	// Async mode - return 202 Accepted with run details
+	statusCode = http.StatusAccepted
 	w.Header().Set("Location", fmt.Sprintf("/v1/runs/%s", run.ID))
-	writeJSON(w, http.StatusAccepted, run)
+	writeJSON(w, statusCode, run)
 }
 
 // handleListRuns handles GET /v1/endpoints/{name}/runs.
@@ -555,14 +671,6 @@ func writeError(w http.ResponseWriter, status int, message string) {
 	})
 }
 
-func mustOpen(path string) io.ReadCloser {
-	f, err := os.Open(path)
-	if err != nil {
-		panic(err)
-	}
-	return f
-}
-
 func containsPath(sourceURL, workflow string) bool {
 	// Simple check if workflow name appears in source URL
 	// This is a heuristic for matching runs to endpoints
@@ -589,7 +697,8 @@ func toJSON(v any) string {
 
 // checkRateLimit checks the rate limit for an endpoint and writes error response if exceeded.
 // Returns true if request is allowed, false if rate limit exceeded.
-func (h *Handler) checkRateLimit(w http.ResponseWriter, endpointName string) bool {
+// statusCode will be set to 429 if rate limit is exceeded.
+func (h *Handler) checkRateLimit(w http.ResponseWriter, ctx context.Context, endpointName string, statusCode *int) bool {
 	// Check if rate limit is exceeded
 	if !h.rateLimiter.Allow(endpointName) {
 		// Get status for headers
@@ -615,12 +724,22 @@ func (h *Handler) checkRateLimit(w http.ResponseWriter, endpointName string) boo
 			slog.Time("reset_at", resetAt),
 		)
 
+		// Record rate limit metric
+		if h.rateLimitExceeded != nil {
+			h.rateLimitExceeded.Add(ctx, 1,
+				metric.WithAttributes(
+					attribute.String("endpoint", endpointName),
+				),
+			)
+		}
+
 		// Return 429 Too Many Requests
-		writeJSON(w, http.StatusTooManyRequests, map[string]any{
-			"error":      "rate limit exceeded",
-			"limit":      int(limit),
-			"remaining":  0,
-			"reset_at":   resetAt.Unix(),
+		*statusCode = http.StatusTooManyRequests
+		writeJSON(w, *statusCode, map[string]any{
+			"error":       "rate limit exceeded",
+			"limit":       int(limit),
+			"remaining":   0,
+			"reset_at":    resetAt.Unix(),
 			"retry_after": retryAfter,
 		})
 		return false
@@ -635,4 +754,122 @@ func (h *Handler) checkRateLimit(w http.ResponseWriter, endpointName string) boo
 	}
 
 	return true
+}
+
+// validateInputs validates request inputs against the workflow's input schema.
+// Returns an error with detailed validation messages if validation fails.
+func validateInputs(inputs map[string]any, inputDefs []workflow.InputDefinition) error {
+	// Build a map of input definitions for quick lookup
+	defMap := make(map[string]workflow.InputDefinition)
+	for _, def := range inputDefs {
+		defMap[def.Name] = def
+	}
+
+	// Check for required inputs
+	for _, def := range inputDefs {
+		// Skip if has default value
+		if def.Default != nil {
+			continue
+		}
+
+		// Check if required input is missing
+		if def.Required {
+			if _, ok := inputs[def.Name]; !ok {
+				return fmt.Errorf("required input %q is missing", def.Name)
+			}
+		}
+	}
+
+	// Validate type and constraints for provided inputs
+	for name, value := range inputs {
+		def, ok := defMap[name]
+		if !ok {
+			// Unknown input - this is acceptable (workflow executor will handle)
+			continue
+		}
+
+		// Skip nil values (will use default if available)
+		if value == nil {
+			continue
+		}
+
+		// Validate type
+		if err := validateInputType(name, value, def.Type); err != nil {
+			return err
+		}
+
+		// Validate enum constraint
+		if len(def.Enum) > 0 {
+			if err := validateEnum(name, value, def.Enum); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// validateInputType validates that an input value matches the expected type.
+func validateInputType(name string, value any, expectedType string) error {
+	switch expectedType {
+	case "string":
+		if _, ok := value.(string); !ok {
+			return fmt.Errorf("input %q must be a string, got %T", name, value)
+		}
+	case "number":
+		// Accept both int and float types as numbers
+		switch value.(type) {
+		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+			// Integer types are valid numbers
+		case float32, float64:
+			// Float types are valid numbers
+		default:
+			return fmt.Errorf("input %q must be a number, got %T", name, value)
+		}
+	case "boolean":
+		if _, ok := value.(bool); !ok {
+			return fmt.Errorf("input %q must be a boolean, got %T", name, value)
+		}
+	case "object":
+		if _, ok := value.(map[string]any); !ok {
+			return fmt.Errorf("input %q must be an object, got %T", name, value)
+		}
+	case "array":
+		// Accept []any and []interface{} as array types (they're the same in Go)
+		switch value.(type) {
+		case []any:
+			// Valid array type
+		default:
+			return fmt.Errorf("input %q must be an array, got %T", name, value)
+		}
+	case "enum":
+		// Enum type - just check it's a string (actual enum validation happens separately)
+		if _, ok := value.(string); !ok {
+			return fmt.Errorf("input %q must be a string (enum), got %T", name, value)
+		}
+	case "":
+		// No type specified - accept any value
+		return nil
+	default:
+		// Unknown type - be lenient and accept it (workflow executor will validate)
+		return nil
+	}
+
+	return nil
+}
+
+// validateEnum validates that a value is in the allowed enum values.
+func validateEnum(name string, value any, allowedValues []string) error {
+	strValue, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("input %q enum value must be a string, got %T", name, value)
+	}
+
+	for _, allowed := range allowedValues {
+		if strValue == allowed {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("input %q must be one of %v, got %q", name, allowedValues, strValue)
 }
