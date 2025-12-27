@@ -11,7 +11,7 @@ For complete API reference including all methods and types, see the [GoDoc docum
 ## Package Index
 
 - [pkg/llm](#pkgllm) - LLM provider abstraction
-- [pkg/workflow](#pkgworkflow) - Workflow engine
+- [pkg/workflow](#pkgworkflow) - Workflow executor
 - [pkg/agent](#pkgagent) - Agent execution loop
 - [pkg/tools](#pkgtools) - Tool registry and execution
 
