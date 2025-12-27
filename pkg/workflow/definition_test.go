@@ -1700,15 +1700,15 @@ steps:
 	}
 }
 
-// TestLegacyConnectorCompatibility tests backward compatibility with type: connector (P3.6)
-func TestLegacyConnectorCompatibility(t *testing.T) {
+// TestConnectorSyntaxVariants tests that various connector syntax forms are correctly parsed.
+func TestConnectorSyntaxVariants(t *testing.T) {
 	tests := []struct {
 		name    string
 		yaml    string
 		wantErr bool
 	}{
 		{
-			name: "legacy verbose connector syntax still works",
+			name: "verbose connector syntax still works",
 			yaml: `
 name: test-workflow
 connectors:
@@ -1728,7 +1728,7 @@ steps:
 			wantErr: false,
 		},
 		{
-			name: "legacy builtin syntax still works",
+			name: "builtin shorthand syntax still works",
 			yaml: `
 name: test-workflow
 steps:

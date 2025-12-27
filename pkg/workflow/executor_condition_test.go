@@ -32,7 +32,7 @@ func TestExecute_ConditionTrue(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, StepStatusSuccess, result.Status)
-	assert.True(t, result.Success)
+	assert.True(t, result.Status == StepStatusSuccess)
 	assert.NotNil(t, result.Output)
 }
 
@@ -58,7 +58,7 @@ func TestExecute_ConditionFalse_StepSkipped(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, StepStatusSkipped, result.Status)
-	assert.True(t, result.Success) // Skipped is not a failure
+	// StepStatusSkipped is not a failure - step was intentionally skipped
 	assert.Equal(t, true, result.Output["skipped"])
 	assert.Equal(t, "condition evaluated to false", result.Output["reason"])
 }
@@ -79,7 +79,7 @@ func TestExecute_NoCondition_StepRuns(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, StepStatusSuccess, result.Status)
-	assert.True(t, result.Success)
+	assert.True(t, result.Status == StepStatusSuccess)
 }
 
 func TestExecute_ConditionWithHasFunction(t *testing.T) {
@@ -216,7 +216,7 @@ func TestExecute_ConditionError(t *testing.T) {
 	require.Error(t, err)
 
 	assert.Equal(t, StepStatusFailed, result.Status)
-	assert.False(t, result.Success)
+	assert.False(t, result.Status == StepStatusSuccess)
 	assert.Contains(t, err.Error(), "evaluate condition")
 }
 

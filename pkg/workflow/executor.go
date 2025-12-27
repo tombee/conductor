@@ -36,11 +36,7 @@ type StepResult struct {
 	// Status is the execution status (pending, running, success, failed, skipped)
 	Status StepStatus
 
-	// Success indicates if the step completed successfully (deprecated: use Status)
-	Success bool
-
 	// Output contains the step's output data
-	// Note: Migrating to StepOutput type (SPEC-40). Currently kept as map for compatibility.
 	Output map[string]interface{}
 
 	// Error contains the error message if the step failed
@@ -218,7 +214,6 @@ func (e *Executor) Execute(ctx context.Context, step *StepDefinition, workflowCo
 		shouldRun, err := e.evaluateCondition(step.Condition.Expression, workflowContext)
 		if err != nil {
 			result.Status = StepStatusFailed
-			result.Success = false
 			result.Error = fmt.Sprintf("condition evaluation failed: %s", err.Error())
 			result.CompletedAt = time.Now()
 			result.Duration = result.CompletedAt.Sub(result.StartedAt)
@@ -231,7 +226,6 @@ func (e *Executor) Execute(ctx context.Context, step *StepDefinition, workflowCo
 				"expression", step.Condition.Expression,
 			)
 			result.Status = StepStatusSkipped
-			result.Success = true // Skipped is not a failure
 			result.Output = map[string]interface{}{
 				"content": "",
 				"skipped": true,
@@ -273,7 +267,6 @@ func (e *Executor) Execute(ctx context.Context, step *StepDefinition, workflowCo
 
 	if err != nil {
 		result.Status = StepStatusFailed
-		result.Success = false
 		result.Error = err.Error()
 
 		// Handle error according to step configuration
@@ -285,7 +278,6 @@ func (e *Executor) Execute(ctx context.Context, step *StepDefinition, workflowCo
 	}
 
 	result.Status = StepStatusSuccess
-	result.Success = true
 	return result, nil
 }
 
@@ -516,11 +508,11 @@ func (e *Executor) executeLLM(ctx context.Context, step *StepDefinition, inputs 
 	// SPEC-40: Wrap inputs in type-safe context for safer access
 	inputCtx := NewWorkflowContext(inputs)
 
-	// SPEC-2 format: Use Prompt field from step definition
-	// Fallback to old format: prompt from inputs
+	// Primary format: Use Prompt field from step definition
+	// Alternative: prompt from inputs (for dynamic prompts)
 	prompt := step.Prompt
 	if prompt == "" {
-		// Legacy format: prompt from inputs (type-safe accessor)
+		// Alternative format: prompt from inputs (type-safe accessor)
 		promptInput, err := inputCtx.GetString("prompt")
 		if err != nil {
 			return nil, &errors.ValidationError{
@@ -1181,7 +1173,7 @@ func (e *Executor) handleError(ctx context.Context, step *StepDefinition, result
 
 	case ErrorStrategyIgnore:
 		// Mark as success but include error info
-		result.Success = true
+		result.Status = StepStatusSuccess
 		result.Error = fmt.Sprintf("ignored error: %s", err.Error())
 		return result, nil
 
@@ -1193,7 +1185,6 @@ func (e *Executor) handleError(ctx context.Context, step *StepDefinition, result
 		// Execute fallback step
 		// Phase 1: Return error with fallback step ID
 		// Future implementation would actually execute the fallback step
-		result.Success = false
 		result.Error = fmt.Sprintf("error (fallback to %s): %s", step.OnError.FallbackStep, err.Error())
 		result.Output = map[string]interface{}{
 			"fallback_step": step.OnError.FallbackStep,

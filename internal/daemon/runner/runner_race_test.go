@@ -59,7 +59,6 @@ func setupTestRunner(t *testing.T) *Runner {
 			select {
 			case <-ctx.Done():
 				return &ExecutionResult{
-					Output:      make(map[string]any),
 					Duration:    time.Millisecond,
 					Steps:       []workflow.StepResult{},
 					StepOutputs: make(map[string]any),
@@ -67,7 +66,7 @@ func setupTestRunner(t *testing.T) *Runner {
 				}, ctx.Err()
 			case <-time.After(10 * time.Millisecond):
 				return &ExecutionResult{
-					Output:      map[string]any{"response": "test"},
+					StepOutput:  &workflow.StepOutput{Text: "test"},
 					Duration:    10 * time.Millisecond,
 					Steps:       []workflow.StepResult{},
 					StepOutputs: make(map[string]any),

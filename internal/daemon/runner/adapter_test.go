@@ -330,8 +330,8 @@ func TestMockExecutionAdapter_ExecuteWorkflow(t *testing.T) {
 	mock := &MockExecutionAdapter{
 		ExecuteWorkflowFunc: func(ctx context.Context, def *workflow.Definition, inputs map[string]any, opts ExecutionOptions) (*ExecutionResult, error) {
 			return &ExecutionResult{
-				Output:   map[string]any{"result": "custom"},
-				Duration: time.Second,
+				StepOutput: &workflow.StepOutput{Data: map[string]any{"result": "custom"}},
+				Duration:   time.Second,
 			}, nil
 		},
 	}
@@ -345,8 +345,8 @@ func TestMockExecutionAdapter_ExecuteWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result.Output["result"] != "custom" {
-		t.Error("expected custom output")
+	if result.StepOutput == nil || result.StepOutput.Data == nil {
+		t.Error("expected StepOutput with data")
 	}
 
 	// Verify call was recorded
@@ -374,9 +374,6 @@ func TestMockExecutionAdapter_DefaultBehavior(t *testing.T) {
 	}
 	if result == nil {
 		t.Fatal("expected default result")
-	}
-	if result.Output == nil {
-		t.Error("expected empty output map")
 	}
 }
 
@@ -413,11 +410,6 @@ func TestExecutorAdapter_TypedOutput(t *testing.T) {
 	}
 	if result.StepOutput.Text == "" {
 		t.Error("expected StepOutput.Text to be set")
-	}
-
-	// Verify legacy Output is still populated for compatibility
-	if result.Output == nil {
-		t.Error("expected legacy Output to still be populated")
 	}
 }
 
@@ -485,7 +477,6 @@ func TestOutputConversionHelpers(t *testing.T) {
 		stepResult := &workflow.StepResult{
 			StepID:   "test-step",
 			Status:   workflow.StepStatusSuccess,
-			Success:  true,
 			Output:   map[string]interface{}{"text": "hello", "data": 123},
 			Error:    "",
 			Duration: 500 * time.Millisecond,
@@ -511,7 +502,6 @@ func TestOutputConversionHelpers(t *testing.T) {
 		stepResult := &workflow.StepResult{
 			StepID:   "failed-step",
 			Status:   workflow.StepStatusFailed,
-			Success:  false,
 			Error:    "step failed",
 			Duration: 100 * time.Millisecond,
 		}
@@ -531,53 +521,4 @@ func TestOutputConversionHelpers(t *testing.T) {
 		}
 	})
 
-	t.Run("outputToMap", func(t *testing.T) {
-		output := workflow.StepOutput{
-			Text:  "response text",
-			Error: "",
-			Data:  map[string]interface{}{"key1": "value1", "key2": 42},
-		}
-
-		result := outputToMap(output)
-
-		if result["text"] != "response text" {
-			t.Errorf("expected text in result map")
-		}
-		if result["key1"] != "value1" {
-			t.Error("expected data to be merged into result map")
-		}
-		if result["key2"] != 42 {
-			t.Error("expected numeric data in result map")
-		}
-	})
-
-	t.Run("outputToMap with error", func(t *testing.T) {
-		output := workflow.StepOutput{
-			Text:  "",
-			Error: "execution error",
-			Data:  nil,
-		}
-
-		result := outputToMap(output)
-
-		if result["error"] != "execution error" {
-			t.Error("expected error in result map")
-		}
-	})
-
-	t.Run("outputToMap with non-map data", func(t *testing.T) {
-		output := workflow.StepOutput{
-			Text: "text",
-			Data: []string{"item1", "item2"},
-		}
-
-		result := outputToMap(output)
-
-		if result["text"] != "text" {
-			t.Error("expected text in result")
-		}
-		if result["data"] == nil {
-			t.Error("expected data field for non-map data")
-		}
-	})
 }
