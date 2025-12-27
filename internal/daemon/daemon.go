@@ -38,6 +38,7 @@ import (
 	"github.com/tombee/conductor/internal/daemon/github"
 	"github.com/tombee/conductor/internal/daemon/leader"
 	"github.com/tombee/conductor/internal/daemon/listener"
+	"github.com/tombee/conductor/internal/daemon/publicapi"
 	daemonremote "github.com/tombee/conductor/internal/daemon/remote"
 	"github.com/tombee/conductor/internal/daemon/runner"
 	"github.com/tombee/conductor/internal/daemon/scheduler"
@@ -63,6 +64,7 @@ type Daemon struct {
 	opts         Options
 	logger       *slog.Logger
 	server       *http.Server
+	publicServer *publicapi.Server // Optional public API server for webhooks
 	ln           net.Listener
 	pidFile      string
 	runner          *runner.Runner
@@ -434,7 +436,26 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 	}
 
-	// Start server
+	// Create and start public API server if enabled
+	var publicErrCh chan error
+	if d.cfg.Daemon.Listen.PublicAPI.Enabled {
+		publicRouter := api.NewPublicRouter()
+		d.publicServer = publicapi.New(
+			d.cfg.Daemon.Listen.PublicAPI,
+			publicRouter.Handler(),
+			internallog.WithComponent(d.logger, "public-api"),
+		)
+
+		publicErrCh = make(chan error, 1)
+		go func() {
+			if err := d.publicServer.Start(ctx); err != nil {
+				publicErrCh <- fmt.Errorf("public API server error: %w", err)
+			}
+			close(publicErrCh)
+		}()
+	}
+
+	// Start control plane server
 	errCh := make(chan error, 1)
 	go func() {
 		if err := d.server.Serve(ln); err != nil && err != http.ErrServerClosed {
@@ -443,11 +464,14 @@ func (d *Daemon) Start(ctx context.Context) error {
 		close(errCh)
 	}()
 
-	// Wait for context cancellation or error
+	// Wait for context cancellation or error from either server
 	select {
 	case <-ctx.Done():
 		return nil
 	case err := <-errCh:
+		return err
+	case err := <-publicErrCh:
+		// Public API error - also an error
 		return err
 	}
 }
@@ -505,7 +529,18 @@ func (d *Daemon) Shutdown(ctx context.Context) error {
 		}
 	}
 
-	// Shutdown HTTP server
+	// Shutdown public API server first (if enabled)
+	if d.publicServer != nil {
+		shutdownCtx, cancel := context.WithTimeout(ctx, d.cfg.Daemon.ShutdownTimeout)
+		defer cancel()
+
+		if err := d.publicServer.Shutdown(shutdownCtx); err != nil {
+			d.logger.Error("public API server shutdown error",
+				internallog.Error(err))
+		}
+	}
+
+	// Shutdown control plane HTTP server
 	if d.server != nil {
 		shutdownCtx, cancel := context.WithTimeout(ctx, d.cfg.Daemon.ShutdownTimeout)
 		defer cancel()
