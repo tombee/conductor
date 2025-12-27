@@ -100,7 +100,17 @@ export default defineConfig({
           ],
         },
         {
-          label: 'Production',
+          label: 'Deployment',
+          items: [
+            { label: 'Overview', slug: 'deployment' },
+            { label: 'exe.dev', slug: 'deployment/exe-dev' },
+            { label: 'Docker', slug: 'deployment/docker' },
+            { label: 'Kubernetes', slug: 'deployment/kubernetes' },
+            { label: 'Bare Metal', slug: 'deployment/bare-metal' },
+          ],
+        },
+        {
+          label: 'Operations',
           collapsed: true,
           autogenerate: { directory: 'operations' },
         },
