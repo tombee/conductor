@@ -2,39 +2,59 @@
 
 Example workflows demonstrating Conductor's capabilities.
 
-This section provides detailed walkthroughs of example workflows. Each walkthrough explains what the workflow does, how to run it, and how to customize it for your needs.
+This section showcases real-world workflows from the [examples/](https://github.com/tombee/conductor/tree/main/examples) directory. Each example includes complete workflow files and documentation.
 
 ## Available Examples
 
-### Code Review
-Multi-persona AI code review workflow that analyzes changes from security, performance, and style perspectives.
-[View Walkthrough →](code-review.md)
+### Development Workflows
 
-### Issue Triage
-Automated GitHub issue triage and labeling workflow.
-[View Walkthrough →](issue-triage.md)
+- **[Code Review](/examples/code-review/)** - Multi-persona AI code review analyzing security, performance, and style
+- **[CI/CD Integration](/examples/templates/ci-cd/)** - Continuous integration workflows
 
-### Slack Integration
-Post messages and interact with Slack channels from Conductor workflows.
-[View Walkthrough →](slack-integration.md)
+### DevOps & Infrastructure
 
-### IaC Review
-Infrastructure-as-Code review for Terraform and CloudFormation templates.
-[View Walkthrough →](iac-review.md)
+- **[IaC Review](/examples/devops/iac-review/)** - Infrastructure-as-Code review for Terraform and CloudFormation
+- **[Security Audit](/examples/devops/security-audit/)** - Security vulnerability scanning and analysis
 
-### Write Song
-Generate songs with lyrics and chord symbols in various genres.
-[View Walkthrough →](write-song.md)
+### Automation
+
+- **[Issue Triage](/examples/automation/issue-triage/)** - Automated GitHub issue classification and labeling
+- **[Slack Integration](/examples/automation/slack-integration/)** - Post messages and interact with Slack channels
+
+### Creative
+
+- **[Write Song](/examples/templates/write-song/)** - Generate songs with lyrics and chord symbols in various genres
 
 ## Example Structure
 
-Each example walkthrough includes:
-- **Description** - What the workflow does
-- **Use Cases** - When to use it
-- **Prerequisites** - Required setup and API keys
-- **How to Run** - Step-by-step commands
-- **Code Walkthrough** - Detailed explanation of the workflow
-- **Customization** - Ways to adapt the example
-- **Troubleshooting** - Common issues and solutions
+Each example includes:
 
-The actual workflow files are in the [/examples/](../../examples/) directory.
+- **README** - Overview, use cases, and prerequisites
+- **Workflow YAML** - Complete workflow definition
+- **Documentation** - How to run and customize
+
+## Running Examples
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/tombee/conductor.git
+   cd conductor/examples
+   ```
+
+2. Navigate to an example directory:
+   ```bash
+   cd code-review
+   ```
+
+3. Follow the README instructions to run the workflow
+
+## Creating Your Own
+
+Use these examples as templates for your own workflows:
+
+1. Copy an example that's close to your use case
+2. Modify the prompts and steps
+3. Adjust inputs and outputs
+4. Test with `conductor run`
+
+See the [Building Workflows](../building-workflows/) guide for more details.
