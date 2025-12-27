@@ -89,7 +89,8 @@ func main() {
 	// Version command
 	rootCmd.AddCommand(versioncmd.NewVersionCommand())
 
-	// Note: Cobra provides a default 'help' command, so we don't add our own
+	// Custom help command with JSON support
+	rootCmd.SetHelpCommand(cli.NewHelpCommand(rootCmd))
 
 	// Execute root command
 	if err := rootCmd.Execute(); err != nil {
