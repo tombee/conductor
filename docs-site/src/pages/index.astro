@@ -68,7 +68,12 @@ const useCases = [
   },
 ];
 
-const codeExample = `name: security-review
+const codeExamples = [
+  {
+    id: 'security-review',
+    title: 'Security Review',
+    description: 'Trigger on PR, review for security issues, post comments—all in one workflow.',
+    code: `name: security-review
 description: Review PRs for security issues
 
 triggers:
@@ -95,8 +100,135 @@ steps:
     action: github.create_comment
     inputs:
       body: "{{.steps.review.response}}"
-    if: "{{.steps.review.response | contains 'issue'}}"`;
+    if: "{{.steps.review.response | contains 'issue'}}"`,
+  },
+  {
+    id: 'iac-review',
+    title: 'IaC Review',
+    description: 'Run terraform plan, then analyze changes in parallel for risk and network impact.',
+    code: `name: iac-review
+description: Parallel analysis of infrastructure changes
 
+steps:
+  - id: plan
+    shell.run: terraform plan -no-color
+    workdir: ./infrastructure
+
+  - id: analyze
+    type: parallel
+    steps:
+      - id: risk
+        model: claude-sonnet
+        prompt: |
+          Summarize the RISK of these infrastructure changes.
+          Flag any security concerns, cost increases, or breaking changes.
+
+          {{.steps.plan.stdout}}
+
+      - id: network
+        model: claude-sonnet
+        prompt: |
+          Summarize the NETWORK OPERATIONS impact of these changes.
+          Note any IP changes, security group updates, or routing modifications.
+
+          {{.steps.plan.stdout}}
+
+  - id: report
+    model: claude-haiku
+    prompt: |
+      Create a brief executive summary combining these analyses:
+
+      ## Risk Assessment
+      {{.steps.analyze.risk.response}}
+
+      ## Network Impact
+      {{.steps.analyze.network.response}}`,
+  },
+  {
+    id: 'incident-response',
+    title: 'Incident Response',
+    description: 'Receive alerts via webhook, gather context in parallel, post triage to Slack.',
+    code: `name: incident-response
+description: Triage alerts and suggest remediation
+
+triggers:
+  - event: webhook
+    path: /alerts
+
+steps:
+  - id: triage
+    type: parallel
+    steps:
+      - id: logs
+        shell.run: kubectl logs -l app={{.trigger.service}} --tail=50
+
+      - id: changes
+        github.list_commits:
+          repo: "{{.trigger.service}}"
+          since: "24h"
+
+  - id: analyze
+    model: claude-sonnet
+    prompt: |
+      Alert for {{.trigger.service}}: {{.trigger.message}}
+
+      Recent logs:
+      {{.steps.triage.logs.stdout}}
+
+      Recent commits:
+      {{.steps.triage.changes.commits}}
+
+      Provide: 1) Root cause hypothesis  2) Suggested fix
+
+  - id: notify
+    slack.post_message:
+      channel: "#incidents"
+      text: "🚨 *{{.trigger.service}}*\\n{{.steps.analyze.response}}"`,
+  },
+  {
+    id: 'oncall-handoff',
+    title: 'On-Call Handoff',
+    description: 'Scheduled shift handoff that aggregates incidents, deploys, and issues.',
+    code: `name: oncall-handoff
+description: Generate shift handoff summary
+
+triggers:
+  - schedule: "0 9,21 * * *"  # 9am and 9pm daily
+
+steps:
+  - id: gather
+    type: parallel
+    steps:
+      - id: incidents
+        pagerduty.list_incidents:
+          status: open
+
+      - id: deploys
+        github.list_deployments:
+          environment: production
+          since: "12h"
+
+      - id: issues
+        jira.search:
+          jql: "priority = Critical AND status != Done"
+
+  - id: summarize
+    model: claude-sonnet
+    prompt: |
+      Create a concise on-call handoff:
+
+      Open incidents: {{.steps.gather.incidents}}
+      Recent deploys: {{.steps.gather.deploys}}
+      Critical issues: {{.steps.gather.issues}}
+
+      Format: What's hot, what to watch, pending actions.
+
+  - id: post
+    slack.post_message:
+      channel: "#oncall"
+      text: "📋 *Shift Handoff*\\n{{.steps.summarize.response}}"`,
+  },
+];
 ---
 
 <LandingLayout
@@ -198,9 +330,32 @@ steps:
     <!-- Code Showcase -->
     <section class="py-16 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-slate-800/50">
       <div class="max-w-4xl mx-auto">
-        <p class="text-center text-slate-600 dark:text-slate-300 mb-4">
-          Trigger on PR, review for security issues, post comments—all in one workflow.
+        <!-- Tab buttons -->
+        <div class="flex justify-center mb-4" role="tablist" aria-label="Workflow examples">
+          {codeExamples.map((example, index) => (
+            <button
+              role="tab"
+              aria-selected={index === 0 ? "true" : "false"}
+              aria-controls={`panel-${example.id}`}
+              id={`tab-${example.id}`}
+              data-example-index={index}
+              class={`px-4 py-2 text-sm font-medium rounded-lg mx-1 transition-colors ${
+                index === 0
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+              }`}
+            >
+              {example.title}
+            </button>
+          ))}
+        </div>
+
+        <!-- Description -->
+        <p id="example-description" class="text-center text-slate-600 dark:text-slate-300 mb-4">
+          {codeExamples[0].description}
         </p>
+
+        <!-- Code panels -->
         <div class="relative">
           <div class="absolute top-3 right-3 z-10">
             <button
@@ -216,7 +371,17 @@ steps:
               </svg>
             </button>
           </div>
-          <pre class="bg-slate-900 text-slate-100 rounded-xl p-6 overflow-x-auto text-sm leading-relaxed"><code id="code-content">{codeExample}</code></pre>
+          {codeExamples.map((example, index) => (
+            <div
+              role="tabpanel"
+              id={`panel-${example.id}`}
+              aria-labelledby={`tab-${example.id}`}
+              class={index === 0 ? '' : 'hidden'}
+              data-panel-index={index}
+            >
+              <pre class="bg-slate-900 text-slate-100 rounded-xl p-6 overflow-x-auto text-sm leading-relaxed"><code>{example.code}</code></pre>
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -408,13 +573,55 @@ steps:
       }
     });
 
+    // Example tabs
+    const exampleDescriptions = [
+      'Trigger on PR, review for security issues, post comments—all in one workflow.',
+      'Run terraform plan, then analyze changes in parallel for risk and network impact.',
+      'Receive alerts via webhook, gather context in parallel, post triage to Slack.',
+      'Scheduled shift handoff that aggregates incidents, deploys, and issues.',
+    ];
+    const tabs = document.querySelectorAll('[role="tab"]');
+    const panels = document.querySelectorAll('[role="tabpanel"]');
+    const descriptionEl = document.getElementById('example-description');
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const index = parseInt(tab.getAttribute('data-example-index') || '0', 10);
+
+        // Update tab states
+        tabs.forEach((t, i) => {
+          const isSelected = i === index;
+          t.setAttribute('aria-selected', isSelected.toString());
+          t.classList.toggle('bg-blue-600', isSelected);
+          t.classList.toggle('text-white', isSelected);
+          t.classList.toggle('bg-slate-200', !isSelected);
+          t.classList.toggle('dark:bg-slate-700', !isSelected);
+          t.classList.toggle('text-slate-600', !isSelected);
+          t.classList.toggle('dark:text-slate-300', !isSelected);
+        });
+
+        // Update panels
+        panels.forEach((panel, i) => {
+          panel.classList.toggle('hidden', i !== index);
+        });
+
+        // Update description
+        if (descriptionEl) {
+          descriptionEl.textContent = exampleDescriptions[index];
+        }
+      });
+    });
+
     // Copy code button
     const copyButton = document.getElementById('copy-code');
     const copyIcon = document.getElementById('copy-icon');
     const checkIcon = document.getElementById('check-icon');
-    const codeContent = document.getElementById('code-content');
 
     copyButton?.addEventListener('click', async () => {
+      // Find the visible panel's code
+      const visiblePanel = document.querySelector('[role="tabpanel"]:not(.hidden)');
+      const codeContent = visiblePanel?.querySelector('code');
+
       try {
         await navigator.clipboard.writeText(codeContent?.textContent || '');
         copyIcon?.classList.add('hidden');
