@@ -55,14 +55,16 @@ func (h *MCPHandler) RegisterRoutes(mux *http.ServeMux) {
 
 // MCPServerResponse represents a server in API responses.
 type MCPServerResponse struct {
-	Name         string               `json:"name"`
-	Status       string               `json:"status"`
-	UptimeSeconds int64               `json:"uptime_seconds"`
-	ToolCount    int                  `json:"tool_count"`
-	FailureCount int                  `json:"failure_count"`
-	LastError    string               `json:"last_error,omitempty"`
-	Config       *MCPServerConfigResponse `json:"config,omitempty"`
-	Capabilities *MCPCapabilitiesResponse `json:"capabilities,omitempty"`
+	Name          string                   `json:"name"`
+	Status        string                   `json:"status"`
+	UptimeSeconds int64                    `json:"uptime_seconds"`
+	ToolCount     *int                     `json:"tool_count"`
+	FailureCount  int                      `json:"failure_count"`
+	LastError     string                   `json:"last_error,omitempty"`
+	Source        string                   `json:"source,omitempty"`
+	Version       string                   `json:"version,omitempty"`
+	Config        *MCPServerConfigResponse `json:"config,omitempty"`
+	Capabilities  *MCPCapabilitiesResponse `json:"capabilities,omitempty"`
 }
 
 // MCPServerConfigResponse represents server configuration in API responses.
@@ -129,6 +131,8 @@ func (h *MCPHandler) handleListServers(w http.ResponseWriter, r *http.Request) {
 			ToolCount:     s.ToolCount,
 			FailureCount:  s.FailureCount,
 			LastError:     s.LastError,
+			Source:        s.Source,
+			Version:       s.Version,
 		}
 
 		servers = append(servers, resp)
@@ -162,6 +166,8 @@ func (h *MCPHandler) handleGetServer(w http.ResponseWriter, r *http.Request) {
 		ToolCount:     status.ToolCount,
 		FailureCount:  status.FailureCount,
 		LastError:     status.LastError,
+		Source:        status.Source,
+		Version:       status.Version,
 	}
 
 	// Add config with redacted env
