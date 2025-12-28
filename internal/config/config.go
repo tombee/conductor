@@ -346,6 +346,12 @@ type ObservabilityConfig struct {
 	// Exporters configures OTLP export destinations.
 	Exporters []ExporterConfig `yaml:"exporters,omitempty"`
 
+	// BatchSize is the maximum number of spans per export batch (default: 512).
+	BatchSize int `yaml:"batch_size,omitempty"`
+
+	// BatchInterval is how often to flush spans in seconds (default: 5).
+	BatchInterval int `yaml:"batch_interval,omitempty"`
+
 	// Redaction configures sensitive data handling.
 	Redaction RedactionConfig `yaml:"redaction,omitempty"`
 }
@@ -1136,6 +1142,14 @@ func (c *Config) Validate() error {
 		}
 		if ret.AggregateDays <= 0 {
 			errs = append(errs, fmt.Sprintf("daemon.observability.storage.retention.aggregate_days must be positive, got %d", ret.AggregateDays))
+		}
+
+		// Validate sampling rate is in valid range [0.0, 1.0]
+		if c.Daemon.Observability.Sampling.Enabled {
+			rate := c.Daemon.Observability.Sampling.Rate
+			if rate < 0.0 || rate > 1.0 {
+				errs = append(errs, fmt.Sprintf("daemon.observability.sampling.rate must be between 0.0 and 1.0, got %f", rate))
+			}
 		}
 	}
 

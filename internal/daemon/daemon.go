@@ -806,6 +806,8 @@ func observabilityToTracingConfig(obs config.ObservabilityConfig, version string
 				Aggregates: time.Duration(obs.Storage.Retention.AggregateDays) * 24 * time.Hour,
 			},
 		},
+		BatchSize:     obs.BatchSize,
+		BatchInterval: time.Duration(obs.BatchInterval) * time.Second,
 		Redaction: tracing.RedactionConfig{
 			Level:    obs.Redaction.Level,
 			Patterns: convertRedactionPatterns(obs.Redaction.Patterns),
