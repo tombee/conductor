@@ -1,0 +1,77 @@
+# Splunk Connector Package
+# Official connector for Splunk HTTP Event Collector (HEC)
+
+version: "1.0"
+name: splunk
+description: Splunk HTTP Event Collector connector for logs and structured events
+
+# Base URL configured per-workflow with HEC endpoint
+# Example: https://splunk.example.com:8088
+
+# Splunk HEC has generous rate limits
+# Adjust based on your deployment
+rate_limit:
+  requests_per_second: 10
+  requests_per_minute: 500
+
+operations:
+  # HEC Event Endpoint - Simple Log Format
+  log:
+    method: POST
+    path: /services/collector/event
+    request_schema:
+      type: object
+      properties:
+        event:
+          description: Event data (string or object for structured data)
+          oneOf:
+            - type: string
+            - type: object
+        index:
+          type: string
+          description: Splunk index (uses connector default if omitted)
+        source:
+          type: string
+          description: Event source
+        sourcetype:
+          type: string
+          description: Event sourcetype
+        host:
+          type: string
+          description: Override auto-detected hostname
+        time:
+          type: number
+          description: Unix timestamp in seconds (auto-populated if omitted)
+        fields:
+          type: object
+          description: Additional indexed fields
+      required: [event]
+    response_transform: "{text, code, ackId}"
+
+  # HEC Event Endpoint - Structured Event with Explicit Fields
+  event:
+    method: POST
+    path: /services/collector/event
+    request_schema:
+      type: object
+      properties:
+        fields:
+          type: object
+          description: Explicit fields object (sent as structured event)
+        index:
+          type: string
+          description: Splunk index
+        source:
+          type: string
+          description: Event source
+        sourcetype:
+          type: string
+          description: Event sourcetype
+        host:
+          type: string
+          description: Override auto-detected hostname
+        time:
+          type: number
+          description: Unix timestamp in seconds (auto-populated if omitted)
+      required: [fields]
+    response_transform: "{text, code, ackId}"

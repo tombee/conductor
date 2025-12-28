@@ -1,0 +1,54 @@
+# Loki Connector Package
+# Official connector for Grafana Loki log aggregation
+
+version: "1.0"
+name: loki
+description: Grafana Loki log aggregation connector
+
+# Base URL configured per-workflow
+# Example: https://loki.example.com:3100
+
+# Loki rate limits vary by deployment
+# Conservative defaults
+rate_limit:
+  requests_per_second: 5
+  requests_per_minute: 300
+
+operations:
+  # Push Logs to Loki
+  push:
+    method: POST
+    path: /loki/api/v1/push
+    request_schema:
+      type: object
+      properties:
+        line:
+          type: string
+          description: Log line content (for single entry)
+        labels:
+          type: object
+          description: Key-value labels (merged with default_labels)
+          additionalProperties:
+            type: string
+        timestamp:
+          description: RFC3339Nano or Unix nanoseconds (auto-populated if omitted)
+          oneOf:
+            - type: string
+            - type: integer
+        entries:
+          type: array
+          description: Array of log entries for batch submission
+          items:
+            type: object
+            properties:
+              line:
+                type: string
+                description: Log line content
+              timestamp:
+                description: RFC3339Nano or Unix nanoseconds
+                oneOf:
+                  - type: string
+                  - type: integer
+            required: [line]
+      # Either single entry (line) or batch (entries) with labels required
+    response_transform: "{status: ok}"

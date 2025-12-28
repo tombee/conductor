@@ -93,6 +93,10 @@ func (e *httpExecutor) Execute(ctx context.Context, inputs map[string]interface{
 	var statusCode int
 	var waitDuration time.Duration
 
+	// Inject default fields for observability connectors
+	injector := NewDefaultFieldInjector()
+	injector.InjectDefaults(inputs, e.connector.name)
+
 	// Wait for rate limiter
 	waitStart := time.Now()
 	if err := e.rateLimiter.Wait(ctx); err != nil {
