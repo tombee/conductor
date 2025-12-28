@@ -34,6 +34,10 @@ type RetryConfig struct {
 	// Jitter adds randomness to prevent thundering herd (0.0-1.0).
 	Jitter float64
 
+	// AbsoluteTimeout is the maximum total time for all retry attempts.
+	// If 0, no absolute timeout is enforced. Default: 2 minutes.
+	AbsoluteTimeout time.Duration
+
 	// RetryableErrors is a function that determines if an error should trigger a retry.
 	// If nil, uses default logic (transient network and HTTP 5xx errors).
 	RetryableErrors func(error) bool
@@ -47,6 +51,7 @@ func DefaultRetryConfig() RetryConfig {
 		MaxDelay:        10 * time.Second,
 		Multiplier:      2.0,
 		Jitter:          0.1,
+		AbsoluteTimeout: 2 * time.Minute,
 		RetryableErrors: nil, // Use default
 	}
 }
