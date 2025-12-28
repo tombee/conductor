@@ -60,6 +60,12 @@ type Config struct {
 // DaemonConfig configures daemon-related settings.
 // This struct includes both CLI daemon connection settings and daemon server settings.
 type DaemonConfig struct {
+	// ForceInsecure explicitly acknowledges running with insecure configuration.
+	// When true, security warnings about disabled auth or TLS are suppressed.
+	// This flag is intended for development/testing environments only.
+	// Default: false
+	ForceInsecure bool `yaml:"force_insecure"`
+
 	// AutoStart enables automatic daemon startup when CLI commands need it.
 	// When true, CLI will spawn conductord if not already running.
 	// Default: false
@@ -578,6 +584,10 @@ func Default() *Config {
 				LeaderElection:           true,
 				StalledJobTimeoutSeconds: 300, // 5 minutes
 			},
+			DaemonAuth: DaemonAuthConfig{
+				Enabled:         true, // Secure by default
+				AllowUnixSocket: true, // Convenient local development
+			},
 			Observability: ObservabilityConfig{
 				Enabled:        false, // Opt-in
 				ServiceName:    "conductor",
@@ -1074,6 +1084,20 @@ func (c *Config) Validate() error {
 					errs = append(errs, fmt.Sprintf("daemon.endpoints.endpoints[%d] (%s): %v", i, ep.Name, err))
 				}
 			}
+		}
+	}
+
+	// Validate retention days (must be positive when observability is enabled)
+	if c.Daemon.Observability.Enabled {
+		ret := c.Daemon.Observability.Storage.Retention
+		if ret.TraceDays <= 0 {
+			errs = append(errs, fmt.Sprintf("daemon.observability.storage.retention.trace_days must be positive, got %d", ret.TraceDays))
+		}
+		if ret.EventDays <= 0 {
+			errs = append(errs, fmt.Sprintf("daemon.observability.storage.retention.event_days must be positive, got %d", ret.EventDays))
+		}
+		if ret.AggregateDays <= 0 {
+			errs = append(errs, fmt.Sprintf("daemon.observability.storage.retention.aggregate_days must be positive, got %d", ret.AggregateDays))
 		}
 	}
 
