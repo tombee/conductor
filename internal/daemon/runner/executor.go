@@ -24,6 +24,7 @@ import (
 
 	"github.com/tombee/conductor/internal/tracing"
 	"github.com/tombee/conductor/pkg/workflow"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // execute runs the workflow.
@@ -145,9 +146,8 @@ func (r *Runner) execute(run *Run) {
 // executeWithAdapter executes the workflow using the ExecutionAdapter.
 func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 	// Get workflow tracer (may be nil if observability disabled)
-	r.mu.RLock()
-	tracer := r.workflowTracer
-	r.mu.RUnlock()
+	// TODO: Workflow tracer field was never added to Runner struct - this is dead code
+	var tracer trace.Tracer = nil // was: r.workflowTracer
 
 	// Start workflow parent span if tracer is available
 	var workflowSpan *tracing.WorkflowSpan
