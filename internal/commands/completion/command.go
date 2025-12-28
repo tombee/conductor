@@ -33,12 +33,16 @@ func NewCommand() *cobra.Command {
 To load completions:
 
 Bash:
+  # To load completions for the current session:
   $ source <(conductor completion bash)
 
-  # To load completions for each session, execute once:
-  # Linux:
+  # To load completions for each session, save to a completions directory:
+  # Linux (system-wide, requires root):
   $ conductor completion bash > /etc/bash_completion.d/conductor
-  # macOS:
+  # Linux (user-local):
+  $ mkdir -p ~/.local/share/bash-completion/completions
+  $ conductor completion bash > ~/.local/share/bash-completion/completions/conductor
+  # macOS (with Homebrew):
   $ conductor completion bash > $(brew --prefix)/etc/bash_completion.d/conductor
 
 Zsh:
@@ -58,11 +62,16 @@ Fish:
   $ conductor completion fish > ~/.config/fish/completions/conductor.fish
 
 PowerShell:
-  Add to your PowerShell profile (run 'echo $PROFILE'):
+  # To load completions for the current session:
   conductor completion powershell | Out-String | Invoke-Expression
 
-  # For persistent completions:
-  conductor completion powershell >> $PROFILE
+  # To load completions for each session, save to a file and source it:
+  # Create completions directory if it doesn't exist:
+  New-Item -ItemType Directory -Force -Path "$HOME/.config/powershell/completions"
+  conductor completion powershell > "$HOME/.config/powershell/completions/conductor.ps1"
+
+  # Then add this line to your $PROFILE (once):
+  Get-ChildItem "$HOME/.config/powershell/completions/*.ps1" | ForEach-Object { . $_ }
 `,
 		DisableFlagsInUseLine: true,
 		ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
