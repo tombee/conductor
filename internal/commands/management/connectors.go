@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/tombee/conductor/internal/commands/completion"
 	"github.com/tombee/conductor/internal/commands/shared"
 	"github.com/tombee/conductor/internal/connector"
 	"github.com/tombee/conductor/pkg/workflow"
@@ -106,8 +107,9 @@ See also: conductor connectors list, conductor connectors operation`,
 
   # Example 4: List all operations for a connector
   conductor connectors show transform --json | jq -r '.connector.operations[]'`,
-		Args:         cobra.RangeArgs(1, 2),
-		SilenceUsage: true,
+		Args:              cobra.RangeArgs(1, 2),
+		ValidArgsFunction: completion.CompleteConnectorNames,
+		SilenceUsage:      true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			connectorName := args[0]
 			if len(args) > 1 {
@@ -136,8 +138,9 @@ Examples:
   conductor connectors operation github.create_issue workflow.yaml
   conductor connectors operation shell.run --json
 `,
-		Args:         cobra.RangeArgs(1, 2),
-		SilenceUsage: true,
+		Args:              cobra.RangeArgs(1, 2),
+		ValidArgsFunction: completion.CompleteConnectorOperations,
+		SilenceUsage:      true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reference := args[0]
 			if len(args) > 1 {

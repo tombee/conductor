@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/tombee/conductor/internal/commands/completion"
 )
 // newMCPToolsCommand creates the 'mcp tools' command.
 func newMCPToolsCommand() *cobra.Command {
@@ -36,7 +37,8 @@ The server must be running to list its tools.
 Examples:
   conductor mcp tools github
   conductor mcp tools github --json`,
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completion.CompleteMCPServerNames,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runMCPTools(args[0], jsonOutput)
 		},

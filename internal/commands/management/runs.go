@@ -26,6 +26,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tombee/conductor/internal/client"
+	"github.com/tombee/conductor/internal/commands/completion"
 	"github.com/tombee/conductor/internal/commands/shared"
 )
 
@@ -84,7 +85,7 @@ See also: conductor runs show, conductor run, conductor daemon status`,
 }
 
 func newRunsShowCommand() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "show <run-id>",
 		Short: "Show run details",
 		Long: `Display detailed information about a specific workflow run.
@@ -101,19 +102,22 @@ See also: conductor runs list, conductor runs logs, conductor runs output`,
 
   # Example 4: Check if run is complete
   conductor runs show abc123 --json | jq -e '.status == "completed"'`,
-		Args:  cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completion.CompleteRunIDs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runsShow(args[0])
 		},
 	}
+	return cmd
 }
 
 func newRunsOutputCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "output <run-id>",
-		Short: "Get run output",
-		Long:  `Display the output of a completed workflow run.`,
-		Args:  cobra.ExactArgs(1),
+		Use:               "output <run-id>",
+		Short:             "Get run output",
+		Long:              `Display the output of a completed workflow run.`,
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completion.CompleteRunIDs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runsOutput(args[0])
 		},
@@ -124,10 +128,11 @@ func newRunsLogsCommand() *cobra.Command {
 	var follow bool
 
 	cmd := &cobra.Command{
-		Use:   "logs <run-id>",
-		Short: "View run logs",
-		Long:  `Display logs from a workflow run. Use -f to follow/stream logs.`,
-		Args:  cobra.ExactArgs(1),
+		Use:               "logs <run-id>",
+		Short:             "View run logs",
+		Long:              `Display logs from a workflow run. Use -f to follow/stream logs.`,
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completion.CompleteRunIDs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runsLogs(args[0], follow)
 		},
@@ -140,10 +145,11 @@ func newRunsLogsCommand() *cobra.Command {
 
 func newRunsCancelCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "cancel <run-id>",
-		Short: "Cancel a running workflow",
-		Long:  `Cancel a pending or running workflow execution.`,
-		Args:  cobra.ExactArgs(1),
+		Use:               "cancel <run-id>",
+		Short:             "Cancel a running workflow",
+		Long:              `Cancel a pending or running workflow execution.`,
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completion.CompleteActiveRunIDs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runsCancel(args[0])
 		},

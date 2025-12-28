@@ -20,6 +20,7 @@ import (
 	"os"
 
 	"github.com/tombee/conductor/internal/cli"
+	"github.com/tombee/conductor/internal/commands/completion"
 	"github.com/tombee/conductor/internal/commands/config"
 	"github.com/tombee/conductor/internal/commands/daemon"
 	"github.com/tombee/conductor/internal/commands/diagnostics"
@@ -129,7 +130,7 @@ func main() {
 	rootCmd.AddCommand(diagnostics.NewDoctorCommand())
 	rootCmd.AddCommand(diagnostics.NewPingCommand())
 	rootCmd.AddCommand(diagnostics.NewProvidersCommand())
-	rootCmd.AddCommand(diagnostics.NewCompletionCommand())
+	rootCmd.AddCommand(completion.NewCommand())
 
 	// Documentation command
 	rootCmd.AddCommand(docs.NewDocsCommand())

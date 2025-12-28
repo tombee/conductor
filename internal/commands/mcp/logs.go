@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/tombee/conductor/internal/commands/completion"
 )
 // Logs command
 
@@ -41,7 +42,8 @@ Examples:
   conductor mcp logs github --lines 50
   conductor mcp logs github --since 5m
   conductor mcp logs github --follow`,
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completion.CompleteMCPServerNames,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runMCPLogs(args[0], mcpLogsFollow, mcpLogsSince, mcpLogsLines)
 		},
