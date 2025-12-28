@@ -8,8 +8,8 @@
 ### Metrics
 | Metric | Baseline | Current | Removed |
 |--------|----------|---------|---------|
-| Total Go LOC | 168,595 | TBD | ~489 lines |
-| Deadcode findings | 282 items | TBD | ~13 items |
+| Total Go LOC | 168,595 | ~168,020 | ~575 lines |
+| Deadcode findings | 282 items | ~265 items | ~17 items |
 | Files removed | 0 | 1 | 1 |
 
 ### Completed Removals
@@ -49,6 +49,23 @@
 
 **Rationale:** Test mock was defined but never instantiated; tests use real error types instead. The error mapping function was never called.
 
+#### 3. CLI Wrappers, Flag Helpers, and Runner Options (Commit 115564c)
+**Lines removed:** ~87 lines
+
+**Files:**
+- `internal/cli/root.go` - Removed cli.Execute(), GetVerbose(), GetQuiet(), GetJSON(), GetConfigPath() (29 lines)
+- `internal/cli/doc.go` - Updated example to reflect actual usage pattern
+- `internal/commands/shared/flags.go` - Removed SetFlags() (15 lines)
+- `internal/daemon/runner/options.go` - Removed 5 unused option constructors (43 lines)
+
+**Items from baseline:**
+- cli.Execute (never called - main.go uses NewRootCommand directly)
+- cli.GetVerbose, GetQuiet, GetJSON, GetConfigPath (wrappers never used)
+- shared.SetFlags (flags use RegisterFlagPointers pattern instead)
+- WithLifecycleManager, WithStateManager, WithLogAggregator, WithToolRegistry, WithCheckpointManager (never called)
+
+**Rationale:** These were wrapper functions that added indirection without value. main.go calls cli.NewRootCommand() directly and uses shared.Get*() functions. The Runner options were defined but never instantiated anywhere in the codebase.
+
 ## Remaining Work
 
 ### High Priority (Low Risk)
@@ -64,13 +81,9 @@ These are safe removals with clear evidence of being unused:
    - `registerMCPTools` (line 66 in mcp_tools.go)
    - `snapshotRun` (line 518 in runner.go)
 
-3. **Unused options pattern:**
-   - All 6 option functions in `internal/daemon/runner/options.go`
-   - Appears the Runner uses direct Config struct instead
+~~3. **Unused options pattern:** COMPLETED in commit 115564c~~
 
-4. **Unused CLI helpers:**
-   - `SetFlags`, `GetVerbose` in `internal/commands/shared/flags.go`
-   - `Execute`, `GetVerbose`, `GetQuiet`, `GetJSON`, `GetConfigPath` in `internal/cli/root.go`
+~~4. **Unused CLI helpers:** COMPLETED in commit 115564c~~
 
 ### Medium Priority (Verify First)
 These should be verified as truly unused before removal:
