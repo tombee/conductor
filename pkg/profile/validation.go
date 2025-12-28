@@ -19,7 +19,7 @@ import (
 	"regexp"
 )
 
-// Profile name validation constraints (SPEC-130 NFR13)
+// Profile name validation constraints
 const (
 	// MaxProfileNameLength is the maximum length for profile names
 	MaxProfileNameLength = 64

@@ -425,7 +425,7 @@ func clearConfigEnv() {
 	}
 }
 
-// TestMinimalConfigRoundTrip verifies that a minimal config (SPEC-50) with only
+// TestMinimalConfigRoundTrip verifies that a minimal config with only
 // provider settings can be written and loaded back with sensible defaults.
 func TestMinimalConfigRoundTrip(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -479,7 +479,7 @@ func TestMinimalConfigRoundTrip(t *testing.T) {
 	}
 }
 
-// TestPublicAPIConfig tests the public API configuration (SPEC-137).
+// TestPublicAPIConfig tests the public API configuration.
 func TestPublicAPIConfig(t *testing.T) {
 	tests := []struct {
 		name    string

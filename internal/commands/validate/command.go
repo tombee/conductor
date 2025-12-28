@@ -46,7 +46,7 @@ func NewCommand() *cobra.Command {
 to the Conductor workflow schema. This validation does not require provider
 configuration and only checks the workflow structure itself.
 
-Profile Validation (SPEC-130):
+Profile Validation:
   --workspace, -w <name>   Workspace for profile resolution
   --profile, -p <name>     Profile to validate against workflow requirements
 
@@ -90,7 +90,7 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, jsonOutpu
 	// Check global --json flag in addition to local flag
 	useJSON := shared.GetJSON() || jsonOutput
 
-	// Apply environment variable defaults for workspace and profile (SPEC-130)
+	// Apply environment variable defaults for workspace and profile
 	if workspace == "" {
 		workspace = os.Getenv("CONDUCTOR_WORKSPACE")
 	}
@@ -271,7 +271,7 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, jsonOutpu
 		cmd.Println("  [OK] Schema valid")
 		cmd.Println("  [OK] All step references resolve correctly")
 
-		// Show profile information if specified (SPEC-130)
+		// Show profile information if specified
 		if workspace != "" || profile != "" {
 			cmd.Println("\nProfile Configuration:")
 			if workspace != "" {

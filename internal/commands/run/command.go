@@ -63,7 +63,7 @@ Execution Modes:
   --daemon       Submit to conductord daemon for execution
   --background   Run asynchronously (implies --daemon), return run ID immediately
 
-Profile Selection (SPEC-130):
+Profile Selection:
   --workspace, -w <name>   Workspace for profile resolution (env: CONDUCTOR_WORKSPACE)
   --profile, -p <name>     Profile for binding resolution (env: CONDUCTOR_PROFILE)
 

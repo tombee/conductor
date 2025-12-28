@@ -146,7 +146,7 @@ func (m *mockConverter) ToMap() map[string]interface{} {
 	return m.data
 }
 
-// TestBuildContextFromTypedOutputs tests the StepOutputConverter interface (SPEC-40 T21).
+// TestBuildContextFromTypedOutputs tests the StepOutputConverter interface.
 // Full integration tests with workflow.StepOutput are in pkg/workflow/types_test.go
 // to avoid circular dependencies.
 func TestBuildContextFromTypedOutputs(t *testing.T) {

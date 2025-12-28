@@ -178,7 +178,7 @@ func Example_templateVariables() {
 	// Summary: All security checks passed
 }
 
-// Example_simpleWorkflowFormat demonstrates the SPEC-2 simple workflow format.
+// Example_simpleWorkflowFormat demonstrates the simple workflow format.
 // This shows how to parse and use minimal workflow definitions with optional fields.
 func Example_simpleWorkflowFormat() {
 	// Minimal workflow YAML - only name and steps required
@@ -196,7 +196,7 @@ steps:
 		log.Fatal(err)
 	}
 
-	// Version defaults to empty string (no validation required per SPEC-2)
+	// Version defaults to empty string (no validation required)
 	fmt.Printf("Workflow: %s\n", def.Name)
 	fmt.Printf("Steps: %d\n", len(def.Steps))
 	fmt.Printf("Step type: %s\n", def.Steps[0].Type)

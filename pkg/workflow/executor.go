@@ -102,7 +102,6 @@ type Tool interface {
 	Description() string
 
 	// Execute runs the tool with the given inputs and returns the output.
-	// Note: Return type will migrate to StepOutput in future (SPEC-40).
 	// For now, returns map[string]interface{} for backward compatibility.
 	// Tools should include structured metadata (duration, etc.) when possible.
 	Execute(ctx context.Context, inputs map[string]interface{}) (map[string]interface{}, error)
@@ -366,7 +365,7 @@ func (e *Executor) executeWithRetry(ctx context.Context, step *StepDefinition, w
 
 // executeConnector executes a connector step by invoking a connector operation.
 // The step.Connector field should be in format "connector_name.operation_name".
-// Note: No type assertions on inputs - inputs passed through to connector registry (SPEC-40).
+// Inputs are passed through to connector registry without type assertions.
 func (e *Executor) executeConnector(ctx context.Context, step *StepDefinition, inputs map[string]interface{}) (map[string]interface{}, error) {
 	// Check if connector registry is configured
 	if e.connectorRegistry == nil {
@@ -496,7 +495,7 @@ func stringContains(s, substr string) bool {
 }
 
 // executeLLM executes an LLM step by making an LLM API call.
-// Supports structured output validation via OutputSchema (SPEC-6).
+// Supports structured output validation via OutputSchema.
 func (e *Executor) executeLLM(ctx context.Context, step *StepDefinition, inputs map[string]interface{}) (map[string]interface{}, error) {
 	if e.llmProvider == nil {
 		return nil, &errors.ConfigError{
@@ -505,7 +504,7 @@ func (e *Executor) executeLLM(ctx context.Context, step *StepDefinition, inputs 
 		}
 	}
 
-	// SPEC-40: Wrap inputs in type-safe context for safer access
+	// Wrap inputs in type-safe context for safer access
 	inputCtx := NewWorkflowContext(inputs)
 
 	// Primary format: Use Prompt field from step definition
@@ -531,12 +530,12 @@ func (e *Executor) executeLLM(ctx context.Context, step *StepDefinition, inputs 
 		options = make(map[string]interface{})
 	}
 
-	// Add system prompt if specified (SPEC-2)
+	// Add system prompt if specified
 	if step.System != "" {
 		options["system"] = step.System
 	}
 
-	// Add model if specified (SPEC-2)
+	// Add model if specified
 	if step.Model != "" {
 		options["model"] = step.Model
 	}
@@ -549,7 +548,7 @@ func (e *Executor) executeLLM(ctx context.Context, step *StepDefinition, inputs 
 		}
 	}
 
-	// Check if structured output is required (SPEC-6 Phase 4)
+	// Check if structured output is required
 	if step.OutputSchema != nil {
 		return e.executeLLMWithSchema(ctx, prompt, options, step.OutputSchema)
 	}
@@ -672,7 +671,7 @@ func (e *Executor) filterTools(toolNames []string) []map[string]interface{} {
 }
 
 // executeCondition executes a condition step by evaluating an expression.
-// Note: No type assertions on inputs - expression layer migration is Phase 3 (SPEC-40).
+// Inputs are passed through without type assertions.
 func (e *Executor) executeCondition(ctx context.Context, step *StepDefinition, inputs map[string]interface{}, workflowContext map[string]interface{}) (map[string]interface{}, error) {
 	if step.Condition == nil {
 		return nil, &errors.ValidationError{

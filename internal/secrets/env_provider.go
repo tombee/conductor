@@ -22,7 +22,7 @@ import (
 	"github.com/tombee/conductor/pkg/profile"
 )
 
-// EnvProvider implements secret resolution from environment variables (SPEC-130).
+// EnvProvider implements secret resolution from environment variables.
 // This provider supports both explicit env: references and legacy ${VAR} syntax.
 //
 // Reference formats:

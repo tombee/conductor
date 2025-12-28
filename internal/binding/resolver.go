@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package binding implements the binding resolution system for SPEC-130.
+// Package binding implements the binding resolution system.
 //
 // This package provides the BindingResolver, which connects workflow requirements
 // to runtime values by following a strict resolution order:
@@ -36,7 +36,7 @@ import (
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
-// Resolver implements the binding resolution system for SPEC-130.
+// Resolver implements the binding resolution system.
 //
 // It resolves workflow requirements into concrete runtime values by following
 // the resolution order: profile > inline > env > default > error.
@@ -162,7 +162,7 @@ const (
 // 2. Resolves all secret references to actual values
 // 3. Returns resolved bindings or an error if required bindings are missing
 //
-// Resolution follows the precedence order defined in SPEC-130 FR3:
+// Resolution follows the precedence order:
 //   profile > inline > environment > default > error
 func (r *Resolver) Resolve(ctx context.Context, resCtx *ResolutionContext) (*ResolvedBinding, error) {
 	if resCtx == nil {

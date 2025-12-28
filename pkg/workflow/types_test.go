@@ -860,7 +860,7 @@ func TestErrorMessages_NoValueLeakage(t *testing.T) {
 	}
 }
 
-// TestStepOutput_ToMap tests the StepOutput.ToMap conversion (SPEC-40 T21).
+// TestStepOutput_ToMap tests the StepOutput.ToMap conversion.
 func TestStepOutput_ToMap(t *testing.T) {
 	t.Run("converts text and data fields", func(t *testing.T) {
 		output := StepOutput{

@@ -77,7 +77,7 @@ func (r *Runner) execute(run *Run) {
 		_ = be.UpdateRun(context.Background(), beRun)
 	}
 
-	// Log run start with profile context (SPEC-130)
+	// Log run start with profile context
 	startMsg := fmt.Sprintf("Starting workflow: %s", run.Workflow)
 	if run.Workspace != "" || run.Profile != "" {
 		profileInfo := ""

@@ -847,7 +847,7 @@ func TestExecutor_NoTemplateContext(t *testing.T) {
 }
 
 func TestExecutor_SPEC2FormatMultiStepWorkflow(t *testing.T) {
-	// This test demonstrates a complete SPEC-2 style workflow:
+	// This test demonstrates a complete multi-step workflow:
 	// 1. Step uses workflow input via {{.diff}}
 	// 2. Second step uses first step output via {{.steps.security.response}}
 	// 3. Prompt field is used instead of inputs["prompt"]
@@ -1039,10 +1039,10 @@ func TestExecutor_ToolStepWithoutRegistry(t *testing.T) {
 // TestExecutor_ToolStepMissingToolName removed - type: tool is no longer supported
 // Missing builtin_connector/builtin_operation is caught at definition validation level
 
-// TestExecutor_CompleteSPEC2WorkflowIntegration tests a complete SPEC-2 workflow
+// TestExecutor_CompleteWorkflowIntegration tests a complete workflow
 // by parsing YAML and executing multiple steps with template variable passing.
-func TestExecutor_CompleteSPEC2WorkflowIntegration(t *testing.T) {
-	// Define a complete SPEC-2 workflow as YAML
+func TestExecutor_CompleteWorkflowIntegration(t *testing.T) {
+	// Define a complete workflow as YAML
 	workflowYAML := `
 name: code-review
 inputs:

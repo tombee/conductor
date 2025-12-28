@@ -377,7 +377,7 @@ func TestMockExecutionAdapter_DefaultBehavior(t *testing.T) {
 	}
 }
 
-// TestExecutorAdapter_TypedOutput verifies that typed StepOutput is populated correctly (SPEC-40).
+// TestExecutorAdapter_TypedOutput verifies that typed StepOutput is populated correctly.
 func TestExecutorAdapter_TypedOutput(t *testing.T) {
 	provider := &MockLLMProvider{
 		CompleteFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
@@ -413,7 +413,7 @@ func TestExecutorAdapter_TypedOutput(t *testing.T) {
 	}
 }
 
-// TestExecutorAdapter_TypedInputsOutputs tests end-to-end workflow with typed inputs/outputs (SPEC-40).
+// TestExecutorAdapter_TypedInputsOutputs tests end-to-end workflow with typed inputs/outputs.
 func TestExecutorAdapter_TypedInputsOutputs(t *testing.T) {
 	provider := &MockLLMProvider{
 		CompleteFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
@@ -471,7 +471,7 @@ func TestExecutorAdapter_TypedInputsOutputs(t *testing.T) {
 	}
 }
 
-// TestOutputConversionHelpers tests the conversion functions between typed and untyped formats (SPEC-40).
+// TestOutputConversionHelpers tests the conversion functions between typed and untyped formats.
 func TestOutputConversionHelpers(t *testing.T) {
 	t.Run("stepResultToOutput", func(t *testing.T) {
 		stepResult := &workflow.StepResult{

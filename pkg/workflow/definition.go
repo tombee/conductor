@@ -1,6 +1,6 @@
 // Package workflow provides workflow orchestration primitives.
 //
-// Workflow definitions follow the SPEC-2 simple workflow format, which allows
+// Workflow definitions follow the simple workflow format, which allows
 // for concise YAML-based workflow specifications. The version field is optional
 // and defaults to "1.0". LLM steps support model tier selection (fast, balanced,
 // strategic) and inline prompt/system configuration without requiring separate
@@ -19,7 +19,7 @@ import (
 // It defines the structure, steps, conditions, and outputs of a workflow
 // that can be loaded from a YAML file and executed by the workflow executor.
 //
-// Following SPEC-2, the Version field is optional and will default to "1.0"
+// The Version field is optional and will default to "1.0"
 // if not specified. This allows for minimal workflow definitions that only
 // require a name and steps array.
 type Definition struct {
@@ -60,7 +60,7 @@ type Definition struct {
 	// CostLimits define cost constraints at the workflow level
 	CostLimits *CostLimits `yaml:"cost_limits,omitempty" json:"cost_limits,omitempty"`
 
-	// Requires declares abstract service dependencies for this workflow (SPEC-130)
+	// Requires declares abstract service dependencies for this workflow.
 	// This enables portable workflow definitions that don't embed credentials.
 	// Runtime bindings are provided by execution profiles.
 	Requires *RequirementsDefinition `yaml:"requires,omitempty" json:"requires,omitempty"`
@@ -167,7 +167,7 @@ type InputDefinition struct {
 
 // StepDefinition represents a single step in a workflow.
 //
-// SPEC-2 simplified LLM steps by making configuration inline:
+// LLM steps have simplified inline configuration:
 //   - Model: tier selection (fast/balanced/strategic), defaults to "balanced"
 //   - System: optional system prompt for LLM behavior guidance
 //   - Prompt: user prompt with template variable support ({{.input}}, {{.steps.id.response}})
@@ -638,7 +638,7 @@ const (
 	LimitBehaviorContinue LimitBehavior = "continue"
 )
 
-// RequirementsDefinition declares abstract service dependencies for a workflow (SPEC-130).
+// RequirementsDefinition declares abstract service dependencies for a workflow.
 // This enables portable workflow definitions that don't embed credentials.
 // Runtime bindings are provided by execution profiles.
 type RequirementsDefinition struct {
@@ -1040,7 +1040,7 @@ func (d *Definition) Validate() error {
 		}
 	}
 
-	// Validate requirements section (SPEC-130)
+	// Validate requirements section
 	if d.Requires != nil {
 		if err := d.Requires.Validate(); err != nil {
 			return fmt.Errorf("invalid requires section: %w", err)
