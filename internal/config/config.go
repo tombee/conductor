@@ -351,8 +351,17 @@ type ObservabilityConfig struct {
 	// Exporters configures OTLP export destinations.
 	Exporters []ExporterConfig `yaml:"exporters,omitempty"`
 
+	// BatchSize is the maximum number of spans per export batch (default: 512).
+	BatchSize int `yaml:"batch_size,omitempty"`
+
+	// BatchInterval is how often to flush spans in seconds (default: 5).
+	BatchInterval int `yaml:"batch_interval,omitempty"`
+
 	// Redaction configures sensitive data handling.
 	Redaction RedactionConfig `yaml:"redaction,omitempty"`
+
+	// Audit configures audit logging.
+	Audit AuditConfig `yaml:"audit,omitempty"`
 }
 
 // SamplingConfig controls which traces are recorded.
@@ -392,6 +401,9 @@ type RetentionConfig struct {
 
 	// AggregateDays is how long to keep aggregated metrics (in days).
 	AggregateDays int `yaml:"aggregate_days,omitempty"`
+
+	// CleanupInterval is how often to run cleanup (in hours). Default: 1 hour.
+	CleanupInterval int `yaml:"cleanup_interval,omitempty"`
 }
 
 // ExporterConfig defines an OTLP export destination.
@@ -443,6 +455,21 @@ type RedactionPattern struct {
 
 	// Replacement is the string to substitute.
 	Replacement string `yaml:"replacement,omitempty"`
+}
+
+// AuditConfig configures audit logging for API access.
+type AuditConfig struct {
+	// Enabled controls whether audit logging is active.
+	Enabled bool `yaml:"enabled"`
+
+	// Destination is where audit logs are written: "file", "stdout", or "syslog".
+	Destination string `yaml:"destination,omitempty"`
+
+	// FilePath is the path to the audit log file (when destination=file).
+	FilePath string `yaml:"file_path,omitempty"`
+
+	// TrustedProxies is a list of IP addresses to trust X-Forwarded-For from.
+	TrustedProxies []string `yaml:"trusted_proxies,omitempty"`
 }
 
 // Workspace represents a security and configuration isolation boundary.
@@ -1143,6 +1170,29 @@ func (c *Config) Validate() error {
 		}
 		if ret.AggregateDays <= 0 {
 			errs = append(errs, fmt.Sprintf("daemon.observability.storage.retention.aggregate_days must be positive, got %d", ret.AggregateDays))
+		}
+
+		// Validate sampling rate is in valid range [0.0, 1.0]
+		if c.Daemon.Observability.Sampling.Enabled {
+			rate := c.Daemon.Observability.Sampling.Rate
+			if rate < 0.0 || rate > 1.0 {
+				errs = append(errs, fmt.Sprintf("daemon.observability.sampling.rate must be between 0.0 and 1.0, got %f", rate))
+			}
+		}
+
+		// Validate audit configuration
+		if c.Daemon.Observability.Audit.Enabled {
+			validDestinations := map[string]bool{"file": true, "stdout": true, "syslog": true}
+			if c.Daemon.Observability.Audit.Destination == "" {
+				errs = append(errs, "daemon.observability.audit.destination is required when audit.enabled is true")
+			} else if !validDestinations[c.Daemon.Observability.Audit.Destination] {
+				errs = append(errs, fmt.Sprintf("daemon.observability.audit.destination must be one of [file, stdout, syslog], got %q", c.Daemon.Observability.Audit.Destination))
+			}
+
+			// Validate file_path is set when destination is file
+			if c.Daemon.Observability.Audit.Destination == "file" && c.Daemon.Observability.Audit.FilePath == "" {
+				errs = append(errs, "daemon.observability.audit.file_path is required when audit.destination is 'file'")
+			}
 		}
 	}
 

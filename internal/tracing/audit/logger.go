@@ -84,6 +84,33 @@ func NewFileLogger(path string) (*Logger, error) {
 	}, nil
 }
 
+// NewStdoutLogger creates an audit logger that writes to stdout
+func NewStdoutLogger() *Logger {
+	return &Logger{
+		writer: os.Stdout,
+	}
+}
+
+// NewLoggerFromDestination creates an audit logger based on destination type.
+// Valid destinations: "file", "stdout", "syslog"
+func NewLoggerFromDestination(destination, filePath string) (*Logger, error) {
+	switch destination {
+	case "file":
+		if filePath == "" {
+			return nil, fmt.Errorf("file_path is required when destination is 'file'")
+		}
+		return NewFileLogger(filePath)
+	case "stdout":
+		return NewStdoutLogger(), nil
+	case "syslog":
+		// For syslog, we write to stdout in a syslog-compatible format
+		// In production, this would typically be captured by a syslog daemon
+		return NewStdoutLogger(), nil
+	default:
+		return nil, fmt.Errorf("invalid audit destination: %q (must be file, stdout, or syslog)", destination)
+	}
+}
+
 // Log writes an audit entry
 func (l *Logger) Log(entry Entry) error {
 	// Set timestamp if not provided

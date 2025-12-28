@@ -38,6 +38,12 @@ type Config struct {
 	// Exporters configures OTLP export destinations.
 	Exporters []ExporterConfig
 
+	// BatchSize is the maximum number of spans per export batch (default: 512).
+	BatchSize int
+
+	// BatchInterval is how often to flush spans (default: 5s).
+	BatchInterval time.Duration
+
 	// Redaction configures sensitive data handling.
 	Redaction RedactionConfig
 }
@@ -154,7 +160,9 @@ func DefaultConfig() Config {
 				Aggregates: 90 * 24 * time.Hour, // 90 days
 			},
 		},
-		Exporters: nil, // No exporters by default
+		Exporters:     nil,           // No exporters by default
+		BatchSize:     512,            // OTLP default batch size
+		BatchInterval: 5 * time.Second, // OTLP default batch interval
 		Redaction: RedactionConfig{
 			Level:    "strict", // Strict by default for safety
 			Patterns: nil,      // No custom patterns

@@ -44,6 +44,8 @@ type OTelProvider struct {
 
 // NewOTelProviderWithConfig creates a new OpenTelemetry-based tracer provider with full configuration.
 func NewOTelProviderWithConfig(cfg Config, opts ...sdktrace.TracerProviderOption) (*OTelProvider, error) {
+	ctx := context.Background()
+
 	// Create sampler from config
 	sampler := NewSampler(SamplerConfig{
 		Enabled:            cfg.Sampling.Enabled,
@@ -51,10 +53,21 @@ func NewOTelProviderWithConfig(cfg Config, opts ...sdktrace.TracerProviderOption
 		AlwaysSampleErrors: cfg.Sampling.AlwaysSampleErrors,
 	})
 
-	// Prepend sampler option
+	// Create batch span processors from configured exporters
+	processors, err := CreateExportersFromConfig(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create exporters: %w", err)
+	}
+
+	// Prepend sampler option and add batch processors
 	allOpts := append([]sdktrace.TracerProviderOption{
 		sdktrace.WithSampler(sampler),
 	}, opts...)
+
+	// Add each batch processor
+	for _, processor := range processors {
+		allOpts = append(allOpts, sdktrace.WithSpanProcessor(processor))
+	}
 
 	return NewOTelProvider(cfg.ServiceName, cfg.ServiceVersion, allOpts...)
 }
@@ -84,6 +97,9 @@ func NewOTelProvider(serviceName, version string, opts ...sdktrace.TracerProvide
 
 	// Set as global tracer provider (for libraries that use otel.Tracer)
 	otel.SetTracerProvider(tp)
+
+	// Register W3C Trace Context propagator for distributed tracing
+	otel.SetTextMapPropagator(W3CPropagator())
 
 	// Create Prometheus exporter for metrics
 	promExporter, err := prometheus.New()

@@ -16,7 +16,10 @@ package tracing
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 
+	"github.com/tombee/conductor/internal/tracing/export"
 	"github.com/tombee/conductor/internal/tracing/storage"
 	"github.com/tombee/conductor/pkg/observability"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -124,3 +127,103 @@ func convertOTelSpan(otelSpan sdktrace.ReadOnlySpan) *observability.Span {
 
 // Compile-time check that StorageExporter implements sdktrace.SpanExporter
 var _ sdktrace.SpanExporter = (*StorageExporter)(nil)
+
+// CreateExporter creates a span exporter from configuration.
+// This factory function supports multiple exporter types and handles creation errors gracefully.
+func CreateExporter(ctx context.Context, cfg ExporterConfig) (sdktrace.SpanExporter, error) {
+	switch cfg.Type {
+	case "console":
+		return export.NewConsoleExporter(export.ConsoleConfig{
+			Writer:      nil, // Use default stdout
+			PrettyPrint: true,
+		})
+
+	case "otlp":
+		tlsConfig, err := export.BuildTLSConfig(export.TLSConfigInput{
+			Enabled:           cfg.TLS.Enabled,
+			VerifyCertificate: cfg.TLS.VerifyCertificate,
+			CACertPath:        cfg.TLS.CACertPath,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to build TLS config for OTLP exporter: %w", err)
+		}
+
+		return export.NewOTLPExporter(ctx, export.OTLPConfig{
+			Endpoint:  cfg.Endpoint,
+			Insecure:  !cfg.TLS.Enabled,
+			TLSConfig: tlsConfig,
+			Headers:   cfg.Headers,
+		})
+
+	case "otlp_http", "otlp-http":
+		tlsConfig, err := export.BuildTLSConfig(export.TLSConfigInput{
+			Enabled:           cfg.TLS.Enabled,
+			VerifyCertificate: cfg.TLS.VerifyCertificate,
+			CACertPath:        cfg.TLS.CACertPath,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to build TLS config for OTLP HTTP exporter: %w", err)
+		}
+
+		return export.NewOTLPHTTPExporter(ctx, export.OTLPHTTPConfig{
+			Endpoint:  cfg.Endpoint,
+			URLPath:   "",      // Use default /v1/traces
+			Insecure:  !cfg.TLS.Enabled,
+			TLSConfig: tlsConfig,
+			Headers:   cfg.Headers,
+		})
+
+	case "none", "":
+		// No exporter - tracing disabled
+		return nil, nil
+
+	default:
+		return nil, fmt.Errorf("unknown exporter type: %s", cfg.Type)
+	}
+}
+
+// CreateExportersFromConfig creates batch span processors for all configured exporters.
+// Exporter creation failures are logged but don't block startup.
+func CreateExportersFromConfig(ctx context.Context, cfg Config) ([]sdktrace.SpanProcessor, error) {
+	var processors []sdktrace.SpanProcessor
+
+	for i, exporterCfg := range cfg.Exporters {
+		exporter, err := CreateExporter(ctx, exporterCfg)
+		if err != nil {
+			// Log warning but continue - partial export is better than no export
+			slog.Warn("failed to create exporter, skipping",
+				"index", i,
+				"type", exporterCfg.Type,
+				"endpoint", exporterCfg.Endpoint,
+				"error", err)
+			continue
+		}
+
+		if exporter == nil {
+			// Type was "none" - skip
+			continue
+		}
+
+		// Wrap in batch processor with configured batch size and interval
+		batchOpts := []sdktrace.BatchSpanProcessorOption{}
+
+		// Set batch size from config (default is 512 if not configured)
+		if cfg.BatchSize > 0 {
+			batchOpts = append(batchOpts, sdktrace.WithMaxExportBatchSize(cfg.BatchSize))
+		}
+
+		// Set batch interval from config (default is 5s if not configured)
+		if cfg.BatchInterval > 0 {
+			batchOpts = append(batchOpts, sdktrace.WithBatchTimeout(cfg.BatchInterval))
+		}
+
+		processor := sdktrace.NewBatchSpanProcessor(exporter, batchOpts...)
+		processors = append(processors, processor)
+
+		slog.Info("created exporter",
+			"type", exporterCfg.Type,
+			"endpoint", exporterCfg.Endpoint)
+	}
+
+	return processors, nil
+}

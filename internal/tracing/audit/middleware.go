@@ -17,17 +17,20 @@ package audit
 import (
 	"net/http"
 	"strings"
+
+	"github.com/tombee/conductor/internal/daemon/auth"
 )
 
-// Middleware creates an HTTP middleware that logs API access
-func Middleware(logger *Logger) func(http.Handler) http.Handler {
+// Middleware creates an HTTP middleware that logs API access.
+// The trustedProxies parameter specifies IP addresses from which X-Forwarded-For headers are trusted.
+func Middleware(logger *Logger, trustedProxies []string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Extract user ID from request (e.g., from authentication)
+			// Extract user ID from request context (set by auth middleware)
 			userID := extractUserID(r)
 
 			// Extract IP address
-			ipAddress := extractIPAddress(r)
+			ipAddress := extractIPAddress(r, trustedProxies)
 
 			// Wrap response writer to capture status code
 			wrapped := &responseWriter{
@@ -75,63 +78,66 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-// extractUserID attempts to extract user ID from the request
+// extractUserID extracts user ID from the authenticated request context.
+// This should be called after auth middleware has validated the user.
 func extractUserID(r *http.Request) string {
-	// Try Authorization header first
-	auth := r.Header.Get("Authorization")
-	if auth != "" {
-		// For Bearer tokens, we'd decode the JWT here
-		// For simplicity, return a placeholder
-		if strings.HasPrefix(auth, "Bearer ") {
-			return "authenticated_user" // In real implementation, decode JWT
-		}
-		if strings.HasPrefix(auth, "Basic ") {
-			return "basic_auth_user" // In real implementation, decode basic auth
-		}
+	// Use the auth package's UserFromContext function
+	if user, ok := auth.UserFromContext(r.Context()); ok && user.ID != "" {
+		return user.ID
 	}
 
-	// Try API key header
-	if apiKey := r.Header.Get("X-API-Key"); apiKey != "" {
-		return "api_key_user" // In real implementation, look up API key
-	}
-
-	// No authentication found
+	// No authenticated user found
 	return "anonymous"
 }
 
-// extractIPAddress gets the client IP address from the request
-func extractIPAddress(r *http.Request) string {
-	// Check X-Forwarded-For header (common in proxied environments)
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		// Take the first IP in the list
-		parts := strings.Split(xff, ",")
-		if len(parts) > 0 {
-			return strings.TrimSpace(parts[0])
+// extractIPAddress gets the client IP address from the request.
+// The trustedProxies parameter specifies IPs from which X-Forwarded-For is trusted.
+func extractIPAddress(r *http.Request, trustedProxies []string) string {
+	// Get the direct connection IP (strip port if present)
+	remoteIP := r.RemoteAddr
+	if idx := strings.LastIndex(remoteIP, ":"); idx != -1 {
+		remoteIP = remoteIP[:idx]
+	}
+
+	// Check if this request comes from a trusted proxy
+	isTrusted := false
+	for _, proxy := range trustedProxies {
+		if proxy == remoteIP {
+			isTrusted = true
+			break
 		}
 	}
 
-	// Check X-Real-IP header
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return xri
+	// Only trust X-Forwarded-For if the direct connection is from a trusted proxy
+	if isTrusted {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			// Take the first IP in the list (the original client)
+			parts := strings.Split(xff, ",")
+			if len(parts) > 0 {
+				return strings.TrimSpace(parts[0])
+			}
+		}
+
+		// Check X-Real-IP header as fallback
+		if xri := r.Header.Get("X-Real-IP"); xri != "" {
+			return xri
+		}
 	}
 
-	// Fall back to RemoteAddr
-	// Strip port if present
-	addr := r.RemoteAddr
-	if idx := strings.LastIndex(addr, ":"); idx != -1 {
-		addr = addr[:idx]
-	}
-
-	return addr
+	// Return the direct connection IP
+	return remoteIP
 }
 
-// determineAction maps HTTP method and path to an audit action
+// determineAction maps HTTP method and path to an audit action.
+// Only POST, PUT, and DELETE methods are audited (mutations).
 func determineAction(method, path string) Action {
+	// Only audit mutation operations
+	if method != "POST" && method != "PUT" && method != "DELETE" {
+		return ""
+	}
+
 	// Trace endpoints
 	if strings.HasPrefix(path, "/v1/traces") {
-		if method == "GET" {
-			return ActionTracesRead
-		}
 		if method == "DELETE" {
 			return ActionTracesDelete
 		}
@@ -139,11 +145,63 @@ func determineAction(method, path string) Action {
 
 	// Event endpoints
 	if strings.HasPrefix(path, "/v1/events") {
+		// Event streaming is considered auditable even though it's GET
+		// because it provides access to potentially sensitive data
 		if strings.HasSuffix(path, "/stream") {
 			return ActionEventsStream
 		}
-		if method == "GET" {
-			return ActionEventsRead
+	}
+
+	// Workflow trigger/execution endpoints
+	if strings.HasPrefix(path, "/v1/trigger") || strings.HasPrefix(path, "/v1/runs") {
+		if method == "POST" {
+			return "workflow:trigger"
+		}
+		if method == "DELETE" {
+			return "workflow:cancel"
+		}
+	}
+
+	// Exporter configuration endpoints
+	if strings.HasPrefix(path, "/v1/exporters") {
+		if method == "POST" || method == "PUT" {
+			return ActionExportersCfg
+		}
+		if method == "DELETE" {
+			return "exporters:delete"
+		}
+	}
+
+	// Webhook endpoints
+	if strings.HasPrefix(path, "/v1/webhooks") || strings.HasPrefix(path, "/webhooks/") {
+		return "webhook:invoke"
+	}
+
+	// Endpoint execution (named endpoints)
+	if strings.HasPrefix(path, "/v1/endpoints/") {
+		return "endpoint:execute"
+	}
+
+	// Schedule endpoints
+	if strings.HasPrefix(path, "/v1/schedules") {
+		if method == "POST" {
+			return "schedule:create"
+		}
+		if method == "PUT" {
+			return "schedule:update"
+		}
+		if method == "DELETE" {
+			return "schedule:delete"
+		}
+	}
+
+	// MCP server management
+	if strings.HasPrefix(path, "/v1/mcp") {
+		if method == "POST" {
+			return "mcp:start"
+		}
+		if method == "DELETE" {
+			return "mcp:stop"
 		}
 	}
 

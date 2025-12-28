@@ -47,6 +47,7 @@ import (
 	internallog "github.com/tombee/conductor/internal/log"
 	"github.com/tombee/conductor/internal/mcp"
 	"github.com/tombee/conductor/internal/tracing"
+	"github.com/tombee/conductor/internal/tracing/audit"
 	"github.com/tombee/conductor/pkg/llm/cost"
 	"github.com/tombee/conductor/pkg/security"
 	"github.com/tombee/conductor/pkg/workflow"
@@ -77,6 +78,8 @@ type Daemon struct {
 	leader          *leader.Elector
 	mcpRegistry     *mcp.Registry
 	otelProvider    *tracing.OTelProvider
+	retentionMgr    *tracing.RetentionManager
+	auditLogger     *audit.Logger
 
 	mu           sync.Mutex
 	started      bool
@@ -277,6 +280,7 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 
 	// Initialize OpenTelemetry provider for metrics and tracing
 	var otelProvider *tracing.OTelProvider
+	var retentionMgr *tracing.RetentionManager
 	if cfg.Daemon.Observability.Enabled {
 		tracingCfg := observabilityToTracingConfig(cfg.Daemon.Observability, opts.Version)
 		otelProvider, err = tracing.NewOTelProviderWithConfig(tracingCfg)
@@ -290,6 +294,24 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 				slog.String("service_version", tracingCfg.ServiceVersion))
 			// Wire metrics collector to runner
 			r.SetMetrics(otelProvider.MetricsCollector())
+
+			// Create retention manager if trace storage is configured and retention is non-zero
+			if otelProvider.GetStore() != nil && tracingCfg.Storage.Retention.Traces > 0 {
+				cleanupInterval := 1 * time.Hour // Default cleanup interval
+				if cfg.Daemon.Observability.Storage.Retention.CleanupInterval > 0 {
+					cleanupInterval = time.Duration(cfg.Daemon.Observability.Storage.Retention.CleanupInterval) * time.Hour
+				}
+
+				retentionMgr = tracing.NewRetentionManager(
+					otelProvider.GetStore(),
+					tracingCfg.Storage.Retention.Traces,
+					cleanupInterval,
+					logger,
+				)
+				logger.Info("trace retention manager initialized",
+					slog.Duration("max_age", tracingCfg.Storage.Retention.Traces),
+					slog.Duration("cleanup_interval", cleanupInterval))
+			}
 		}
 	}
 
@@ -298,6 +320,19 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 	if autoStarted {
 		logger.Info("daemon auto-started by CLI",
 			slog.Duration("idle_timeout", cfg.Daemon.IdleTimeout))
+	}
+
+	// Create audit logger if enabled
+	var auditLogger *audit.Logger
+	if cfg.Daemon.Observability.Enabled && cfg.Daemon.Observability.Audit.Enabled {
+		auditCfg := cfg.Daemon.Observability.Audit
+		var err error
+		auditLogger, err = audit.NewLoggerFromDestination(auditCfg.Destination, auditCfg.FilePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create audit logger: %w", err)
+		}
+		logger.Info("audit logging enabled",
+			slog.String("destination", auditCfg.Destination))
 	}
 
 	return &Daemon{
@@ -313,6 +348,8 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 		leader:          elector,
 		mcpRegistry:     mcpRegistry,
 		otelProvider:    otelProvider,
+		retentionMgr:    retentionMgr,
+		auditLogger:     auditLogger,
 		lastActivity:    time.Now(),
 		autoStarted:     autoStarted,
 	}, nil
@@ -432,8 +469,21 @@ func (d *Daemon) Start(ctx context.Context) error {
 		router.SetMetricsHandler(d.otelProvider.MetricsHandler())
 	}
 
-	// Create HTTP server with auth middleware
+	// Create HTTP server with middleware chain
+	// Middleware order (from outer to inner):
+	// 1. Auth middleware (validates credentials, sets user context)
+	// 2. Audit middleware (logs API access using user from context)
+	// 3. Router (handles requests)
 	var handler http.Handler = router
+
+	// Apply audit middleware if enabled (before auth so it can log auth failures too)
+	// Actually, apply after auth so we have user context
+	if d.auditLogger != nil {
+		trustedProxies := d.cfg.Daemon.Observability.Audit.TrustedProxies
+		handler = audit.Middleware(d.auditLogger, trustedProxies)(handler)
+	}
+
+	// Apply auth middleware (outer layer)
 	if d.authMw != nil {
 		handler = d.authMw.Wrap(handler)
 	}
@@ -487,6 +537,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 				slog.Int("configured", summary.Total),
 				slog.Int("running", summary.Running))
 		}
+	}
+
+	// Start trace retention manager if configured
+	if d.retentionMgr != nil {
+		d.retentionMgr.Start()
+		d.logger.Info("trace retention manager started")
 	}
 
 	// Create and start public API server if enabled
@@ -625,12 +681,36 @@ func (d *Daemon) Shutdown(ctx context.Context) error {
 		}
 	}
 
+	// Stop retention manager before shutting down trace storage
+	if d.retentionMgr != nil {
+		d.retentionMgr.Stop()
+		d.logger.Info("trace retention manager stopped")
+	}
+
+	// Flush pending spans before shutdown
+	if d.otelProvider != nil {
+		flushCtx, flushCancel := context.WithTimeout(ctx, 10*time.Second)
+		defer flushCancel()
+		if err := d.otelProvider.ForceFlush(flushCtx); err != nil {
+			d.logger.Warn("failed to flush pending spans",
+				internallog.Error(err))
+		}
+	}
+
 	// Shutdown OpenTelemetry provider
 	if d.otelProvider != nil {
 		shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 		if err := d.otelProvider.Shutdown(shutdownCtx); err != nil {
 			d.logger.Error("OpenTelemetry provider shutdown error",
+				internallog.Error(err))
+		}
+	}
+
+	// Close audit logger
+	if d.auditLogger != nil {
+		if err := d.auditLogger.Close(); err != nil {
+			d.logger.Error("failed to close audit logger",
 				internallog.Error(err))
 		}
 	}
@@ -790,6 +870,8 @@ func observabilityToTracingConfig(obs config.ObservabilityConfig, version string
 				Aggregates: time.Duration(obs.Storage.Retention.AggregateDays) * 24 * time.Hour,
 			},
 		},
+		BatchSize:     obs.BatchSize,
+		BatchInterval: time.Duration(obs.BatchInterval) * time.Second,
 		Redaction: tracing.RedactionConfig{
 			Level:    obs.Redaction.Level,
 			Patterns: convertRedactionPatterns(obs.Redaction.Patterns),

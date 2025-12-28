@@ -120,8 +120,18 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		r.activityRecorder.RecordActivity()
 	}
 
-	// Apply correlation middleware first
-	handler := tracing.CorrelationMiddleware(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	// Build middleware chain from innermost to outermost:
+	// 1. HTTP trace context extraction (innermost - must run first)
+	// 2. Tracing middleware (creates spans)
+	// 3. Correlation middleware
+	// 4. Request logging (outermost)
+
+	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		r.mux.ServeHTTP(w, req)
+	})
+
+	// Apply request logging middleware
+	handler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		// Log request with correlation ID
 		start := time.Now()
 		correlationID := tracing.FromContextOrEmpty(req.Context())
@@ -135,8 +145,17 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			)
 		}()
 
-		r.mux.ServeHTTP(w, req)
-	}))
+		handler.ServeHTTP(w, req)
+	})
+
+	// Apply correlation middleware
+	handler = tracing.CorrelationMiddleware(handler)
+
+	// Apply tracing middleware to create spans for requests
+	handler = tracing.TracingMiddleware(handler)
+
+	// Apply HTTP middleware to extract trace context from headers (must be first)
+	handler = tracing.HTTPMiddleware(handler)
 
 	handler.ServeHTTP(w, req)
 }
