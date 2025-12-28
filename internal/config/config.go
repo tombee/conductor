@@ -526,6 +526,23 @@ type LLMConfig struct {
 	// Environment: LLM_RETRY_BACKOFF_BASE
 	// Default: 100ms
 	RetryBackoffBase time.Duration `yaml:"retry_backoff_base"`
+
+	// FailoverProviders is the ordered list of providers to try on failure.
+	// When configured, enables automatic failover with circuit breaker.
+	// Environment: LLM_FAILOVER_PROVIDERS (comma-separated)
+	// Default: empty (failover disabled)
+	FailoverProviders []string `yaml:"failover_providers,omitempty"`
+
+	// CircuitBreakerThreshold is the number of consecutive failures before opening the circuit.
+	// 0 disables circuit breaker.
+	// Environment: LLM_CIRCUIT_BREAKER_THRESHOLD
+	// Default: 5
+	CircuitBreakerThreshold int `yaml:"circuit_breaker_threshold,omitempty"`
+
+	// CircuitBreakerTimeout is how long to keep the circuit open before trying again.
+	// Environment: LLM_CIRCUIT_BREAKER_TIMEOUT
+	// Default: 30s
+	CircuitBreakerTimeout time.Duration `yaml:"circuit_breaker_timeout,omitempty"`
 }
 
 // Default returns a Config with sensible defaults.
@@ -547,10 +564,13 @@ func Default() *Config {
 			AddSource: false,
 		},
 		LLM: LLMConfig{
-			DefaultProvider:  "anthropic",
-			RequestTimeout:   5 * time.Second,
-			MaxRetries:       3,
-			RetryBackoffBase: 100 * time.Millisecond,
+			DefaultProvider:         "anthropic",
+			RequestTimeout:          5 * time.Second,
+			MaxRetries:              3,
+			RetryBackoffBase:        100 * time.Millisecond,
+			FailoverProviders:       nil,  // Failover disabled by default
+			CircuitBreakerThreshold: 5,    // Default threshold
+			CircuitBreakerTimeout:   30 * time.Second,
 		},
 		Security: security.SecurityConfig{
 			DefaultProfile: security.ProfileStandard,
@@ -747,6 +767,12 @@ func (c *Config) applyDefaults() {
 	}
 	if c.LLM.RetryBackoffBase == 0 {
 		c.LLM.RetryBackoffBase = defaults.LLM.RetryBackoffBase
+	}
+	if c.LLM.CircuitBreakerThreshold == 0 {
+		c.LLM.CircuitBreakerThreshold = defaults.LLM.CircuitBreakerThreshold
+	}
+	if c.LLM.CircuitBreakerTimeout == 0 {
+		c.LLM.CircuitBreakerTimeout = defaults.LLM.CircuitBreakerTimeout
 	}
 
 	// Security defaults
@@ -961,6 +987,24 @@ func (c *Config) loadFromEnv() {
 	if val := os.Getenv("LLM_RETRY_BACKOFF_BASE"); val != "" {
 		if duration, err := time.ParseDuration(val); err == nil {
 			c.LLM.RetryBackoffBase = duration
+		}
+	}
+	if val := os.Getenv("LLM_FAILOVER_PROVIDERS"); val != "" {
+		// Parse comma-separated list of provider names
+		providers := strings.Split(val, ",")
+		for i, p := range providers {
+			providers[i] = strings.TrimSpace(p)
+		}
+		c.LLM.FailoverProviders = providers
+	}
+	if val := os.Getenv("LLM_CIRCUIT_BREAKER_THRESHOLD"); val != "" {
+		if threshold, err := strconv.Atoi(val); err == nil {
+			c.LLM.CircuitBreakerThreshold = threshold
+		}
+	}
+	if val := os.Getenv("LLM_CIRCUIT_BREAKER_TIMEOUT"); val != "" {
+		if duration, err := time.ParseDuration(val); err == nil {
+			c.LLM.CircuitBreakerTimeout = duration
 		}
 	}
 }

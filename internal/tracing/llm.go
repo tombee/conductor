@@ -95,6 +95,15 @@ func (t *TracedProvider) Complete(ctx context.Context, req llm.CompletionRequest
 		return nil, err
 	}
 
+	// If usage is missing but provider implements UsageTrackable, get usage from GetLastUsage
+	if resp.Usage.TotalTokens == 0 {
+		if trackable, ok := t.provider.(llm.UsageTrackable); ok {
+			if lastUsage := trackable.GetLastUsage(); lastUsage != nil {
+				resp.Usage = *lastUsage
+			}
+		}
+	}
+
 	// Record token usage
 	span.SetAttributes(map[string]any{
 		"llm.response.model":                   resp.Model,
@@ -204,14 +213,25 @@ func (t *TracedProvider) Stream(ctx context.Context, req llm.CompletionRequest) 
 
 			// Final chunk contains usage
 			if chunk.Usage != nil {
+				usage := *chunk.Usage
+
+				// If usage is missing but provider implements UsageTrackable, get usage from GetLastUsage
+				if usage.TotalTokens == 0 {
+					if trackable, ok := t.provider.(llm.UsageTrackable); ok {
+						if lastUsage := trackable.GetLastUsage(); lastUsage != nil {
+							usage = *lastUsage
+						}
+					}
+				}
+
 				span.SetAttributes(map[string]any{
 					"llm.response.finish_reason":      string(chunk.FinishReason),
 					"llm.response.request_id":         chunk.RequestID,
-					"llm.usage.prompt_tokens":         chunk.Usage.PromptTokens,
-					"llm.usage.completion_tokens":     chunk.Usage.CompletionTokens,
-					"llm.usage.total_tokens":          chunk.Usage.TotalTokens,
-					"llm.usage.cache_creation_tokens": chunk.Usage.CacheCreationTokens,
-					"llm.usage.cache_read_tokens":     chunk.Usage.CacheReadTokens,
+					"llm.usage.prompt_tokens":         usage.PromptTokens,
+					"llm.usage.completion_tokens":     usage.CompletionTokens,
+					"llm.usage.total_tokens":          usage.TotalTokens,
+					"llm.usage.cache_creation_tokens": usage.CacheCreationTokens,
+					"llm.usage.cache_read_tokens":     usage.CacheReadTokens,
 					"llm.response.tool_calls_count":   toolCallsCount,
 					"llm.response.content_length":     contentLength,
 				})
@@ -233,7 +253,7 @@ func (t *TracedProvider) Stream(ctx context.Context, req llm.CompletionRequest) 
 				// Record successful request metrics
 				if t.metrics != nil {
 					t.metrics.RecordLLMRequest(ctx, t.provider.Name(), req.Model, "success",
-						chunk.Usage.PromptTokens, chunk.Usage.CompletionTokens, costUSD, time.Since(startTime))
+						usage.PromptTokens, usage.CompletionTokens, costUSD, time.Since(startTime))
 				}
 
 				span.SetStatus(observability.StatusCodeOK, "")

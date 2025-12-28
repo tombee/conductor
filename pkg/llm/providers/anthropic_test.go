@@ -376,3 +376,299 @@ func TestUnmarshalToolInput_Error(t *testing.T) {
 		t.Error("expected error unmarshaling invalid JSON, got nil")
 	}
 }
+
+func TestTransformTools(t *testing.T) {
+	tests := []struct {
+		name    string
+		tools   []llm.Tool
+		wantErr bool
+	}{
+		{
+			name: "valid simple tool",
+			tools: []llm.Tool{
+				{
+					Name:        "get_weather",
+					Description: "Get current weather",
+					InputSchema: map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"location": map[string]interface{}{
+								"type":        "string",
+								"description": "City name",
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid tool with nested schema",
+			tools: []llm.Tool{
+				{
+					Name:        "complex_tool",
+					Description: "Complex tool with nesting",
+					InputSchema: map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"level1": map[string]interface{}{
+								"type": "object",
+								"properties": map[string]interface{}{
+									"level2": map[string]interface{}{
+										"type": "string",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "schema too deep",
+			tools: []llm.Tool{
+				{
+					Name:        "deep_tool",
+					Description: "Tool with overly nested schema",
+					InputSchema: createDeeplyNestedSchema(12),
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := transformTools(tt.tools)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("transformTools() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr {
+				if len(result) != len(tt.tools) {
+					t.Errorf("expected %d tools, got %d", len(tt.tools), len(result))
+				}
+				for i, tool := range result {
+					if tool.Name != tt.tools[i].Name {
+						t.Errorf("tool %d: expected name %s, got %s", i, tt.tools[i].Name, tool.Name)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestValidateSchemaDepth(t *testing.T) {
+	tests := []struct {
+		name     string
+		schema   map[string]interface{}
+		maxDepth int
+		wantErr  bool
+	}{
+		{
+			name: "simple schema within limit",
+			schema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"field": map[string]interface{}{
+						"type": "string",
+					},
+				},
+			},
+			maxDepth: 10,
+			wantErr:  false,
+		},
+		{
+			name:     "deeply nested schema exceeds limit",
+			schema:   createDeeplyNestedSchema(11),
+			maxDepth: 10,
+			wantErr:  true,
+		},
+		{
+			name:     "schema at exact limit",
+			schema:   createDeeplyNestedSchema(10),
+			maxDepth: 10,
+			wantErr:  false,
+		},
+		{
+			name: "array with nested objects",
+			schema: map[string]interface{}{
+				"type": "array",
+				"items": []interface{}{
+					map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"nested": map[string]interface{}{
+								"type": "string",
+							},
+						},
+					},
+				},
+			},
+			maxDepth: 10,
+			wantErr:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateSchemaDepth(tt.schema, 0, tt.maxDepth)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateSchemaDepth() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestParseToolUses(t *testing.T) {
+	tests := []struct {
+		name          string
+		contentBlocks []interface{}
+		wantCalls     int
+		wantErr       bool
+	}{
+		{
+			name: "single tool use",
+			contentBlocks: []interface{}{
+				map[string]interface{}{
+					"type":  "tool_use",
+					"id":    "call_123",
+					"name":  "get_weather",
+					"input": map[string]interface{}{"location": "London"},
+				},
+			},
+			wantCalls: 1,
+			wantErr:   false,
+		},
+		{
+			name: "multiple tool uses",
+			contentBlocks: []interface{}{
+				map[string]interface{}{
+					"type":  "tool_use",
+					"id":    "call_1",
+					"name":  "tool1",
+					"input": map[string]interface{}{"param": "value1"},
+				},
+				map[string]interface{}{
+					"type":  "tool_use",
+					"id":    "call_2",
+					"name":  "tool2",
+					"input": map[string]interface{}{"param": "value2"},
+				},
+			},
+			wantCalls: 2,
+			wantErr:   false,
+		},
+		{
+			name: "mixed content blocks",
+			contentBlocks: []interface{}{
+				map[string]interface{}{
+					"type": "text",
+					"text": "Some text",
+				},
+				map[string]interface{}{
+					"type":  "tool_use",
+					"id":    "call_123",
+					"name":  "get_weather",
+					"input": map[string]interface{}{"location": "Paris"},
+				},
+			},
+			wantCalls: 1,
+			wantErr:   false,
+		},
+		{
+			name: "no tool uses",
+			contentBlocks: []interface{}{
+				map[string]interface{}{
+					"type": "text",
+					"text": "Just text",
+				},
+			},
+			wantCalls: 0,
+			wantErr:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			calls, err := parseToolUses(tt.contentBlocks)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseToolUses() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if len(calls) != tt.wantCalls {
+				t.Errorf("parseToolUses() got %d calls, want %d", len(calls), tt.wantCalls)
+			}
+			for _, call := range calls {
+				if call.ID == "" {
+					t.Error("tool call missing ID")
+				}
+				if call.Name == "" {
+					t.Error("tool call missing Name")
+				}
+				if call.Arguments == "" {
+					t.Error("tool call missing Arguments")
+				}
+			}
+		})
+	}
+}
+
+func TestValidateToolArguments(t *testing.T) {
+	tests := []struct {
+		name      string
+		arguments string
+		wantErr   bool
+	}{
+		{
+			name:      "valid JSON object",
+			arguments: `{"key": "value"}`,
+			wantErr:   false,
+		},
+		{
+			name:      "valid JSON array",
+			arguments: `["value1", "value2"]`,
+			wantErr:   false,
+		},
+		{
+			name:      "valid empty object",
+			arguments: `{}`,
+			wantErr:   false,
+		},
+		{
+			name:      "invalid JSON",
+			arguments: `{invalid}`,
+			wantErr:   true,
+		},
+		{
+			name:      "incomplete JSON",
+			arguments: `{"key":`,
+			wantErr:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateToolArguments(tt.arguments)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateToolArguments() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// Helper function to create deeply nested schema for testing
+func createDeeplyNestedSchema(depth int) map[string]interface{} {
+	if depth <= 1 {
+		return map[string]interface{}{
+			"type": "string",
+		}
+	}
+	return map[string]interface{}{
+		"type": "object",
+		"properties": map[string]interface{}{
+			"nested": createDeeplyNestedSchema(depth - 1),
+		},
+	}
+}

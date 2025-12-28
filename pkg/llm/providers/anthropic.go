@@ -133,6 +133,21 @@ func (p *AnthropicProvider) Complete(ctx context.Context, req llm.CompletionRequ
 		}
 	}
 
+	// Validate and transform tools if provided
+	var anthropicTools []anthropicTool
+	if len(req.Tools) > 0 {
+		var err error
+		anthropicTools, err = transformTools(req.Tools)
+		if err != nil {
+			p.metrics.incrementFailedRequests()
+			return nil, err
+		}
+	}
+
+	// Stop sequences will be passed to API when implemented
+	_ = req.StopSequences
+	_ = anthropicTools
+
 	// TODO: Implement actual Anthropic API call
 	// For now, return an error indicating this needs real implementation
 	p.metrics.incrementFailedRequests()
@@ -164,6 +179,21 @@ func (p *AnthropicProvider) Stream(ctx context.Context, req llm.CompletionReques
 			Suggestion: "Add at least one message to the completion request",
 		}
 	}
+
+	// Validate and transform tools if provided
+	var anthropicTools []anthropicTool
+	if len(req.Tools) > 0 {
+		var err error
+		anthropicTools, err = transformTools(req.Tools)
+		if err != nil {
+			p.metrics.incrementFailedRequests()
+			return nil, err
+		}
+	}
+
+	// Stop sequences will be passed to API when implemented
+	_ = req.StopSequences
+	_ = anthropicTools
 
 	// Create output channel
 	chunks := make(chan llm.StreamChunk, 10)
@@ -242,40 +272,46 @@ func (p *AnthropicProvider) GetModelInfo(modelID string) (*llm.ModelInfo, error)
 // anthropicModels contains metadata for all Claude models.
 var anthropicModels = []llm.ModelInfo{
 	{
-		ID:                    "claude-3-5-haiku-20241022",
-		Name:                  "Claude 3.5 Haiku",
-		Tier:                  llm.ModelTierFast,
-		MaxTokens:             200000,
-		MaxOutputTokens:       8192,
-		InputPricePerMillion:  1.00,
-		OutputPricePerMillion: 5.00,
-		SupportsTools:         true,
-		SupportsVision:        true,
-		Description:           "Fast and cost-effective for simple tasks and high-volume requests.",
+		ID:                           "claude-3-5-haiku-20241022",
+		Name:                         "Claude 3.5 Haiku",
+		Tier:                         llm.ModelTierFast,
+		MaxTokens:                    200000,
+		MaxOutputTokens:              8192,
+		InputPricePerMillion:         1.00,
+		OutputPricePerMillion:        5.00,
+		CacheCreationPricePerMillion: 1.00,  // Same as input price
+		CacheReadPricePerMillion:     0.25,  // 25% of input price
+		SupportsTools:                true,
+		SupportsVision:               true,
+		Description:                  "Fast and cost-effective for simple tasks and high-volume requests.",
 	},
 	{
-		ID:                    "claude-3-5-sonnet-20241022",
-		Name:                  "Claude 3.5 Sonnet",
-		Tier:                  llm.ModelTierBalanced,
-		MaxTokens:             200000,
-		MaxOutputTokens:       8192,
-		InputPricePerMillion:  3.00,
-		OutputPricePerMillion: 15.00,
-		SupportsTools:         true,
-		SupportsVision:        true,
-		Description:           "Balanced capability and cost for most general-purpose tasks.",
+		ID:                           "claude-3-5-sonnet-20241022",
+		Name:                         "Claude 3.5 Sonnet",
+		Tier:                         llm.ModelTierBalanced,
+		MaxTokens:                    200000,
+		MaxOutputTokens:              8192,
+		InputPricePerMillion:         3.00,
+		OutputPricePerMillion:        15.00,
+		CacheCreationPricePerMillion: 3.00,  // Same as input price
+		CacheReadPricePerMillion:     0.75,  // 25% of input price
+		SupportsTools:                true,
+		SupportsVision:               true,
+		Description:                  "Balanced capability and cost for most general-purpose tasks.",
 	},
 	{
-		ID:                    "claude-3-opus-20240229",
-		Name:                  "Claude 3 Opus",
-		Tier:                  llm.ModelTierStrategic,
-		MaxTokens:             200000,
-		MaxOutputTokens:       4096,
-		InputPricePerMillion:  15.00,
-		OutputPricePerMillion: 75.00,
-		SupportsTools:         true,
-		SupportsVision:        true,
-		Description:           "Maximum capability for complex reasoning and expert tasks.",
+		ID:                           "claude-3-opus-20240229",
+		Name:                         "Claude 3 Opus",
+		Tier:                         llm.ModelTierStrategic,
+		MaxTokens:                    200000,
+		MaxOutputTokens:              4096,
+		InputPricePerMillion:         15.00,
+		OutputPricePerMillion:        75.00,
+		CacheCreationPricePerMillion: 15.00, // Same as input price
+		CacheReadPricePerMillion:     3.75,  // 25% of input price
+		SupportsTools:                true,
+		SupportsVision:               true,
+		Description:                  "Maximum capability for complex reasoning and expert tasks.",
 	},
 }
 
@@ -469,4 +505,142 @@ func (m *ConnectionPoolMetrics) GetFailedRequests() int64 {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.failedRequests
+}
+
+// anthropicTool represents a tool in Anthropic's API format.
+type anthropicTool struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	InputSchema map[string]interface{} `json:"input_schema"`
+}
+
+// anthropicToolUse represents a tool_use content block in Anthropic's response.
+type anthropicToolUse struct {
+	Type  string                 `json:"type"`
+	ID    string                 `json:"id"`
+	Name  string                 `json:"name"`
+	Input map[string]interface{} `json:"input"`
+}
+
+// transformTools converts generic Tool definitions to Anthropic's API format.
+// Validates that InputSchema depth does not exceed 10 levels per FR1.
+func transformTools(tools []llm.Tool) ([]anthropicTool, error) {
+	result := make([]anthropicTool, len(tools))
+
+	for i, tool := range tools {
+		// Validate schema depth (starting from depth 0)
+		if err := validateSchemaDepth(tool.InputSchema, 0, 10); err != nil {
+			return nil, &errors.ValidationError{
+				Field:      fmt.Sprintf("tools[%d].input_schema", i),
+				Message:    err.Error(),
+				Suggestion: "Simplify the tool schema to have maximum 10 levels of nesting",
+			}
+		}
+
+		result[i] = anthropicTool{
+			Name:        tool.Name,
+			Description: tool.Description,
+			InputSchema: tool.InputSchema,
+		}
+	}
+
+	return result, nil
+}
+
+// validateSchemaDepth checks that a JSON schema doesn't exceed the maximum nesting depth.
+// The depth limit applies to the number of nested "properties" or "items" objects.
+func validateSchemaDepth(schema map[string]interface{}, currentDepth, maxDepth int) error {
+	if currentDepth >= maxDepth {
+		return fmt.Errorf("schema nesting depth exceeds maximum of %d levels", maxDepth)
+	}
+
+	for key, value := range schema {
+		switch v := value.(type) {
+		case map[string]interface{}:
+			// Only count depth for "properties" and "items" keys to measure actual nesting
+			if key == "properties" || key == "items" {
+				if err := validateSchemaDepth(v, currentDepth+1, maxDepth); err != nil {
+					return err
+				}
+			} else {
+				// Other nested maps don't increase depth (e.g., individual property definitions)
+				if err := validateSchemaDepth(v, currentDepth, maxDepth); err != nil {
+					return err
+				}
+			}
+		case []interface{}:
+			// Check array elements
+			for _, item := range v {
+				if itemMap, ok := item.(map[string]interface{}); ok {
+					if err := validateSchemaDepth(itemMap, currentDepth+1, maxDepth); err != nil {
+						return err
+					}
+				}
+			}
+		default:
+			// Primitive values don't increase depth
+			_ = key
+		}
+	}
+
+	return nil
+}
+
+// parseToolUses extracts tool calls from Anthropic's response content blocks.
+// The response may contain multiple content blocks including text and tool_use blocks.
+func parseToolUses(contentBlocks []interface{}) ([]llm.ToolCall, error) {
+	var toolCalls []llm.ToolCall
+
+	for _, block := range contentBlocks {
+		blockMap, ok := block.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		blockType, ok := blockMap["type"].(string)
+		if !ok || blockType != "tool_use" {
+			continue
+		}
+
+		// Extract tool use fields
+		id, _ := blockMap["id"].(string)
+		name, _ := blockMap["name"].(string)
+		input := blockMap["input"]
+
+		// Marshal input to JSON string for Arguments field
+		inputJSON, err := json.Marshal(input)
+		if err != nil {
+			return nil, &errors.ProviderError{
+				Provider:   "anthropic",
+				Message:    fmt.Sprintf("failed to marshal tool input: %v", err),
+				Suggestion: "Check that tool response contains valid JSON input",
+			}
+		}
+
+		// Validate arguments against schema (basic validation)
+		if err := validateToolArguments(string(inputJSON)); err != nil {
+			return nil, err
+		}
+
+		toolCalls = append(toolCalls, llm.ToolCall{
+			ID:        id,
+			Name:      name,
+			Arguments: string(inputJSON),
+		})
+	}
+
+	return toolCalls, nil
+}
+
+// validateToolArguments performs basic validation on tool arguments JSON.
+func validateToolArguments(arguments string) error {
+	var temp interface{}
+	if err := json.Unmarshal([]byte(arguments), &temp); err != nil {
+		return &errors.ValidationError{
+			Field:      "tool_arguments",
+			Message:    fmt.Sprintf("invalid tool arguments JSON: %v", err),
+			Suggestion: "Ensure tool arguments are valid JSON",
+		}
+	}
+	return nil
 }
