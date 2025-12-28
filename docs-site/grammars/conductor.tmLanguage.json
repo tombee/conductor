@@ -1,7 +1,13 @@
 {
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
   "name": "Conductor YAML",
+  "id": "conductor",
   "scopeName": "source.conductor",
+  "aliases": [
+    "conductor",
+    "conductor-yaml",
+    "conductor-workflow"
+  ],
   "fileTypes": [
     "conductor.yaml",
     "conductor.yml"
