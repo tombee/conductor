@@ -2,8 +2,6 @@ package connector
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/tombee/conductor/internal/jq"
@@ -46,20 +44,4 @@ func ValidateTransformExpression(expression string) error {
 
 	executor := jq.NewExecutor(MaxTransformTimeout, MaxTransformInputSize)
 	return executor.Validate(expression)
-}
-
-// ValidateTransformInputSize checks if the response size is within limits.
-func ValidateTransformInputSize(response interface{}) error {
-	// Estimate size by marshaling to JSON
-	data, err := json.Marshal(response)
-	if err != nil {
-		return fmt.Errorf("failed to marshal response: %w", err)
-	}
-
-	if len(data) > MaxTransformInputSize {
-		return fmt.Errorf("response size (%d bytes) exceeds maximum (%d bytes)",
-			len(data), MaxTransformInputSize)
-	}
-
-	return nil
 }

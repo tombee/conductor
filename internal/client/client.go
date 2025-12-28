@@ -81,14 +81,6 @@ func WithAPIKey(apiKey string) Option {
 	}
 }
 
-// WithBaseURL sets the base URL for the client.
-func WithBaseURL(baseURL string) Option {
-	return func(c *Client) error {
-		c.baseURL = baseURL
-		return nil
-	}
-}
-
 // HealthResponse is the response from /v1/health.
 type HealthResponse struct {
 	Status    string            `json:"status"`

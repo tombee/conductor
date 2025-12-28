@@ -18,8 +18,6 @@ import (
 	"context"
 	"testing"
 	"time"
-
-	"github.com/tombee/conductor/pkg/workflow"
 )
 
 func TestStartDraining(t *testing.T) {
@@ -323,16 +321,4 @@ func TestWaitForDrain_MultipleRuns(t *testing.T) {
 	if err != nil {
 		t.Errorf("WaitForDrain() should return nil when all runs complete, got: %v", err)
 	}
-}
-
-// Mock adapter for testing workflow execution
-type mockAdapter struct {
-	executeFn func(ctx context.Context, def *workflow.Definition, inputs map[string]any, opts ExecutionOptions) (*ExecutionResult, error)
-}
-
-func (m *mockAdapter) ExecuteWorkflow(ctx context.Context, def *workflow.Definition, inputs map[string]any, opts ExecutionOptions) (*ExecutionResult, error) {
-	if m.executeFn != nil {
-		return m.executeFn(ctx, def, inputs, opts)
-	}
-	return &ExecutionResult{}, nil
 }

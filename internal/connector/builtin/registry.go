@@ -1,7 +1,6 @@
 package builtin
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/tombee/conductor/internal/connector"
@@ -60,38 +59,4 @@ func splitOnce(s, sep string) []string {
 		return []string{s}
 	}
 	return []string{s[:idx], s[idx+len(sep):]}
-}
-
-// IsBuiltinAPI returns true if the connector name is a built-in API connector.
-func IsBuiltinAPI(name string) bool {
-	_, ok := BuiltinRegistry[name]
-	return ok
-}
-
-// NewBuiltinAPI creates a built-in API connector by name.
-func NewBuiltinAPI(name string, config *api.ConnectorConfig) (connector.Connector, error) {
-	factory, ok := BuiltinRegistry[name]
-	if !ok {
-		return nil, fmt.Errorf("unknown builtin API connector: %s", name)
-	}
-
-	return factory(config)
-}
-
-// GetBuiltinAPIOperations returns the list of operations for a built-in API connector.
-func GetBuiltinAPIOperations(name string) ([]api.OperationInfo, error) {
-	// Create a minimal config for introspection
-	config := &api.ConnectorConfig{}
-
-	conn, err := NewBuiltinAPI(name, config)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check if the connector implements TypedConnector interface
-	if bc, ok := conn.(api.TypedConnector); ok {
-		return bc.Operations(), nil
-	}
-
-	return nil, fmt.Errorf("connector %s does not implement TypedConnector interface", name)
 }

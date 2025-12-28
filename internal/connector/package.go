@@ -2,11 +2,7 @@ package connector
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
-
-	"gopkg.in/yaml.v3"
 
 	"github.com/tombee/conductor/pkg/workflow"
 )
@@ -100,55 +96,6 @@ func loadBundledPackage(from string) (*PackageDefinition, error) {
 	}
 }
 
-// validatePackage validates a connector package definition.
-func validatePackage(pkg *PackageDefinition) error {
-	if pkg.Version == "" {
-		return &Error{
-			Type:    ErrorTypeValidation,
-			Message: "connector package missing 'version' field",
-		}
-	}
-
-	if pkg.Name == "" {
-		return &Error{
-			Type:    ErrorTypeValidation,
-			Message: "connector package missing 'name' field",
-		}
-	}
-
-	if pkg.BaseURL == "" {
-		return &Error{
-			Type:    ErrorTypeValidation,
-			Message: fmt.Sprintf("connector package %q missing 'base_url' field", pkg.Name),
-		}
-	}
-
-	if len(pkg.Operations) == 0 {
-		return &Error{
-			Type:    ErrorTypeValidation,
-			Message: fmt.Sprintf("connector package %q has no operations defined", pkg.Name),
-		}
-	}
-
-	// Validate each operation has required fields
-	for opName, op := range pkg.Operations {
-		if op.Method == "" {
-			return &Error{
-				Type:    ErrorTypeValidation,
-				Message: fmt.Sprintf("operation %q in package %q missing 'method' field", opName, pkg.Name),
-			}
-		}
-		if op.Path == "" {
-			return &Error{
-				Type:    ErrorTypeValidation,
-				Message: fmt.Sprintf("operation %q in package %q missing 'path' field", opName, pkg.Name),
-			}
-		}
-	}
-
-	return nil
-}
-
 // mergePackageWithOverrides merges a package definition with user overrides.
 // User can override: base_url, auth, headers, rate_limit
 func mergePackageWithOverrides(pkg *PackageDefinition, def *workflow.ConnectorDefinition) *workflow.ConnectorDefinition {
@@ -187,49 +134,4 @@ func mergePackageWithOverrides(pkg *PackageDefinition, def *workflow.ConnectorDe
 	merged.Operations = pkg.Operations
 
 	return merged
-}
-
-// loadLocalPackage loads a connector from a local file path.
-// This is a future feature for loading custom connectors from disk.
-func loadLocalPackage(path string) (*PackageDefinition, error) {
-	// Resolve relative path
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return nil, &Error{
-			Type:    ErrorTypeValidation,
-			Message: fmt.Sprintf("invalid connector path %q: %v", path, err),
-		}
-	}
-
-	// Read file
-	data, err := os.ReadFile(absPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, &Error{
-				Type:       ErrorTypeNotFound,
-				Message:    fmt.Sprintf("connector file not found: %s", absPath),
-				SuggestText: "check that the file exists and the path is correct",
-			}
-		}
-		return nil, &Error{
-			Type:    ErrorTypeServer,
-			Message: fmt.Sprintf("failed to read connector file %q: %v", absPath, err),
-		}
-	}
-
-	// Parse YAML
-	var pkg PackageDefinition
-	if err := yaml.Unmarshal(data, &pkg); err != nil {
-		return nil, &Error{
-			Type:    ErrorTypeValidation,
-			Message: fmt.Sprintf("failed to parse connector file %q: %v", absPath, err),
-		}
-	}
-
-	// Validate
-	if err := validatePackage(&pkg); err != nil {
-		return nil, err
-	}
-
-	return &pkg, nil
 }
