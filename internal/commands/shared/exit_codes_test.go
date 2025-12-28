@@ -24,29 +24,6 @@ import (
 	pkgerrors "github.com/tombee/conductor/pkg/errors"
 )
 
-// mockUserVisibleError is a test implementation of UserVisibleError
-type mockUserVisibleError struct {
-	message    string
-	suggestion string
-	visible    bool
-}
-
-func (e *mockUserVisibleError) Error() string {
-	return e.message
-}
-
-func (e *mockUserVisibleError) IsUserVisible() bool {
-	return e.visible
-}
-
-func (e *mockUserVisibleError) UserMessage() string {
-	return e.message
-}
-
-func (e *mockUserVisibleError) Suggestion() string {
-	return e.suggestion
-}
-
 func TestPrintUserVisibleSuggestion_ConnectorError(t *testing.T) {
 	// Test that connector.Error implements UserVisibleError correctly
 	connErr := &connector.Error{
