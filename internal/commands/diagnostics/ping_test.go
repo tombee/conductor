@@ -24,6 +24,10 @@ import (
 )
 
 func TestPingCommand(t *testing.T) {
+	// Skip if SKIP_SPAWN_TESTS is set - ping runs Claude CLI health check
+	if os.Getenv("SKIP_SPAWN_TESTS") != "" {
+		t.Skip("skipping test that requires spawning external processes")
+	}
 	// Skip tests that call os.Exit() in short mode
 	if testing.Short() {
 		t.Skip("Skipping ping tests in short mode (calls os.Exit)")
@@ -107,6 +111,10 @@ providers:
 }
 
 func TestPingJSONOutput(t *testing.T) {
+	// Skip if SKIP_SPAWN_TESTS is set - ping runs Claude CLI health check
+	if os.Getenv("SKIP_SPAWN_TESTS") != "" {
+		t.Skip("skipping test that requires spawning external processes")
+	}
 	// Skip tests that call os.Exit() in short mode
 	if testing.Short() {
 		t.Skip("Skipping ping tests in short mode (calls os.Exit)")
@@ -145,6 +153,10 @@ providers:
 }
 
 func TestPingProviderFlag(t *testing.T) {
+	// Skip if SKIP_SPAWN_TESTS is set - ping runs Claude CLI health check
+	if os.Getenv("SKIP_SPAWN_TESTS") != "" {
+		t.Skip("skipping test that requires spawning external processes")
+	}
 	// Skip tests that call os.Exit() in short mode
 	if testing.Short() {
 		t.Skip("Skipping ping tests in short mode (calls os.Exit)")

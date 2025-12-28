@@ -29,6 +29,7 @@ func TestDoctorCommand(t *testing.T) {
 		setupConfig    string
 		wantErr        bool
 		expectHealthy  bool
+		skipIfNoSpawn  bool // Skip if SKIP_SPAWN_TESTS is set (runs external processes)
 	}{
 		{
 			name:           "no config file",
@@ -45,11 +46,17 @@ providers:
 `,
 			wantErr:       false, // Succeeds when Claude CLI is installed and authenticated
 			expectHealthy: true,
+			skipIfNoSpawn: true, // Requires running Claude CLI process
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Skip tests that require spawning external processes
+			if tt.skipIfNoSpawn && os.Getenv("SKIP_SPAWN_TESTS") != "" {
+				t.Skip("skipping test that requires spawning external processes")
+			}
+
 			// Create temp directory for config
 			tmpDir := t.TempDir()
 			configPath := filepath.Join(tmpDir, "config.yaml")
@@ -79,6 +86,11 @@ providers:
 }
 
 func TestDoctorJSONOutput(t *testing.T) {
+	// Skip if SKIP_SPAWN_TESTS is set - this test runs Claude CLI
+	if os.Getenv("SKIP_SPAWN_TESTS") != "" {
+		t.Skip("skipping test that requires spawning external processes")
+	}
+
 	// Create temp directory for config
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
@@ -112,6 +124,11 @@ providers:
 }
 
 func TestDoctorCommand_NoProviders(t *testing.T) {
+	// Skip if SKIP_SPAWN_TESTS is set - doctor auto-detects Claude CLI even without providers
+	if os.Getenv("SKIP_SPAWN_TESTS") != "" {
+		t.Skip("skipping test that requires spawning external processes")
+	}
+
 	// Create temp directory for config
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
@@ -166,6 +183,11 @@ providers:
 }
 
 func TestDoctorCommand_MultipleProviders(t *testing.T) {
+	// Skip if SKIP_SPAWN_TESTS is set - this test runs Claude CLI
+	if os.Getenv("SKIP_SPAWN_TESTS") != "" {
+		t.Skip("skipping test that requires spawning external processes")
+	}
+
 	// Create temp directory for config
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")

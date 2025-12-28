@@ -28,6 +28,11 @@ import (
 )
 
 func TestProvidersCommand(t *testing.T) {
+	// Skip if SKIP_SPAWN_TESTS is set - providers list runs Claude CLI health check
+	if os.Getenv("SKIP_SPAWN_TESTS") != "" {
+		t.Skip("skipping test that requires spawning external processes")
+	}
+
 	// Create temporary config directory
 	tmpDir := t.TempDir()
 	cfgPath := filepath.Join(tmpDir, "config.yaml")
@@ -122,6 +127,11 @@ func TestProvidersCommand(t *testing.T) {
 }
 
 func TestProvidersListJSON(t *testing.T) {
+	// Skip if SKIP_SPAWN_TESTS is set - providers list runs Claude CLI health check
+	if os.Getenv("SKIP_SPAWN_TESTS") != "" {
+		t.Skip("skipping test that requires spawning external processes")
+	}
+
 	// Create temporary config directory
 	tmpDir := t.TempDir()
 	cfgPath := filepath.Join(tmpDir, "config.yaml")
@@ -345,6 +355,11 @@ func TestKeysOf(t *testing.T) {
 
 // TestProvidersDefaultBehavior tests that "conductor providers" defaults to "list"
 func TestProvidersDefaultBehavior(t *testing.T) {
+	// Skip if SKIP_SPAWN_TESTS is set - providers list runs Claude CLI health check
+	if os.Getenv("SKIP_SPAWN_TESTS") != "" {
+		t.Skip("skipping test that requires spawning external processes")
+	}
+
 	tmpDir := t.TempDir()
 	cfgPath := filepath.Join(tmpDir, "config.yaml")
 
@@ -453,6 +468,10 @@ func TestProvidersTestRequiresName(t *testing.T) {
 
 // Skip this test in CI since it might not have the test config
 func TestProvidersIntegration(t *testing.T) {
+	// Skip if SKIP_SPAWN_TESTS is set - providers list runs Claude CLI health check
+	if os.Getenv("SKIP_SPAWN_TESTS") != "" {
+		t.Skip("skipping test that requires spawning external processes")
+	}
 	if os.Getenv("CI") != "" {
 		t.Skip("Skipping integration test in CI")
 	}
