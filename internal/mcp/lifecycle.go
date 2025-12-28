@@ -20,6 +20,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 )
 
@@ -42,11 +43,26 @@ func (m *Manager) monitorServer(state *serverState) {
 				"error", err,
 			)
 
-			// Update state to error
+			// Update state to error and increment restart count
 			state.mu.Lock()
 			state.state = ServerStateError
 			state.lastError = err.Error()
+			state.restartCount++
+			currentRestartCount := state.restartCount
+			restartPolicy := state.config.RestartPolicy
+			maxAttempts := state.config.MaxRestartAttempts
 			state.mu.Unlock()
+
+			// Check restart policy
+			if !m.shouldRestart(restartPolicy, maxAttempts, currentRestartCount) {
+				m.logger.Info("restart policy prevents restart",
+					"server", serverName,
+					"policy", restartPolicy,
+					"restart_count", currentRestartCount,
+					"max_attempts", maxAttempts,
+				)
+				return
+			}
 
 			// Apply backoff before retry
 			backoff := m.calculateBackoff(state)
@@ -54,6 +70,7 @@ func (m *Manager) monitorServer(state *serverState) {
 				"server", serverName,
 				"backoff", backoff,
 				"failures", state.failureCount,
+				"restart_count", currentRestartCount,
 			)
 
 			select {
@@ -66,9 +83,10 @@ func (m *Manager) monitorServer(state *serverState) {
 			}
 		}
 
-		// Reset failure count and update state on successful start
+		// Reset failure count, restart count, and update state on successful start
 		state.mu.Lock()
 		state.failureCount = 0
+		state.restartCount = 0
 		state.state = ServerStateRunning
 		state.startedAt = time.Now()
 		state.lastError = ""
@@ -86,6 +104,8 @@ func (m *Manager) monitorServer(state *serverState) {
 				}
 				state.client = nil
 			}
+			// Reset tool count on restart - will be re-queried on next successful connection
+			state.toolCount = nil
 			state.mu.Unlock()
 			continue
 
@@ -142,6 +162,24 @@ func (m *Manager) startServerClient(state *serverState) error {
 		return fmt.Errorf("server ping failed: %w", err)
 	}
 
+	// Query tools to populate tool count
+	// Use a short timeout to avoid blocking startup
+	toolCtx, toolCancel := context.WithTimeout(m.ctx, 2*time.Second)
+	defer toolCancel()
+
+	tools, err := client.ListTools(toolCtx)
+	if err != nil {
+		// Log warning but don't fail startup - tool count will remain nil
+		slog.Warn("Failed to query tool count", slog.String("server", state.config.Name), slog.String("error", err.Error()))
+	} else {
+		count := len(tools)
+		state.toolCount = &count
+	}
+
+	// Store source and version from config
+	state.source = state.config.Source
+	state.version = state.config.Version
+
 	state.client = client
 	return nil
 }
@@ -166,4 +204,30 @@ func (m *Manager) calculateBackoff(state *serverState) time.Duration {
 	}
 
 	return backoff
+}
+
+// shouldRestart checks if the server should be restarted based on restart policy.
+func (m *Manager) shouldRestart(policy string, maxAttempts, currentCount int) bool {
+	// Check restart policy
+	switch policy {
+	case "never":
+		return false
+	case "on-failure":
+		// For now, we always restart on failure since we don't track exit codes
+		// This can be enhanced later to check exit code from process
+		// For the initial implementation, treat as "always"
+		// Future: distinguish between clean shutdown (exit 0) vs failure
+	case "always", "":
+		// Default is always
+	default:
+		// Unknown policy, default to always
+		slog.Warn("Unknown restart policy, defaulting to always", slog.String("policy", policy))
+	}
+
+	// Check max restart attempts (0 means unlimited)
+	if maxAttempts > 0 && currentCount >= maxAttempts {
+		return false
+	}
+
+	return true
 }

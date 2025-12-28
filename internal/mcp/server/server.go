@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -26,10 +27,11 @@ import (
 
 // Server wraps the MCP server and provides Conductor tools
 type Server struct {
-	mcpServer  *server.MCPServer
-	name       string
-	version    string
+	mcpServer   *server.MCPServer
+	name        string
+	version     string
 	rateLimiter *RateLimiter
+	logger      *slog.Logger
 }
 
 // ServerConfig configures the MCP server
@@ -44,6 +46,31 @@ type ServerConfig struct {
 	LogLevel string
 }
 
+// createLogger creates a logger with the specified log level.
+// Writes to stderr to avoid interfering with MCP stdio protocol.
+func createLogger(levelStr string) (*slog.Logger, error) {
+	var level slog.Level
+
+	switch levelStr {
+	case "debug":
+		level = slog.LevelDebug
+	case "info", "":
+		level = slog.LevelInfo
+	case "warn":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	default:
+		return nil, fmt.Errorf("invalid log level: %s (must be debug, info, warn, or error)", levelStr)
+	}
+
+	handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: level,
+	})
+
+	return slog.New(handler), nil
+}
+
 // NewServer creates a new MCP server instance
 func NewServer(config ServerConfig) (*Server, error) {
 	if config.Name == "" {
@@ -51,6 +78,12 @@ func NewServer(config ServerConfig) (*Server, error) {
 	}
 	if config.Version == "" {
 		config.Version = "dev"
+	}
+
+	// Create logger with configured level
+	logger, err := createLogger(config.LogLevel)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create logger: %w", err)
 	}
 
 	// Create the underlying MCP server
@@ -64,6 +97,7 @@ func NewServer(config ServerConfig) (*Server, error) {
 		name:        config.Name,
 		version:     config.Version,
 		rateLimiter: rateLimiter,
+		logger:      logger,
 	}
 
 	// Register tools
@@ -181,7 +215,7 @@ func (s *Server) registerTools() error {
 
 // Run starts the MCP server using stdio transport
 func (s *Server) Run(ctx context.Context) error {
-	slog.Info("Starting Conductor MCP server", slog.String("version", s.version))
+	s.logger.Info("Starting Conductor MCP server", slog.String("version", s.version))
 
 	// Serve via stdio
 	if err := server.ServeStdio(s.mcpServer); err != nil {
@@ -193,7 +227,7 @@ func (s *Server) Run(ctx context.Context) error {
 
 // Shutdown gracefully shuts down the server
 func (s *Server) Shutdown(ctx context.Context) error {
-	slog.Info("Shutting down Conductor MCP server")
+	s.logger.Info("Shutting down Conductor MCP server")
 	// The mcp-go server doesn't have an explicit shutdown method
 	// Returning from ServeStdio() is sufficient
 	return nil

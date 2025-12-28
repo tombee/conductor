@@ -42,6 +42,21 @@ type ServerConfig struct {
 
 	// Timeout is the default timeout for tool calls (defaults to 30s)
 	Timeout time.Duration
+
+	// RestartPolicy controls when the server should be restarted
+	// Options: "always", "on-failure", "never" (default: "always")
+	RestartPolicy string
+
+	// MaxRestartAttempts is the maximum number of restart attempts before giving up
+	// 0 means unlimited restarts (default: 0)
+	MaxRestartAttempts int
+
+	// Source is the package source for version management
+	// Format: "npm:<package>", "pypi:<package>", "local:<path>"
+	Source string
+
+	// Version is the version constraint (e.g., "^1.0.0")
+	Version string
 }
 
 // ServerState represents the lifecycle state of an MCP server.
@@ -82,6 +97,20 @@ type serverState struct {
 
 	// lastFailure is the timestamp of the last failure
 	lastFailure time.Time
+
+	// restartCount tracks the number of restart attempts
+	// Reset to 0 when server reaches Running state
+	restartCount int
+
+	// toolCount is the number of tools provided by the server.
+	// nil means not yet queried, 0 means queried but no tools available.
+	toolCount *int
+
+	// source is the package source for version management
+	source string
+
+	// version is the version constraint
+	version string
 
 	// restartCh signals when a restart is needed
 	restartCh chan struct{}
@@ -342,7 +371,9 @@ type ServerStatus struct {
 	FailureCount int
 	LastFailure  *time.Time
 	LastError    string
-	ToolCount    int
+	ToolCount    *int
+	Source       string
+	Version      string
 	Config       *ServerConfig
 }
 
@@ -365,6 +396,9 @@ func (m *Manager) GetStatus(name string) (*ServerStatus, error) {
 		Running:      state.client != nil,
 		FailureCount: state.failureCount,
 		LastError:    state.lastError,
+		ToolCount:    state.toolCount,
+		Source:       state.source,
+		Version:      state.version,
 		Config:       &state.config,
 	}
 
