@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"time"
 )
@@ -57,6 +58,10 @@ func StartDaemon(cfg AutoStartConfig) error {
 	cmd.Stdout = nil // Detach stdout
 	cmd.Stderr = nil // Detach stderr
 	cmd.Stdin = nil
+
+	// Set environment variable to mark this as auto-started
+	// Inherit parent environment and add CONDUCTOR_AUTO_STARTED=1
+	cmd.Env = append(os.Environ(), "CONDUCTOR_AUTO_STARTED=1")
 
 	// Set up process group for proper detachment
 	setSysProcAttr(cmd)

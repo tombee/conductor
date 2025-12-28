@@ -214,34 +214,13 @@ func TestRunCommand_InputFileFlag(t *testing.T) {
 }
 
 func TestRunCommand_DaemonFlags(t *testing.T) {
-	tests := []struct {
-		name string
-		args []string
-	}{
-		{
-			name: "daemon flag",
-			args: []string{"--daemon"},
-		},
-		{
-			name: "daemon short flag",
-			args: []string{"-d"},
-		},
-		{
-			name: "background flag",
-			args: []string{"--background"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cmd := NewCommand()
-			// Parse flags only - don't execute
-			args := append(tt.args, "../testdata/valid_workflow.yaml")
-			err := cmd.ParseFlags(args)
-			if err != nil {
-				t.Errorf("daemon flag not recognized: %v", err)
-			}
-		})
+	// Test that --background flag is recognized
+	// Note: --daemon flag was removed in SPEC-147 (unified execution mode)
+	cmd := NewCommand()
+	args := []string{"--background", "../testdata/valid_workflow.yaml"}
+	err := cmd.ParseFlags(args)
+	if err != nil {
+		t.Errorf("--background flag not recognized: %v", err)
 	}
 }
 
