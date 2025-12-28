@@ -18,10 +18,12 @@ package cache
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
 
+	daemonmetrics "github.com/tombee/conductor/internal/daemon/metrics"
 	"github.com/tombee/conductor/pkg/security"
 )
 
@@ -30,6 +32,7 @@ import (
 type WorkflowCache struct {
 	basePath string
 	ttl      time.Duration
+	logger   *slog.Logger
 }
 
 // Config contains cache configuration.
@@ -41,6 +44,9 @@ type Config struct {
 	// TTL is the time-to-live for cached entries
 	// Zero means no expiration
 	TTL time.Duration
+
+	// Logger for cache operations. If nil, uses slog.Default()
+	Logger *slog.Logger
 }
 
 // CachedWorkflow represents a cached workflow entry.
@@ -86,9 +92,15 @@ func NewWorkflowCache(cfg Config) (*WorkflowCache, error) {
 		return nil, fmt.Errorf("failed to create cache directory: %w", err)
 	}
 
+	logger := cfg.Logger
+	if logger == nil {
+		logger = slog.Default()
+	}
+
 	return &WorkflowCache{
 		basePath: basePath,
 		ttl:      cfg.TTL,
+		logger:   logger,
 	}, nil
 }
 
@@ -115,7 +127,11 @@ func (c *WorkflowCache) Get(owner, repo, sha string) (*CachedWorkflow, error) {
 	// Check if expired
 	if c.ttl > 0 && time.Since(metadata.FetchedAt) > c.ttl {
 		// Expired - delete and return nil
-		_ = os.RemoveAll(cachePath)
+		if err := os.RemoveAll(cachePath); err != nil {
+			cacheIdentifier := fmt.Sprintf("%s/%s@%s", owner, repo, sha)
+			c.logger.Warn("failed to cleanup expired cache", "cache", cacheIdentifier, "error", err)
+			daemonmetrics.RecordPersistenceError("CleanupCache", categorizeError(err))
+		}
 		return nil, nil
 	}
 
@@ -277,4 +293,18 @@ func (c *WorkflowCache) saveMetadata(path string, metadata Metadata) error {
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+// categorizeError returns a simplified error type for metrics.
+func categorizeError(err error) string {
+	if err == nil {
+		return "unknown"
+	}
+	if os.IsNotExist(err) {
+		return "not_found"
+	}
+	if os.IsPermission(err) {
+		return "permission_denied"
+	}
+	return "unknown"
 }

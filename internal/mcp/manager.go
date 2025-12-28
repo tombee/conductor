@@ -19,6 +19,7 @@ package mcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -206,7 +207,9 @@ func (m *Manager) Stop(name string) error {
 	// Close the client connection
 	state.mu.Lock()
 	if state.client != nil {
-		_ = state.client.Close()
+		if err := state.client.Close(); err != nil {
+			m.logger.Warn("failed to close MCP client during stop", "server", name, "error", err)
+		}
 		state.client = nil
 	}
 	state.mu.Unlock()
@@ -218,8 +221,8 @@ func (m *Manager) Stop(name string) error {
 
 // StopAll stops all managed MCP servers.
 // It waits for all server monitors to complete, up to the configured stopTimeout.
-// If the timeout is exceeded, it logs a warning and returns.
-func (m *Manager) StopAll() {
+// Returns an error containing all stop failures, if any.
+func (m *Manager) StopAll() error {
 	m.mu.Lock()
 	serverNames := make([]string, 0, len(m.servers))
 	for name := range m.servers {
@@ -227,9 +230,13 @@ func (m *Manager) StopAll() {
 	}
 	m.mu.Unlock()
 
-	// Stop each server
+	// Stop each server and collect errors
+	var errs []error
 	for _, name := range serverNames {
-		_ = m.Stop(name)
+		if err := m.Stop(name); err != nil {
+			m.logger.Warn("failed to stop MCP server", "server", name, "error", err)
+			errs = append(errs, fmt.Errorf("server %s: %w", name, err))
+		}
 	}
 
 	// Wait for all monitors to finish with timeout
@@ -239,6 +246,12 @@ func (m *Manager) StopAll() {
 			"servers", serverNames,
 		)
 	}
+
+	// Return aggregated errors if any
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
 }
 
 // waitGroupTimeout waits for a WaitGroup with a timeout.
@@ -304,8 +317,7 @@ func (m *Manager) Restart(name string) error {
 // Close shuts down the manager and all managed servers.
 func (m *Manager) Close() error {
 	m.cancel()
-	m.StopAll()
-	return nil
+	return m.StopAll()
 }
 
 // ListServers returns the names of all managed servers.

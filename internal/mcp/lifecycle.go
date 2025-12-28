@@ -81,7 +81,9 @@ func (m *Manager) monitorServer(state *serverState) {
 			state.mu.Lock()
 			state.state = ServerStateRestarting
 			if state.client != nil {
-				_ = state.client.Close()
+				if err := state.client.Close(); err != nil {
+					m.logger.Warn("failed to close MCP client during restart", "server", serverName, "error", err)
+				}
 				state.client = nil
 			}
 			state.mu.Unlock()
@@ -132,7 +134,9 @@ func (m *Manager) startServerClient(state *serverState) error {
 
 	// Verify server is responsive with a ping
 	if err := client.Ping(ctx); err != nil {
-		_ = client.Close()
+		if closeErr := client.Close(); closeErr != nil {
+			m.logger.Warn("failed to close MCP client after ping failure", "server", state.config.Name, "error", closeErr)
+		}
 		state.failureCount++
 		state.lastFailure = time.Now()
 		return fmt.Errorf("server ping failed: %w", err)

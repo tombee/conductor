@@ -19,9 +19,11 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	daemonmetrics "github.com/tombee/conductor/internal/daemon/metrics"
 	"github.com/tombee/conductor/internal/tracing"
 	"github.com/tombee/conductor/pkg/workflow"
 )
@@ -74,7 +76,10 @@ func (r *Runner) execute(run *Run) {
 	// Update backend
 	if be := r.getBackend(); be != nil {
 		beRun := r.toBackendRun(run)
-		_ = be.UpdateRun(context.Background(), beRun)
+		if err := be.UpdateRun(context.Background(), beRun); err != nil {
+			r.addLog(run, "warn", fmt.Sprintf("Failed to persist run state: operation=UpdateRun run_id=%s error=%v", run.ID, err), "")
+			daemonmetrics.RecordPersistenceError("UpdateRun", categorizeError(err))
+		}
 	}
 
 	// Log run start with profile context
@@ -133,7 +138,10 @@ func (r *Runner) execute(run *Run) {
 		// Update backend
 		if be := r.getBackend(); be != nil {
 			beRun := r.toBackendRun(run)
-			_ = be.UpdateRun(context.Background(), beRun)
+			if err := be.UpdateRun(context.Background(), beRun); err != nil {
+				r.addLog(run, "warn", fmt.Sprintf("Failed to persist run state: operation=UpdateRun run_id=%s error=%v", run.ID, err), "")
+				daemonmetrics.RecordPersistenceError("UpdateRun", categorizeError(err))
+			}
 		}
 		return
 	}
@@ -291,13 +299,33 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 	// Update backend
 	if be := r.getBackend(); be != nil {
 		beRun := r.toBackendRun(run)
-		_ = be.UpdateRun(context.Background(), beRun)
+		if err := be.UpdateRun(context.Background(), beRun); err != nil {
+			r.addLog(run, "warn", fmt.Sprintf("Failed to persist run state: operation=UpdateRun run_id=%s error=%v", run.ID, err), "")
+			daemonmetrics.RecordPersistenceError("UpdateRun", categorizeError(err))
+		}
 	}
 
 	// Clean up checkpoint on successful completion
 	if run.Status == RunStatusCompleted {
-		_ = r.lifecycle.CleanupCheckpoint(context.Background(), run.ID)
+		if err := r.lifecycle.CleanupCheckpoint(context.Background(), run.ID); err != nil {
+			r.addLog(run, "warn", fmt.Sprintf("Failed to cleanup checkpoint: operation=CleanupCheckpoint run_id=%s error=%v", run.ID, err), "")
+			daemonmetrics.RecordPersistenceError("CleanupCheckpoint", categorizeError(err))
+		}
 	}
 
 	r.addLog(run, "info", fmt.Sprintf("Workflow %s: %s", run.Status, run.Workflow), "")
+}
+
+// categorizeError returns a simplified error type for metrics.
+func categorizeError(err error) string {
+	if err == nil {
+		return "unknown"
+	}
+	if errors.Is(err, context.Canceled) {
+		return "context_canceled"
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "context_deadline_exceeded"
+	}
+	return "unknown"
 }

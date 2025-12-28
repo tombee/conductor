@@ -21,6 +21,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/tombee/conductor/internal/binding"
 	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/internal/daemon/backend"
@@ -29,7 +31,6 @@ import (
 	"github.com/tombee/conductor/internal/remote"
 	"github.com/tombee/conductor/pkg/tools"
 	"github.com/tombee/conductor/pkg/workflow"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // RunStatus represents the status of a workflow run.

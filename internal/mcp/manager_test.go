@@ -270,7 +270,9 @@ func TestManager_StopAll(t *testing.T) {
 	}, 5*time.Second, 10*time.Millisecond, "all servers should register")
 
 	// Stop all
-	mgr.StopAll()
+	if err := mgr.StopAll(); err != nil {
+		t.Errorf("StopAll() error = %v", err)
+	}
 
 	// Verify all stopped
 	servers := mgr.ListServers()
