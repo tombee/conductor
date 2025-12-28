@@ -49,6 +49,15 @@ type ExecutionOptions struct {
 	// OnLog is called for log messages during execution.
 	// level is one of "debug", "info", "warn", "error".
 	OnLog func(level, message, stepID string)
+
+	// Runtime overrides (SPEC-156)
+	Provider   string        // Override provider for all LLM steps
+	Model      string        // Override model tier for all LLM steps
+	Timeout    time.Duration // Override step timeout
+	Security   string        // Security profile name
+	AllowHosts []string      // Extended allowed network hosts
+	AllowPaths []string      // Extended allowed filesystem paths
+	MCPDev     bool          // Enable MCP development mode
 }
 
 // ExecutionResult contains the aggregated results of a workflow execution.

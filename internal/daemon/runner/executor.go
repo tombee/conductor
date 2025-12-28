@@ -179,6 +179,14 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 		OnLog: func(level, message, stepID string) {
 			r.addLog(run, level, message, stepID)
 		},
+		// Apply runtime overrides from run (SPEC-156)
+		Provider:   run.Provider,
+		Model:      run.Model,
+		Timeout:    run.Timeout,
+		Security:   run.Security,
+		AllowHosts: run.AllowHosts,
+		AllowPaths: run.AllowPaths,
+		MCPDev:     run.MCPDev,
 	}
 
 	result, err := adapter.ExecuteWorkflow(run.ctx, run.definition, run.Inputs, opts)
