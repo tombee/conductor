@@ -35,9 +35,7 @@ func TestNewCommand(t *testing.T) {
 	if cmd.Flags().Lookup("schema") == nil {
 		t.Error("--schema flag not defined")
 	}
-	if cmd.Flags().Lookup("json") == nil {
-		t.Error("--json flag not defined")
-	}
+	// Note: --json flag is global and added by root command, not locally
 }
 
 func TestValidateValidWorkflow(t *testing.T) {
@@ -156,9 +154,12 @@ steps:
 		t.Fatalf("failed to create test workflow: %v", err)
 	}
 
-	// Enable JSON output via command flag
+	// Enable JSON output via global flag (simulated)
+	shared.SetJSONForTest(true)
+	defer shared.SetJSONForTest(false) // Reset after test
+
 	cmd := NewCommand()
-	cmd.SetArgs([]string{workflowPath, "--json"})
+	cmd.SetArgs([]string{workflowPath})
 
 	// Verify command succeeds - JSON output goes to os.Stdout
 	err := cmd.Execute()

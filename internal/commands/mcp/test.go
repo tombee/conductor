@@ -24,9 +24,9 @@ import (
 )
 // Test command
 
-var mcpTestKeep bool
-
 func newMCPTestCommand() *cobra.Command {
+	var keep bool
+
 	cmd := &cobra.Command{
 		Use:   "test <name>",
 		Short: "Test MCP server connectivity",
@@ -44,11 +44,11 @@ Examples:
   conductor mcp test my-server --keep`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runMCPTest(args[0], mcpTestKeep)
+			return runMCPTest(args[0], keep)
 		},
 	}
 
-	cmd.Flags().BoolVar(&mcpTestKeep, "keep", false, "Keep the server running after test")
+	cmd.Flags().BoolVar(&keep, "keep", false, "Keep the server running after test")
 
 	return cmd
 }

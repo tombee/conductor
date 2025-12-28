@@ -105,7 +105,15 @@ Verbosity levels:
 			if daemon {
 				return runWorkflowViaDaemon(args[0], inputs, inputFile, outputFile, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun, provider, model, timeout, workspace, profile, securityMode, allowHosts, allowPaths)
 			}
-			return runWorkflowLocal(args[0], inputs, inputFile, dryRun, quiet, verbose, noInteractive, helpInputs, acceptUnenforceablePermissions)
+
+			// Build security options for local execution
+			securityOpts := SecurityOptions{
+				Mode:       securityMode,
+				AllowHosts: allowHosts,
+				AllowPaths: allowPaths,
+			}
+
+			return runWorkflowLocal(args[0], inputs, inputFile, dryRun, quiet, verbose, noInteractive, helpInputs, acceptUnenforceablePermissions, securityOpts)
 		},
 	}
 
