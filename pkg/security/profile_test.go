@@ -37,16 +37,6 @@ func TestLoadProfile(t *testing.T) {
 			wantError:   false,
 		},
 		{
-			name:        "load strict profile",
-			profileName: ProfileStrict,
-			wantError:   false,
-		},
-		{
-			name:        "load air-gapped profile",
-			profileName: ProfileAirGapped,
-			wantError:   false,
-		},
-		{
 			name:        "load non-existent profile",
 			profileName: "non-existent",
 			wantError:   true,
@@ -141,20 +131,6 @@ func TestValidateProfile(t *testing.T) {
 			wantError: true,
 		},
 		{
-			name: "sandbox isolation without sandbox execution",
-			profile: &SecurityProfile{
-				Name:      "test",
-				Isolation: IsolationSandbox,
-				Execution: ExecutionConfig{
-					Sandbox: false,
-				},
-				Limits: ResourceLimits{
-					TimeoutPerTool: 30 * time.Second,
-				},
-			},
-			wantError: true,
-		},
-		{
 			name: "valid profile",
 			profile: &SecurityProfile{
 				Name:      "test",
@@ -184,8 +160,6 @@ func TestGetBuiltinProfiles(t *testing.T) {
 	expected := []string{
 		ProfileUnrestricted,
 		ProfileStandard,
-		ProfileStrict,
-		ProfileAirGapped,
 	}
 
 	if len(profiles) != len(expected) {

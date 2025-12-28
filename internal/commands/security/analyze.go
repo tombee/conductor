@@ -348,8 +348,6 @@ func checkProfileCompatibility(reqs workflowRequirements) map[string]compatibili
 	profiles := []string{
 		security.ProfileUnrestricted,
 		security.ProfileStandard,
-		security.ProfileStrict,
-		security.ProfileAirGapped,
 	}
 
 	for _, profileName := range profiles {
@@ -573,8 +571,6 @@ func outputAnalyzeHuman(output analyzeOutput) error {
 	for _, profile := range []string{
 		security.ProfileUnrestricted,
 		security.ProfileStandard,
-		security.ProfileStrict,
-		security.ProfileAirGapped,
 	} {
 		if compat, ok := output.Compatibility[profile]; ok {
 			status := "COMPATIBLE"

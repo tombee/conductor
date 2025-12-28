@@ -303,9 +303,11 @@ conductor run workflow.yaml --input api_key="${API_KEY}"
 echo "${API_KEY}" | conductor run workflow.yaml --input-stdin api_key
 ```
 
-## Sandboxing
+## Security Controls
 
-Conductor can execute arbitrary shell commands and file operations. Use sandboxing to limit risk.
+Conductor provides security controls through allowlists, command validation, and security profiles.
+
+**Important:** Conductor does not provide process-level isolation. Users who need container isolation should run Conductor itself in a containerized environment. See [Docker Deployment Guide](./deployment/docker.md) for details.
 
 ### Security Profiles
 
@@ -327,9 +329,9 @@ security:
 - Full control required
 
 **Risks:**
-- No sandboxing
 - Full filesystem access
 - Unrestricted network access
+- No command restrictions
 
 #### Standard Profile
 
@@ -367,92 +369,7 @@ security:
 - Multi-tenant environments
 - Standard workflows
 
-#### Strict Profile
-
-Maximum security restrictions:
-
-```yaml
-# config.yaml
-security:
-  profile: strict
-  allowed_tools:
-    - llm  # LLM calls only
-  filesystem:
-    read_only: true
-    allowed_paths:
-      - /opt/conductor/workflows
-  network:
-    allowed_domains:
-      - api.anthropic.com
-      - api.openai.com
-```
-
-**Use cases:**
-- Highly sensitive environments
-- Compliance requirements
-- Untrusted workflows
-
-#### Air-Gapped Profile
-
-No network access except LLM providers:
-
-```yaml
-# config.yaml
-security:
-  profile: air-gapped
-  network:
-    deny_private_ips: true
-    deny_cloud_metadata: true
-    allowed_domains:
-      - api.anthropic.com
-```
-
-### Container Sandboxing
-
-Run shell commands in isolated containers:
-
-```yaml
-# config.yaml
-security:
-  sandbox:
-    enabled: true
-    runtime: docker  # or: podman
-    image: alpine:latest
-    resources:
-      memory: 512M
-      cpu: 1.0
-      timeout: 300s
-```
-
-Workflow steps execute in containers:
-
-```yaml
-steps:
-  - id: run_script
-    type: action
-    action: shell.exec
-    inputs:
-      command: |
-        # This runs inside the container
-        echo "Hello from sandbox"
-        ls -la
-```
-
-Configure per-workflow sandboxing:
-
-```yaml
-name: sandboxed-workflow
-security:
-  sandbox:
-    enabled: true
-    image: python:3.11-slim
-steps:
-  - id: run_python
-    type: action
-    action: shell.exec
-    inputs:
-      command: "python3 -c 'print(\"Hello\")'"
-```
+For additional isolation, run Conductor in a container. See [Docker Deployment Guide](./deployment/docker.md).
 
 ### Filesystem Restrictions
 
@@ -855,12 +772,12 @@ Use this checklist before deploying to production:
 - [ ] Credential rotation schedule established
 - [ ] Secrets access audited and logged
 
-### Sandboxing
+### Security Configuration
 
-- [ ] Security profile configured (standard or strict)
-- [ ] Container sandboxing enabled for untrusted workflows
+- [ ] Security profile configured (unrestricted or standard)
 - [ ] Filesystem access restricted to necessary paths
 - [ ] Network access limited to required domains
+- [ ] For isolation needs, Conductor running in container (see [Docker Guide](./deployment/docker.md))
 
 ### Webhooks
 

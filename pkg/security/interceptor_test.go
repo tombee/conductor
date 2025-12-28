@@ -91,14 +91,14 @@ func TestInterceptorFileAccess(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name:     "air-gapped blocks without explicit permission",
-			profile:  ProfileAirGapped,
+			name:     "standard allows workspace access",
+			profile:  ProfileStandard,
 			toolName: "file",
 			inputs: map[string]interface{}{
 				"operation": "read",
 				"path":      "./test.txt",
 			},
-			wantError: true,
+			wantError: false,
 		},
 	}
 
@@ -175,7 +175,7 @@ func TestInterceptorShellAccess(t *testing.T) {
 		},
 		{
 			name:    "strict profile blocks unlisted command",
-			profile: ProfileStrict,
+			profile: ProfileStandard,
 			inputs: map[string]interface{}{
 				"command": "npm install",
 			},
@@ -233,12 +233,12 @@ func TestInterceptorHTTPAccess(t *testing.T) {
 			wantError: true,
 		},
 		{
-			name:    "air-gapped blocks all network",
-			profile: ProfileAirGapped,
+			name:    "standard allows anthropic API",
+			profile: ProfileStandard,
 			inputs: map[string]interface{}{
 				"url": "https://api.anthropic.com",
 			},
-			wantError: true,
+			wantError: false,
 		},
 		{
 			name:    "unrestricted allows any host",

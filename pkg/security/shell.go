@@ -43,9 +43,6 @@ type ShellSecurityConfig struct {
 	// WorkingDir enforces a specific working directory
 	WorkingDir string `yaml:"working_dir,omitempty" json:"working_dir,omitempty"`
 
-	// Sandbox runs command in isolated subprocess
-	Sandbox bool `yaml:"sandbox" json:"sandbox"`
-
 	// BlockedMetachars are characters rejected in command arguments
 	// Default: [$, `, |, &, ;, <, >, \n, \r]
 	BlockedMetachars []string `yaml:"blocked_metachars,omitempty" json:"blocked_metachars,omitempty"`
@@ -63,7 +60,6 @@ func DefaultShellSecurityConfig() *ShellSecurityConfig {
 		SanitizeEnv:      true,
 		AllowShellExpand: false,
 		MaxOutputSize:    1024 * 1024, // 1 MB
-		Sandbox:          false,
 		BlockedMetachars: []string{"$", "`", "|", "&", ";", "<", ">", "\n", "\r"},
 		ParseArguments:   true,
 	}

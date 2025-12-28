@@ -79,9 +79,6 @@ type ExecutionConfig struct {
 
 	// DeniedCommands lists commands that are explicitly denied (higher priority)
 	DeniedCommands []string `yaml:"denied_commands,omitempty" json:"denied_commands,omitempty"`
-
-	// Sandbox indicates whether sandboxed execution is required
-	Sandbox bool `yaml:"sandbox" json:"sandbox"`
 }
 
 // IsolationLevel represents the degree of process isolation.
@@ -90,9 +87,6 @@ type IsolationLevel string
 const (
 	// IsolationNone means no process isolation
 	IsolationNone IsolationLevel = "none"
-
-	// IsolationSandbox means tools run in sandboxed subprocess
-	IsolationSandbox IsolationLevel = "sandbox"
 )
 
 // ResourceLimits defines resource constraints for tool execution.
@@ -191,9 +185,6 @@ type SecurityConfig struct {
 
 	// Audit configures audit logging
 	Audit AuditConfig `yaml:"audit,omitempty" json:"audit,omitempty"`
-
-	// PrewarmSandbox enables sandbox pre-warming for latency-sensitive workflows
-	PrewarmSandbox bool `yaml:"prewarm_sandbox,omitempty" json:"prewarm_sandbox,omitempty"`
 
 	// DNS configures DNS monitoring and exfiltration prevention
 	DNS DNSSecurityConfig `yaml:"dns,omitempty" json:"dns,omitempty"`

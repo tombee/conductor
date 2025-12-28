@@ -34,9 +34,6 @@ const (
 
 	// EventViolation indicates a security policy violation
 	EventViolation EventType = "violation"
-
-	// EventSandboxEscapeAttempt indicates an attempted sandbox escape
-	EventSandboxEscapeAttempt EventType = "sandbox_escape_attempt"
 )
 
 // SecurityEvent represents a security-related event.

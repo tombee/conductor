@@ -23,8 +23,6 @@ import (
 const (
 	ProfileUnrestricted = "unrestricted"
 	ProfileStandard     = "standard"
-	ProfileStrict       = "strict"
-	ProfileAirGapped    = "air-gapped"
 )
 
 // builtinProfiles contains the built-in security profiles
@@ -44,7 +42,6 @@ var builtinProfiles = map[string]*SecurityProfile{
 		Execution: ExecutionConfig{
 			AllowedCommands: []string{}, // Empty = all allowed
 			DeniedCommands:  []string{},
-			Sandbox:         false,
 		},
 		Isolation: IsolationNone,
 		Limits: ResourceLimits{
@@ -95,84 +92,12 @@ var builtinProfiles = map[string]*SecurityProfile{
 				"chmod",
 				"chown",
 			},
-			Sandbox: false,
 		},
 		Isolation: IsolationNone,
 		Limits: ResourceLimits{
 			TimeoutPerTool: 60 * time.Second,
 			TotalRuntime:   5 * time.Minute,
 			MaxFileSize:    50 * 1024 * 1024, // 50 MB
-		},
-	},
-	ProfileStrict: {
-		Name: ProfileStrict,
-		Filesystem: FilesystemConfig{
-			Read: []string{
-				".", // Current workspace only
-			},
-			Write: []string{
-				"./.conductor-output", // Designated output directory
-			},
-			Deny: []string{
-				"~",             // Home directory
-				"/**/.git/config", // Git configs
-				"/**/.env*",     // Environment files
-			},
-		},
-		Network: NetworkConfig{
-			Allow:       []string{}, // Must be explicitly configured
-			DenyPrivate: true,
-			DenyAll:     false,
-		},
-		Execution: ExecutionConfig{
-			AllowedCommands: []string{
-				"git status",
-				"git diff",
-				"git log",
-			},
-			DeniedCommands: []string{
-				"git push",
-				"git remote",
-			},
-			Sandbox: true,
-		},
-		Isolation: IsolationSandbox,
-		Limits: ResourceLimits{
-			TimeoutPerTool: 30 * time.Second,
-			TotalRuntime:   2 * time.Minute,
-			MaxMemory:      512 * 1024 * 1024, // 512 MB
-			MaxProcesses:   10,
-			MaxFileSize:    10 * 1024 * 1024, // 10 MB
-		},
-	},
-	ProfileAirGapped: {
-		Name: ProfileAirGapped,
-		Filesystem: FilesystemConfig{
-			Read: []string{
-				// Must be explicitly configured with input files
-			},
-			Write: []string{
-				// Must be explicitly configured with output directory
-			},
-			Deny: []string{},
-		},
-		Network: NetworkConfig{
-			Allow:       []string{},
-			DenyPrivate: true,
-			DenyAll:     true, // No network access at all
-		},
-		Execution: ExecutionConfig{
-			AllowedCommands: []string{}, // No shell access
-			DeniedCommands:  []string{},
-			Sandbox:         true,
-		},
-		Isolation: IsolationSandbox,
-		Limits: ResourceLimits{
-			TimeoutPerTool: 60 * time.Second,
-			TotalRuntime:   1 * time.Minute,
-			MaxMemory:      256 * 1024 * 1024, // 256 MB
-			MaxProcesses:   1,
-			MaxFileSize:    10 * 1024 * 1024, // 10 MB
 		},
 	},
 }
@@ -205,8 +130,6 @@ func GetBuiltinProfiles() []string {
 	return []string{
 		ProfileUnrestricted,
 		ProfileStandard,
-		ProfileStrict,
-		ProfileAirGapped,
 	}
 }
 
@@ -222,10 +145,10 @@ func ValidateProfile(profile *SecurityProfile) error {
 
 	// Validate isolation level
 	switch profile.Isolation {
-	case IsolationNone, IsolationSandbox:
+	case IsolationNone:
 		// Valid
 	default:
-		return fmt.Errorf("invalid isolation level: %s (must be 'none' or 'sandbox')", profile.Isolation)
+		return fmt.Errorf("invalid isolation level: %s (must be 'none')", profile.Isolation)
 	}
 
 	// Validate resource limits
@@ -243,11 +166,6 @@ func ValidateProfile(profile *SecurityProfile) error {
 
 	if profile.Limits.MaxFileSize < 0 {
 		return fmt.Errorf("max_file_size cannot be negative")
-	}
-
-	// Validate that sandbox isolation is enabled when required
-	if profile.Isolation == IsolationSandbox && !profile.Execution.Sandbox {
-		return fmt.Errorf("sandbox execution must be enabled when isolation is 'sandbox'")
 	}
 
 	return nil
@@ -274,7 +192,6 @@ func copyProfile(p *SecurityProfile) *SecurityProfile {
 		Execution: ExecutionConfig{
 			AllowedCommands: copyStringSlice(p.Execution.AllowedCommands),
 			DeniedCommands:  copyStringSlice(p.Execution.DeniedCommands),
-			Sandbox:         p.Execution.Sandbox,
 		},
 		Isolation: p.Isolation,
 		Limits:    p.Limits,

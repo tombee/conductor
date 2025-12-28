@@ -28,14 +28,6 @@ type Metrics struct {
 	AccessDenied      int64
 	PermissionPrompts int64
 
-	// Sandbox metrics
-	SandboxCreated       int64
-	SandboxFailed        int64
-	SandboxFallbackUsed  int64
-	SandboxAvailable     bool
-	SandboxType          string
-	SandboxLatencyMs     int64
-
 	// Rate limiting metrics
 	RateLimitHits    int64
 	ThrottledRequests int64
@@ -103,35 +95,6 @@ func (m *MetricsCollector) RecordPermissionPrompt() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.metrics.PermissionPrompts++
-	m.metrics.LastEventTime = time.Now()
-}
-
-// RecordSandboxCreated records successful sandbox creation.
-func (m *MetricsCollector) RecordSandboxCreated(sandboxType string, latencyMs int64) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.metrics.SandboxCreated++
-	m.metrics.SandboxAvailable = true
-	m.metrics.SandboxType = sandboxType
-	m.metrics.SandboxLatencyMs = latencyMs
-	m.metrics.LastEventTime = time.Now()
-}
-
-// RecordSandboxFailed records sandbox creation failure.
-func (m *MetricsCollector) RecordSandboxFailed() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.metrics.SandboxFailed++
-	m.metrics.SandboxAvailable = false
-	m.metrics.LastEventTime = time.Now()
-}
-
-// RecordSandboxFallback records fallback to non-sandboxed execution.
-func (m *MetricsCollector) RecordSandboxFallback() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.metrics.SandboxFallbackUsed++
-	m.metrics.SandboxType = "fallback"
 	m.metrics.LastEventTime = time.Now()
 }
 
@@ -220,26 +183,6 @@ conductor_security_access_denied_total ` + formatInt64(metrics.AccessDenied) + `
 # HELP conductor_security_permission_prompts_total Total number of permission prompts shown
 # TYPE conductor_security_permission_prompts_total counter
 conductor_security_permission_prompts_total ` + formatInt64(metrics.PermissionPrompts) + `
-
-# HELP conductor_security_sandbox_created_total Total number of sandboxes created
-# TYPE conductor_security_sandbox_created_total counter
-conductor_security_sandbox_created_total ` + formatInt64(metrics.SandboxCreated) + `
-
-# HELP conductor_security_sandbox_failed_total Total number of failed sandbox creations
-# TYPE conductor_security_sandbox_failed_total counter
-conductor_security_sandbox_failed_total ` + formatInt64(metrics.SandboxFailed) + `
-
-# HELP conductor_security_sandbox_fallback_total Total number of fallback sandbox uses
-# TYPE conductor_security_sandbox_fallback_total counter
-conductor_security_sandbox_fallback_total ` + formatInt64(metrics.SandboxFallbackUsed) + `
-
-# HELP conductor_security_sandbox_available Is sandbox available (1=yes, 0=no)
-# TYPE conductor_security_sandbox_available gauge
-conductor_security_sandbox_available ` + formatBool(metrics.SandboxAvailable) + `
-
-# HELP conductor_security_sandbox_latency_ms Sandbox creation latency in milliseconds
-# TYPE conductor_security_sandbox_latency_ms gauge
-conductor_security_sandbox_latency_ms ` + formatInt64(metrics.SandboxLatencyMs) + `
 
 # HELP conductor_security_rate_limit_hits_total Total number of rate limit hits
 # TYPE conductor_security_rate_limit_hits_total counter

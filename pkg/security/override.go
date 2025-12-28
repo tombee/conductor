@@ -34,9 +34,6 @@ const (
 
 	// OverrideDisableAudit disables audit logging
 	OverrideDisableAudit OverrideType = "disable-audit"
-
-	// OverrideDisableSandbox disables sandboxing
-	OverrideDisableSandbox OverrideType = "disable-sandbox"
 )
 
 // Override represents an active security override.

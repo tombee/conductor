@@ -37,7 +37,7 @@ type Manager interface {
 	CheckAccess(req AccessRequest) AccessDecision
 
 	// CreateContext creates a security context for a workflow
-	CreateContext(workflowID string, prewarm bool) *WorkflowSecurityContext
+	CreateContext(workflowID string) *WorkflowSecurityContext
 
 	// LogEvent records a security event
 	LogEvent(event SecurityEvent)
@@ -55,7 +55,6 @@ type manager struct {
 	activeProfile    *SecurityProfile
 	customProfiles   map[string]*SecurityProfile
 	eventLogger      EventLogger
-	prewarmSandbox   bool
 	metricsCollector *MetricsCollector
 }
 
@@ -70,7 +69,6 @@ func NewManager(config *SecurityConfig) (Manager, error) {
 	m := &manager{
 		customProfiles: config.Profiles,
 		eventLogger:    NewEventLogger(config.Audit),
-		prewarmSandbox: config.PrewarmSandbox,
 	}
 
 	// Load the default profile
@@ -149,17 +147,12 @@ func (m *manager) CheckAccess(req AccessRequest) AccessDecision {
 }
 
 // CreateContext creates a security context for a workflow.
-func (m *manager) CreateContext(workflowID string, prewarm bool) *WorkflowSecurityContext {
+func (m *manager) CreateContext(workflowID string) *WorkflowSecurityContext {
 	m.mu.RLock()
 	profile := m.activeProfile
 	m.mu.RUnlock()
 
-	// Use manager's prewarm setting if not overridden
-	if !prewarm {
-		prewarm = m.prewarmSandbox
-	}
-
-	return NewWorkflowSecurityContext(workflowID, profile, m.eventLogger, prewarm)
+	return NewWorkflowSecurityContext(workflowID, profile, m.eventLogger)
 }
 
 // LogEvent records a security event.
@@ -232,15 +225,8 @@ func (m *manager) checkFileAccess(profile *SecurityProfile, req AccessRequest) A
 		}
 	}
 
-	// If allowlist is empty, allow all (unless profile is air-gapped)
+	// If allowlist is empty, allow all
 	if len(allowlist) == 0 {
-		if profile.Name == ProfileAirGapped {
-			return AccessDecision{
-				Allowed: false,
-				Reason:  "air-gapped profile requires explicit file permissions",
-				Profile: profile.Name,
-			}
-		}
 		return AccessDecision{
 			Allowed: true,
 			Reason:  "no restrictions configured",

@@ -15,7 +15,6 @@
 package security
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -25,7 +24,6 @@ import (
 	"github.com/tombee/conductor/internal/commands/shared"
 	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/pkg/security"
-	"github.com/tombee/conductor/pkg/security/sandbox"
 )
 
 func newSecurityStatusCommand() *cobra.Command {
@@ -52,13 +50,12 @@ Example:
 }
 
 type statusOutput struct {
-	ActiveProfile string                     `json:"active_profile"`
-	Filesystem    filesystemPermissions      `json:"filesystem"`
-	Network       networkPermissions         `json:"network"`
-	Execution     executionPermissions       `json:"execution"`
-	Isolation     string                     `json:"isolation"`
-	Limits        resourceLimits             `json:"limits"`
-	SandboxInfo   *sandboxInfo               `json:"sandbox_info,omitempty"`
+	ActiveProfile string                `json:"active_profile"`
+	Filesystem    filesystemPermissions `json:"filesystem"`
+	Network       networkPermissions    `json:"network"`
+	Execution     executionPermissions  `json:"execution"`
+	Isolation     string                `json:"isolation"`
+	Limits        resourceLimits        `json:"limits"`
 }
 
 type filesystemPermissions struct {
@@ -86,12 +83,6 @@ type resourceLimits struct {
 	MaxFileSize    string `json:"max_file_size,omitempty"`
 }
 
-type sandboxInfo struct {
-	Available bool   `json:"available"`
-	Type      string `json:"type,omitempty"`
-	Status    string `json:"status,omitempty"`
-}
-
 func runSecurityStatus(cmd *cobra.Command, args []string) error {
 	// Load configuration to get security settings
 	configPath, err := config.ConfigPath()
@@ -113,11 +104,8 @@ func runSecurityStatus(cmd *cobra.Command, args []string) error {
 	// Get active profile
 	profile := mgr.GetActiveProfile()
 
-	// Check sandbox availability
-	sandboxAvailable, sandboxType := checkSandboxAvailability(profile)
-
 	// Build output
-	output := buildStatusOutput(profile, sandboxAvailable, sandboxType)
+	output := buildStatusOutput(profile)
 
 	// Output in requested format
 	if shared.GetJSON() {
@@ -127,7 +115,7 @@ func runSecurityStatus(cmd *cobra.Command, args []string) error {
 	return outputSecurityStatusHuman(output)
 }
 
-func buildStatusOutput(profile *security.SecurityProfile, sandboxAvailable bool, sandboxType string) statusOutput {
+func buildStatusOutput(profile *security.SecurityProfile) statusOutput {
 	output := statusOutput{
 		ActiveProfile: profile.Name,
 		Filesystem: filesystemPermissions{
@@ -161,19 +149,6 @@ func buildStatusOutput(profile *security.SecurityProfile, sandboxAvailable bool,
 	}
 	if profile.Limits.MaxFileSize > 0 {
 		output.Limits.MaxFileSize = formatBytes(profile.Limits.MaxFileSize)
-	}
-
-	// Add sandbox info if isolation is required
-	if profile.Isolation == security.IsolationSandbox {
-		status := "healthy"
-		if !sandboxAvailable {
-			status = "degraded"
-		}
-		output.SandboxInfo = &sandboxInfo{
-			Available: sandboxAvailable,
-			Type:      sandboxType,
-			Status:    status,
-		}
 	}
 
 	return output
@@ -236,13 +211,6 @@ func outputSecurityStatusHuman(output statusOutput) error {
 
 	// Isolation
 	fmt.Printf("  Isolation: %s\n", output.Isolation)
-	if output.SandboxInfo != nil {
-		if output.SandboxInfo.Available {
-			fmt.Printf("    Sandbox: Available (%s)\n", output.SandboxInfo.Type)
-		} else {
-			fmt.Println("    Sandbox: Unavailable (degraded mode)")
-		}
-	}
 	fmt.Println()
 
 	// Resource Limits
@@ -266,22 +234,6 @@ func outputSecurityStatusHuman(output statusOutput) error {
 	}
 
 	return nil
-}
-
-func checkSandboxAvailability(profile *security.SecurityProfile) (bool, string) {
-	if profile.Isolation != security.IsolationSandbox {
-		return false, ""
-	}
-
-	// Try to detect Docker/Podman availability
-	ctx := context.Background()
-	selector := sandbox.NewFactorySelector()
-	factory, degraded, err := selector.SelectFactory(ctx)
-	if err != nil {
-		return false, "none"
-	}
-
-	return !degraded, string(factory.Type())
 }
 
 func formatBytes(bytes int64) string {

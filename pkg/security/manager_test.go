@@ -154,9 +154,9 @@ func TestCheckFileAccess(t *testing.T) {
 			wantAllowed: false,
 		},
 		{
-			name: "air-gapped requires explicit permissions",
+			name: "empty allowlist allows all",
 			profile: &SecurityProfile{
-				Name: ProfileAirGapped,
+				Name: ProfileStandard,
 				Filesystem: FilesystemConfig{
 					Read:  []string{},
 					Write: []string{},
@@ -171,7 +171,7 @@ func TestCheckFileAccess(t *testing.T) {
 				Resource:     "/tmp/test.txt",
 				Action:       ActionRead,
 			},
-			wantAllowed: false,
+			wantAllowed: true,
 		},
 	}
 
@@ -201,7 +201,7 @@ func TestCheckNetworkAccess(t *testing.T) {
 		{
 			name: "deny_all blocks everything",
 			profile: &SecurityProfile{
-				Name: ProfileAirGapped,
+				Name: ProfileStandard,
 				Network: NetworkConfig{
 					Allow:       []string{},
 					DenyPrivate: true,
