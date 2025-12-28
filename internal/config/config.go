@@ -67,8 +67,13 @@ type DaemonConfig struct {
 
 	// AutoStart enables automatic daemon startup when CLI commands need it.
 	// When true, CLI will spawn conductord if not already running.
-	// Default: false
+	// Default: true
 	AutoStart bool `yaml:"auto_start"`
+
+	// IdleTimeout is how long an auto-started daemon waits before shutting down due to inactivity.
+	// Only applies to daemons started via auto-start (not manually started daemons).
+	// Default: 30m
+	IdleTimeout time.Duration `yaml:"idle_timeout,omitempty"`
 
 	// SocketPath is the Unix socket path for daemon communication.
 	// Environment: CONDUCTOR_SOCKET
@@ -579,6 +584,8 @@ func Default() *Config {
 			PrewarmSandbox: false,
 		},
 		Daemon: DaemonConfig{
+			AutoStart:   true,
+			IdleTimeout: 30 * time.Minute,
 			Listen: DaemonListenConfig{
 				SocketPath:  socketPath,
 				AllowRemote: false,
@@ -780,6 +787,9 @@ func (c *Config) applyDefaults() {
 	}
 
 	// Daemon defaults
+	if c.Daemon.IdleTimeout == 0 {
+		c.Daemon.IdleTimeout = defaults.Daemon.IdleTimeout
+	}
 	if c.Daemon.Listen.SocketPath == "" {
 		c.Daemon.Listen.SocketPath = defaults.Daemon.Listen.SocketPath
 	}

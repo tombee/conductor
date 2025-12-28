@@ -56,6 +56,11 @@ type MetricsHandler interface {
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 }
 
+// ActivityRecorder tracks daemon activity for idle timeout monitoring.
+type ActivityRecorder interface {
+	RecordActivity()
+}
+
 // Router wraps an http.ServeMux with additional functionality.
 type Router struct {
 	mux              *http.ServeMux
@@ -63,6 +68,7 @@ type Router struct {
 	scheduleProvider ScheduleStatusProvider
 	mcpProvider      MCPStatusProvider
 	metricsHandler   MetricsHandler
+	activityRecorder ActivityRecorder
 	logger           *slog.Logger
 }
 
@@ -82,6 +88,11 @@ func (r *Router) SetMetricsHandler(handler MetricsHandler) {
 	if handler != nil {
 		r.mux.HandleFunc("GET /metrics", handler.ServeHTTP)
 	}
+}
+
+// SetActivityRecorder sets the activity recorder for idle timeout tracking.
+func (r *Router) SetActivityRecorder(recorder ActivityRecorder) {
+	r.activityRecorder = recorder
 }
 
 // NewRouter creates a new HTTP router with all API endpoints.
@@ -104,6 +115,11 @@ func NewRouter(cfg RouterConfig) *Router {
 
 // ServeHTTP implements http.Handler.
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	// Record activity for idle timeout tracking
+	if r.activityRecorder != nil {
+		r.activityRecorder.RecordActivity()
+	}
+
 	// Apply correlation middleware first
 	handler := tracing.CorrelationMiddleware(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		// Log request with correlation ID

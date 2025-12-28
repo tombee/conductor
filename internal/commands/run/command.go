@@ -32,7 +32,6 @@ func NewCommand() *cobra.Command {
 		dryRun                        bool
 		quiet                         bool
 		verbose                       bool
-		daemon                        bool
 		background                    bool
 		mcpDev                        bool
 		noCache                       bool
@@ -61,8 +60,7 @@ Provider Resolution Order:
   4. Auto-detection fallback
 
 Execution Modes:
-  --daemon       Submit to conductord daemon for execution
-  --background   Run asynchronously (implies --daemon), return run ID immediately
+  --background   Run asynchronously, return run ID immediately
 
 Profile Selection:
   --workspace, -w <name>   Workspace for profile resolution (env: CONDUCTOR_WORKSPACE)
@@ -96,24 +94,8 @@ Verbosity levels:
 				return shared.NewInvalidWorkflowError("cannot use --dry-run in background mode", nil)
 			}
 
-			if background {
-				daemon = true // --background implies --daemon
-			}
-			if mcpDev {
-				daemon = true // --mcp-dev requires daemon mode
-			}
-			if daemon {
-				return runWorkflowViaDaemon(args[0], inputs, inputFile, outputFile, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun, provider, model, timeout, workspace, profile, securityMode, allowHosts, allowPaths)
-			}
-
-			// Build security options for local execution
-			securityOpts := SecurityOptions{
-				Mode:       securityMode,
-				AllowHosts: allowHosts,
-				AllowPaths: allowPaths,
-			}
-
-			return runWorkflowLocal(args[0], inputs, inputFile, dryRun, quiet, verbose, noInteractive, helpInputs, acceptUnenforceablePermissions, securityOpts)
+			// All execution goes through daemon
+			return runWorkflowViaDaemon(args[0], inputs, inputFile, outputFile, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun, provider, model, timeout, workspace, profile, securityMode, allowHosts, allowPaths)
 		},
 	}
 
@@ -127,7 +109,6 @@ Verbosity levels:
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show execution plan without running")
 	cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Suppress all warnings")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show detailed execution logs")
-	cmd.Flags().BoolVarP(&daemon, "daemon", "d", false, "Submit to daemon for execution")
 	cmd.Flags().BoolVar(&background, "background", false, "Run asynchronously, return run ID immediately")
 	cmd.Flags().BoolVar(&mcpDev, "mcp-dev", false, "Enable MCP development mode (auto-restart servers, debug output)")
 	cmd.Flags().BoolVar(&noCache, "no-cache", false, "Force fresh download of remote workflows (skip cache)")
@@ -138,7 +119,7 @@ Verbosity levels:
 	cmd.Flags().StringSliceVar(&allowPaths, "allow-paths", nil, "Additional allowed filesystem paths")
 	cmd.Flags().StringVarP(&workspace, "workspace", "w", "", "Workspace for profile resolution (env: CONDUCTOR_WORKSPACE)")
 	cmd.Flags().StringVarP(&profile, "profile", "p", "", "Profile for binding resolution (env: CONDUCTOR_PROFILE)")
-	cmd.Flags().BoolVar(&acceptUnenforceablePermissions, "accept-unenforceable-permissions", false, "Allow workflow execution even if some permissions cannot be enforced by the provider (SPEC-141)")
+	cmd.Flags().BoolVar(&acceptUnenforceablePermissions, "accept-unenforceable-permissions", false, "Allow workflow execution even if some permissions cannot be enforced by the provider")
 
 	return cmd
 }

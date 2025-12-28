@@ -27,6 +27,7 @@ import (
 	"github.com/tombee/conductor/internal/cli/prompt"
 	"github.com/tombee/conductor/internal/client"
 	"github.com/tombee/conductor/internal/commands/shared"
+	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/internal/remote"
 	"github.com/tombee/conductor/pkg/workflow"
 )
@@ -151,27 +152,23 @@ func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, ou
 		inputs = analyzer.ApplyDefaults()
 	}
 
-	// Load config for auto-start settings
+	// Load config for socket path
 	cfg, err := loadConfig()
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// Try to connect to daemon, optionally auto-starting it
-	autoStartCfg := client.AutoStartConfig{}
+	// Auto-start is always enabled - daemon mode is the only mode
+	autoStartCfg := client.AutoStartConfig{
+		Enabled: true,
+	}
 	if cfg != nil {
-		autoStartCfg.Enabled = cfg.Daemon.AutoStart
 		autoStartCfg.SocketPath = cfg.Daemon.SocketPath
 	}
 
 	c, err := client.EnsureDaemon(autoStartCfg)
 	if err != nil {
-		if client.IsDaemonNotRunning(err) {
-			dnr := &client.DaemonNotRunningError{}
-			fmt.Fprintln(os.Stderr, dnr.Guidance())
-			os.Exit(10)
-		}
-		return shared.NewProviderError("failed to connect to daemon", err)
+		return fmt.Errorf("failed to connect to daemon: %w\n\nHint: Ensure 'conductord' is in your PATH", err)
 	}
 
 	// Submit workflow to daemon
@@ -442,4 +439,20 @@ func fetchRunOutput(ctx context.Context, c *client.Client, runID string) (string
 // isRemoteWorkflow checks if a path is a remote workflow reference
 func isRemoteWorkflow(path string) bool {
 	return remote.IsRemote(path)
+}
+
+// loadConfig loads the configuration file
+func loadConfig() (*config.Config, error) {
+	// Try XDG config directory first
+	configPath, err := config.ConfigPath()
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if config file exists
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("no configuration found. Run 'conductor init' to set up")
+	}
+
+	return config.Load(configPath)
 }

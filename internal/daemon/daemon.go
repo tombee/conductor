@@ -78,8 +78,10 @@ type Daemon struct {
 	mcpRegistry     *mcp.Registry
 	otelProvider    *tracing.OTelProvider
 
-	mu      sync.Mutex
-	started bool
+	mu           sync.Mutex
+	started      bool
+	lastActivity time.Time
+	autoStarted  bool
 }
 
 // New creates a new daemon instance.
@@ -291,6 +293,13 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 		}
 	}
 
+	// Check if this daemon was auto-started
+	autoStarted := os.Getenv("CONDUCTOR_AUTO_STARTED") == "1"
+	if autoStarted {
+		logger.Info("daemon auto-started by CLI",
+			slog.Duration("idle_timeout", cfg.Daemon.IdleTimeout))
+	}
+
 	return &Daemon{
 		cfg:             cfg,
 		opts:            opts,
@@ -304,6 +313,8 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 		leader:          elector,
 		mcpRegistry:     mcpRegistry,
 		otelProvider:    otelProvider,
+		lastActivity:    time.Now(),
+		autoStarted:     autoStarted,
 	}, nil
 }
 
@@ -316,6 +327,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 	d.started = true
 	d.mu.Unlock()
+
+	// Create cancellable context for idle timeout monitoring
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// Start idle timeout monitor for auto-started daemons
+	d.startIdleTimeoutMonitor(ctx, cancel)
 
 	// Check permissions on critical directories and files at startup
 	d.checkPermissionsAtStartup()
@@ -350,6 +368,9 @@ func (d *Daemon) Start(ctx context.Context) error {
 		Commit:    d.opts.Commit,
 		BuildDate: d.opts.BuildDate,
 	})
+
+	// Wire up activity recorder for idle timeout tracking
+	router.SetActivityRecorder(d)
 
 	// Register runs API
 	runsHandler := api.NewRunsHandler(d.runner)
@@ -797,6 +818,50 @@ func observabilityToTracingConfig(obs config.ObservabilityConfig, version string
 	}
 
 	return cfg
+}
+
+// RecordActivity updates the last activity timestamp.
+// This should be called on every incoming API request.
+func (d *Daemon) RecordActivity() {
+	d.mu.Lock()
+	d.lastActivity = time.Now()
+	d.mu.Unlock()
+}
+
+// timeSinceLastActivity returns duration since last activity.
+func (d *Daemon) timeSinceLastActivity() time.Duration {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return time.Since(d.lastActivity)
+}
+
+// startIdleTimeoutMonitor starts a goroutine that monitors idle timeout.
+// Only applies to auto-started daemons.
+func (d *Daemon) startIdleTimeoutMonitor(ctx context.Context, cancel context.CancelFunc) {
+	if !d.autoStarted || d.cfg.Daemon.IdleTimeout == 0 {
+		return
+	}
+
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				idle := d.timeSinceLastActivity()
+				if idle >= d.cfg.Daemon.IdleTimeout {
+					d.logger.Info("shutting down due to idle timeout",
+						slog.Duration("idle_duration", idle),
+						slog.Duration("idle_timeout", d.cfg.Daemon.IdleTimeout))
+					cancel()
+					return
+				}
+			}
+		}
+	}()
 }
 
 // convertRedactionPatterns converts config redaction patterns to tracing patterns.
