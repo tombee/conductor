@@ -46,11 +46,12 @@ var builtinConnectorInfo = map[string]struct {
 	baseURL     string
 	description string
 }{
-	"github":  {baseURL: "https://api.github.com", description: "GitHub REST API v3"},
-	"slack":   {baseURL: "https://slack.com/api", description: "Slack Web API"},
-	"jira":    {baseURL: "https://your-domain.atlassian.net", description: "Jira Cloud REST API v3"},
-	"discord": {baseURL: "https://discord.com/api/v10", description: "Discord REST API v10"},
-	"jenkins": {baseURL: "https://jenkins.example.com", description: "Jenkins REST API"},
+	"github":     {baseURL: "https://api.github.com", description: "GitHub REST API v3"},
+	"slack":      {baseURL: "https://slack.com/api", description: "Slack Web API"},
+	"jira":       {baseURL: "https://your-domain.atlassian.net", description: "Jira Cloud REST API v3"},
+	"discord":    {baseURL: "https://discord.com/api/v10", description: "Discord REST API v10"},
+	"jenkins":    {baseURL: "https://jenkins.example.com", description: "Jenkins REST API"},
+	"cloudwatch": {baseURL: "https://logs.us-east-1.amazonaws.com", description: "AWS CloudWatch Logs and Metrics"},
 }
 
 // loadBundledPackage loads a bundled connector.
