@@ -159,6 +159,47 @@ func (r *Registry) GetFailoverOrder() []string {
 	return order
 }
 
+// CreateWithRetry creates a retry-wrapped provider.
+// Returns an error if the provider is not found.
+func (r *Registry) CreateWithRetry(name string, config RetryConfig) (Provider, error) {
+	provider, err := r.Get(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewRetryableProvider(provider, config), nil
+}
+
+// CreateFailover creates a failover provider using the registry's failover order.
+// If providerNames is empty, uses the registry's configured failover order.
+// All providers must be registered in the registry.
+func (r *Registry) CreateFailover(config FailoverConfig, providerNames ...string) (*FailoverProvider, error) {
+	names := providerNames
+	if len(names) == 0 {
+		names = r.GetFailoverOrder()
+	}
+
+	if len(names) == 0 {
+		return nil, &pkgerrors.ValidationError{
+			Field:      "failover_providers",
+			Message:    "no failover providers specified and no failover order configured",
+			Suggestion: "Configure failover order with SetFailoverOrder() or pass provider names",
+		}
+	}
+
+	// Validate all providers exist
+	for _, name := range names {
+		if _, err := r.Get(name); err != nil {
+			return nil, err
+		}
+	}
+
+	// Set provider order in config
+	config.ProviderOrder = names
+
+	return NewFailoverProvider(r, config)
+}
+
 // Unregister removes a provider from the registry.
 // Returns an error if the provider is not found or is currently set as default.
 func (r *Registry) Unregister(name string) error {

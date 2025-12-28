@@ -81,12 +81,17 @@ func (a *ProviderAdapter) Complete(ctx context.Context, prompt string, options m
 }
 
 // CreateProvider creates an llm.Provider from config.
-// It instantiates the appropriate provider based on the provider type in the config.
+// It instantiates the appropriate provider based on the provider type in the config,
+// and optionally wraps it with retry and failover logic based on LLM configuration.
 func CreateProvider(cfg *config.Config, providerName string) (llm.Provider, error) {
 	providerCfg, exists := cfg.Providers[providerName]
 	if !exists {
 		return nil, fmt.Errorf("provider %q not found in config", providerName)
 	}
+
+	// Create the base provider
+	var baseProvider llm.Provider
+	var err error
 
 	switch providerCfg.Type {
 	case "claude-code":
@@ -105,26 +110,56 @@ func CreateProvider(cfg *config.Config, providerName string) (llm.Provider, erro
 			}
 			return nil, fmt.Errorf("claude CLI not found in PATH")
 		}
-		return p, nil
+		baseProvider = p
 
 	case "anthropic":
 		if providerCfg.APIKey == "" {
 			return nil, fmt.Errorf("anthropic provider requires api_key in config")
 		}
-		return providers.NewAnthropicProvider(providerCfg.APIKey)
+		baseProvider, err = providers.NewAnthropicProvider(providerCfg.APIKey)
+		if err != nil {
+			return nil, err
+		}
 
 	case "openai":
 		if providerCfg.APIKey == "" {
 			return nil, fmt.Errorf("openai provider requires api_key in config")
 		}
-		return providers.NewOpenAIProvider(providerCfg.APIKey)
+		baseProvider, err = providers.NewOpenAIProvider(providerCfg.APIKey)
+		if err != nil {
+			return nil, err
+		}
 
 	case "ollama":
 		// Ollama doesn't require API key, uses localhost by default
 		// The provider itself handles the baseURL
-		return providers.NewOllamaProvider("http://localhost:11434")
+		baseProvider, err = providers.NewOllamaProvider("http://localhost:11434")
+		if err != nil {
+			return nil, err
+		}
 
 	default:
 		return nil, fmt.Errorf("unsupported provider type: %s", providerCfg.Type)
 	}
+
+	// Wrap with retry logic based on LLMConfig
+	provider := wrapWithRetry(baseProvider, cfg.LLM)
+
+	return provider, nil
+}
+
+// wrapWithRetry wraps a provider with retry logic based on LLM configuration.
+func wrapWithRetry(provider llm.Provider, llmCfg config.LLMConfig) llm.Provider {
+	// Build retry config from LLMConfig
+	retryConfig := llm.RetryConfig{
+		MaxRetries:      llmCfg.MaxRetries,
+		InitialDelay:    llmCfg.RetryBackoffBase,
+		MaxDelay:        10 * llmCfg.RetryBackoffBase, // 10x base as max
+		Multiplier:      2.0,                           // Exponential backoff
+		Jitter:          0.1,                           // 10% jitter
+		AbsoluteTimeout: 2 * llmCfg.RequestTimeout,     // 2x request timeout as absolute max
+		RetryableErrors: nil,                           // Use default retry logic
+	}
+
+	return llm.NewRetryableProvider(provider, retryConfig)
 }

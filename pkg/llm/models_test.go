@@ -122,3 +122,90 @@ func TestModelTierConstants(t *testing.T) {
 		}
 	}
 }
+
+func TestModelInfo_CalculateCostWithCache(t *testing.T) {
+	tests := []struct {
+		name     string
+		model    ModelInfo
+		usage    TokenUsage
+		expected float64
+	}{
+		{
+			name: "with cache pricing configured",
+			model: ModelInfo{
+				InputPricePerMillion:         3.00,
+				OutputPricePerMillion:        15.00,
+				CacheCreationPricePerMillion: 3.00,
+				CacheReadPricePerMillion:     0.75, // 25% of input
+			},
+			usage: TokenUsage{
+				PromptTokens:        1000,
+				CompletionTokens:    500,
+				CacheCreationTokens: 2000,
+				CacheReadTokens:     4000,
+				TotalTokens:         7500,
+			},
+			// Expected: (1000/1M * 3.00) + (500/1M * 15.00) + (2000/1M * 3.00) + (4000/1M * 0.75)
+			// = 0.003 + 0.0075 + 0.006 + 0.003 = 0.0195
+			expected: 0.0195,
+		},
+		{
+			name: "without cache pricing falls back to CalculateCost",
+			model: ModelInfo{
+				InputPricePerMillion:         3.00,
+				OutputPricePerMillion:        15.00,
+				CacheCreationPricePerMillion: 0.0, // Not configured
+				CacheReadPricePerMillion:     0.0,
+			},
+			usage: TokenUsage{
+				PromptTokens:        1000,
+				CompletionTokens:    500,
+				CacheCreationTokens: 2000, // Should be ignored
+				CacheReadTokens:     4000, // Should be ignored
+				TotalTokens:         7500,
+			},
+			// Expected: (1000/1M * 3.00) + (500/1M * 15.00) = 0.003 + 0.0075 = 0.0105
+			expected: 0.0105,
+		},
+		{
+			name: "zero cache tokens",
+			model: ModelInfo{
+				InputPricePerMillion:         3.00,
+				OutputPricePerMillion:        15.00,
+				CacheCreationPricePerMillion: 3.00,
+				CacheReadPricePerMillion:     0.75,
+			},
+			usage: TokenUsage{
+				PromptTokens:        1000,
+				CompletionTokens:    500,
+				CacheCreationTokens: 0,
+				CacheReadTokens:     0,
+				TotalTokens:         1500,
+			},
+			// Expected: (1000/1M * 3.00) + (500/1M * 15.00) = 0.003 + 0.0075 = 0.0105
+			expected: 0.0105,
+		},
+	}
+
+	epsilon := 0.000001
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			costInfo := tt.model.CalculateCostWithCache(tt.usage)
+
+			if costInfo.Amount < tt.expected-epsilon || costInfo.Amount > tt.expected+epsilon {
+				t.Errorf("expected cost %.6f, got %.6f", tt.expected, costInfo.Amount)
+			}
+
+			// Verify cost info fields
+			if costInfo.Currency != "USD" {
+				t.Errorf("expected currency USD, got %s", costInfo.Currency)
+			}
+			if costInfo.Accuracy != CostMeasured {
+				t.Errorf("expected accuracy measured, got %s", costInfo.Accuracy)
+			}
+			if costInfo.Source != SourcePricingTable {
+				t.Errorf("expected source pricing_table, got %s", costInfo.Source)
+			}
+		})
+	}
+}

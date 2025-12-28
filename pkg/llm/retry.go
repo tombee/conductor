@@ -88,6 +88,13 @@ func (r *RetryableProviderWrapper) Capabilities() Capabilities {
 func (r *RetryableProviderWrapper) Complete(ctx context.Context, req CompletionRequest) (*CompletionResponse, error) {
 	var lastErr error
 
+	// Apply absolute timeout if configured
+	if r.config.AbsoluteTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, r.config.AbsoluteTimeout)
+		defer cancel()
+	}
+
 	for attempt := 0; attempt <= r.config.MaxRetries; attempt++ {
 		if attempt > 0 {
 			delay := r.calculateBackoff(attempt)
@@ -136,6 +143,13 @@ func (r *RetryableProviderWrapper) Complete(ctx context.Context, req CompletionR
 // This implementation retries the entire stream on failure before any chunks are sent.
 func (r *RetryableProviderWrapper) Stream(ctx context.Context, req CompletionRequest) (<-chan StreamChunk, error) {
 	var lastErr error
+
+	// Apply absolute timeout if configured
+	if r.config.AbsoluteTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, r.config.AbsoluteTimeout)
+		defer cancel()
+	}
 
 	for attempt := 0; attempt <= r.config.MaxRetries; attempt++ {
 		if attempt > 0 {

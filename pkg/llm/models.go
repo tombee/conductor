@@ -45,6 +45,16 @@ type ModelInfo struct {
 	// OutputPricePerMillion is the cost in USD per million output tokens.
 	OutputPricePerMillion float64
 
+	// CacheCreationPricePerMillion is the cost in USD per million tokens for cache writes.
+	// This is typically the same as InputPricePerMillion.
+	// If 0, cache creation costs are not tracked separately.
+	CacheCreationPricePerMillion float64
+
+	// CacheReadPricePerMillion is the cost in USD per million tokens for cache reads.
+	// This is typically lower than InputPricePerMillion (e.g., 25% for Anthropic).
+	// If 0, cache read costs are not tracked separately.
+	CacheReadPricePerMillion float64
+
 	// SupportsTools indicates whether this model can use function calling.
 	SupportsTools bool
 
@@ -57,10 +67,43 @@ type ModelInfo struct {
 
 // CalculateCost computes the cost for a request based on token usage.
 // Returns CostInfo with accuracy=measured since this uses provider-reported tokens.
+// This function does not include cache token costs - use CalculateCostWithCache for that.
 func (m ModelInfo) CalculateCost(usage TokenUsage) *CostInfo {
 	inputCost := float64(usage.PromptTokens) / 1_000_000.0 * m.InputPricePerMillion
 	outputCost := float64(usage.CompletionTokens) / 1_000_000.0 * m.OutputPricePerMillion
 	totalCost := inputCost + outputCost
+
+	return &CostInfo{
+		Amount:   totalCost,
+		Currency: "USD",
+		Accuracy: CostMeasured,
+		Source:   SourcePricingTable,
+	}
+}
+
+// CalculateCostWithCache computes the cost for a request including cache token costs.
+// It accounts for cache creation and cache read tokens separately from regular input tokens.
+// Returns CostInfo with accuracy=measured since this uses provider-reported tokens.
+// If the model doesn't have cache pricing configured (both fields are 0), it falls back
+// to CalculateCost behavior.
+func (m ModelInfo) CalculateCostWithCache(usage TokenUsage) *CostInfo {
+	// Check if cache pricing is configured
+	hasCachePricing := m.CacheCreationPricePerMillion > 0 || m.CacheReadPricePerMillion > 0
+
+	if !hasCachePricing {
+		// No cache pricing - use standard calculation
+		return m.CalculateCost(usage)
+	}
+
+	// Calculate regular input/output costs
+	inputCost := float64(usage.PromptTokens) / 1_000_000.0 * m.InputPricePerMillion
+	outputCost := float64(usage.CompletionTokens) / 1_000_000.0 * m.OutputPricePerMillion
+
+	// Calculate cache costs
+	cacheCreationCost := float64(usage.CacheCreationTokens) / 1_000_000.0 * m.CacheCreationPricePerMillion
+	cacheReadCost := float64(usage.CacheReadTokens) / 1_000_000.0 * m.CacheReadPricePerMillion
+
+	totalCost := inputCost + outputCost + cacheCreationCost + cacheReadCost
 
 	return &CostInfo{
 		Amount:   totalCost,
