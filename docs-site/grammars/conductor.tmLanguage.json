@@ -40,6 +40,9 @@
         },
         {
           "include": "#enum-values"
+        },
+        {
+          "include": "#env-var-refs"
         }
       ]
     },
