@@ -6,7 +6,7 @@ Deploy Conductor to production using the method that best fits your infrastructu
 
 Deploy Conductor to [exe.dev](https://exe.dev) lightweight VMs for a low-cost, low-maintenance hosting solution.
 
-**Best for:** Individual developers and small teams (0.0.1 release).
+**Why exe.dev:** Zero-config deployment, built-in TLS, team sharing, and simple SSH-based management.
 
 ```bash
 # 1. Create a VM

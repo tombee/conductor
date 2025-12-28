@@ -2,7 +2,7 @@
 
 Deploy Conductor to [exe.dev](https://exe.dev) lightweight VMs for a low-cost, low-maintenance hosting solution.
 
-**Best for:** Individual developers, small teams, demos, and experiments.
+**Why exe.dev:** Zero-config deployment, built-in TLS, team sharing, and simple SSH-based management.
 
 ## Quick Start
 
