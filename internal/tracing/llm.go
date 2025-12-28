@@ -17,6 +17,7 @@ package tracing
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/tombee/conductor/pkg/llm"
 	"github.com/tombee/conductor/pkg/observability"
@@ -27,6 +28,7 @@ import (
 type TracedProvider struct {
 	provider llm.Provider
 	tracer   observability.Tracer
+	metrics  *MetricsCollector // Optional metrics collector
 }
 
 // WrapProvider wraps an LLM provider with tracing instrumentation.
@@ -34,6 +36,15 @@ func WrapProvider(provider llm.Provider, tracer observability.Tracer) llm.Provid
 	return &TracedProvider{
 		provider: provider,
 		tracer:   tracer,
+	}
+}
+
+// WrapProviderWithMetrics wraps an LLM provider with both tracing and metrics.
+func WrapProviderWithMetrics(provider llm.Provider, tracer observability.Tracer, metrics *MetricsCollector) llm.Provider {
+	return &TracedProvider{
+		provider: provider,
+		tracer:   tracer,
+		metrics:  metrics,
 	}
 }
 
@@ -49,6 +60,8 @@ func (t *TracedProvider) Capabilities() llm.Capabilities {
 
 // Complete creates a span for the completion request and records token usage.
 func (t *TracedProvider) Complete(ctx context.Context, req llm.CompletionRequest) (*llm.CompletionResponse, error) {
+	startTime := time.Now()
+
 	ctx, span := t.tracer.Start(ctx, "llm.complete",
 		observability.WithSpanKind(observability.SpanKindClient),
 		observability.WithAttributes(map[string]any{
@@ -71,8 +84,14 @@ func (t *TracedProvider) Complete(ctx context.Context, req llm.CompletionRequest
 
 	// Execute the completion
 	resp, err := t.provider.Complete(ctx, req)
+	latency := time.Since(startTime)
+
 	if err != nil {
 		span.RecordError(err)
+		// Record failed request metrics
+		if t.metrics != nil {
+			t.metrics.RecordLLMRequest(ctx, t.provider.Name(), req.Model, "error", 0, 0, 0, latency)
+		}
 		return nil, err
 	}
 
@@ -91,6 +110,7 @@ func (t *TracedProvider) Complete(ctx context.Context, req llm.CompletionRequest
 	})
 
 	// Attempt to retrieve and record cost information
+	var costUSD float64
 	if costRecord := llm.GetCostRecordByRequestID(resp.RequestID); costRecord != nil && costRecord.Cost != nil {
 		span.SetAttributes(map[string]any{
 			"llm.cost.amount":   costRecord.Cost.Amount,
@@ -98,6 +118,13 @@ func (t *TracedProvider) Complete(ctx context.Context, req llm.CompletionRequest
 			"llm.cost.accuracy": string(costRecord.Cost.Accuracy),
 			"llm.cost.source":   costRecord.Cost.Source,
 		})
+		costUSD = costRecord.Cost.Amount
+	}
+
+	// Record successful request metrics
+	if t.metrics != nil {
+		t.metrics.RecordLLMRequest(ctx, t.provider.Name(), resp.Model, "success",
+			resp.Usage.PromptTokens, resp.Usage.CompletionTokens, costUSD, latency)
 	}
 
 	span.SetStatus(observability.StatusCodeOK, "")
@@ -106,6 +133,8 @@ func (t *TracedProvider) Complete(ctx context.Context, req llm.CompletionRequest
 
 // Stream creates a span for the streaming request and records token usage from final chunk.
 func (t *TracedProvider) Stream(ctx context.Context, req llm.CompletionRequest) (<-chan llm.StreamChunk, error) {
+	startTime := time.Now()
+
 	ctx, span := t.tracer.Start(ctx, "llm.stream",
 		observability.WithSpanKind(observability.SpanKindClient),
 		observability.WithAttributes(map[string]any{
@@ -130,6 +159,10 @@ func (t *TracedProvider) Stream(ctx context.Context, req llm.CompletionRequest) 
 	if err != nil {
 		span.RecordError(err)
 		span.End()
+		// Record failed request metrics
+		if t.metrics != nil {
+			t.metrics.RecordLLMRequest(ctx, t.provider.Name(), req.Model, "error", 0, 0, 0, time.Since(startTime))
+		}
 		return nil, err
 	}
 
@@ -157,6 +190,10 @@ func (t *TracedProvider) Stream(ctx context.Context, req llm.CompletionRequest) 
 			// Capture error
 			if chunk.Error != nil {
 				span.RecordError(chunk.Error)
+				// Record failed request metrics
+				if t.metrics != nil {
+					t.metrics.RecordLLMRequest(ctx, t.provider.Name(), req.Model, "error", 0, 0, 0, time.Since(startTime))
+				}
 				return
 			}
 
@@ -180,6 +217,7 @@ func (t *TracedProvider) Stream(ctx context.Context, req llm.CompletionRequest) 
 				})
 
 				// Attempt to retrieve and record cost information
+				var costUSD float64
 				if lastRequestID != "" {
 					if costRecord := llm.GetCostRecordByRequestID(lastRequestID); costRecord != nil && costRecord.Cost != nil {
 						span.SetAttributes(map[string]any{
@@ -188,7 +226,14 @@ func (t *TracedProvider) Stream(ctx context.Context, req llm.CompletionRequest) 
 							"llm.cost.accuracy": string(costRecord.Cost.Accuracy),
 							"llm.cost.source":   costRecord.Cost.Source,
 						})
+						costUSD = costRecord.Cost.Amount
 					}
+				}
+
+				// Record successful request metrics
+				if t.metrics != nil {
+					t.metrics.RecordLLMRequest(ctx, t.provider.Name(), req.Model, "success",
+						chunk.Usage.PromptTokens, chunk.Usage.CompletionTokens, costUSD, time.Since(startTime))
 				}
 
 				span.SetStatus(observability.StatusCodeOK, "")

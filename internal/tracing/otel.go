@@ -143,6 +143,12 @@ func (p *OTelProvider) MetricsCollector() *MetricsCollector {
 	return p.metricsCollector
 }
 
+// OTelTracer returns the underlying OpenTelemetry tracer for workflow tracing.
+// This is used by the daemon runner to create workflow and step spans.
+func (p *OTelProvider) OTelTracer(name string) trace.Tracer {
+	return p.tp.Tracer(name)
+}
+
 // MetricsHandler returns an HTTP handler for Prometheus metrics endpoint.
 // The OpenTelemetry prometheus exporter registers metrics with the default Prometheus registry,
 // so we use promhttp.Handler() to expose them.

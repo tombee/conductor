@@ -47,6 +47,7 @@ import (
 	internallog "github.com/tombee/conductor/internal/log"
 	"github.com/tombee/conductor/internal/mcp"
 	"github.com/tombee/conductor/internal/tracing"
+	"github.com/tombee/conductor/pkg/llm"
 	"github.com/tombee/conductor/pkg/security"
 	"github.com/tombee/conductor/pkg/workflow"
 )
@@ -143,25 +144,17 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 	}
 
 	// Create LLM provider for workflow execution
-	// Use the default provider from config
+	// Will be wrapped with tracing/metrics if observability is enabled
+	var baseLLMProvider llm.Provider
 	if cfg.DefaultProvider != "" {
-		llmProvider, err := internalllm.CreateProvider(cfg, cfg.DefaultProvider)
+		var err error
+		baseLLMProvider, err = internalllm.CreateProvider(cfg, cfg.DefaultProvider)
 		if err != nil {
 			logger.Warn("failed to create LLM provider for workflow execution",
 				internallog.Error(err),
 				slog.String("provider", cfg.DefaultProvider))
 			logger.Warn("workflows requiring LLM steps may fail without a configured provider")
-		} else {
-			// Create the workflow executor adapter
-			providerAdapter := internalllm.NewProviderAdapter(llmProvider)
-			// TODO(SPEC-36): Wire up tool registry once tool types are unified
-			// For now, pass nil as tool registry (like CLI does)
-			executor := workflow.NewExecutor(nil, providerAdapter)
-			executionAdapter := runner.NewExecutorAdapter(executor)
-			r.SetAdapter(executionAdapter)
-
-			logger.Info("workflow execution adapter initialized",
-				slog.String("provider", cfg.DefaultProvider))
+			baseLLMProvider = nil
 		}
 	} else {
 		logger.Warn("no default LLM provider configured",
@@ -268,7 +261,33 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 				slog.String("service_version", tracingCfg.ServiceVersion))
 			// Wire metrics collector to runner
 			r.SetMetrics(otelProvider.MetricsCollector())
+			// Wire workflow tracer to runner
+			r.SetWorkflowTracer(otelProvider.OTelTracer("workflow"))
+
+			// Wrap LLM provider with tracing and metrics if provider exists
+			if baseLLMProvider != nil {
+				baseLLMProvider = tracing.WrapProviderWithMetrics(
+					baseLLMProvider,
+					otelProvider.Tracer("llm"),
+					otelProvider.MetricsCollector(),
+				)
+				logger.Info("LLM provider wrapped with observability",
+					slog.String("provider", cfg.DefaultProvider))
+			}
 		}
+	}
+
+	// Set up workflow execution adapter with (possibly wrapped) LLM provider
+	if baseLLMProvider != nil {
+		providerAdapter := internalllm.NewProviderAdapter(baseLLMProvider)
+		// TODO(SPEC-36): Wire up tool registry once tool types are unified
+		// For now, pass nil as tool registry (like CLI does)
+		executor := workflow.NewExecutor(nil, providerAdapter)
+		executionAdapter := runner.NewExecutorAdapter(executor)
+		r.SetAdapter(executionAdapter)
+
+		logger.Info("workflow execution adapter initialized",
+			slog.String("provider", cfg.DefaultProvider))
 	}
 
 	return &Daemon{

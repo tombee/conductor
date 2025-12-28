@@ -29,6 +29,7 @@ import (
 	"github.com/tombee/conductor/internal/remote"
 	"github.com/tombee/conductor/pkg/tools"
 	"github.com/tombee/conductor/pkg/workflow"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // RunStatus represents the status of a workflow run.
@@ -168,6 +169,9 @@ type Runner struct {
 	// Metrics collector for observability (optional)
 	metrics MetricsCollector
 
+	// Workflow tracer for distributed tracing (optional)
+	workflowTracer trace.Tracer
+
 	// Configuration for profile resolution (SPEC-130)
 	config *config.Config
 
@@ -232,6 +236,13 @@ func (r *Runner) SetMetrics(metrics MetricsCollector) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.metrics = metrics
+}
+
+// SetWorkflowTracer sets the tracer for workflow execution tracing.
+func (r *Runner) SetWorkflowTracer(tracer trace.Tracer) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.workflowTracer = tracer
 }
 
 // Submit submits a workflow for execution and returns an immutable snapshot.
