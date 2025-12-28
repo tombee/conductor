@@ -53,6 +53,9 @@ func (m *Manager) monitorServer(state *serverState) {
 			maxAttempts := state.config.MaxRestartAttempts
 			state.mu.Unlock()
 
+			// Emit failed event
+			m.eventEmitter.EmitFailed(serverName, err)
+
 			// Check restart policy
 			if !m.shouldRestart(restartPolicy, maxAttempts, currentRestartCount) {
 				m.logger.Info("restart policy prevents restart",
@@ -92,12 +95,16 @@ func (m *Manager) monitorServer(state *serverState) {
 		state.lastError = ""
 		state.mu.Unlock()
 
+		// Emit started event
+		m.eventEmitter.EmitStarted(serverName)
+
 		// Monitor for restart or stop signals
 		select {
 		case <-state.restartCh:
 			m.logger.Info("restarting mcp server", "server", serverName)
 			state.mu.Lock()
 			state.state = ServerStateRestarting
+			restartAttempt := state.restartCount + 1
 			if state.client != nil {
 				if err := state.client.Close(); err != nil {
 					m.logger.Warn("failed to close MCP client during restart", "server", serverName, "error", err)
@@ -107,6 +114,9 @@ func (m *Manager) monitorServer(state *serverState) {
 			// Reset tool count on restart - will be re-queried on next successful connection
 			state.toolCount = nil
 			state.mu.Unlock()
+
+			// Emit restarting event
+			m.eventEmitter.EmitRestarting(serverName, restartAttempt)
 			continue
 
 		case <-state.stopCh:

@@ -145,7 +145,7 @@ type LogCapture struct {
 func NewLogCapture() *LogCapture {
 	return &LogCapture{
 		buffers: make(map[string]*RingBuffer),
-		maxSize: 1000, // 1000 lines per server
+		maxSize: 10000, // 10000 lines per server
 	}
 }
 

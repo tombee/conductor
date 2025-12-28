@@ -280,32 +280,6 @@ func ErrNoLogsAvailable(name string) *MCPError {
 		)
 }
 
-// ErrPackageResolutionFailed creates an error for when package resolution fails.
-func ErrPackageResolutionFailed(source, version string, cause error) *MCPError {
-	suggestions := []string{
-		"Check that the package name and version are correct",
-		"Verify network connectivity",
-	}
-
-	// Add specific suggestions based on source type
-	if strings.HasPrefix(source, "npm:") {
-		suggestions = append(suggestions,
-			"Ensure npm is installed: npm --version",
-			"Check npm registry access: npm ping",
-		)
-	} else if strings.HasPrefix(source, "pypi:") {
-		suggestions = append(suggestions,
-			"Ensure pip is installed: pip --version",
-			"Check PyPI access: pip index versions <package>",
-		)
-	}
-
-	return NewMCPError(ErrorCodeConfig, fmt.Sprintf("Failed to resolve package '%s' version '%s'", source, version)).
-		WithDetail(cause.Error()).
-		WithCause(cause).
-		WithSuggestions(suggestions...)
-}
-
 // WrapError wraps a standard error in an MCPError if it isn't one already.
 func WrapError(err error, code MCPErrorCode, message string) *MCPError {
 	if mcpErr, ok := err.(*MCPError); ok {

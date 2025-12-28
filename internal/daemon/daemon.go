@@ -75,6 +75,7 @@ type Daemon struct {
 	authMw          *auth.Middleware
 	leader          *leader.Elector
 	mcpRegistry     *mcp.Registry
+	mcpLogCapture   *mcp.LogCapture
 	otelProvider    *tracing.OTelProvider
 
 	mu      sync.Mutex
@@ -256,9 +257,13 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 			slog.String("instance_id", instanceID))
 	}
 
+	// Create shared MCP log capture
+	mcpLogCapture := mcp.NewLogCapture()
+
 	// Create MCP server registry
 	mcpRegistry, err := mcp.NewRegistry(mcp.RegistryConfig{
-		Logger: logger,
+		Logger:     logger,
+		LogCapture: mcpLogCapture,
 	})
 	if err != nil {
 		// MCP registry is optional - log warning but continue
@@ -297,6 +302,7 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 		authMw:          authMw,
 		leader:          elector,
 		mcpRegistry:     mcpRegistry,
+		mcpLogCapture:   mcpLogCapture,
 		otelProvider:    otelProvider,
 	}, nil
 }
@@ -386,7 +392,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Register MCP API if registry is available
 	if d.mcpRegistry != nil {
-		mcpHandler := api.NewMCPHandler(d.mcpRegistry)
+		mcpHandler := api.NewMCPHandler(d.mcpRegistry, d.mcpLogCapture)
 		mcpHandler.RegisterRoutes(router.Mux())
 	}
 

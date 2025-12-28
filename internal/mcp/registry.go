@@ -46,6 +46,9 @@ type Registry struct {
 type RegistryConfig struct {
 	// Logger is used for structured logging (optional)
 	Logger *slog.Logger
+
+	// LogCapture captures MCP server logs (optional)
+	LogCapture *LogCapture
 }
 
 // NewRegistry creates a new MCP registry.
@@ -67,7 +70,10 @@ func NewRegistry(cfg RegistryConfig) (*Registry, error) {
 	}
 
 	// Create runtime manager
-	manager := NewManager(ManagerConfig{Logger: logger})
+	manager := NewManager(ManagerConfig{
+		Logger:     logger,
+		LogCapture: cfg.LogCapture,
+	})
 
 	// Create state manager
 	state, err := NewStateManager()

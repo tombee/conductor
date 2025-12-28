@@ -16,6 +16,7 @@ package mcp
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -124,24 +125,6 @@ func MCPConfigPath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(dir, "mcp.yaml"), nil
-}
-
-// MCPStatePath returns the path to the MCP runtime state file.
-func MCPStatePath() (string, error) {
-	dir, err := config.ConfigDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dir, "mcp-state.json"), nil
-}
-
-// MCPLockfilePath returns the path to the MCP lockfile.
-func MCPLockfilePath() (string, error) {
-	dir, err := config.ConfigDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dir, "mcp-lock.yaml"), nil
 }
 
 // LoadMCPConfig loads the global MCP configuration from disk.
@@ -328,6 +311,13 @@ func ValidateCommand(cmd string) error {
 
 	// Check if it's an absolute path
 	if filepath.IsAbs(cmd) {
+		// Warn if the path is outside standard directories
+		if !strings.HasPrefix(cmd, "/usr/bin/") && !strings.HasPrefix(cmd, "/usr/local/bin/") {
+			slog.Warn("MCP server command path is outside standard directories",
+				"command", cmd,
+				"recommendation", "Consider using commands from /usr/bin or /usr/local/bin for better security")
+		}
+
 		// Verify the file exists and is executable
 		info, err := os.Stat(cmd)
 		if err != nil {

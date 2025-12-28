@@ -32,10 +32,13 @@ type MCPHandler struct {
 }
 
 // NewMCPHandler creates a new MCP handler.
-func NewMCPHandler(registry *mcp.Registry) *MCPHandler {
+func NewMCPHandler(registry *mcp.Registry, logCapture *mcp.LogCapture) *MCPHandler {
+	if logCapture == nil {
+		logCapture = mcp.NewLogCapture()
+	}
 	return &MCPHandler{
 		registry:   registry,
-		logCapture: mcp.NewLogCapture(),
+		logCapture: logCapture,
 	}
 }
 
@@ -441,7 +444,9 @@ type MCPLogEntry struct {
 
 // MCPLogsResponse represents the logs response.
 type MCPLogsResponse struct {
-	Logs []MCPLogEntry `json:"logs"`
+	ServerName      string        `json:"server_name"`
+	Logs            []MCPLogEntry `json:"logs"`
+	BufferSizeBytes int           `json:"buffer_size_bytes"`
 }
 
 // handleGetServerLogs handles GET /v1/mcp/servers/{name}/logs
@@ -479,8 +484,17 @@ func (h *MCPHandler) handleGetServerLogs(w http.ResponseWriter, r *http.Request)
 	// Get logs
 	entries := h.logCapture.GetLogs(name, lines, since)
 
+	// Calculate approximate buffer size in bytes
+	bufferSizeBytes := 0
+	for _, entry := range entries {
+		// Rough estimate: timestamp (30) + level (10) + message length + source (10)
+		bufferSizeBytes += 50 + len(entry.Message)
+	}
+
 	resp := MCPLogsResponse{
-		Logs: make([]MCPLogEntry, len(entries)),
+		ServerName:      name,
+		Logs:            make([]MCPLogEntry, len(entries)),
+		BufferSizeBytes: bufferSizeBytes,
 	}
 
 	for i, entry := range entries {
