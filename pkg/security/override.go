@@ -32,6 +32,9 @@ const (
 	// OverrideDisableEnforcement disables security enforcement entirely
 	OverrideDisableEnforcement OverrideType = "disable-enforcement"
 
+	// OverrideDisableSandbox disables container sandboxing
+	OverrideDisableSandbox OverrideType = "disable-sandbox"
+
 	// OverrideDisableAudit disables audit logging
 	OverrideDisableAudit OverrideType = "disable-audit"
 )
