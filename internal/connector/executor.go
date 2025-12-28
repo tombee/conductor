@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -37,6 +38,34 @@ func sanitizeHeaderValue(name, value string) error {
 // isSensitiveHeader returns true if the header should not be overridden.
 func isSensitiveHeader(name string) bool {
 	return sensitiveHeaders[strings.ToLower(name)]
+}
+
+// parseRetryAfter parses the Retry-After header value.
+// Returns the number of seconds to wait, or 0 if invalid.
+// Supports both delay-seconds (integer) and HTTP-date formats.
+func parseRetryAfter(value string) int {
+	// Try parsing as integer (delay-seconds)
+	if seconds, err := strconv.Atoi(value); err == nil && seconds > 0 {
+		return seconds
+	}
+
+	// Try parsing as HTTP-date (RFC1123, RFC850, or ANSI C)
+	for _, layout := range []string{
+		time.RFC1123,
+		time.RFC850,
+		time.ANSIC,
+	} {
+		if t, err := time.Parse(layout, value); err == nil {
+			delay := int(time.Until(t).Seconds())
+			if delay > 0 {
+				return delay
+			}
+			return 0
+		}
+	}
+
+	// Invalid format, return 0
+	return 0
 }
 
 // httpExecutor handles HTTP request execution for connector operations.
@@ -96,6 +125,12 @@ func (e *httpExecutor) Execute(ctx context.Context, inputs map[string]interface{
 	// Inject default fields for observability connectors
 	injector := NewDefaultFieldInjector()
 	injector.InjectDefaults(inputs, e.connector.name)
+
+	// Validate inputs for observability connectors
+	validator := NewValidator()
+	if err := validator.ValidateConnectorInputs(e.connector.name, e.operationName, inputs); err != nil {
+		return nil, err
+	}
 
 	// Wait for rate limiter
 	waitStart := time.Now()
@@ -184,7 +219,16 @@ func (e *httpExecutor) Execute(ctx context.Context, inputs map[string]interface{
 		if requestID == "" {
 			requestID = resp.Header.Get("X-GitHub-Request-Id")
 		}
-		return nil, ErrorFromHTTPStatus(resp.StatusCode, resp.Status, string(bodyBytes), requestID)
+		err := ErrorFromHTTPStatus(resp.StatusCode, resp.Status, string(bodyBytes), requestID)
+
+		// Extract Retry-After header for rate limit errors
+		if err.Type == ErrorTypeRateLimit {
+			if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
+				err.RetryAfter = parseRetryAfter(retryAfter)
+			}
+		}
+
+		return nil, err
 	}
 
 	// Parse response body as JSON
