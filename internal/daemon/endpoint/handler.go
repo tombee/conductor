@@ -163,14 +163,14 @@ func (h *Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check scope access
+	// Check scope access (skip for public endpoints)
 	user, _ := auth.UserFromContext(r.Context())
 	var userScopes []string
 	if user != nil {
 		userScopes = user.Scopes
 	}
 
-	if !auth.MatchesScope(userScopes, ep.Name) {
+	if !ep.Public && !auth.MatchesScope(userScopes, ep.Name) {
 		// Return 404 instead of 403 to avoid information disclosure
 		h.logger.Warn("Endpoint access denied due to scopes",
 			slog.String("endpoint", name),
@@ -179,6 +179,14 @@ func (h *Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 		)
 		writeError(w, http.StatusNotFound, fmt.Sprintf("endpoint %q not found", name))
 		return
+	}
+
+	// Log public endpoint access for audit
+	if ep.Public {
+		h.logger.Info("Public endpoint accessed",
+			slog.String("endpoint", name),
+			slog.String("user", getUserID(user)),
+		)
 	}
 
 	writeJSON(w, http.StatusOK, EndpointResponse{
@@ -244,14 +252,14 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check scope access
+	// Check scope access (skip for public endpoints)
 	user, _ := auth.UserFromContext(r.Context())
 	var userScopes []string
 	if user != nil {
 		userScopes = user.Scopes
 	}
 
-	if !auth.MatchesScope(userScopes, ep.Name) {
+	if !ep.Public && !auth.MatchesScope(userScopes, ep.Name) {
 		// Return 404 instead of 403 to avoid information disclosure
 		h.logger.Warn("Endpoint access denied due to scopes",
 			slog.String("endpoint", name),
@@ -261,6 +269,14 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 		statusCode = http.StatusNotFound
 		writeError(w, statusCode, fmt.Sprintf("endpoint %q not found", name))
 		return
+	}
+
+	// Log public endpoint access for audit
+	if ep.Public {
+		h.logger.Info("Public endpoint accessed",
+			slog.String("endpoint", name),
+			slog.String("user", getUserID(user)),
+		)
 	}
 
 	// Check rate limit for this endpoint
@@ -357,12 +373,16 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Determine timeout: use endpoint timeout if configured, otherwise runner will use its default
+	timeout := ep.Timeout
+
 	// Submit run
 	run, err := h.runner.Submit(r.Context(), runner.SubmitRequest{
 		WorkflowYAML: workflowYAML,
 		Inputs:       inputs,
 		Workspace:    req.Workspace,
 		Profile:      req.Profile,
+		Timeout:      timeout,
 	})
 	if err != nil {
 		h.logger.Error("Failed to submit run",
@@ -414,14 +434,14 @@ func (h *Handler) handleListRuns(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check scope access
+	// Check scope access (skip for public endpoints)
 	user, _ := auth.UserFromContext(r.Context())
 	var userScopes []string
 	if user != nil {
 		userScopes = user.Scopes
 	}
 
-	if !auth.MatchesScope(userScopes, ep.Name) {
+	if !ep.Public && !auth.MatchesScope(userScopes, ep.Name) {
 		// Return 404 instead of 403 to avoid information disclosure
 		h.logger.Warn("Endpoint access denied due to scopes",
 			slog.String("endpoint", name),
@@ -430,6 +450,14 @@ func (h *Handler) handleListRuns(w http.ResponseWriter, r *http.Request) {
 		)
 		writeError(w, http.StatusNotFound, fmt.Sprintf("endpoint %q not found", name))
 		return
+	}
+
+	// Log public endpoint access for audit
+	if ep.Public {
+		h.logger.Info("Public endpoint accessed",
+			slog.String("endpoint", name),
+			slog.String("user", getUserID(user)),
+		)
 	}
 
 	// Get all runs (no filter)

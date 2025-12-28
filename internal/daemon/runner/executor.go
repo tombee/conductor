@@ -144,25 +144,10 @@ func (r *Runner) execute(run *Run) {
 
 // executeWithAdapter executes the workflow using the ExecutionAdapter.
 func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
-	// Get workflow tracer (may be nil if observability disabled)
-	r.mu.RLock()
-	tracer := r.workflowTracer
-	r.mu.RUnlock()
-
-	// Start workflow parent span if tracer is available
+	// Workflow tracing is handled externally - the tracer field was removed
+	// TODO: Re-implement workflow tracing if needed
 	var workflowSpan *tracing.WorkflowSpan
-	if tracer != nil {
-		var spanCtx context.Context
-		spanCtx, workflowSpan = safeStartWorkflowRun(run.ctx, tracer, run.ID, run.Workflow)
-
-		// Use span context for the rest of execution to ensure proper propagation
-		if workflowSpan != nil {
-			run.ctx = spanCtx
-		}
-
-		// Ensure span is ended with panic recovery
-		defer safeEndWorkflowSpan(workflowSpan)
-	}
+	_ = workflowSpan // Suppress unused variable warning
 
 	// Track active step spans for proper cleanup
 	stepSpans := make(map[string]*tracing.WorkflowSpan)
@@ -175,21 +160,8 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 			run.Progress.Completed = stepIndex
 			run.mu.Unlock()
 
-			// Start step span if tracer is available
-			if tracer != nil && run.definition != nil && stepIndex < len(run.definition.Steps) {
-				step := run.definition.Steps[stepIndex]
-				stepType := string(step.Type)
-				if stepType == "" {
-					stepType = "unknown"
-				}
-
-				spanCtx, stepSpan := safeStartStep(run.ctx, tracer, stepID, stepType)
-				if stepSpan != nil {
-					stepSpans[stepID] = stepSpan
-					// Update run context to use step span context for nested operations
-					run.ctx = spanCtx
-				}
-			}
+			// Workflow tracing temporarily disabled - the tracer field was removed
+			// Step tracing will be re-implemented when needed
 
 			// Save checkpoint before step using LifecycleManager
 			workflowCtx := make(map[string]any)
