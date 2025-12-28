@@ -6,6 +6,7 @@ import (
 
 	"github.com/tombee/conductor/internal/connector"
 	"github.com/tombee/conductor/internal/connector/api"
+	"github.com/tombee/conductor/internal/connector/builtin/cloudwatch"
 	"github.com/tombee/conductor/internal/connector/builtin/discord"
 	"github.com/tombee/conductor/internal/connector/builtin/github"
 	"github.com/tombee/conductor/internal/connector/builtin/jenkins"
@@ -17,11 +18,12 @@ import (
 // These connectors provide type-safe, Go-based implementations with
 // API-specific error handling and pagination support.
 var BuiltinRegistry = map[string]func(config *api.ConnectorConfig) (connector.Connector, error){
-	"github":  github.NewGitHubConnector,
-	"slack":   slack.NewSlackConnector,
-	"jira":    jira.NewJiraConnector,
-	"discord": discord.NewDiscordConnector,
-	"jenkins": jenkins.NewJenkinsConnector,
+	"github":     github.NewGitHubConnector,
+	"slack":      slack.NewSlackConnector,
+	"jira":       jira.NewJiraConnector,
+	"discord":    discord.NewDiscordConnector,
+	"jenkins":    jenkins.NewJenkinsConnector,
+	"cloudwatch": cloudwatch.NewCloudWatchConnector,
 }
 
 func init() {
