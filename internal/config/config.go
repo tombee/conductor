@@ -608,7 +608,6 @@ func Default() *Config {
 			Audit: security.AuditConfig{
 				Enabled: false,
 			},
-			PrewarmSandbox: false,
 		},
 		Daemon: DaemonConfig{
 			AutoStart:   true,
