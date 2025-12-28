@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package daemon
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log/slog"
 	"os"
@@ -24,39 +23,33 @@ import (
 	"syscall"
 
 	"github.com/tombee/conductor/internal/config"
-	"github.com/tombee/conductor/internal/daemon"
 	"github.com/tombee/conductor/internal/log"
 )
 
-// Version information (injected via ldflags at build time)
-var (
-	version   = "dev"
-	commit    = "unknown"
-	buildDate = "unknown"
-)
+// RunOptions configures daemon execution.
+type RunOptions struct {
+	Version   string
+	Commit    string
+	BuildDate string
 
-func main() {
-	// Parse command line flags
-	var (
-		backendType  = flag.String("backend", "", "Storage backend (memory, postgres)")
-		postgresURL  = flag.String("postgres-url", "", "PostgreSQL connection URL")
-		distributed  = flag.Bool("distributed", false, "Enable distributed mode")
-		instanceID   = flag.String("instance-id", "", "Instance ID for distributed mode")
-		socketPath   = flag.String("socket", "", "Unix socket path")
-		tcpAddr      = flag.String("tcp", "", "TCP address to listen on")
-		workflowsDir = flag.String("workflows-dir", "", "Directory for workflow files")
-		tlsCert      = flag.String("tls-cert", "", "Path to TLS certificate file")
-		tlsKey       = flag.String("tls-key", "", "Path to TLS private key file")
-		allowRemote  = flag.Bool("allow-remote", false, "Allow binding to non-localhost addresses (SECURITY WARNING)")
-		showVersion  = flag.Bool("version", false, "Show version information")
-	)
-	flag.Parse()
+	// Config overrides
+	BackendType  string
+	PostgresURL  string
+	Distributed  bool
+	InstanceID   string
+	SocketPath   string
+	TCPAddr      string
+	WorkflowsDir string
+	TLSCert      string
+	TLSKey       string
+	AllowRemote  bool
+}
 
-	if *showVersion {
-		fmt.Printf("conductord %s (commit: %s, built: %s)\n", version, commit, buildDate)
-		os.Exit(0)
-	}
-
+// Run starts the daemon and blocks until shutdown.
+// This is the main entry point for daemon execution, used by both
+// foreground mode (conductor daemon start --foreground) and background
+// mode (conductor --daemon-child).
+func Run(opts RunOptions) error {
 	// Initialize structured logging from environment
 	logger := log.New(log.FromEnv())
 	slog.SetDefault(logger)
@@ -65,51 +58,51 @@ func main() {
 	cfg, err := config.LoadDaemon("")
 	if err != nil {
 		logger.Error("Failed to load config", slog.Any("error", err))
-		os.Exit(1)
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// Apply CLI flag overrides
-	if *backendType != "" {
-		cfg.Daemon.Backend.Type = *backendType
+	// Apply overrides from options
+	if opts.BackendType != "" {
+		cfg.Daemon.Backend.Type = opts.BackendType
 	}
-	if *postgresURL != "" {
-		cfg.Daemon.Backend.Postgres.ConnectionString = *postgresURL
+	if opts.PostgresURL != "" {
+		cfg.Daemon.Backend.Postgres.ConnectionString = opts.PostgresURL
 	}
-	if *distributed {
+	if opts.Distributed {
 		cfg.Daemon.Distributed.Enabled = true
 	}
-	if *instanceID != "" {
-		cfg.Daemon.Distributed.InstanceID = *instanceID
+	if opts.InstanceID != "" {
+		cfg.Daemon.Distributed.InstanceID = opts.InstanceID
 	}
-	if *socketPath != "" {
-		cfg.Daemon.Listen.SocketPath = *socketPath
+	if opts.SocketPath != "" {
+		cfg.Daemon.Listen.SocketPath = opts.SocketPath
 	}
-	if *tcpAddr != "" {
-		cfg.Daemon.Listen.TCPAddr = *tcpAddr
+	if opts.TCPAddr != "" {
+		cfg.Daemon.Listen.TCPAddr = opts.TCPAddr
 	}
-	if *workflowsDir != "" {
-		cfg.Daemon.WorkflowsDir = *workflowsDir
+	if opts.WorkflowsDir != "" {
+		cfg.Daemon.WorkflowsDir = opts.WorkflowsDir
 	}
-	if *tlsCert != "" {
-		cfg.Daemon.Listen.TLSCert = *tlsCert
+	if opts.TLSCert != "" {
+		cfg.Daemon.Listen.TLSCert = opts.TLSCert
 	}
-	if *tlsKey != "" {
-		cfg.Daemon.Listen.TLSKey = *tlsKey
+	if opts.TLSKey != "" {
+		cfg.Daemon.Listen.TLSKey = opts.TLSKey
 	}
-	if *allowRemote {
+	if opts.AllowRemote {
 		cfg.Daemon.Listen.AllowRemote = true
 		logger.Warn("--allow-remote is enabled. The daemon will accept connections from any network address. Ensure you have proper authentication and TLS configured for production use.")
 	}
 
 	// Create daemon instance
-	d, err := daemon.New(cfg, daemon.Options{
-		Version:   version,
-		Commit:    commit,
-		BuildDate: buildDate,
+	d, err := New(cfg, Options{
+		Version:   opts.Version,
+		Commit:    opts.Commit,
+		BuildDate: opts.BuildDate,
 	})
 	if err != nil {
 		logger.Error("Failed to create daemon", slog.Any("error", err))
-		os.Exit(1)
+		return fmt.Errorf("failed to create daemon: %w", err)
 	}
 
 	// Setup signal handling for graceful shutdown
@@ -132,11 +125,14 @@ func main() {
 		cancel()
 		if err := d.Shutdown(context.Background()); err != nil {
 			logger.Error("Error during shutdown", slog.Any("error", err))
+			return fmt.Errorf("shutdown error: %w", err)
 		}
+		return nil
 	case err := <-errCh:
 		if err != nil {
 			logger.Error("Daemon error", slog.Any("error", err))
-			os.Exit(1)
+			return fmt.Errorf("daemon error: %w", err)
 		}
+		return nil
 	}
 }

@@ -15,6 +15,10 @@
 package main
 
 import (
+	"flag"
+	"fmt"
+	"os"
+
 	"github.com/tombee/conductor/internal/cli"
 	"github.com/tombee/conductor/internal/commands/config"
 	"github.com/tombee/conductor/internal/commands/daemon"
@@ -30,6 +34,7 @@ import (
 	"github.com/tombee/conductor/internal/commands/validate"
 	versioncmd "github.com/tombee/conductor/internal/commands/version"
 	"github.com/tombee/conductor/internal/commands/workflow"
+	daemonpkg "github.com/tombee/conductor/internal/daemon"
 )
 
 // Version information (injected via ldflags at build time)
@@ -40,6 +45,46 @@ var (
 )
 
 func main() {
+	// Check for --daemon-child flag before any cobra processing
+	// This flag indicates the binary was spawned by daemon start in background mode
+	daemonChild := false
+	var daemonFlags daemonChildFlags
+
+	for i, arg := range os.Args[1:] {
+		if arg == "--daemon-child" {
+			daemonChild = true
+			// Parse daemon flags
+			daemonFlags = parseDaemonChildFlags(os.Args[i+1:])
+			break
+		}
+	}
+
+	if daemonChild {
+		// Run as daemon child (background mode)
+		runOpts := daemonpkg.RunOptions{
+			Version:      version,
+			Commit:       commit,
+			BuildDate:    buildDate,
+			BackendType:  daemonFlags.backend,
+			PostgresURL:  daemonFlags.postgresURL,
+			Distributed:  daemonFlags.distributed,
+			InstanceID:   daemonFlags.instanceID,
+			SocketPath:   daemonFlags.socket,
+			TCPAddr:      daemonFlags.tcp,
+			WorkflowsDir: daemonFlags.workflowsDir,
+			TLSCert:      daemonFlags.tlsCert,
+			TLSKey:       daemonFlags.tlsKey,
+			AllowRemote:  daemonFlags.allowRemote,
+		}
+
+		if err := daemonpkg.Run(runOpts); err != nil {
+			fmt.Fprintf(os.Stderr, "Daemon error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	// Normal CLI mode
 	// Set version information from build-time ldflags
 	cli.SetVersion(version, commit, buildDate)
 
@@ -59,7 +104,6 @@ func main() {
 
 	// Daemon commands
 	rootCmd.AddCommand(daemon.NewCommand())
-	rootCmd.AddCommand(daemon.NewServeCommand())
 
 	// MCP commands
 	rootCmd.AddCommand(mcp.NewMCPCommand())
@@ -98,4 +142,41 @@ func main() {
 	if err := rootCmd.Execute(); err != nil {
 		cli.HandleExitError(err)
 	}
+}
+
+// daemonChildFlags holds flags for daemon child process.
+type daemonChildFlags struct {
+	backend      string
+	postgresURL  string
+	distributed  bool
+	instanceID   string
+	socket       string
+	tcp          string
+	workflowsDir string
+	tlsCert      string
+	tlsKey       string
+	allowRemote  bool
+}
+
+// parseDaemonChildFlags parses daemon flags from command line.
+// This uses standard flag package to parse flags after --daemon-child.
+func parseDaemonChildFlags(args []string) daemonChildFlags {
+	var flags daemonChildFlags
+
+	fs := flag.NewFlagSet("daemon-child", flag.ContinueOnError)
+	fs.StringVar(&flags.backend, "backend", "", "Storage backend")
+	fs.StringVar(&flags.postgresURL, "postgres-url", "", "PostgreSQL URL")
+	fs.BoolVar(&flags.distributed, "distributed", false, "Distributed mode")
+	fs.StringVar(&flags.instanceID, "instance-id", "", "Instance ID")
+	fs.StringVar(&flags.socket, "socket", "", "Unix socket path")
+	fs.StringVar(&flags.tcp, "tcp", "", "TCP address")
+	fs.StringVar(&flags.workflowsDir, "workflows-dir", "", "Workflows directory")
+	fs.StringVar(&flags.tlsCert, "tls-cert", "", "TLS certificate")
+	fs.StringVar(&flags.tlsKey, "tls-key", "", "TLS key")
+	fs.BoolVar(&flags.allowRemote, "allow-remote", false, "Allow remote")
+
+	// Ignore parse errors - just extract what we can
+	_ = fs.Parse(args)
+
+	return flags
 }

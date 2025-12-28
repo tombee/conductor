@@ -134,15 +134,13 @@ install_binary() {
         exit 1
     fi
 
-    # Install binaries
+    # Install binary
     if [ -f "$TEMP_DIR/conductor" ]; then
         mv "$TEMP_DIR/conductor" "$INSTALL_DIR/"
         chmod +x "$INSTALL_DIR/conductor"
-    fi
-
-    if [ -f "$TEMP_DIR/conductord" ]; then
-        mv "$TEMP_DIR/conductord" "$INSTALL_DIR/"
-        chmod +x "$INSTALL_DIR/conductord"
+    else
+        log_error "Conductor binary not found in archive."
+        exit 1
     fi
 
     # Add to PATH if not already there
@@ -219,112 +217,35 @@ EOF
     log_info "Configuration written to $CONFIG_DIR/config.yaml"
 }
 
-# Create start script
-create_start_script() {
-    log_info "Creating start script..."
-
-    cat > "$HOME/start-conductor.sh" << 'SCRIPT'
-#!/bin/bash
-# Start Conductor daemon with health check
-set -e
-
-DATA_DIR="${DATA_DIR:-$HOME/.local/share/conductor}"
-INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
-CONDUCTOR_PORT="${CONDUCTOR_PORT:-9000}"
-
-# Ensure PATH includes install dir
-export PATH="$PATH:$INSTALL_DIR"
-
-# Check if already running
-if [ -f "$DATA_DIR/conductor.pid" ]; then
-    PID=$(cat "$DATA_DIR/conductor.pid")
-    if kill -0 "$PID" 2>/dev/null; then
-        echo "Conductor is already running (PID: $PID)"
-        exit 0
-    fi
-    rm -f "$DATA_DIR/conductor.pid"
-fi
-
-# Start daemon
-mkdir -p "$DATA_DIR"
-nohup conductord > "$DATA_DIR/conductor.log" 2>&1 &
-DAEMON_PID=$!
-echo $DAEMON_PID > "$DATA_DIR/conductor.pid"
-
-echo "Starting Conductor daemon (PID: $DAEMON_PID)..."
-
-# Wait for health check
-MAX_ATTEMPTS=30
-ATTEMPT=0
-while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-    if curl -sf "http://localhost:${CONDUCTOR_PORT}/health" > /dev/null 2>&1; then
-        echo "Conductor daemon is healthy!"
-        echo "Logs: $DATA_DIR/conductor.log"
-        exit 0
-    fi
-    ATTEMPT=$((ATTEMPT + 1))
-    sleep 1
-done
-
-echo "ERROR: Daemon failed to start within ${MAX_ATTEMPTS} seconds." >&2
-echo "Check logs: $DATA_DIR/conductor.log" >&2
-kill $DAEMON_PID 2>/dev/null || true
-rm -f "$DATA_DIR/conductor.pid"
-exit 1
-SCRIPT
-
-    chmod +x "$HOME/start-conductor.sh"
-
-    # Create stop script too
-    cat > "$HOME/stop-conductor.sh" << 'SCRIPT'
-#!/bin/bash
-# Stop Conductor daemon gracefully
-DATA_DIR="${DATA_DIR:-$HOME/.local/share/conductor}"
-
-if [ ! -f "$DATA_DIR/conductor.pid" ]; then
-    echo "Conductor is not running (no PID file)"
-    exit 0
-fi
-
-PID=$(cat "$DATA_DIR/conductor.pid")
-if ! kill -0 "$PID" 2>/dev/null; then
-    echo "Conductor is not running (stale PID file)"
-    rm -f "$DATA_DIR/conductor.pid"
-    exit 0
-fi
-
-echo "Stopping Conductor daemon (PID: $PID)..."
-kill -TERM "$PID"
-
-# Wait for graceful shutdown
-for i in {1..30}; do
-    if ! kill -0 "$PID" 2>/dev/null; then
-        echo "Conductor stopped"
-        rm -f "$DATA_DIR/conductor.pid"
-        exit 0
-    fi
-    sleep 1
-done
-
-echo "Force killing..."
-kill -9 "$PID" 2>/dev/null || true
-rm -f "$DATA_DIR/conductor.pid"
-echo "Conductor stopped (forced)"
-SCRIPT
-
-    chmod +x "$HOME/stop-conductor.sh"
-
-    log_info "Created ~/start-conductor.sh and ~/stop-conductor.sh"
-}
-
 # Start daemon
 start_daemon() {
     log_info "Starting Conductor daemon..."
 
-    if ! "$HOME/start-conductor.sh"; then
-        log_error "Failed to start daemon. Check logs at $DATA_DIR/conductor.log"
+    # Ensure PATH includes install dir
+    export PATH="$PATH:$INSTALL_DIR"
+
+    # Start the daemon using conductor daemon start
+    if ! conductor daemon start; then
+        log_error "Failed to start daemon. Check logs with: conductor daemon logs"
         exit 1
     fi
+
+    # Wait for health check
+    log_info "Waiting for daemon to become healthy..."
+    MAX_ATTEMPTS=30
+    ATTEMPT=0
+    while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+        if conductor daemon status > /dev/null 2>&1; then
+            log_info "Conductor daemon is healthy!"
+            return 0
+        fi
+        ATTEMPT=$((ATTEMPT + 1))
+        sleep 1
+    done
+
+    log_error "Daemon failed to start within ${MAX_ATTEMPTS} seconds."
+    log_error "Check logs with: conductor daemon logs"
+    exit 1
 }
 
 # Print next steps
@@ -347,9 +268,10 @@ print_next_steps() {
     echo "   conductor runs list"
     echo ""
     echo "Useful commands on this VM:"
-    echo "  ~/start-conductor.sh  - Start the daemon"
-    echo "  ~/stop-conductor.sh   - Stop the daemon"
-    echo "  tail -f ~/.local/share/conductor/conductor.log  - View logs"
+    echo "  conductor daemon start   - Start the daemon"
+    echo "  conductor daemon stop    - Stop the daemon"
+    echo "  conductor daemon status  - Check daemon status"
+    echo "  conductor daemon logs    - View daemon logs"
     echo ""
 }
 
@@ -365,7 +287,6 @@ main() {
     install_binary
     generate_api_key
     create_config
-    create_start_script
     start_daemon
     print_next_steps
 }

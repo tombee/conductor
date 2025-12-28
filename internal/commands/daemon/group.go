@@ -40,6 +40,8 @@ The daemon is the central service that executes workflows. The CLI
 communicates with the daemon to run workflows, check status, and more.`,
 	}
 
+	cmd.AddCommand(NewStartCommand())
+	cmd.AddCommand(NewStopCommand())
 	cmd.AddCommand(newDaemonStatusCommand())
 	cmd.AddCommand(newDaemonPingCommand())
 

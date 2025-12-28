@@ -22,7 +22,7 @@ const backend = spawn('./conduct', ['--port', '9876'])
 
 **Common issues:**
 - **Binary not found**: Verify `conduct` binary exists in app resources
-- **Port in use**: Backend will try ports 9876-9899 sequentially
+- **Port in use**: Backend will try available ports sequentially
 - **Permission denied**: Check binary has execute permissions
 
 ### 2. Port Discovery
@@ -42,10 +42,10 @@ CONDUCTOR_BACKEND_PORT=9876
 **Resolution:**
 ```bash
 # Check if backend can start standalone
-./conductor --port 9876
+conductor daemon start
 
-# Should print port to stdout
-# Press Ctrl+C to stop
+# Check health endpoint
+conductor daemon status
 ```
 
 ### 3. Health Check Polling
@@ -74,10 +74,10 @@ Once port is discovered, Electron polls the health endpoint every 500ms.
 **Resolution:**
 ```bash
 # Test health endpoint manually
-curl http://localhost:9876/health
+conductor daemon status
 
 # Check backend logs for initialization errors
-# Logs are written to stderr by default
+conductor daemon logs
 ```
 
 ### 4. Ready State
@@ -162,9 +162,8 @@ On Electron app quit, the backend receives SIGTERM.
 **Resolution:**
 ```bash
 # Test graceful shutdown
-./conductor &
-PID=$!
-kill -TERM $PID
+conductor daemon start
+conductor daemon stop
 # Should exit within 5s with code 0
 ```
 
@@ -174,7 +173,7 @@ kill -TERM $PID
 None - backend uses sensible defaults
 
 ### Optional
-- `CONDUCTOR_BACKEND_PORT`: Force specific port (default: auto-assign from 9876-9899)
+- `CONDUCTOR_PORT`: Force specific port (default: auto-assign from available ports)
 - `LOG_LEVEL`: Set logging verbosity (debug, info, warn, error)
 - `ANTHROPIC_API_KEY`: Anthropic API key (if not using keychain)
 
@@ -191,34 +190,28 @@ None - backend uses sensible defaults
 
 ### Test health endpoint
 ```bash
-curl http://localhost:9876/health
-```
-
-### Test WebSocket connection
-```bash
-# Using wscat
-wscat -c ws://localhost:9876/rpc -H "Authorization: Bearer <token>"
+conductor daemon status
 ```
 
 ### Monitor backend metrics
 ```bash
-curl http://localhost:9876/metrics
+conductor daemon metrics
 ```
 
 ### Check process status
 ```bash
 # Find backend process
-ps aux | grep conduct
+ps aux | grep conductor
 
-# Check if port is in use
-lsof -i :9876
+# Check daemon status
+conductor daemon status
 ```
 
 ## Logs and Debugging
 
 **Log locations:**
 - **Development**: Backend stderr redirected to console
-- **Production**: `~/Library/Logs/conductor/conductord.log`
+- **Production**: `~/Library/Logs/conductor/daemon.log`
 - **Standalone**: stderr
 
 **Log format:**
@@ -234,7 +227,7 @@ lsof -i :9876
 
 **Enable debug logging:**
 ```bash
-LOG_LEVEL=debug ./conduct
+LOG_LEVEL=debug conductor daemon start
 ```
 
 **Useful debug information:**
@@ -248,7 +241,7 @@ LOG_LEVEL=debug ./conduct
 Before investigating deeper:
 
 - [ ] Backend binary exists and is executable
-- [ ] No other process using ports 9876-9899
+- [ ] No other process using the configured port
 - [ ] Sufficient memory available (backend needs ~200MB)
 - [ ] Electron and backend versions are compatible
 - [ ] No firewall blocking localhost connections
