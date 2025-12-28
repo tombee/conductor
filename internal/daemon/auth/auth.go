@@ -21,10 +21,13 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/tombee/conductor/pkg/security"
 )
 
 // contextKey is a private type for context keys to avoid collisions.
@@ -70,6 +73,12 @@ type Config struct {
 
 	// RateLimit contains rate limiting configuration.
 	RateLimit RateLimitConfig
+
+	// OverrideManager manages security overrides.
+	OverrideManager *security.OverrideManager
+
+	// Logger for audit logging.
+	Logger *slog.Logger
 }
 
 // APIKey represents an API key with metadata.
@@ -92,18 +101,22 @@ type APIKey struct {
 
 // Middleware provides authentication middleware.
 type Middleware struct {
-	mu          sync.RWMutex
-	config      Config
-	keyLookup   map[string]*APIKey
-	rateLimiter *RateLimiter
+	mu              sync.RWMutex
+	config          Config
+	keyLookup       map[string]*APIKey
+	rateLimiter     *RateLimiter
+	overrideManager *security.OverrideManager
+	logger          *slog.Logger
 }
 
 // NewMiddleware creates a new auth middleware.
 func NewMiddleware(cfg Config) *Middleware {
 	m := &Middleware{
-		config:      cfg,
-		keyLookup:   make(map[string]*APIKey),
-		rateLimiter: NewRateLimiter(cfg.RateLimit),
+		config:          cfg,
+		keyLookup:       make(map[string]*APIKey),
+		rateLimiter:     NewRateLimiter(cfg.RateLimit),
+		overrideManager: cfg.OverrideManager,
+		logger:          cfg.Logger,
 	}
 
 	// Build key lookup
@@ -119,6 +132,20 @@ func NewMiddleware(cfg Config) *Middleware {
 func (m *Middleware) Wrap(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !m.config.Enabled {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Check for active security overrides that bypass enforcement
+		if m.overrideManager != nil && m.overrideManager.IsActive(security.OverrideDisableEnforcement) {
+			// Log override usage for audit trail
+			if m.logger != nil {
+				m.logger.Warn("authentication bypassed due to active override",
+					"override_type", security.OverrideDisableEnforcement,
+					"path", r.URL.Path,
+					"method", r.Method,
+					"remote_addr", r.RemoteAddr)
+			}
 			next.ServeHTTP(w, r)
 			return
 		}

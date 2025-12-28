@@ -9,7 +9,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"net/url"
+	neturl "net/url"
 	"strings"
 	"time"
 
@@ -49,6 +49,9 @@ type HTTPTool struct {
 
 	// dnsCache caches DNS resolutions to prevent rebinding
 	dnsCache *security.DNSCache
+
+	// dnsMonitor monitors DNS queries for exfiltration attempts (T8)
+	dnsMonitor *security.DNSQueryMonitor
 }
 
 // NewHTTPTool creates a new HTTP tool with default settings.
@@ -179,6 +182,12 @@ func (t *HTTPTool) WithSecurityConfig(config *security.HTTPSecurityConfig) *HTTP
 	return t
 }
 
+// WithDNSMonitor sets the DNS query monitor for exfiltration prevention (T9).
+func (t *HTTPTool) WithDNSMonitor(monitor *security.DNSQueryMonitor) *HTTPTool {
+	t.dnsMonitor = monitor
+	return t
+}
+
 // Name returns the tool identifier.
 func (t *HTTPTool) Name() string {
 	return "http"
@@ -265,6 +274,27 @@ func (t *HTTPTool) Execute(ctx context.Context, inputs map[string]interface{}) (
 	if t.securityConfig != nil {
 		if err := t.securityConfig.ValidateURL(url); err != nil {
 			return nil, fmt.Errorf("security validation failed for URL %s: %w", url, err)
+		}
+	}
+
+	// T10: Validate DNS query before resolution
+	if t.dnsMonitor != nil {
+		parsedURL, parseErr := neturl.Parse(url)
+		if parseErr != nil {
+			return nil, fmt.Errorf("failed to parse URL for DNS monitoring: %w", parseErr)
+		}
+		hostname := parsedURL.Hostname()
+		if hostname != "" {
+			if validateErr := t.dnsMonitor.ValidateQuery(hostname); validateErr != nil {
+				// T12: Log exfiltration attempt at WARN level
+				if t.logger != nil {
+					t.logger.Warn("DNS exfiltration attempt blocked",
+						slog.String("hostname", hostname),
+						slog.String("url", url),
+						slog.String("error", validateErr.Error()))
+				}
+				return nil, fmt.Errorf("DNS query blocked: %w", validateErr)
+			}
 		}
 	}
 
@@ -395,7 +425,7 @@ func (t *HTTPTool) Execute(ctx context.Context, inputs map[string]interface{}) (
 // This prevents SSRF attacks via substring matching bypasses.
 func (t *HTTPTool) validateURL(rawURL string) error {
 	// Parse URL using standard library
-	parsedURL, err := url.Parse(rawURL)
+	parsedURL, err := neturl.Parse(rawURL)
 	if err != nil {
 		if t.logger != nil {
 			t.logger.Warn("URL parsing failed", "url", rawURL, "error", err)

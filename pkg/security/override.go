@@ -69,13 +69,23 @@ func NewOverrideManager(logger EventLogger) *OverrideManager {
 }
 
 // Apply applies a security override with the given reason.
+// Uses DefaultOverrideDuration for TTL.
 func (m *OverrideManager) Apply(overrideType OverrideType, reason, appliedBy string) (*Override, error) {
+	return m.ApplyWithTTL(overrideType, reason, appliedBy, DefaultOverrideDuration)
+}
+
+// ApplyWithTTL applies a security override with a custom time-to-live.
+func (m *OverrideManager) ApplyWithTTL(overrideType OverrideType, reason, appliedBy string, ttl time.Duration) (*Override, error) {
 	if reason == "" {
 		return nil, fmt.Errorf("override reason is required")
 	}
 
 	if appliedBy == "" {
 		return nil, fmt.Errorf("override applied_by is required")
+	}
+
+	if ttl <= 0 {
+		return nil, fmt.Errorf("override TTL must be positive")
 	}
 
 	m.mu.Lock()
@@ -87,7 +97,7 @@ func (m *OverrideManager) Apply(overrideType OverrideType, reason, appliedBy str
 		Reason:    reason,
 		AppliedBy: appliedBy,
 		AppliedAt: now,
-		ExpiresAt: now.Add(DefaultOverrideDuration),
+		ExpiresAt: now.Add(ttl),
 	}
 
 	m.overrides[overrideType] = override
@@ -209,6 +219,11 @@ func (m *OverrideManager) List() []*Override {
 	}
 
 	return result
+}
+
+// GetActive is an alias for List, returns all active overrides.
+func (m *OverrideManager) GetActive() []*Override {
+	return m.List()
 }
 
 // StartAutoCleanup starts a background goroutine that cleans up expired overrides.

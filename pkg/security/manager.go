@@ -41,6 +41,12 @@ type Manager interface {
 
 	// LogEvent records a security event
 	LogEvent(event SecurityEvent)
+
+	// SetMetricsCollector sets the metrics collector for recording security metrics
+	SetMetricsCollector(collector *MetricsCollector)
+
+	// Close closes the manager and flushes any buffered audit events
+	Close() error
 }
 
 // manager implements the Manager interface.
@@ -161,6 +167,14 @@ func (m *manager) LogEvent(event SecurityEvent) {
 	if m.eventLogger != nil {
 		m.eventLogger.Log(event)
 	}
+}
+
+// Close closes the manager and flushes any buffered audit events.
+func (m *manager) Close() error {
+	if m.eventLogger != nil {
+		return m.eventLogger.Close()
+	}
+	return nil
 }
 
 // checkFileAccess checks if file access is allowed.

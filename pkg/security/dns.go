@@ -35,6 +35,9 @@ type DNSSecurityConfig struct {
 
 	// BlockDynamicDNS blocks known dynamic DNS providers
 	BlockDynamicDNS bool `yaml:"block_dynamic_dns" json:"block_dynamic_dns"`
+
+	// Allowlist contains domains that are exempt from dynamic DNS blocking (T11)
+	Allowlist []string `yaml:"allowlist,omitempty" json:"allowlist,omitempty"`
 }
 
 // DNSExfiltrationLimits defines limits to prevent data exfiltration via DNS.
@@ -132,6 +135,17 @@ func (m *DNSQueryMonitor) ValidateQuery(hostname string) error {
 // checkDynamicDNS checks if hostname uses a dynamic DNS provider.
 func (m *DNSQueryMonitor) checkDynamicDNS(hostname string) error {
 	lowerHost := strings.ToLower(hostname)
+
+	// T11: Check if hostname is in allowlist
+	for _, allowed := range m.config.Allowlist {
+		allowedLower := strings.ToLower(allowed)
+		// Match exact domain or subdomain
+		if lowerHost == allowedLower || strings.HasSuffix(lowerHost, "."+allowedLower) {
+			return nil // Allowed, skip dynamic DNS check
+		}
+	}
+
+	// Check against dynamic DNS providers
 	for _, suffix := range m.dynamicDNSSuffix {
 		if strings.HasSuffix(lowerHost, suffix) {
 			return fmt.Errorf("dynamic DNS provider blocked: %s", hostname)
