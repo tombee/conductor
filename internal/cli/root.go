@@ -51,35 +51,6 @@ Run 'conductor quickstart' to try a simple example workflow.`,
 	return cmd
 }
 
-// Execute runs the root command
-func Execute() {
-	rootCmd := NewRootCommand()
-
-	if err := rootCmd.Execute(); err != nil {
-		HandleExitError(err)
-	}
-}
-
-// GetVerbose returns the verbose flag value
-func GetVerbose() bool {
-	return shared.GetVerbose()
-}
-
-// GetQuiet returns the quiet flag value
-func GetQuiet() bool {
-	return shared.GetQuiet()
-}
-
-// GetJSON returns the JSON output flag value
-func GetJSON() bool {
-	return shared.GetJSON()
-}
-
-// GetConfigPath returns the config file path
-func GetConfigPath() string {
-	return shared.GetConfigPath()
-}
-
 // GetVersion returns version information
 func GetVersion() (string, string, string) {
 	return shared.GetVersion()

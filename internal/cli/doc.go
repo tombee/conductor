@@ -43,7 +43,11 @@ The CLI is organized as:
 From main.go:
 
 	cli.SetVersion(version, commit, date)
-	cli.Execute()
+	rootCmd := cli.NewRootCommand()
+	// ... add commands ...
+	if err := rootCmd.Execute(); err != nil {
+	    cli.HandleExitError(err)
+	}
 
 # Global Flags
 
