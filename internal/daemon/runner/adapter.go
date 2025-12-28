@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tombee/conductor/pkg/llm/cost"
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
@@ -83,6 +84,9 @@ type ExecutionResult struct {
 type ExecutorAdapter struct {
 	// executor is the underlying step executor from pkg/workflow
 	executor *workflow.Executor
+	// costStore tracks LLM costs for this execution (optional)
+	costStore cost.CostStore
+	mu        sync.RWMutex
 }
 
 // NewExecutorAdapter creates a new adapter wrapping the given Executor.
@@ -90,6 +94,13 @@ func NewExecutorAdapter(executor *workflow.Executor) *ExecutorAdapter {
 	return &ExecutorAdapter{
 		executor: executor,
 	}
+}
+
+// SetCostStore sets the cost store for tracking LLM costs.
+func (a *ExecutorAdapter) SetCostStore(store cost.CostStore) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.costStore = store
 }
 
 // ExecuteWorkflow implements ExecutionAdapter by executing each step in sequence.
@@ -106,6 +117,9 @@ func (a *ExecutorAdapter) ExecuteWorkflow(ctx context.Context, def *workflow.Def
 		"inputs":           inputs,
 		"steps":            make(map[string]interface{}),
 		"_templateContext": templateCtx,
+		// Cost tracking context
+		"run_id":      opts.RunID,
+		"workflow_id": def.Name,
 	}
 
 	result := &ExecutionResult{

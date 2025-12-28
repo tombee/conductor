@@ -20,6 +20,7 @@ import (
 	"github.com/tombee/conductor/internal/binding"
 	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/internal/mcp"
+	"github.com/tombee/conductor/pkg/llm/cost"
 )
 
 // Option configures a Runner.
@@ -54,5 +55,12 @@ func WithWorkflowTracer(tracer trace.Tracer) Option {
 		r.mu.Lock()
 		r.workflowTracer = tracer
 		r.mu.Unlock()
+	}
+}
+
+// WithCostStore sets the cost store for LLM cost tracking.
+func WithCostStore(store cost.CostStore) Option {
+	return func(r *Runner) {
+		r.state.SetCostStore(store)
 	}
 }

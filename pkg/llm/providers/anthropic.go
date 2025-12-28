@@ -368,6 +368,9 @@ func (m *MockAnthropicProvider) Complete(ctx context.Context, req llm.Completion
 		_ = modelInfo.CalculateCost(usage)
 	}
 
+	// Track usage for cost tracking
+	m.setLastUsage(usage)
+
 	return resp, nil
 }
 
@@ -399,14 +402,19 @@ func (m *MockAnthropicProvider) Stream(ctx context.Context, req llm.CompletionRe
 		promptTokens := estimateTokens(req.Messages)
 		completionTokens := 10
 
+		usage := llm.TokenUsage{
+			PromptTokens:     promptTokens,
+			CompletionTokens: completionTokens,
+			TotalTokens:      promptTokens + completionTokens,
+		}
+
+		// Track usage for cost tracking
+		m.setLastUsage(usage)
+
 		chunks <- llm.StreamChunk{
 			RequestID:    requestID,
 			FinishReason: llm.FinishReasonStop,
-			Usage: &llm.TokenUsage{
-				PromptTokens:     promptTokens,
-				CompletionTokens: completionTokens,
-				TotalTokens:      promptTokens + completionTokens,
-			},
+			Usage:        &usage,
 		}
 	}()
 

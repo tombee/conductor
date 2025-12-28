@@ -29,6 +29,7 @@ import (
 	"github.com/tombee/conductor/internal/daemon/checkpoint"
 	daemonremote "github.com/tombee/conductor/internal/daemon/remote"
 	"github.com/tombee/conductor/internal/remote"
+	"github.com/tombee/conductor/pkg/llm"
 	"github.com/tombee/conductor/pkg/tools"
 	"github.com/tombee/conductor/pkg/workflow"
 )
@@ -119,6 +120,9 @@ type RunSnapshot struct {
 	AllowHosts []string      `json:"allow_hosts,omitempty"` // Extended allowed hosts
 	AllowPaths []string      `json:"allow_paths,omitempty"` // Extended allowed paths
 	MCPDev     bool          `json:"mcp_dev,omitempty"`     // MCP development mode
+
+	// Cost tracking
+	Cost *llm.CostAggregate `json:"cost,omitempty"` // Aggregated LLM costs for this run
 }
 
 // Progress tracks workflow execution progress.

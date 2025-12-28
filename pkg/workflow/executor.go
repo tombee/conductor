@@ -570,6 +570,16 @@ func (e *Executor) executeLLM(ctx context.Context, step *StepDefinition, inputs 
 		}
 	}
 
+	// Inject cost tracking context from workflow context
+	if runID, ok := inputs["run_id"].(string); ok {
+		options["run_id"] = runID
+	}
+	if workflowID, ok := inputs["workflow_id"].(string); ok {
+		options["workflow_id"] = workflowID
+	}
+	// Add step name for cost tracking
+	options["step_name"] = step.Name
+
 	// Check if structured output is required
 	if step.OutputSchema != nil {
 		return e.executeLLMWithSchema(ctx, prompt, options, step.OutputSchema)

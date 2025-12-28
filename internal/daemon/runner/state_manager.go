@@ -24,15 +24,18 @@ import (
 	"github.com/tombee/conductor/internal/binding"
 	"github.com/tombee/conductor/internal/daemon/backend"
 	"github.com/tombee/conductor/internal/tracing"
+	"github.com/tombee/conductor/pkg/llm"
+	"github.com/tombee/conductor/pkg/llm/cost"
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
 // StateManager handles run state management with thread-safe snapshots.
 // In-memory map is the source of truth; backend persistence is best-effort.
 type StateManager struct {
-	mu      sync.RWMutex
-	runs    map[string]*Run
-	backend backend.Backend
+	mu        sync.RWMutex
+	runs      map[string]*Run
+	backend   backend.Backend
+	costStore cost.CostStore
 }
 
 // NewStateManager creates a new StateManager.
@@ -41,6 +44,13 @@ func NewStateManager(be backend.Backend) *StateManager {
 		runs:    make(map[string]*Run),
 		backend: be,
 	}
+}
+
+// SetCostStore sets the cost store for aggregating run costs.
+func (s *StateManager) SetCostStore(store cost.CostStore) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.costStore = store
 }
 
 // CreateRun creates a new run and persists to backend (best-effort).
@@ -220,6 +230,22 @@ func (s *StateManager) snapshotRun(run *Run) *RunSnapshot {
 		copy(allowPaths, run.AllowPaths)
 	}
 
+	// Query and aggregate costs for this run
+	var costAggregate *llm.CostAggregate
+	if s.costStore != nil {
+		// Query costs by RunID
+		costs, err := s.costStore.GetByRunID(context.Background(), run.ID)
+		if err == nil && len(costs) > 0 {
+			// Aggregate the costs
+			aggregate, err := s.costStore.Aggregate(context.Background(), cost.AggregateOptions{
+				RunID: run.ID,
+			})
+			if err == nil {
+				costAggregate = aggregate
+			}
+		}
+	}
+
 	return &RunSnapshot{
 		ID:            run.ID,
 		WorkflowID:    run.WorkflowID,
@@ -244,6 +270,7 @@ func (s *StateManager) snapshotRun(run *Run) *RunSnapshot {
 		AllowHosts:    allowHosts,
 		AllowPaths:    allowPaths,
 		MCPDev:        run.MCPDev,
+		Cost:          costAggregate,
 	}
 }
 
