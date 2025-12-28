@@ -110,11 +110,33 @@ install_binary() {
 
     OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 
-    # Download URL (adjust based on actual release structure)
+    # Use GitHub API to find the correct asset URL
+    GITHUB_REPO="tombee/conductor"
+
     if [ "$CONDUCTOR_VERSION" = "latest" ]; then
-        DOWNLOAD_URL="https://github.com/tombee/conductor/releases/latest/download/conductor-${OS}-${ARCH}.tar.gz"
+        # Get latest release info from GitHub API
+        RELEASE_API_URL="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
     else
-        DOWNLOAD_URL="https://github.com/tombee/conductor/releases/download/${CONDUCTOR_VERSION}/conductor-${OS}-${ARCH}.tar.gz"
+        RELEASE_API_URL="https://api.github.com/repos/${GITHUB_REPO}/releases/tags/${CONDUCTOR_VERSION}"
+    fi
+
+    log_info "Fetching release info from GitHub..."
+
+    RELEASE_JSON=$(curl -fsSL "$RELEASE_API_URL" 2>/dev/null) || {
+        log_error "Failed to fetch release info from GitHub."
+        log_error "Make sure there are releases at: https://github.com/${GITHUB_REPO}/releases"
+        exit 1
+    }
+
+    # Find asset matching our OS and architecture (handles both naming conventions)
+    # goreleaser produces: conductor_VERSION_OS_ARCH.tar.gz
+    DOWNLOAD_URL=$(echo "$RELEASE_JSON" | grep -o '"browser_download_url": "[^"]*'"${OS}"'[_-]'"${ARCH}"'\.tar\.gz"' | head -1 | cut -d'"' -f4)
+
+    if [ -z "$DOWNLOAD_URL" ]; then
+        log_error "No binary found for ${OS}-${ARCH} in the release."
+        log_error "Available assets:"
+        echo "$RELEASE_JSON" | grep -o '"browser_download_url": "[^"]*"' | cut -d'"' -f4 | sed 's/^/  /'
+        exit 1
     fi
 
     log_info "Downloading from: $DOWNLOAD_URL"
