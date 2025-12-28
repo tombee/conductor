@@ -136,8 +136,29 @@ func (a *ExecutorAdapter) ExecuteWorkflow(ctx context.Context, def *workflow.Def
 			opts.OnLog("info", fmt.Sprintf("Executing step: %s (%s)", step.Name, step.Type), step.ID)
 		}
 
+		// Apply runtime overrides to step (SPEC-156)
+		stepToExecute := step
+		if step.Type == workflow.StepTypeLLM && opts.Model != "" {
+			// Override model for LLM steps
+			stepToExecute.Model = opts.Model
+			if opts.OnLog != nil {
+				opts.OnLog("debug", fmt.Sprintf("Applied model override: %s", opts.Model), step.ID)
+			}
+		}
+
+		// Apply timeout override by wrapping context with deadline (SPEC-156)
+		stepCtx := ctx
+		if opts.Timeout > 0 {
+			var cancel context.CancelFunc
+			stepCtx, cancel = context.WithTimeout(ctx, opts.Timeout)
+			defer cancel()
+			if opts.OnLog != nil {
+				opts.OnLog("debug", fmt.Sprintf("Applied timeout override: %v", opts.Timeout), step.ID)
+			}
+		}
+
 		// Execute the step
-		stepResult, err := a.executor.Execute(ctx, &step, workflowContext)
+		stepResult, err := a.executor.Execute(stepCtx, &stepToExecute, workflowContext)
 
 		// Notify step end
 		if opts.OnStepEnd != nil {
