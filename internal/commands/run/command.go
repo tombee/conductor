@@ -87,7 +87,7 @@ Verbosity levels:
 				noInteractive = true
 			}
 
-			// Validate flag combinations (SPEC-156)
+			// Validate flag combinations
 			if mcpDev && background {
 				return shared.NewInvalidWorkflowError("cannot use --mcp-dev in background mode", nil)
 			}

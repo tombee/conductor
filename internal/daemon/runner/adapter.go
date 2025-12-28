@@ -50,7 +50,7 @@ type ExecutionOptions struct {
 	// level is one of "debug", "info", "warn", "error".
 	OnLog func(level, message, stepID string)
 
-	// Runtime overrides (SPEC-156)
+	// Runtime overrides
 	Provider   string        // Override provider for all LLM steps
 	Model      string        // Override model tier for all LLM steps
 	Timeout    time.Duration // Override step timeout
@@ -136,7 +136,7 @@ func (a *ExecutorAdapter) ExecuteWorkflow(ctx context.Context, def *workflow.Def
 			opts.OnLog("info", fmt.Sprintf("Executing step: %s (%s)", step.Name, step.Type), step.ID)
 		}
 
-		// Apply runtime overrides to step (SPEC-156)
+		// Apply runtime overrides to step
 		stepToExecute := step
 		if step.Type == workflow.StepTypeLLM && opts.Model != "" {
 			// Override model for LLM steps
@@ -146,7 +146,7 @@ func (a *ExecutorAdapter) ExecuteWorkflow(ctx context.Context, def *workflow.Def
 			}
 		}
 
-		// Apply timeout override by wrapping context with deadline (SPEC-156)
+		// Apply timeout override by wrapping context with deadline
 		stepCtx := ctx
 		if opts.Timeout > 0 {
 			var cancel context.CancelFunc

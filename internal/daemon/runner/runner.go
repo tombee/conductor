@@ -70,7 +70,7 @@ type Run struct {
 	Workspace     string         `json:"workspace,omitempty"`  // Workspace used for profile resolution (SPEC-130)
 	Profile       string         `json:"profile,omitempty"`    // Profile used for binding resolution (SPEC-130)
 
-	// Runtime overrides (SPEC-156)
+	// Runtime overrides
 	Provider   string        `json:"provider,omitempty"`    // Provider override
 	Model      string        `json:"model,omitempty"`       // Model tier override
 	Timeout    time.Duration `json:"timeout,omitempty"`     // Step timeout override
@@ -109,7 +109,7 @@ type RunSnapshot struct {
 	Workspace     string         `json:"workspace,omitempty"` // Workspace used for profile resolution (SPEC-130)
 	Profile       string         `json:"profile,omitempty"`   // Profile used for binding resolution (SPEC-130)
 
-	// Runtime overrides (SPEC-156)
+	// Runtime overrides
 	Provider   string        `json:"provider,omitempty"`    // Provider override
 	Model      string        `json:"model,omitempty"`       // Model tier override
 	Timeout    time.Duration `json:"timeout,omitempty"`     // Step timeout override
@@ -148,7 +148,7 @@ type ListFilter struct {
 	Limit    int
 }
 
-// RunOverrides contains runtime override parameters for a workflow run (SPEC-156).
+// RunOverrides contains runtime override parameters for a workflow run.
 type RunOverrides struct {
 	Provider   string
 	Model      string
@@ -174,21 +174,21 @@ type SubmitRequest struct {
 	// Profile selects the profile within the workspace (SPEC-130)
 	// If empty, uses the workspace's default profile
 	Profile string
-	// Provider overrides the default LLM provider for this run (SPEC-156)
+	// Provider overrides the default LLM provider for this run
 	Provider string
-	// Model overrides the model tier for LLM steps (SPEC-156)
+	// Model overrides the model tier for LLM steps
 	Model string
-	// Timeout sets the step timeout duration (SPEC-156)
+	// Timeout sets the step timeout duration
 	Timeout time.Duration
-	// DryRun returns execution plan without running the workflow (SPEC-156)
+	// DryRun returns execution plan without running the workflow
 	DryRun bool
-	// Security applies a security profile name (SPEC-156)
+	// Security applies a security profile name
 	Security string
-	// AllowHosts extends allowed network hosts (SPEC-156)
+	// AllowHosts extends allowed network hosts
 	AllowHosts []string
-	// AllowPaths extends allowed filesystem paths (SPEC-156)
+	// AllowPaths extends allowed filesystem paths
 	AllowPaths []string
-	// MCPDev enables MCP development mode (SPEC-156)
+	// MCPDev enables MCP development mode
 	MCPDev bool
 }
 
@@ -281,7 +281,7 @@ func (r *Runner) SetMetrics(metrics MetricsCollector) {
 
 // Submit submits a workflow for execution and returns an immutable snapshot.
 func (r *Runner) Submit(ctx context.Context, req SubmitRequest) (*RunSnapshot, error) {
-	// Handle dry-run requests separately (SPEC-156 Phase 4)
+	// Handle dry-run requests separately
 	if req.DryRun {
 		return r.DryRun(ctx, req)
 	}
@@ -326,7 +326,7 @@ func (r *Runner) Submit(ctx context.Context, req SubmitRequest) (*RunSnapshot, e
 		return nil, fmt.Errorf("failed to resolve profile bindings: %w", err)
 	}
 
-	// Build runtime overrides from request (SPEC-156)
+	// Build runtime overrides from request
 	var overrides *RunOverrides
 	if req.Provider != "" || req.Model != "" || req.Timeout != 0 || req.Security != "" ||
 		len(req.AllowHosts) > 0 || len(req.AllowPaths) > 0 || req.MCPDev {

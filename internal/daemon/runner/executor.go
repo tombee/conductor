@@ -179,7 +179,7 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 		OnLog: func(level, message, stepID string) {
 			r.addLog(run, level, message, stepID)
 		},
-		// Apply runtime overrides from run (SPEC-156)
+		// Apply runtime overrides from run
 		Provider:   run.Provider,
 		Model:      run.Model,
 		Timeout:    run.Timeout,

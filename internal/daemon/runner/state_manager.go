@@ -73,7 +73,7 @@ func (s *StateManager) CreateRun(ctx context.Context, def *workflow.Definition, 
 		stopped:    make(chan struct{}),
 	}
 
-	// Apply runtime overrides if provided (SPEC-156)
+	// Apply runtime overrides if provided
 	if overrides != nil {
 		run.Provider = overrides.Provider
 		run.Model = overrides.Model
@@ -208,7 +208,7 @@ func (s *StateManager) snapshotRun(run *Run) *RunSnapshot {
 		}
 	}
 
-	// Deep copy AllowHosts and AllowPaths slices to prevent aliasing (SPEC-156)
+	// Deep copy AllowHosts and AllowPaths slices to prevent aliasing
 	var allowHosts []string
 	if run.AllowHosts != nil {
 		allowHosts = make([]string, len(run.AllowHosts))

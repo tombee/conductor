@@ -68,7 +68,7 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	workspace := r.URL.Query().Get("workspace")
 	profile := r.URL.Query().Get("profile")
 
-	// Parse runtime override parameters (SPEC-156)
+	// Parse runtime override parameters
 	provider := r.URL.Query().Get("provider")
 	model := r.URL.Query().Get("model")
 	timeoutStr := r.URL.Query().Get("timeout")

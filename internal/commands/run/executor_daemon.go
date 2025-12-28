@@ -201,7 +201,7 @@ func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, ou
 		params.Add("profile", profile)
 	}
 
-	// Add runtime override parameters (SPEC-156)
+	// Add runtime override parameters
 	if provider != "" {
 		params.Add("provider", provider)
 	}
