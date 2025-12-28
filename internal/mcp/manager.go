@@ -131,6 +131,12 @@ type Manager struct {
 	// logger is used for structured logging
 	logger *slog.Logger
 
+	// eventEmitter emits lifecycle events
+	eventEmitter *EventEmitter
+
+	// logCapture captures server logs
+	logCapture *LogCapture
+
 	// mu protects the servers map
 	mu sync.RWMutex
 
@@ -152,6 +158,12 @@ type ManagerConfig struct {
 	// Logger is used for structured logging (optional)
 	Logger *slog.Logger
 
+	// EventEmitter emits lifecycle events (optional)
+	EventEmitter *EventEmitter
+
+	// LogCapture captures server logs (optional)
+	LogCapture *LogCapture
+
 	// StopTimeout is the maximum time to wait for all servers to stop gracefully.
 	// If zero, defaults to 30 seconds.
 	StopTimeout time.Duration
@@ -166,17 +178,29 @@ func NewManager(cfg ManagerConfig) *Manager {
 		logger = slog.Default()
 	}
 
+	eventEmitter := cfg.EventEmitter
+	if eventEmitter == nil {
+		eventEmitter = NewEventEmitter(logger)
+	}
+
+	logCapture := cfg.LogCapture
+	if logCapture == nil {
+		logCapture = NewLogCapture()
+	}
+
 	stopTimeout := cfg.StopTimeout
 	if stopTimeout == 0 {
 		stopTimeout = 30 * time.Second
 	}
 
 	return &Manager{
-		servers:     make(map[string]*serverState),
-		logger:      logger,
-		ctx:         ctx,
-		cancel:      cancel,
-		stopTimeout: stopTimeout,
+		servers:      make(map[string]*serverState),
+		logger:       logger,
+		eventEmitter: eventEmitter,
+		logCapture:   logCapture,
+		ctx:          ctx,
+		cancel:       cancel,
+		stopTimeout:  stopTimeout,
 	}
 }
 
@@ -244,6 +268,9 @@ func (m *Manager) Stop(name string) error {
 	state.mu.Unlock()
 
 	m.logger.Info("mcp server stopped", "server", name)
+
+	// Emit stopped event
+	m.eventEmitter.EmitStopped(name)
 
 	return nil
 }
