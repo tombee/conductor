@@ -34,6 +34,10 @@ type RetryConfig struct {
 	// Jitter adds randomness to prevent thundering herd (0.0-1.0).
 	Jitter float64
 
+	// AbsoluteTimeout is the maximum total time for all retry attempts.
+	// If 0, no absolute timeout is enforced. Default: 2 minutes.
+	AbsoluteTimeout time.Duration
+
 	// RetryableErrors is a function that determines if an error should trigger a retry.
 	// If nil, uses default logic (transient network and HTTP 5xx errors).
 	RetryableErrors func(error) bool
@@ -47,6 +51,7 @@ func DefaultRetryConfig() RetryConfig {
 		MaxDelay:        10 * time.Second,
 		Multiplier:      2.0,
 		Jitter:          0.1,
+		AbsoluteTimeout: 2 * time.Minute,
 		RetryableErrors: nil, // Use default
 	}
 }
@@ -82,6 +87,13 @@ func (r *RetryableProviderWrapper) Capabilities() Capabilities {
 // Complete executes a completion request with retry logic.
 func (r *RetryableProviderWrapper) Complete(ctx context.Context, req CompletionRequest) (*CompletionResponse, error) {
 	var lastErr error
+
+	// Apply absolute timeout if configured
+	if r.config.AbsoluteTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, r.config.AbsoluteTimeout)
+		defer cancel()
+	}
 
 	for attempt := 0; attempt <= r.config.MaxRetries; attempt++ {
 		if attempt > 0 {
@@ -131,6 +143,13 @@ func (r *RetryableProviderWrapper) Complete(ctx context.Context, req CompletionR
 // This implementation retries the entire stream on failure before any chunks are sent.
 func (r *RetryableProviderWrapper) Stream(ctx context.Context, req CompletionRequest) (<-chan StreamChunk, error) {
 	var lastErr error
+
+	// Apply absolute timeout if configured
+	if r.config.AbsoluteTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, r.config.AbsoluteTimeout)
+		defer cancel()
+	}
 
 	for attempt := 0; attempt <= r.config.MaxRetries; attempt++ {
 		if attempt > 0 {
