@@ -5,9 +5,11 @@ import (
 	"fmt"
 
 	"github.com/tombee/conductor/internal/connector/file"
+	connhttp "github.com/tombee/conductor/internal/connector/http"
 	"github.com/tombee/conductor/internal/connector/shell"
 	"github.com/tombee/conductor/internal/connector/transform"
 	"github.com/tombee/conductor/internal/connector/utility"
+	"github.com/tombee/conductor/pkg/security"
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
@@ -48,6 +50,12 @@ type BuiltinConfig struct {
 
 	// AllowAbsolute controls whether absolute paths are allowed
 	AllowAbsolute bool
+
+	// DNSMonitor provides DNS query monitoring for HTTP connector
+	DNSMonitor *security.DNSQueryMonitor
+
+	// SecurityConfig provides HTTP security validation
+	SecurityConfig *security.HTTPSecurityConfig
 }
 
 // builtinNames lists all builtin connector names.
@@ -56,6 +64,7 @@ var builtinNames = map[string]bool{
 	"shell":     true,
 	"transform": true,
 	"utility":   true,
+	"http":      true,
 }
 
 // IsBuiltin returns true if the connector name is a builtin.
@@ -70,6 +79,7 @@ type BuiltinConnector struct {
 	shellConnector     *shell.ShellConnector
 	transformConnector *transform.TransformConnector
 	utilityConnector   *utility.UtilityConnector
+	httpConnector      *connhttp.HTTPConnector
 }
 
 // NewBuiltin creates a builtin connector by name.
@@ -142,6 +152,21 @@ func NewBuiltin(name string, config *BuiltinConfig) (Connector, error) {
 			utilityConnector: uc,
 		}, nil
 
+	case "http":
+		httpConfig := &connhttp.Config{
+			DNSMonitor:     config.DNSMonitor,
+			SecurityConfig: config.SecurityConfig,
+		}
+		hc, err := connhttp.New(httpConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create http connector: %w", err)
+		}
+
+		return &BuiltinConnector{
+			name:          "http",
+			httpConnector: hc,
+		}, nil
+
 	default:
 		return nil, fmt.Errorf("unknown builtin connector: %s", name)
 	}
@@ -195,6 +220,16 @@ func (c *BuiltinConnector) Execute(ctx context.Context, operation string, inputs
 			Metadata: result.Metadata,
 		}, nil
 
+	case "http":
+		result, err := c.httpConnector.Execute(ctx, operation, inputs)
+		if err != nil {
+			return nil, err
+		}
+		return &Result{
+			Response: result.Response,
+			Metadata: result.Metadata,
+		}, nil
+
 	default:
 		return nil, fmt.Errorf("unknown builtin connector: %s", c.name)
 	}
@@ -222,6 +257,10 @@ func GetBuiltinOperations(name string) []string {
 			"id_uuid", "id_nanoid", "id_custom",
 			"math_clamp", "math_round", "math_min", "math_max",
 		}
+	case "http":
+		return []string{
+			"get", "post", "put", "patch", "delete", "request",
+		}
 	default:
 		return nil
 	}
@@ -238,6 +277,8 @@ func GetBuiltinDescription(name string) string {
 		return "Data transformation operations (parse, extract, split, map, filter, etc.)"
 	case "utility":
 		return "Utility functions (random, ID generation, math operations)"
+	case "http":
+		return "HTTP requests (GET, POST, PUT, PATCH, DELETE with security controls)"
 	default:
 		return ""
 	}

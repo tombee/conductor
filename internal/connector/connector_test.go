@@ -453,7 +453,7 @@ func TestNewBuiltinRegistry(t *testing.T) {
 
 	// Verify all builtin connectors are registered
 	names := registry.List()
-	expected := []string{"file", "shell", "transform", "utility"}
+	expected := []string{"file", "shell", "transform", "utility", "http"}
 
 	if len(names) != len(expected) {
 		t.Errorf("expected %d connectors, got %d", len(expected), len(names))
