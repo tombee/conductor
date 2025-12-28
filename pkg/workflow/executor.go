@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/tombee/conductor/pkg/errors"
@@ -177,13 +178,20 @@ func (e *Executor) WithParallelConcurrency(max int) *Executor {
 // This allows the executor to be independent of the internal/connector package.
 type ActionRegistryFactory func(workflowDir string) (ConnectorRegistry, error)
 
-// defaultActionRegistryFactory is set by the connector package during init.
-var defaultActionRegistryFactory ActionRegistryFactory
+var (
+	// defaultActionRegistryFactory is set by the connector package during init.
+	defaultActionRegistryFactory ActionRegistryFactory
+	// factoryOnce ensures the factory is set exactly once for thread-safe initialization.
+	factoryOnce sync.Once
+)
 
 // SetDefaultActionRegistryFactory sets the factory used by WithWorkflowDir.
 // This is called by the connector package during initialization.
+// The factory can only be set once; subsequent calls are ignored.
 func SetDefaultActionRegistryFactory(factory ActionRegistryFactory) {
-	defaultActionRegistryFactory = factory
+	factoryOnce.Do(func() {
+		defaultActionRegistryFactory = factory
+	})
 }
 
 // WithWorkflowDir sets the workflow directory and initializes the builtin action registry.

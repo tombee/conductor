@@ -236,10 +236,10 @@ func (w *Watcher) handleFileChange(changedPath string) {
 		return
 	}
 
-	w.mu.Lock()
-	defer w.mu.Unlock()
+	// Find which server(s) are watching this path and collect them
+	var serversToRestart []string
 
-	// Find which server(s) are watching this path
+	w.mu.Lock()
 	for serverName, watchedPaths := range w.watchedServers {
 		isWatched := false
 		for _, watchedPath := range watchedPaths {
@@ -250,25 +250,46 @@ func (w *Watcher) handleFileChange(changedPath string) {
 			}
 		}
 
-		if !isWatched {
-			continue
+		if isWatched {
+			serversToRestart = append(serversToRestart, serverName)
 		}
+	}
+	w.mu.Unlock()
 
+	// Schedule restarts outside the lock to avoid holding lock across blocking operation
+	for _, serverName := range serversToRestart {
 		w.logger.Info("mcp server source file changed",
 			"server", serverName,
 			"file", absPath,
 		)
 
-		// Cancel existing timer if any
-		if timer, exists := w.pendingRestarts[serverName]; exists {
-			timer.Stop()
-		}
-
-		// Schedule debounced restart
-		w.pendingRestarts[serverName] = time.AfterFunc(w.debounceDelay, func() {
-			w.triggerRestart(serverName)
-		})
+		w.scheduleRestart(serverName)
 	}
+}
+
+// scheduleRestart schedules a debounced restart for a server.
+// This is extracted to keep lock scopes minimal and avoid holding locks across timer operations.
+func (w *Watcher) scheduleRestart(serverName string) {
+	w.mu.Lock()
+	// Cancel existing timer if any
+	if timer, exists := w.pendingRestarts[serverName]; exists {
+		timer.Stop()
+		delete(w.pendingRestarts, serverName)
+	}
+	w.mu.Unlock()
+
+	// Create a copy of serverName for the closure to avoid capture issues
+	name := serverName
+
+	// Schedule debounced restart (outside lock)
+	timer := time.AfterFunc(w.debounceDelay, func() {
+		w.triggerRestart(name)
+	})
+
+	// Store the timer
+	w.mu.Lock()
+	w.pendingRestarts[serverName] = timer
+	w.mu.Unlock()
 }
 
 // triggerRestart triggers an immediate restart of a server.
