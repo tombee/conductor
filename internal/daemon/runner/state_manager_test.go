@@ -46,7 +46,7 @@ func TestStateManager_CreateRun(t *testing.T) {
 	}
 	inputs := map[string]any{"key": "value"}
 
-	run, err := sm.CreateRun(context.Background(), def, inputs, "http://example.com", "", "", nil)
+	run, err := sm.CreateRun(context.Background(), def, inputs, "http://example.com", "", "", nil, 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestStateManager_GetRun(t *testing.T) {
 	sm := NewStateManager(nil)
 
 	def := &workflow.Definition{Name: "test-workflow"}
-	run, _ := sm.CreateRun(context.Background(), def, nil, "", "", "", nil)
+	run, _ := sm.CreateRun(context.Background(), def, nil, "", "", "", nil, 0)
 
 	// Test successful get
 	snapshot, err := sm.GetRun(run.ID)
@@ -103,7 +103,7 @@ func TestStateManager_GetRunInternal(t *testing.T) {
 	sm := NewStateManager(nil)
 
 	def := &workflow.Definition{Name: "test-workflow"}
-	run, _ := sm.CreateRun(context.Background(), def, nil, "", "", "", nil)
+	run, _ := sm.CreateRun(context.Background(), def, nil, "", "", "", nil, 0)
 
 	// Test successful get
 	internalRun, exists := sm.GetRunInternal(run.ID)
@@ -127,8 +127,8 @@ func TestStateManager_ListRuns(t *testing.T) {
 	def1 := &workflow.Definition{Name: "workflow-1"}
 	def2 := &workflow.Definition{Name: "workflow-2"}
 
-	run1, _ := sm.CreateRun(context.Background(), def1, nil, "", "", "", nil)
-	run2, _ := sm.CreateRun(context.Background(), def2, nil, "", "", "", nil)
+	run1, _ := sm.CreateRun(context.Background(), def1, nil, "", "", "", nil, 0)
+	run2, _ := sm.CreateRun(context.Background(), def2, nil, "", "", "", nil, 0)
 
 	// Update status to test filtering
 	run2.Status = RunStatusCompleted
@@ -168,13 +168,13 @@ func TestStateManager_ActiveRunCount(t *testing.T) {
 	}
 
 	// One pending run
-	run1, _ := sm.CreateRun(context.Background(), def, nil, "", "", "", nil)
+	run1, _ := sm.CreateRun(context.Background(), def, nil, "", "", "", nil, 0)
 	if count := sm.ActiveRunCount(); count != 1 {
 		t.Errorf("expected 1 active run, got %d", count)
 	}
 
 	// Add running run
-	run2, _ := sm.CreateRun(context.Background(), def, nil, "", "", "", nil)
+	run2, _ := sm.CreateRun(context.Background(), def, nil, "", "", "", nil, 0)
 	run2.Status = RunStatusRunning
 	if count := sm.ActiveRunCount(); count != 2 {
 		t.Errorf("expected 2 active runs, got %d", count)
@@ -197,7 +197,7 @@ func TestStateManager_Snapshot(t *testing.T) {
 	sm := NewStateManager(nil)
 
 	def := &workflow.Definition{Name: "test-workflow"}
-	run, _ := sm.CreateRun(context.Background(), def, map[string]any{"key": "value"}, "", "", "", nil)
+	run, _ := sm.CreateRun(context.Background(), def, map[string]any{"key": "value"}, "", "", "", nil, 0)
 	run.Output = map[string]any{"result": "success"}
 	run.Logs = []LogEntry{{Message: "test log"}}
 
@@ -328,7 +328,7 @@ func TestStateManager_Concurrent(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, _ = sm.CreateRun(context.Background(), def, nil, "", "", "", nil)
+			_, _ = sm.CreateRun(context.Background(), def, nil, "", "", "", nil, 0)
 		}()
 	}
 	wg.Wait()
@@ -410,7 +410,7 @@ func TestStepOutputToMap(t *testing.T) {
 func TestStateManager_UpdateRun(t *testing.T) {
 	sm := NewStateManager(nil)
 	def := &workflow.Definition{Name: "test-workflow"}
-	run, _ := sm.CreateRun(context.Background(), def, nil, "", "", "", nil)
+	run, _ := sm.CreateRun(context.Background(), def, nil, "", "", "", nil, 0)
 
 	// Update run state
 	run.Status = RunStatusRunning
@@ -427,7 +427,7 @@ func TestStateManager_UpdateRun_WithBackend(t *testing.T) {
 	mockBE := &mockBackend{}
 	sm := NewStateManager(mockBE)
 	def := &workflow.Definition{Name: "test-workflow"}
-	run, _ := sm.CreateRun(context.Background(), def, nil, "", "", "", nil)
+	run, _ := sm.CreateRun(context.Background(), def, nil, "", "", "", nil, 0)
 
 	run.Status = RunStatusCompleted
 	err := sm.UpdateRun(context.Background(), run)

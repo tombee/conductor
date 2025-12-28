@@ -50,7 +50,6 @@ type Config struct {
 	AgentMappings              AgentMappings `yaml:"agent_mappings,omitempty" json:"agent_mappings,omitempty"`
 	AcknowledgedDefaults       []string      `yaml:"acknowledged_defaults,omitempty" json:"acknowledged_defaults,omitempty"`
 	SuppressUnmappedWarnings   bool          `yaml:"suppress_unmapped_warnings,omitempty" json:"suppress_unmapped_warnings,omitempty"`
-	DefaultVerbosity           string        `yaml:"default_verbosity,omitempty" json:"default_verbosity,omitempty"` // quiet, normal, verbose
 
 	// Workspaces configuration
 	// Workspaces contain profiles for workflow execution configuration
@@ -1070,14 +1069,6 @@ func (c *Config) Validate() error {
 	for agent, provider := range c.AgentMappings {
 		if _, exists := c.Providers[provider]; !exists {
 			errs = append(errs, fmt.Sprintf("agent_mappings[%q] references unknown provider %q. Available: %v", agent, provider, keysOf(c.Providers)))
-		}
-	}
-
-	// Validate default verbosity
-	if c.DefaultVerbosity != "" {
-		validVerbosity := map[string]bool{"quiet": true, "normal": true, "verbose": true}
-		if !validVerbosity[c.DefaultVerbosity] {
-			errs = append(errs, fmt.Sprintf("default_verbosity must be one of [quiet, normal, verbose], got %q", c.DefaultVerbosity))
 		}
 	}
 

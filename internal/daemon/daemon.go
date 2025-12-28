@@ -89,7 +89,21 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 	}
 
 	// Create logger with daemon component context
-	logger := internallog.WithComponent(internallog.New(internallog.FromEnv()), "daemon")
+	// Use daemon-specific log configuration if available, otherwise fall back to global log config
+	level := cfg.Daemon.DaemonLog.Level
+	if level == "" {
+		level = cfg.Log.Level
+	}
+	format := cfg.Daemon.DaemonLog.Format
+	if format == "" {
+		format = cfg.Log.Format
+	}
+	logCfg := &internallog.Config{
+		Level:  level,
+		Format: internallog.Format(format),
+		Output: os.Stderr,
+	}
+	logger := internallog.WithComponent(internallog.New(logCfg), "daemon")
 
 	// Create backend based on configuration
 	var be backend.Backend

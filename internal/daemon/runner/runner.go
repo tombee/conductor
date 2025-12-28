@@ -145,6 +145,9 @@ type SubmitRequest struct {
 	// Profile selects the profile within the workspace.
 	// If empty, uses the workspace's default profile
 	Profile string
+	// Timeout is the maximum execution time for this workflow.
+	// If zero, uses the runner's default timeout.
+	Timeout time.Duration
 }
 
 // Runner manages workflow executions by composing focused components.
@@ -276,8 +279,15 @@ func (r *Runner) Submit(ctx context.Context, req SubmitRequest) (*RunSnapshot, e
 		return nil, fmt.Errorf("failed to resolve profile bindings: %w", err)
 	}
 
+	// Determine timeout for this run
+	timeout := req.Timeout
+	if timeout == 0 {
+		// Fall back to runner's default timeout
+		timeout = r.defTimeout
+	}
+
 	// Create run via StateManager
-	run, err := r.state.CreateRun(ctx, def, req.Inputs, sourceURL, workspace, profile, resolvedBindings)
+	run, err := r.state.CreateRun(ctx, def, req.Inputs, sourceURL, workspace, profile, resolvedBindings, timeout)
 	if err != nil {
 		return nil, err
 	}

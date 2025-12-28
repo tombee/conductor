@@ -45,9 +45,17 @@ func NewStateManager(be backend.Backend) *StateManager {
 
 // CreateRun creates a new run and persists to backend (best-effort).
 // Returns the created Run (internal) for further processing.
-func (s *StateManager) CreateRun(ctx context.Context, def *workflow.Definition, inputs map[string]any, sourceURL, workspace, profile string, bindings *binding.ResolvedBinding) (*Run, error) {
+// If timeout is non-zero, the run context will have a deadline.
+func (s *StateManager) CreateRun(ctx context.Context, def *workflow.Definition, inputs map[string]any, sourceURL, workspace, profile string, bindings *binding.ResolvedBinding, timeout time.Duration) (*Run, error) {
 	runID := uuid.New().String()[:8]
-	runCtx, cancel := context.WithCancel(ctx)
+
+	var runCtx context.Context
+	var cancel context.CancelFunc
+	if timeout > 0 {
+		runCtx, cancel = context.WithTimeout(ctx, timeout)
+	} else {
+		runCtx, cancel = context.WithCancel(ctx)
+	}
 
 	// Extract correlation ID from context (set by HTTP middleware)
 	correlationID := string(tracing.FromContextOrEmpty(ctx))
