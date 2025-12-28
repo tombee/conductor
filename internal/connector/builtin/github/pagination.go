@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"strconv"
 
 	"github.com/tombee/conductor/internal/connector"
 )
@@ -133,23 +132,4 @@ func hasNextPageLink(linkHeader string) bool {
 	// Parse Link header: <https://api.github.com/repos/...?page=2>; rel="next"
 	nextLinkRegex := regexp.MustCompile(`<[^>]+>;\s*rel="next"`)
 	return nextLinkRegex.MatchString(linkHeader)
-}
-
-// parsePageFromLink extracts the page number from a Link header URL.
-func parsePageFromLink(linkHeader string) (int, error) {
-	// Extract URL from <URL>; rel="next"
-	urlRegex := regexp.MustCompile(`<([^>]+)>;\s*rel="next"`)
-	matches := urlRegex.FindStringSubmatch(linkHeader)
-	if len(matches) < 2 {
-		return 0, fmt.Errorf("no next link found")
-	}
-
-	// Extract page parameter from URL
-	pageRegex := regexp.MustCompile(`[?&]page=(\d+)`)
-	pageMatches := pageRegex.FindStringSubmatch(matches[1])
-	if len(pageMatches) < 2 {
-		return 0, fmt.Errorf("no page parameter found")
-	}
-
-	return strconv.Atoi(pageMatches[1])
 }

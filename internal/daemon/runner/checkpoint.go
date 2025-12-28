@@ -20,8 +20,6 @@ package runner
 import (
 	"context"
 	"fmt"
-
-	"github.com/tombee/conductor/internal/daemon/checkpoint"
 )
 
 // ResumeInterrupted attempts to resume any interrupted runs from checkpoints.
@@ -52,31 +50,4 @@ func (r *Runner) ResumeInterrupted(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-// saveCheckpoint saves a checkpoint for the current execution state.
-func (r *Runner) saveCheckpoint(run *Run, stepIndex int, workflowCtx map[string]any) {
-	if r.lifecycle.checkpoints == nil || !r.lifecycle.checkpoints.Enabled() {
-		return
-	}
-
-	cp := &checkpoint.Checkpoint{
-		RunID:       run.ID,
-		WorkflowID:  run.WorkflowID,
-		StepID:      run.Progress.CurrentStep,
-		StepIndex:   stepIndex,
-		Context:     workflowCtx,
-		StepOutputs: make(map[string]any),
-	}
-
-	// Copy step outputs
-	for k, v := range workflowCtx {
-		if k != "inputs" {
-			cp.StepOutputs[k] = v
-		}
-	}
-
-	if err := r.lifecycle.checkpoints.Save(context.Background(), cp); err != nil {
-		r.addLog(run, "warn", fmt.Sprintf("Failed to save checkpoint: %v", err), "")
-	}
 }

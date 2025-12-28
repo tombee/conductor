@@ -3,7 +3,6 @@ package jenkins
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/tombee/conductor/internal/connector"
 )
@@ -391,22 +390,5 @@ func (c *JenkinsConnector) defaultHeaders() map[string]string {
 	return map[string]string{
 		"Accept":       "application/json",
 		"Content-Type": "application/json",
-	}
-}
-
-// buildNumberToString converts a build_number input to a string for URL building.
-// Jenkins accepts both numbers and special values like "lastBuild", "lastSuccessfulBuild", etc.
-func buildNumberToString(buildNumber interface{}) string {
-	switch v := buildNumber.(type) {
-	case string:
-		return v
-	case int:
-		return strconv.Itoa(v)
-	case int64:
-		return strconv.FormatInt(v, 10)
-	case float64:
-		return strconv.FormatInt(int64(v), 10)
-	default:
-		return fmt.Sprint(v)
 	}
 }

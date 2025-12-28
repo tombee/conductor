@@ -70,28 +70,6 @@ func (m *mockTool) Execute(ctx context.Context, inputs map[string]interface{}) (
 	return m.output, nil
 }
 
-// mockFlakyTool is a tool that fails a few times then succeeds
-type mockFlakyTool struct {
-	name         string
-	attemptCount *int
-}
-
-func (m *mockFlakyTool) Name() string {
-	return m.name
-}
-
-func (m *mockFlakyTool) Description() string {
-	return "Flaky tool for testing retries"
-}
-
-func (m *mockFlakyTool) Execute(ctx context.Context, inputs map[string]interface{}) (map[string]interface{}, error) {
-	*m.attemptCount++
-	if *m.attemptCount < 3 {
-		return nil, errors.New("temporary failure")
-	}
-	return map[string]interface{}{"result": "success"}, nil
-}
-
 // mockSlowTool is a tool that takes longer than the timeout
 type mockSlowTool struct {
 	name string

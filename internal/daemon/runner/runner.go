@@ -529,8 +529,3 @@ func (r *Runner) getBackend() backend.Backend {
 func (r *Runner) toBackendRun(run *Run) *backend.Run {
 	return r.state.toBackendRun(run)
 }
-
-// snapshotRun creates an immutable snapshot of a run.
-func (r *Runner) snapshotRun(run *Run) *RunSnapshot {
-	return r.state.snapshotRun(run)
-}

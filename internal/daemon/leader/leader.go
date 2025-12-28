@@ -18,7 +18,6 @@ package leader
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -219,38 +218,4 @@ func (e *Elector) Status() LeaderStatus {
 		InstanceID: e.instanceID,
 		IsLeader:   e.IsLeader(),
 	}
-}
-
-// --- Standalone helper functions for simple use cases ---
-
-// TryAcquireLock attempts to acquire an advisory lock.
-func TryAcquireLock(ctx context.Context, db *sql.DB, lockID int64) (bool, error) {
-	var acquired bool
-	err := db.QueryRowContext(ctx, "SELECT pg_try_advisory_lock($1)", lockID).Scan(&acquired)
-	if err != nil {
-		return false, fmt.Errorf("failed to acquire lock: %w", err)
-	}
-	return acquired, nil
-}
-
-// ReleaseLock releases an advisory lock.
-func ReleaseLock(ctx context.Context, db *sql.DB, lockID int64) error {
-	_, err := db.ExecContext(ctx, "SELECT pg_advisory_unlock($1)", lockID)
-	if err != nil {
-		return fmt.Errorf("failed to release lock: %w", err)
-	}
-	return nil
-}
-
-// WithLock executes a function while holding an advisory lock.
-func WithLock(ctx context.Context, db *sql.DB, lockID int64, fn func() error) error {
-	acquired, err := TryAcquireLock(ctx, db, lockID)
-	if err != nil {
-		return err
-	}
-	if !acquired {
-		return fmt.Errorf("could not acquire lock")
-	}
-	defer ReleaseLock(ctx, db, lockID)
-	return fn()
 }
