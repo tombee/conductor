@@ -18,9 +18,14 @@ package llm
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"sync"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/pkg/llm"
+	"github.com/tombee/conductor/pkg/llm/cost"
 	"github.com/tombee/conductor/pkg/llm/providers"
 	"github.com/tombee/conductor/pkg/llm/providers/claudecode"
 )
@@ -28,12 +33,21 @@ import (
 // ProviderAdapter adapts the full llm.Provider interface to the simpler
 // workflow.LLMProvider interface expected by the step executor.
 type ProviderAdapter struct {
-	provider llm.Provider
+	provider  llm.Provider
+	costStore cost.CostStore
+	mu        sync.RWMutex
 }
 
 // NewProviderAdapter creates a new adapter wrapping an llm.Provider.
 func NewProviderAdapter(provider llm.Provider) *ProviderAdapter {
 	return &ProviderAdapter{provider: provider}
+}
+
+// SetCostStore sets the cost store for tracking LLM costs.
+func (a *ProviderAdapter) SetCostStore(store cost.CostStore) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.costStore = store
 }
 
 // Complete implements workflow.LLMProvider interface.
@@ -72,12 +86,64 @@ func (a *ProviderAdapter) Complete(ctx context.Context, prompt string, options m
 	}
 
 	// Make the completion request
+	startTime := time.Now()
 	resp, err := a.provider.Complete(ctx, req)
+	duration := time.Since(startTime)
+
 	if err != nil {
 		return "", fmt.Errorf("LLM completion failed: %w", err)
 	}
 
+	// Record cost after successful completion (non-blocking)
+	a.recordCost(ctx, req, resp, duration, options)
+
 	return resp.Content, nil
+}
+
+// recordCost records the cost of an LLM request in the cost store.
+// This is non-blocking and logs errors without failing the request.
+func (a *ProviderAdapter) recordCost(ctx context.Context, req llm.CompletionRequest, resp *llm.CompletionResponse, duration time.Duration, options map[string]interface{}) {
+	a.mu.RLock()
+	store := a.costStore
+	a.mu.RUnlock()
+
+	// Skip if no cost store configured
+	if store == nil {
+		return
+	}
+
+	// Extract context from options (RunID, StepName, WorkflowID)
+	runID, _ := options["run_id"].(string)
+	stepName, _ := options["step_name"].(string)
+	workflowID, _ := options["workflow_id"].(string)
+
+	// Build cost record
+	record := llm.CostRecord{
+		ID:          uuid.New().String(),
+		RequestID:   resp.RequestID,
+		RunID:       runID,
+		StepName:    stepName,
+		WorkflowID:  workflowID,
+		Provider:    a.provider.Name(),
+		Model:       req.Model,
+		Timestamp:   time.Now(),
+		Duration:    duration,
+		Usage:       resp.Usage,
+		// Cost calculation could be added here based on pricing tables
+		// For now, record Usage which can be used for cost calculation later
+		Cost: nil,
+	}
+
+	// Store the record (async to avoid blocking execution)
+	go func() {
+		if err := store.Store(context.Background(), record); err != nil {
+			// Log warning but don't fail the request
+			slog.Warn("failed to store cost record",
+				slog.String("error", err.Error()),
+				slog.String("run_id", runID),
+				slog.String("step_name", stepName))
+		}
+	}()
 }
 
 // CreateProvider creates an llm.Provider from config.

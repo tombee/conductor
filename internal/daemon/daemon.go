@@ -47,6 +47,7 @@ import (
 	internallog "github.com/tombee/conductor/internal/log"
 	"github.com/tombee/conductor/internal/mcp"
 	"github.com/tombee/conductor/internal/tracing"
+	"github.com/tombee/conductor/pkg/llm/cost"
 	"github.com/tombee/conductor/pkg/security"
 	"github.com/tombee/conductor/pkg/workflow"
 )
@@ -136,11 +137,14 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 		return nil, fmt.Errorf("failed to create checkpoint manager: %w", err)
 	}
 
-	// Create runner with configured concurrency
+	// Create cost store for LLM cost tracking
+	costStore := cost.NewMemoryStore()
+
+	// Create runner with configured concurrency and cost tracking
 	r := runner.New(runner.Config{
 		MaxParallel:    cfg.Daemon.MaxConcurrentRuns,
 		DefaultTimeout: cfg.Daemon.DefaultTimeout,
-	}, be, cm)
+	}, be, cm, runner.WithCostStore(costStore))
 
 	// Create remote workflow fetcher
 	// This enables remote workflow support (github:user/repo)
@@ -166,12 +170,14 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 				slog.String("provider", cfg.DefaultProvider))
 			logger.Warn("workflows requiring LLM steps may fail without a configured provider")
 		} else {
-			// Create the workflow executor adapter
+			// Create the workflow executor adapter with cost tracking
 			providerAdapter := internalllm.NewProviderAdapter(llmProvider)
+			providerAdapter.SetCostStore(costStore)
 			// TODO: Wire up tool registry once tool types are unified
 			// For now, pass nil as tool registry (like CLI does)
 			executor := workflow.NewExecutor(nil, providerAdapter)
 			executionAdapter := runner.NewExecutorAdapter(executor)
+			executionAdapter.SetCostStore(costStore)
 			r.SetAdapter(executionAdapter)
 
 			logger.Info("workflow execution adapter initialized",
