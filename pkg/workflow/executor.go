@@ -116,8 +116,13 @@ type LLMProvider interface {
 
 // ConnectorRegistry defines the interface for connector lookup and execution.
 type ConnectorRegistry interface {
-	// Execute runs a connector operation
-	// The reference should be in format "connector_name.operation_name"
+	// Execute runs a connector operation.
+	// The reference should be in format "connector_name.operation_name".
+	//
+	// Contract: Implementations MUST follow Go conventions:
+	//   - On success: return (result, nil) where result is non-nil
+	//   - On error: return (nil, error) where error is non-nil
+	//   - Returning (nil, nil) is a contract violation and will be treated as an error
 	Execute(ctx context.Context, reference string, inputs map[string]interface{}) (ConnectorResult, error)
 }
 
@@ -400,6 +405,15 @@ func (e *Executor) executeConnector(ctx context.Context, step *StepDefinition, i
 			"error", err,
 		)
 		return nil, fmt.Errorf("connector execution failed: %w", err)
+	}
+
+	// Check for nil result (contract violation: Execute returned nil without error)
+	if result == nil {
+		e.logger.Error("connector returned nil result without error",
+			"step_id", step.ID,
+			"connector", step.Connector,
+		)
+		return nil, fmt.Errorf("connector %q returned nil result without error", step.Connector)
 	}
 
 	// Log successful execution with metadata
@@ -798,13 +812,23 @@ func (e *Executor) executeParallel(ctx context.Context, step *StepDefinition, in
 			// Execute the step
 			result, err := e.Execute(ctx, &s, nestedContext)
 
-			e.logger.Debug("nested step completed",
-				"parent_step_id", step.ID,
-				"step_id", s.ID,
-				"status", result.Status,
-				"duration", time.Since(stepStart),
-				"error", err,
-			)
+			// Log completion with nil-safe result access
+			if result != nil {
+				e.logger.Debug("nested step completed",
+					"parent_step_id", step.ID,
+					"step_id", s.ID,
+					"status", result.Status,
+					"duration", time.Since(stepStart),
+					"error", err,
+				)
+			} else {
+				e.logger.Debug("nested step failed without result",
+					"parent_step_id", step.ID,
+					"step_id", s.ID,
+					"duration", time.Since(stepStart),
+					"error", err,
+				)
+			}
 
 			if err != nil && failFast {
 				cancel() // Cancel other steps on first error

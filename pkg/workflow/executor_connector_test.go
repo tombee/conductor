@@ -120,6 +120,22 @@ func TestExecuteConnector(t *testing.T) {
 			mockRegistry: nil,
 			expectError:  true,
 		},
+		{
+			name: "connector returns nil result without error (contract violation)",
+			step: &StepDefinition{
+				ID:        "test_step",
+				Type:      StepTypeConnector,
+				Connector: "broken.connector",
+			},
+			inputs: map[string]interface{}{},
+			mockRegistry: &mockConnectorRegistry{
+				executeFunc: func(ctx context.Context, reference string, inputs map[string]interface{}) (ConnectorResult, error) {
+					// Return (nil, nil) - contract violation
+					return nil, nil
+				},
+			},
+			expectError: true,
+		},
 	}
 
 	for _, tt := range tests {
