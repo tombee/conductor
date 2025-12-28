@@ -124,3 +124,39 @@ func ValidateTLSConfig(cfg *tls.Config) error {
 
 	return nil
 }
+
+// TLSConfigInput provides configuration for building a TLS config.
+type TLSConfigInput struct {
+	Enabled           bool
+	VerifyCertificate bool
+	CACertPath        string
+}
+
+// BuildTLSConfig creates a TLS configuration from input parameters.
+// Returns nil if TLS is not enabled.
+func BuildTLSConfig(input TLSConfigInput) (*tls.Config, error) {
+	if !input.Enabled {
+		return nil, nil
+	}
+
+	builder := NewTLSConfigBuilder()
+
+	// Configure certificate verification
+	if !input.VerifyCertificate {
+		builder.WithInsecureSkipVerify(true)
+	}
+
+	// Load custom CA if provided
+	if input.CACertPath != "" {
+		if err := builder.WithCustomCA(input.CACertPath); err != nil {
+			return nil, fmt.Errorf("failed to load CA certificate: %w", err)
+		}
+	} else if input.VerifyCertificate {
+		// Use system cert pool for verification
+		if err := builder.WithSystemCertPool(); err != nil {
+			return nil, fmt.Errorf("failed to load system cert pool: %w", err)
+		}
+	}
+
+	return builder.Build(), nil
+}
