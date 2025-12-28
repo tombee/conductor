@@ -399,6 +399,75 @@ daemon_auth:
 
 ---
 
+## Observability Export Configuration
+
+Settings for controlling how traces are exported to external observability platforms.
+
+### daemon.observability.batch_size
+
+**Type:** `integer`
+**Default:** `512`
+
+Maximum number of spans per export batch. Higher values reduce network overhead but increase memory usage and potential data loss on crashes. Most OTLP receivers accept batches up to 512 spans.
+
+### daemon.observability.batch_interval
+
+**Type:** `integer` (seconds)
+**Default:** `5`
+
+How often to flush spans to exporters, in seconds. Lower values provide faster trace visibility but increase network traffic. Higher values batch more efficiently but delay trace availability.
+
+```yaml
+daemon:
+  observability:
+    enabled: true
+    batch_size: 512
+    batch_interval: 5
+    exporters:
+      - type: otlp
+        endpoint: localhost:4317
+```
+
+---
+
+## Observability Sampling Configuration
+
+Settings for controlling which traces are recorded and exported.
+
+### daemon.observability.sampling.enabled
+
+**Type:** `boolean`
+**Default:** `false`
+
+Enable trace sampling to reduce volume. When disabled, all traces are recorded.
+
+### daemon.observability.sampling.rate
+
+**Type:** `float`
+**Default:** `1.0`
+**Validation:** Must be between 0.0 and 1.0
+
+Fraction of traces to sample. A value of 1.0 samples all traces, 0.1 samples 10%, and 0.0 samples no traces. Sampling decisions are deterministic based on trace ID to ensure consistent behavior across distributed services.
+
+### daemon.observability.sampling.always_sample_errors
+
+**Type:** `boolean`
+**Default:** `true`
+
+Sample all traces containing error spans regardless of the sampling rate. This ensures error traces are never lost due to sampling.
+
+```yaml
+daemon:
+  observability:
+    enabled: true
+    sampling:
+      enabled: true
+      rate: 0.1  # Sample 10% of traces
+      always_sample_errors: true
+```
+
+---
+
 ## Observability Storage Retention
 
 Settings for how long observability data is retained.
@@ -424,6 +493,13 @@ Number of days to retain event data. Must be a positive integer when observabili
 
 Number of days to retain aggregate metrics. Must be a positive integer when observability is enabled.
 
+### daemon.observability.storage.retention.cleanup_interval
+
+**Type:** `integer` (hours)
+**Default:** `1`
+
+How often to run the retention cleanup job, in hours. The cleanup process deletes traces, events, and aggregates older than the configured retention periods. More frequent cleanup reduces storage usage spikes but increases I/O overhead.
+
 ```yaml
 daemon:
   observability:
@@ -433,6 +509,7 @@ daemon:
         trace_days: 7
         event_days: 30
         aggregate_days: 90
+        cleanup_interval: 1
 ```
 
 ---
