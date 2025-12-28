@@ -1,7 +1,7 @@
 # Creating Custom Tools
 
 :::note[Prerequisites]
-This guide is for developers who want to extend Conductor with custom tools. If you're just getting started, begin with the [Quick Start](../quick-start.md) guide.
+This guide is for developers who want to extend Conductor with custom tools. If you're just getting started, begin with the [Getting Started](../getting-started/) guide.
 
 **Required knowledge:**
 

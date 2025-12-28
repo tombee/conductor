@@ -17,7 +17,7 @@ This workflow transforms verbose event data (build logs, alerts, deployment info
 
 ### Required
 
-- Conductor installed ([Installation Guide](../getting-started/installation.md))
+- Conductor installed ([Getting Started](../getting-started/))
 - LLM provider configured (Claude Code, Anthropic API, or OpenAI)
 - Slack Bot Token with `chat:write` permission
 

@@ -547,5 +547,5 @@ steps:
 
 - [Workflow Schema Reference](workflow-schema.md) - Complete field documentation
 - [CLI Reference](cli.md) - All CLI commands and flags
-- [Building Workflows](../building-workflows/index.md) - Workflow development guide
+- [Workflow Patterns](../building-workflows/patterns.md) - Workflow development guide
 - [Examples](../examples/index.md) - Real-world workflow examples

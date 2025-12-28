@@ -18,7 +18,7 @@ This workflow automatically reviews code changes in a git branch using three spe
 ### Required
 
 - Git repository with changes on a feature branch
-- Conductor installed ([Installation Guide](../getting-started/installation.md))
+- Conductor installed ([Getting Started](../getting-started/))
 - LLM provider configured (Claude Code, Anthropic API, or OpenAI)
 
 ### Optional

@@ -1,7 +1,7 @@
 # Embedding Conductor in Go Projects
 
 :::note[Prerequisites]
-This guide is for advanced users who want to embed Conductor as a Go library in their applications. If you're just getting started with Conductor, begin with the [Quick Start](../quick-start.md) guide.
+This guide is for advanced users who want to embed Conductor as a Go library in their applications. If you're just getting started with Conductor, begin with the [Getting Started](../getting-started/) guide.
 
 **Required knowledge:**
 

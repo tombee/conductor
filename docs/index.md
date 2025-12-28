@@ -145,7 +145,7 @@ Conductor prompts you for inputs. In seconds, you'll get a complete song with ge
 
 ### 3. Learn More
 
-- **[Quick Start](quick-start.md)** — Get started quickly
+- **[Getting Started](getting-started/)** — Installation and first workflow
 - **[Tutorial: First Workflow](learn/tutorials/first-workflow.md)** — Build a workflow from scratch
 - **[Workflows and Steps](learn/concepts/workflows-steps.md)** — Understand how workflows work
 

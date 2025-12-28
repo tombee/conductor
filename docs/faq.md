@@ -12,7 +12,7 @@ The easiest way is via Homebrew:
 brew install conductor
 ```
 
-For other methods, see the [Installation Guide](getting-started/installation.md).
+For other methods, see the [Getting Started Guide](getting-started/).
 
 ### Why isn't the conductor command found after installation?
 
@@ -50,7 +50,7 @@ docker run --rm -v $(pwd):/workspace \
   ghcr.io/tombee/conductor:latest run /workspace/workflow.yaml
 ```
 
-See [Docker Deployment](production/deployment/docker.md) for full details.
+See [Deployment Guide](production/deployment.md) for full details.
 
 ## Workflows
 
@@ -58,7 +58,7 @@ See [Docker Deployment](production/deployment/docker.md) for full details.
 
 A **workflow** is the complete automation, defined in a YAML file with inputs, steps, and outputs. A **step** is a single action within the workflow, like calling an LLM or running a shell command.
 
-See [Core Concepts](getting-started/concepts.md#workflows-and-steps) for details.
+See [Getting Started](getting-started/) for details.
 
 ### How do I reference outputs from previous steps?
 
@@ -214,7 +214,7 @@ webhooks:
     workflow: workflows/pr-review.yaml
 ```
 
-See [Daemon Mode](building-workflows/daemon-mode.md) and [Deployment Guide](production/deployment/index.md).
+See [Daemon Mode](building-workflows/daemon-mode.md) and [Deployment Guide](production/deployment.md).
 
 ### Can I run Conductor in production?
 
@@ -225,7 +225,7 @@ Yes! Conductor is designed for production use. Deploy with:
 - **Bare metal** - Direct server installation
 - **exe.dev** - Cloud deployment platform
 
-See [Production Guide](production/index.md) for best practices.
+See [Deployment Guide](production/deployment.md) for best practices.
 
 ### How do I secure API keys in production?
 

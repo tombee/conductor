@@ -550,4 +550,4 @@ conductor doctor
 - [CLI Reference](cli.md) - Command-line interface documentation
 - [Workflow Schema Reference](workflow-schema.md) - Complete YAML workflow reference
 - [API Reference](api.md) - Go package documentation
-- [Quick Start](../quick-start.md) - Get started quickly
+- [Getting Started](../getting-started/) - Installation and first workflow

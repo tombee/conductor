@@ -17,7 +17,7 @@ This workflow analyzes IaC plan outputs to identify dangerous changes, assess op
 
 ### Required
 
-- Conductor installed ([Installation Guide](../getting-started/installation.md))
+- Conductor installed ([Getting Started](../getting-started/))
 - LLM provider configured (Claude Code, Anthropic API, or OpenAI)
 - IaC tool installed (Terraform, Pulumi, or AWS CDK)
 - Infrastructure code with planned changes

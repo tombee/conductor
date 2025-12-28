@@ -17,7 +17,7 @@ This workflow analyzes GitHub issue content (title and body) to automatically cl
 
 ### Required
 
-- Conductor installed ([Installation Guide](../getting-started/installation.md))
+- Conductor installed ([Getting Started](../getting-started/))
 - LLM provider configured (Claude Code, Anthropic API, or OpenAI)
 - GitHub issue content (title and body)
 

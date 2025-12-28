@@ -10,7 +10,7 @@ Before contributing, make sure you have:
 - Familiarity with Go programming and testing
 - Understanding of Conductor's [architecture](../architecture/overview.md)
 
-New to Conductor? Start with the [Quick Start](../quick-start.md) to understand the user experience before diving into development.
+New to Conductor? Start with the [Getting Started Guide](../getting-started/) to understand the user experience before diving into development.
 :::
 
 

@@ -17,7 +17,7 @@ This workflow creates complete songs with genre-appropriate structures, chord pr
 
 ### Required
 
-- Conductor installed ([Installation Guide](../getting-started/installation.md))
+- Conductor installed ([Getting Started](../getting-started/))
 - LLM provider configured (Claude Code, Anthropic API, or OpenAI)
 
 ### Optional
@@ -420,4 +420,4 @@ Full workflow definition: [examples/write-song/workflow.yaml](https://github.com
 - [Template Variables](../reference/cheatsheet.md#template-variables)
 - [LLM Step Configuration](../reference/workflow-schema.md#llm-step)
 - [Model Tiers](../architecture/llm-providers.md#model-tiers)
-- [Building Workflows](../building-workflows/index.md)
+- [Building Workflows](../building-workflows/patterns.md)
