@@ -47,8 +47,6 @@ import (
 	internallog "github.com/tombee/conductor/internal/log"
 	"github.com/tombee/conductor/internal/mcp"
 	"github.com/tombee/conductor/internal/tracing"
-	"github.com/tombee/conductor/internal/tracing/storage"
-	"github.com/tombee/conductor/pkg/llm"
 	"github.com/tombee/conductor/pkg/security"
 	"github.com/tombee/conductor/pkg/workflow"
 )
@@ -85,7 +83,7 @@ type Daemon struct {
 
 // New creates a new daemon instance.
 func New(cfg *config.Config, opts Options) (*Daemon, error) {
-	// Validate that workflows requiring public API have it enabled (SPEC-137)
+	// Validate that workflows requiring public API have it enabled
 	if err := config.ValidatePublicAPIRequirements(cfg); err != nil {
 		return nil, err
 	}
@@ -145,17 +143,25 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 	}
 
 	// Create LLM provider for workflow execution
-	// Will be wrapped with tracing/metrics if observability is enabled
-	var baseLLMProvider llm.Provider
+	// Use the default provider from config
 	if cfg.DefaultProvider != "" {
-		var err error
-		baseLLMProvider, err = internalllm.CreateProvider(cfg, cfg.DefaultProvider)
+		llmProvider, err := internalllm.CreateProvider(cfg, cfg.DefaultProvider)
 		if err != nil {
 			logger.Warn("failed to create LLM provider for workflow execution",
 				internallog.Error(err),
 				slog.String("provider", cfg.DefaultProvider))
 			logger.Warn("workflows requiring LLM steps may fail without a configured provider")
-			baseLLMProvider = nil
+		} else {
+			// Create the workflow executor adapter
+			providerAdapter := internalllm.NewProviderAdapter(llmProvider)
+			// TODO: Wire up tool registry once tool types are unified
+			// For now, pass nil as tool registry (like CLI does)
+			executor := workflow.NewExecutor(nil, providerAdapter)
+			executionAdapter := runner.NewExecutorAdapter(executor)
+			r.SetAdapter(executionAdapter)
+
+			logger.Info("workflow execution adapter initialized",
+				slog.String("provider", cfg.DefaultProvider))
 		}
 	} else {
 		logger.Warn("no default LLM provider configured",
@@ -262,54 +268,7 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 				slog.String("service_version", tracingCfg.ServiceVersion))
 			// Wire metrics collector to runner
 			r.SetMetrics(otelProvider.MetricsCollector())
-			// Wire workflow tracer to runner
-			r.SetWorkflowTracer(otelProvider.OTelTracer("workflow"))
-
-			// Initialize SQLite storage for traces
-			storePath := filepath.Join(cfg.Daemon.DataDir, "observability", "traces.db")
-			if err := os.MkdirAll(filepath.Dir(storePath), 0755); err != nil {
-				logger.Warn("failed to create observability directory",
-					internallog.Error(err))
-			} else {
-				store, err := storage.New(storage.Config{
-					Path:         storePath,
-					MaxOpenConns: 1, // SQLite works best with single connection
-				})
-				if err != nil {
-					logger.Warn("failed to initialize trace storage",
-						internallog.Error(err),
-						slog.String("path", storePath))
-				} else {
-					otelProvider.SetStore(store)
-					logger.Info("trace storage initialized",
-						slog.String("path", storePath))
-				}
-			}
-
-			// Wrap LLM provider with tracing and metrics if provider exists
-			if baseLLMProvider != nil {
-				baseLLMProvider = tracing.WrapProviderWithMetrics(
-					baseLLMProvider,
-					otelProvider.Tracer("llm"),
-					otelProvider.MetricsCollector(),
-				)
-				logger.Info("LLM provider wrapped with observability",
-					slog.String("provider", cfg.DefaultProvider))
-			}
 		}
-	}
-
-	// Set up workflow execution adapter with (possibly wrapped) LLM provider
-	if baseLLMProvider != nil {
-		providerAdapter := internalllm.NewProviderAdapter(baseLLMProvider)
-		// TODO(SPEC-36): Wire up tool registry once tool types are unified
-		// For now, pass nil as tool registry (like CLI does)
-		executor := workflow.NewExecutor(nil, providerAdapter)
-		executionAdapter := runner.NewExecutorAdapter(executor)
-		r.SetAdapter(executionAdapter)
-
-		logger.Info("workflow execution adapter initialized",
-			slog.String("provider", cfg.DefaultProvider))
 	}
 
 	return &Daemon{
@@ -412,17 +371,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 	if d.mcpRegistry != nil {
 		mcpHandler := api.NewMCPHandler(d.mcpRegistry)
 		mcpHandler.RegisterRoutes(router.Mux())
-	}
-
-	// Register observability API if storage is available
-	if d.otelProvider != nil && d.otelProvider.GetStore() != nil {
-		tracesHandler := api.NewTracesHandler(d.otelProvider.GetStore())
-		tracesHandler.RegisterRoutes(router.Mux())
-
-		eventsHandler := api.NewEventsHandler(d.otelProvider.GetStore())
-		eventsHandler.RegisterRoutes(router.Mux())
-
-		d.logger.Info("observability API handlers registered")
 	}
 
 	// Wire up scheduler to router for health endpoint

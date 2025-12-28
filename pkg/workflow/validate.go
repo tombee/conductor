@@ -103,7 +103,7 @@ var (
 
 // DetectEmbeddedCredentials checks the workflow definition for embedded plaintext credentials.
 // Returns warnings about found credentials. This is a non-blocking warning - workflows with
-// embedded credentials are still valid, but users are warned to use profiles instead (SPEC-130).
+// embedded credentials are still valid, but users are warned to use profiles instead.
 func DetectEmbeddedCredentials(def *Definition) []string {
 	var warnings []string
 

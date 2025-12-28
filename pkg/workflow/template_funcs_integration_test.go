@@ -10,7 +10,7 @@ import (
 // Integration tests using real workflow examples from the spec
 
 func TestDnDWorkflowExample(t *testing.T) {
-	// Simulate the D&D workflow from SPEC-85
+	// Simulate a D&D workflow with dice rolls
 	ctx := NewTemplateContext()
 
 	// Step 1: d20 roll

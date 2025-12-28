@@ -26,11 +26,11 @@ import (
 )
 
 const (
-	// MaxFileSize is the maximum allowed secret file size (64KB per SPEC-130).
+	// MaxFileSize is the maximum allowed secret file size (64KB).
 	MaxFileSize = 64 * 1024
 )
 
-// FileProviderConfig controls file provider security settings (SPEC-130).
+// FileProviderConfig controls file provider security settings.
 type FileProviderConfig struct {
 	// Enabled controls whether file provider is available.
 	// Default: false (security-first, must be explicitly enabled)
@@ -46,11 +46,11 @@ type FileProviderConfig struct {
 	FollowSymlinks bool
 
 	// MaxSize is the maximum file size in bytes.
-	// Default: 64KB (SPEC-130 requirement)
+	// Default: 64KB
 	MaxSize int64
 }
 
-// FileProvider implements secret resolution from files (SPEC-130).
+// FileProvider implements secret resolution from files.
 // This provider reads secrets from filesystem files with strict security controls.
 //
 // Security features:

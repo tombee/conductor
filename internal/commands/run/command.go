@@ -22,27 +22,28 @@ import (
 // NewCommand creates the run command
 func NewCommand() *cobra.Command {
 	var (
-		inputs        []string
-		inputFile     string
-		outputFile    string
-		noStats       bool
-		provider      string
-		model         string
-		timeout       string
-		dryRun        bool
-		quiet         bool
-		verbose       bool
-		daemon        bool
-		background    bool
-		mcpDev        bool
-		noCache       bool
-		noInteractive bool
-		helpInputs    bool
-		securityMode  string
-		allowHosts    []string
-		allowPaths    []string
-		workspace     string
-		profile       string
+		inputs                        []string
+		inputFile                     string
+		outputFile                    string
+		noStats                       bool
+		provider                      string
+		model                         string
+		timeout                       string
+		dryRun                        bool
+		quiet                         bool
+		verbose                       bool
+		daemon                        bool
+		background                    bool
+		mcpDev                        bool
+		noCache                       bool
+		noInteractive                 bool
+		helpInputs                    bool
+		securityMode                  string
+		allowHosts                    []string
+		allowPaths                    []string
+		workspace                     string
+		profile                       string
+		acceptUnenforceablePermissions bool
 	)
 
 	cmd := &cobra.Command{
@@ -63,7 +64,7 @@ Execution Modes:
   --daemon       Submit to conductord daemon for execution
   --background   Run asynchronously (implies --daemon), return run ID immediately
 
-Profile Selection (SPEC-130):
+Profile Selection:
   --workspace, -w <name>   Workspace for profile resolution (env: CONDUCTOR_WORKSPACE)
   --profile, -p <name>     Profile for binding resolution (env: CONDUCTOR_PROFILE)
 
@@ -96,7 +97,7 @@ Verbosity levels:
 			if daemon {
 				return runWorkflowViaDaemon(args[0], inputs, inputFile, outputFile, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, provider, model, timeout, workspace, profile)
 			}
-			return runWorkflowLocal(args[0], inputs, inputFile, dryRun, quiet, verbose, noInteractive, helpInputs)
+			return runWorkflowLocal(args[0], inputs, inputFile, dryRun, quiet, verbose, noInteractive, helpInputs, acceptUnenforceablePermissions)
 		},
 	}
 
@@ -121,6 +122,7 @@ Verbosity levels:
 	cmd.Flags().StringSliceVar(&allowPaths, "allow-paths", nil, "Additional allowed filesystem paths")
 	cmd.Flags().StringVarP(&workspace, "workspace", "w", "", "Workspace for profile resolution (env: CONDUCTOR_WORKSPACE)")
 	cmd.Flags().StringVarP(&profile, "profile", "p", "", "Profile for binding resolution (env: CONDUCTOR_PROFILE)")
+	cmd.Flags().BoolVar(&acceptUnenforceablePermissions, "accept-unenforceable-permissions", false, "Allow workflow execution even if some permissions cannot be enforced by the provider (SPEC-141)")
 
 	return cmd
 }

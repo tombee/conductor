@@ -1,18 +1,15 @@
-# What is Conductor?
+# Getting Started with Conductor
 
-Conductor is a platform for defining and running AI workflows. You describe workflows in simple YAML files and run them via CLI, API, webhooks, or on a schedule—with production features built-in.
+Conductor is a platform for defining and running AI workflows in simple YAML files.
 
-## Why Conductor?
+## What is Conductor?
 
-Conductor makes it easy to manage many AI workflows on a common platform. Instead of building individual applications for every AI task, you define workflows in simple YAML and get production features built-in:
+Instead of building individual applications for every AI task, you define workflows in simple YAML and get production features built-in:
 
-- **Declarative definitions** - Testable, validatable workflows with predictable execution
+- **Declarative definitions** - Testable, validatable workflows
 - **LLM-efficient** - Deterministic steps handle orchestration; LLMs focus on reasoning
-- **Observability** - Structured logging, metrics, and tracing
-- **Reliability** - Retries, timeouts, and error handling
-- **Cost management** - Token tracking and budget controls
-- **Portability** - Switch LLM providers with a config change
-- **Security** - Sandboxed execution and secret management
+- **Production-ready** - Observability, reliability, and cost management built-in
+- **Portable** - Switch LLM providers with a config change
 
 ```yaml
 # code-review.yaml
@@ -29,50 +26,88 @@ steps:
 conductor run code-review.yaml -i code="$(git diff)"
 ```
 
-Write a YAML file. Run it. Share it via git. Deploy it when needed.
+## Installation
 
-## What You Can Do
+Choose your preferred installation method:
 
-### Automate Repetitive AI Tasks
-
-Code review, documentation generation, issue triage, commit message writing—anything you'd otherwise do manually with an LLM.
-
-### Chain Multiple Steps
-
-Each step can use outputs from previous steps:
-
-```yaml
-steps:
-  - id: analyze
-    prompt: "Analyze this code: {{.inputs.code}}"
-
-  - id: suggest
-    prompt: "Based on this analysis, suggest improvements: {{.steps.analyze.response}}"
+**Homebrew (macOS/Linux)**
+```bash
+brew install conductor
 ```
 
-### Connect to External Services
-
-Built-in connectors for GitHub, Slack, Jira, Discord, and more:
-
-```yaml
-steps:
-  - id: summarize
-    prompt: "Summarize today's PR activity..."
-
-  - id: notify
-    slack.post_message:
-      channel: "#engineering"
-      text: "{{.steps.summarize.response}}"
+**Go Install**
+```bash
+go install github.com/tombee/conductor/cmd/conductor@latest
 ```
 
-### Run Anywhere
+**From Source**
+```bash
+git clone https://github.com/tombee/conductor
+cd conductor
+make install
+```
 
-- **CLI**: `conductor run workflow.yaml`
-- **Scheduled**: Cron-based triggers
-- **Webhooks**: Respond to GitHub PRs, Slack messages, etc.
-- **API**: Run via HTTP when deployed as a daemon
+**Verify installation:**
+```bash
+conductor --version
+```
 
-## Key Concepts
+## Setup Claude Code
+
+Conductor works best with [Claude Code](https://claude.ai/download). With Claude Code installed, Conductor works out of the box with no API key configuration required.
+
+1. Download and install from [claude.ai/download](https://claude.ai/download)
+2. Complete setup and sign in
+3. Verify: `claude --version`
+
+For other LLM providers, see [Configuration](../reference/configuration.md).
+
+## Your First Workflow
+
+Let's run a simple workflow:
+
+```bash
+conductor run examples/write-song/workflow.yaml
+```
+
+Conductor will prompt you for inputs. After a few seconds, you'll get an AI-generated song!
+
+## Create Your Own Workflow
+
+Create `hello.yaml`:
+
+```yaml
+name: hello-conductor
+description: Your first custom workflow
+
+inputs:
+  - name: name
+    type: string
+    required: true
+    description: Your name
+
+steps:
+  - id: greet
+    type: llm
+    model: fast
+    prompt: |
+      Generate a friendly, personalized greeting for someone named {{.inputs.name}}.
+      Make it warm and encouraging. Keep it to 2-3 sentences.
+
+outputs:
+  - name: greeting
+    value: "{{.steps.greet.response}}"
+```
+
+Run it:
+
+```bash
+conductor run hello.yaml
+```
+
+When prompted, enter your name and you'll get a personalized greeting!
+
+## Core Concepts
 
 ### Workflows
 
@@ -84,47 +119,146 @@ A workflow is a YAML file with:
 ### Steps
 
 Each step does one thing:
-- **LLM steps**: Send prompts to AI models
+- **LLM steps**: Send prompts to AI models (`type: llm`)
 - **Tool steps**: Run shell commands, read files, make HTTP requests
-- **Connector steps**: Interact with external services
+- **Connector steps**: Interact with external services (GitHub, Slack, etc.)
 
-### Model Tiers
+```yaml
+steps:
+  # LLM step
+  - id: analyze
+    type: llm
+    prompt: "Analyze this code: {{.inputs.code}}"
 
-Instead of hardcoding model names, use tiers:
-- **fast**: Quick tasks, lower cost
-- **balanced**: Most workflows
-- **powerful**: Complex reasoning
+  # File tool
+  - id: read_config
+    file.read:
+      path: "config.yaml"
 
-Swap providers without changing workflows.
+  # Shell tool
+  - id: get_diff
+    shell.run:
+      command: ["git", "diff"]
+```
 
 ### Template Variables
 
 Reference data with `{{.variable}}` syntax:
 - `{{.inputs.name}}` — Workflow inputs
-- `{{.steps.id.response}}` — Previous step outputs
+- `{{.steps.analyze.response}}` — Previous step outputs
 - `{{.env.API_KEY}}` — Environment variables
 
-## When to Use Conductor
+### Model Tiers
+
+Use tiers instead of hardcoding model names:
+- **fast**: Quick tasks, lower cost
+- **balanced**: Most workflows
+- **powerful**: Complex reasoning
+
+This lets you swap providers without changing workflows.
+
+### Parallel Execution
+
+Run multiple steps concurrently:
+
+```yaml
+- id: reviews
+  type: parallel
+  steps:
+    - id: security
+      type: llm
+      prompt: "Review for security..."
+    - id: performance
+      type: llm
+      prompt: "Review for performance..."
+```
+
+## Common Patterns
+
+**Read-Process-Write:**
+```yaml
+- id: read
+  file.read:
+    path: "{{.inputs.file_path}}"
+
+- id: process
+  type: llm
+  prompt: "Process this: {{.steps.read.content}}"
+
+- id: write
+  file.write:
+    path: "output.txt"
+    content: "{{.steps.process.response}}"
+```
+
+**Chain of Thought:**
+```yaml
+- id: analyze
+  type: llm
+  prompt: "Analyze this code..."
+
+- id: suggest
+  type: llm
+  prompt: "Based on this analysis, suggest improvements: {{.steps.analyze.response}}"
+```
+
+## What You Can Do
+
+- **Automate repetitive AI tasks**: Code review, documentation, issue triage
+- **Chain multiple steps**: Each step uses outputs from previous steps
+- **Connect to services**: GitHub, Slack, Jira, Discord connectors
+- **Run anywhere**: CLI, scheduled (cron), webhooks, or HTTP API
 
 **Good fit:**
 - Automating tasks you'd do with ChatGPT/Claude
 - Multi-step AI workflows
-- Integrating AI with existing tools (GitHub, Slack, etc.)
-- Sharing workflows across a team
+- Integrating AI with existing tools
 
 **Not designed for:**
 - Building chat applications
 - Real-time streaming interfaces
 - Complex agent loops with unpredictable tool use
 
-## Getting Started
+## What's Next?
 
-1. **[Install Conductor](installation.md)** — Homebrew, Go, or binary
-2. **[Quick Start](../quick-start.md)** — Run your first workflow
-3. **[First Workflow Tutorial](tutorials/first-workflow.md)** — Build one from scratch
+**Try a real-world example:**
+```bash
+conductor run examples/git-branch-code-review/workflow.yaml
+```
 
-## Example Workflows
+**Learn more:**
+- [First Workflow Tutorial](first-workflow.md) — Hands-on guide
+- [Building Workflows](../building-workflows) — Patterns and best practices
+- [Examples](../examples/) — Copy-paste ready workflows
+- [Workflow Schema Reference](../reference/workflow-schema.md) — Complete specification
 
-- **[Code Review](../examples/code-review/)** — Multi-persona review of git changes
-- **[Issue Triage](../examples/automation/issue-triage/)** — Classify and prioritize issues
-- **[Slack Integration](../examples/automation/slack-integration/)** — Post summaries to channels
+## Troubleshooting
+
+**"conductor: command not found"**
+
+Ensure your `$PATH` includes the installation directory:
+```bash
+# For Go install
+export PATH=$PATH:$(go env GOPATH)/bin
+```
+
+**"Provider not configured"**
+
+Ensure Claude Code is installed: `claude --version`
+
+**"Workflow validation failed"**
+
+Common causes:
+- Incorrect YAML indentation (whitespace-sensitive)
+- Missing required fields (every step needs `id` and `type`)
+- Invalid template syntax (use `{{.inputs.name}}` not `{{name}}`)
+
+Validate before running:
+```bash
+conductor validate hello.yaml
+```
+
+**Still stuck?**
+- [Troubleshooting Guide](../production/troubleshooting.md)
+- [GitHub Issues](https://github.com/tombee/conductor/issues)
+- [GitHub Discussions](https://github.com/tombee/conductor/discussions)

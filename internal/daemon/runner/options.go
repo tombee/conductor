@@ -72,14 +72,14 @@ func WithCheckpointManager(cm *checkpoint.Manager) Option {
 	}
 }
 
-// WithConfig sets the daemon configuration for profile resolution (SPEC-130).
+// WithConfig sets the daemon configuration for profile resolution.
 func WithConfig(cfg *config.Config) Option {
 	return func(r *Runner) {
 		r.config = cfg
 	}
 }
 
-// WithBindingResolver sets the binding resolver for profile-based configuration (SPEC-130).
+// WithBindingResolver sets the binding resolver for profile-based configuration.
 func WithBindingResolver(resolver *binding.Resolver) Option {
 	return func(r *Runner) {
 		r.resolver = resolver

@@ -22,7 +22,7 @@ import (
 	"github.com/tombee/conductor/pkg/profile"
 )
 
-// Cache provides per-run secret caching (SPEC-130).
+// Cache provides per-run secret caching.
 //
 // Secrets are cached for the duration of a single workflow run to:
 //   - Reduce latency from repeated secret resolution

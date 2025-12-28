@@ -126,7 +126,6 @@ func (s *Scanner) scanWorkflow(path string) ([]WorkflowTrigger, error) {
 	}
 
 	// Convert listen config to legacy trigger format for backward compatibility
-	// This scanner is used internally and will be updated in SPEC-137
 	if def.Listen == nil {
 		return nil, nil
 	}

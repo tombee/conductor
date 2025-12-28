@@ -73,7 +73,7 @@ type StepOutputConverter interface {
 	ToMap() map[string]interface{}
 }
 
-// BuildContextFromTypedOutputs creates an expression context from typed inputs and step outputs (SPEC-40).
+// BuildContextFromTypedOutputs creates an expression context from typed inputs and step outputs.
 // This function converts type-safe step outputs to untyped maps for expr-lang evaluation.
 // The expression layer remains untyped per architectural decision to maintain compatibility
 // with the expr library and allow flexible expression evaluation.

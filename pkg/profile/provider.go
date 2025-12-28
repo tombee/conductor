@@ -29,7 +29,7 @@ import "context"
 //   - vault:secret/path -> Vault KV secret (future)
 //
 // Providers must implement timeout and cancellation via the context parameter
-// (SPEC-130 NFR10: 30 second timeout per provider).
+// (30 second timeout per provider).
 type SecretProvider interface {
 	// Scheme returns the provider's URI scheme identifier.
 	// Examples: "env", "file", "vault", "1password"

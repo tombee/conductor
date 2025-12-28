@@ -33,7 +33,7 @@ import (
 )
 
 // runWorkflowLocal executes a workflow locally (not via daemon)
-func runWorkflowLocal(workflowPath string, inputArgs []string, inputFile string, dryRun, quiet, verbose, noInteractive, helpInputs bool) error {
+func runWorkflowLocal(workflowPath string, inputArgs []string, inputFile string, dryRun, quiet, verbose, noInteractive, helpInputs, acceptUnenforceablePermissions bool) error {
 	// Resolve workflow path
 	resolvedPath, err := shared.ResolveWorkflowPath(workflowPath)
 	if err != nil {
@@ -187,11 +187,11 @@ func runWorkflowLocal(workflowPath string, inputArgs []string, inputFile string,
 	workflowDir := filepath.Dir(resolvedPath)
 
 	// Execute the workflow
-	return executeWorkflow(def, cfg, plan, inputs, workflowDir, quiet, verbose)
+	return executeWorkflow(def, cfg, plan, inputs, workflowDir, quiet, verbose, acceptUnenforceablePermissions)
 }
 
 // executeWorkflow runs the workflow using the step executor
-func executeWorkflow(def *workflow.Definition, cfg *config.Config, plan *ExecutionPlan, inputs map[string]interface{}, workflowDir string, quiet, verbose bool) error {
+func executeWorkflow(def *workflow.Definition, cfg *config.Config, plan *ExecutionPlan, inputs map[string]interface{}, workflowDir string, quiet, verbose, acceptUnenforceablePermissions bool) error {
 	ctx := context.Background()
 	startTime := time.Now()
 

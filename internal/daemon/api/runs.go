@@ -48,8 +48,8 @@ func (h *RunsHandler) RegisterRoutes(mux *http.ServeMux) {
 type CreateRunRequest struct {
 	Workflow  string         `json:"workflow"`
 	Inputs    map[string]any `json:"inputs,omitempty"`
-	Workspace string         `json:"workspace,omitempty"` // Workspace for profile resolution (SPEC-130)
-	Profile   string         `json:"profile,omitempty"`   // Profile for binding resolution (SPEC-130)
+	Workspace string         `json:"workspace,omitempty"` // Workspace for profile resolution
+	Profile   string         `json:"profile,omitempty"`   // Profile for binding resolution
 }
 
 // handleCreate handles POST /v1/runs.

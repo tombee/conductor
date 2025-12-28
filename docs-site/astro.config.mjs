@@ -26,15 +26,12 @@ export default defineConfig({
           label: 'Getting Started',
           items: [
             { label: 'Overview', slug: 'getting-started' },
-            { label: 'Installation', slug: 'getting-started/installation' },
             { label: 'First Workflow', slug: 'getting-started/first-workflow' },
-            { label: 'Core Concepts', slug: 'getting-started/concepts' },
           ],
         },
         {
           label: 'Building Workflows',
           items: [
-            { label: 'Overview', slug: 'building-workflows' },
             { label: 'Patterns', slug: 'building-workflows/patterns' },
             { label: 'Flow Control', slug: 'building-workflows/flow-control' },
             { label: 'Error Handling', slug: 'building-workflows/error-handling' },
@@ -43,6 +40,7 @@ export default defineConfig({
             { label: 'Performance', slug: 'building-workflows/performance' },
             { label: 'Profiles', slug: 'building-workflows/profiles' },
             { label: 'Daemon Mode', slug: 'building-workflows/daemon-mode' },
+            { label: 'Endpoints', slug: 'building-workflows/endpoints' },
           ],
         },
         {
@@ -59,49 +57,33 @@ export default defineConfig({
             { label: 'Cheatsheet', slug: 'reference/cheatsheet' },
             { label: 'API', slug: 'reference/api' },
             { label: 'Error Codes', slug: 'reference/error-codes' },
-            {
-              label: 'Operations',
-              items: [
-                { label: 'File', slug: 'reference/connectors/file' },
-                { label: 'Shell', slug: 'reference/connectors/shell' },
-                { label: 'HTTP', slug: 'reference/connectors/http' },
-                { label: 'Transform', slug: 'reference/connectors/transform' },
-              ],
-            },
-            {
-              label: 'Service Integrations',
-              items: [
-                { label: 'GitHub', slug: 'reference/connectors/github' },
-                { label: 'Slack', slug: 'reference/connectors/slack' },
-                { label: 'Discord', slug: 'reference/connectors/discord' },
-                { label: 'Jira', slug: 'reference/connectors/jira' },
-                { label: 'Jenkins', slug: 'reference/connectors/jenkins' },
-                { label: 'Custom', slug: 'reference/connectors/custom' },
-                { label: 'Runbooks', slug: 'reference/connectors/runbooks' },
-              ],
-            },
+          ],
+        },
+        {
+          label: 'Connectors',
+          items: [
+            { label: 'File', slug: 'reference/connectors/file' },
+            { label: 'Shell', slug: 'reference/connectors/shell' },
+            { label: 'HTTP', slug: 'reference/connectors/http' },
+            { label: 'Transform', slug: 'reference/connectors/transform' },
+            { label: 'GitHub', slug: 'reference/connectors/github' },
+            { label: 'Slack', slug: 'reference/connectors/slack' },
+            { label: 'Discord', slug: 'reference/connectors/discord' },
+            { label: 'Jira', slug: 'reference/connectors/jira' },
+            { label: 'Jenkins', slug: 'reference/connectors/jenkins' },
+            { label: 'Custom', slug: 'reference/connectors/custom' },
+            { label: 'Runbooks', slug: 'reference/connectors/runbooks' },
           ],
         },
         {
           label: 'Production',
           collapsed: false,
           items: [
-            { label: 'Overview', slug: 'production' },
-            {
-              label: 'Deployment',
-              items: [
-                { label: 'Overview', slug: 'production/deployment' },
-                { label: 'exe.dev', slug: 'production/deployment/exe-dev' },
-                { label: 'Docker', slug: 'production/deployment/docker' },
-                { label: 'Kubernetes', slug: 'production/deployment/kubernetes' },
-                { label: 'Bare Metal', slug: 'production/deployment/bare-metal' },
-              ],
-            },
+            { label: 'Deployment', slug: 'production/deployment' },
             { label: 'Security', slug: 'production/security' },
             { label: 'Monitoring', slug: 'production/monitoring' },
             { label: 'Startup', slug: 'production/startup' },
             { label: 'Troubleshooting', slug: 'production/troubleshooting' },
-            { label: 'Upgrade Guide', slug: 'production/upgrade-guide' },
           ],
         },
         {

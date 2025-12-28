@@ -15,7 +15,7 @@
 // Package profile provides workflow execution profile management.
 //
 // This package implements the separation between workflow definitions (portable logic)
-// and execution profiles (runtime bindings) as defined in SPEC-130. Profiles contain
+// and execution profiles (runtime bindings). Profiles contain
 // credentials, service bindings, and environment-specific configuration that workflows
 // need at runtime.
 package profile
@@ -26,8 +26,7 @@ import "time"
 // Profiles contain the runtime bindings (credentials, MCP servers, environment settings)
 // needed to execute workflows in a specific environment (dev/staging/prod).
 //
-// Following SPEC-130, profiles are nested within workspaces to prevent naming
-// collisions and enable team isolation.
+// Profiles are nested within workspaces to prevent naming collisions and enable team isolation.
 type Profile struct {
 	// Name is the profile identifier (workspace-scoped)
 	// Must match regex: ^[a-z0-9_-]+$

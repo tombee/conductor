@@ -52,7 +52,7 @@ type Config struct {
 	SuppressUnmappedWarnings   bool          `yaml:"suppress_unmapped_warnings,omitempty" json:"suppress_unmapped_warnings,omitempty"`
 	DefaultVerbosity           string        `yaml:"default_verbosity,omitempty" json:"default_verbosity,omitempty"` // quiet, normal, verbose
 
-	// Workspaces configuration (SPEC-130)
+	// Workspaces configuration
 	// Workspaces contain profiles for workflow execution configuration
 	Workspaces map[string]Workspace `yaml:"workspaces,omitempty" json:"workspaces,omitempty"`
 }
@@ -437,7 +437,7 @@ type RedactionPattern struct {
 
 // Workspace represents a security and configuration isolation boundary.
 // Workspaces contain named profiles that define execution configurations
-// for workflows (SPEC-130).
+// for workflows.
 type Workspace struct {
 	// Name is the workspace identifier
 	Name string `yaml:"name,omitempty" json:"name,omitempty"`
@@ -624,7 +624,7 @@ func Default() *Config {
 				},
 			},
 		},
-		// Default workspace with backward-compatible profile (SPEC-130)
+		// Default workspace with backward-compatible profile
 		Workspaces: map[string]Workspace{
 			"default": {
 				Name:        "default",
@@ -715,7 +715,7 @@ func LoadDaemon(configPath string) (*Config, error) {
 
 // applyDefaults fills in zero values with sensible defaults.
 // This allows minimal configs (e.g., just providers) to work without
-// specifying all fields explicitly (SPEC-50).
+// specifying all fields explicitly.
 func (c *Config) applyDefaults() {
 	defaults := Default()
 
@@ -832,7 +832,7 @@ func (c *Config) applyDefaults() {
 		c.Daemon.Observability.Redaction.Level = defaults.Daemon.Observability.Redaction.Level
 	}
 
-	// Workspace defaults (SPEC-130)
+	// Workspace defaults
 	// If no workspaces are configured, use the default workspace
 	if len(c.Workspaces) == 0 {
 		c.Workspaces = defaults.Workspaces

@@ -23,7 +23,7 @@ import (
 	"github.com/tombee/conductor/pkg/profile"
 )
 
-// Registry implements scheme-based secret provider routing for SPEC-130.
+// Registry implements scheme-based secret provider routing.
 // Unlike the existing Resolver which uses priority-based resolution,
 // Registry routes secret references to specific providers based on URI schemes.
 //
@@ -70,7 +70,7 @@ func (r *Registry) Register(provider profile.SecretProvider) error {
 //   - "${API_KEY}" -> env provider (legacy)
 //   - "vault:secret/data/prod#token" -> vault provider (future)
 //
-// Returns sanitized errors that don't leak secret values or paths (SPEC-130 FR8).
+// Returns sanitized errors that don't leak secret values or paths.
 func (r *Registry) Resolve(ctx context.Context, reference string) (string, error) {
 	// Parse reference to extract scheme and key
 	scheme, key, err := r.parseReference(reference)
@@ -153,7 +153,7 @@ func (r *Registry) parseReference(reference string) (scheme, key string, err err
 	return "plain", reference, nil
 }
 
-// categorizeProviderError categorizes provider errors into SPEC-130 error categories.
+// categorizeProviderError categorizes provider errors into error categories.
 func categorizeProviderError(err error) profile.ErrorCategory {
 	if err == nil {
 		return ""

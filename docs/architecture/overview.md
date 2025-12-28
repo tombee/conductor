@@ -265,26 +265,7 @@ For detailed embedding guidance, see [Embedding in Go](../extending/embedding.md
 - Signature verification (HMAC for Slack, Ed25519 for Discord)
 - Rate limiting on authentication failures
 
-## Specifications
-
-For detailed requirements, see the specs:
-
-| Spec | Topic |
-|------|-------|
-| SPEC-1 | Installation & Onboarding |
-| SPEC-2 | Workflow Format |
-| SPEC-3 | Run Command |
-| SPEC-4 | Init & Scaffold |
-| SPEC-5 | Smart Input Resolvers |
-| SPEC-6 | Output Schemas |
-| SPEC-7 | Custom Tools |
-| SPEC-8 | Scheduled Workflows |
-| SPEC-9 | MCP Integration |
-| SPEC-10 | Conductor Daemon |
-| SPEC-11 | Basic Examples |
-| SPEC-12 | Advanced Examples |
-
-### Context Management
+## Context Management
 
 **Token Limits:**
 - Track per-message token counts

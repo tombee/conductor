@@ -1123,7 +1123,7 @@ func TestMCPServerConfig_Validate(t *testing.T) {
 	}
 }
 
-// TestAutoGenerateStepIDs tests the step ID auto-generation functionality (SPEC-67 P1.3)
+// TestAutoGenerateStepIDs tests the step ID auto-generation functionality
 func TestAutoGenerateStepIDs(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1270,7 +1270,7 @@ steps:
 	}
 }
 
-// TestRemovedStepTypes tests that removed step types produce validation errors (SPEC-67 P1.1, P1.2)
+// TestRemovedStepTypes tests that removed step types produce validation errors
 func TestRemovedStepTypes(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -1323,7 +1323,7 @@ steps:
 	}
 }
 
-// TestShorthandIDTracking tests that explicit vs generated IDs are tracked correctly (SPEC-67 P1.4)
+// TestShorthandIDTracking tests that explicit vs generated IDs are tracked correctly
 func TestShorthandIDTracking(t *testing.T) {
 	tests := []struct {
 		name             string

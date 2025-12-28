@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	// MaxSecretReferenceDepth is the maximum depth of secret reference chains (SPEC-130).
+	// MaxSecretReferenceDepth is the maximum depth of secret reference chains.
 	// This prevents circular references and excessively deep resolution chains.
 	MaxSecretReferenceDepth = 10
 )
