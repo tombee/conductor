@@ -76,6 +76,7 @@ type Daemon struct {
 	leader          *leader.Elector
 	mcpRegistry     *mcp.Registry
 	otelProvider    *tracing.OTelProvider
+	retentionMgr    *tracing.RetentionManager
 
 	mu      sync.Mutex
 	started bool
@@ -269,6 +270,7 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 
 	// Initialize OpenTelemetry provider for metrics and tracing
 	var otelProvider *tracing.OTelProvider
+	var retentionMgr *tracing.RetentionManager
 	if cfg.Daemon.Observability.Enabled {
 		tracingCfg := observabilityToTracingConfig(cfg.Daemon.Observability, opts.Version)
 		otelProvider, err = tracing.NewOTelProviderWithConfig(tracingCfg)
@@ -282,6 +284,24 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 				slog.String("service_version", tracingCfg.ServiceVersion))
 			// Wire metrics collector to runner
 			r.SetMetrics(otelProvider.MetricsCollector())
+
+			// Create retention manager if trace storage is configured and retention is non-zero
+			if otelProvider.GetStore() != nil && tracingCfg.Storage.Retention.Traces > 0 {
+				cleanupInterval := 1 * time.Hour // Default cleanup interval
+				if cfg.Daemon.Observability.Storage.Retention.CleanupInterval > 0 {
+					cleanupInterval = time.Duration(cfg.Daemon.Observability.Storage.Retention.CleanupInterval) * time.Hour
+				}
+
+				retentionMgr = tracing.NewRetentionManager(
+					otelProvider.GetStore(),
+					tracingCfg.Storage.Retention.Traces,
+					cleanupInterval,
+					logger,
+				)
+				logger.Info("trace retention manager initialized",
+					slog.Duration("max_age", tracingCfg.Storage.Retention.Traces),
+					slog.Duration("cleanup_interval", cleanupInterval))
+			}
 		}
 	}
 
@@ -298,6 +318,7 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 		leader:          elector,
 		mcpRegistry:     mcpRegistry,
 		otelProvider:    otelProvider,
+		retentionMgr:    retentionMgr,
 	}, nil
 }
 
@@ -462,6 +483,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 	}
 
+	// Start trace retention manager if configured
+	if d.retentionMgr != nil {
+		d.retentionMgr.Start()
+		d.logger.Info("trace retention manager started")
+	}
+
 	// Create and start public API server if enabled
 	var publicErrCh chan error
 	if d.cfg.Daemon.Listen.PublicAPI.Enabled {
@@ -595,6 +622,22 @@ func (d *Daemon) Shutdown(ctx context.Context) error {
 			d.logger.Error("failed to remove socket file",
 				internallog.Error(err),
 				slog.String("path", d.cfg.Daemon.Listen.SocketPath))
+		}
+	}
+
+	// Stop retention manager before shutting down trace storage
+	if d.retentionMgr != nil {
+		d.retentionMgr.Stop()
+		d.logger.Info("trace retention manager stopped")
+	}
+
+	// Flush pending spans before shutdown
+	if d.otelProvider != nil {
+		flushCtx, flushCancel := context.WithTimeout(ctx, 10*time.Second)
+		defer flushCancel()
+		if err := d.otelProvider.ForceFlush(flushCtx); err != nil {
+			d.logger.Warn("failed to flush pending spans",
+				internallog.Error(err))
 		}
 	}
 

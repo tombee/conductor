@@ -387,6 +387,9 @@ type RetentionConfig struct {
 
 	// AggregateDays is how long to keep aggregated metrics (in days).
 	AggregateDays int `yaml:"aggregate_days,omitempty"`
+
+	// CleanupInterval is how often to run cleanup (in hours). Default: 1 hour.
+	CleanupInterval int `yaml:"cleanup_interval,omitempty"`
 }
 
 // ExporterConfig defines an OTLP export destination.
