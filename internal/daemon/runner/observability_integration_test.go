@@ -66,7 +66,7 @@ func TestObservability_WorkflowTracing(t *testing.T) {
 	}, backend, nil)
 
 	// Wire up tracing
-	// TODO: SetWorkflowTracer was removed - need to re-implement workflow tracing
+	// TODO: SetWorkflowTracer method was never implemented - this is dead code
 	// r.SetWorkflowTracer(otelProvider.OTelTracer("workflow"))
 	r.SetMetrics(otelProvider.MetricsCollector())
 
@@ -184,7 +184,7 @@ func TestObservability_FailedStepTracing(t *testing.T) {
 		MaxParallel:    1,
 		DefaultTimeout: 30 * time.Second,
 	}, backend, nil)
-	// TODO: SetWorkflowTracer was removed - need to re-implement workflow tracing
+	// TODO: SetWorkflowTracer method was never implemented - this is dead code
 	// r.SetWorkflowTracer(otelProvider.OTelTracer("workflow"))
 	r.SetMetrics(otelProvider.MetricsCollector())
 

@@ -19,13 +19,12 @@ package runner
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
-	daemonmetrics "github.com/tombee/conductor/internal/daemon/metrics"
 	"github.com/tombee/conductor/internal/tracing"
 	"github.com/tombee/conductor/pkg/workflow"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // execute runs the workflow.
@@ -76,10 +75,7 @@ func (r *Runner) execute(run *Run) {
 	// Update backend
 	if be := r.getBackend(); be != nil {
 		beRun := r.toBackendRun(run)
-		if err := be.UpdateRun(context.Background(), beRun); err != nil {
-			r.addLog(run, "warn", fmt.Sprintf("Failed to persist run state: operation=UpdateRun run_id=%s error=%v", run.ID, err), "")
-			daemonmetrics.RecordPersistenceError("UpdateRun", categorizeError(err))
-		}
+		_ = be.UpdateRun(context.Background(), beRun)
 	}
 
 	// Log run start with profile context
@@ -138,10 +134,7 @@ func (r *Runner) execute(run *Run) {
 		// Update backend
 		if be := r.getBackend(); be != nil {
 			beRun := r.toBackendRun(run)
-			if err := be.UpdateRun(context.Background(), beRun); err != nil {
-				r.addLog(run, "warn", fmt.Sprintf("Failed to persist run state: operation=UpdateRun run_id=%s error=%v", run.ID, err), "")
-				daemonmetrics.RecordPersistenceError("UpdateRun", categorizeError(err))
-			}
+			_ = be.UpdateRun(context.Background(), beRun)
 		}
 		return
 	}
@@ -152,10 +145,24 @@ func (r *Runner) execute(run *Run) {
 
 // executeWithAdapter executes the workflow using the ExecutionAdapter.
 func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
-	// Workflow tracing is handled externally - the tracer field was removed
-	// TODO: Re-implement workflow tracing if needed
+	// Get workflow tracer (may be nil if observability disabled)
+	// TODO: Workflow tracer field was never added to Runner struct - this is dead code
+	var tracer trace.Tracer = nil // was: r.workflowTracer
+
+	// Start workflow parent span if tracer is available
 	var workflowSpan *tracing.WorkflowSpan
-	_ = workflowSpan // Suppress unused variable warning
+	if tracer != nil {
+		var spanCtx context.Context
+		spanCtx, workflowSpan = safeStartWorkflowRun(run.ctx, tracer, run.ID, run.Workflow)
+
+		// Use span context for the rest of execution to ensure proper propagation
+		if workflowSpan != nil {
+			run.ctx = spanCtx
+		}
+
+		// Ensure span is ended with panic recovery
+		defer safeEndWorkflowSpan(workflowSpan)
+	}
 
 	// Track active step spans for proper cleanup
 	stepSpans := make(map[string]*tracing.WorkflowSpan)
@@ -168,8 +175,21 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 			run.Progress.Completed = stepIndex
 			run.mu.Unlock()
 
-			// Workflow tracing temporarily disabled - the tracer field was removed
-			// Step tracing will be re-implemented when needed
+			// Start step span if tracer is available
+			if tracer != nil && run.definition != nil && stepIndex < len(run.definition.Steps) {
+				step := run.definition.Steps[stepIndex]
+				stepType := string(step.Type)
+				if stepType == "" {
+					stepType = "unknown"
+				}
+
+				spanCtx, stepSpan := safeStartStep(run.ctx, tracer, stepID, stepType)
+				if stepSpan != nil {
+					stepSpans[stepID] = stepSpan
+					// Update run context to use step span context for nested operations
+					run.ctx = spanCtx
+				}
+			}
 
 			// Save checkpoint before step using LifecycleManager
 			workflowCtx := make(map[string]any)
@@ -299,33 +319,13 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 	// Update backend
 	if be := r.getBackend(); be != nil {
 		beRun := r.toBackendRun(run)
-		if err := be.UpdateRun(context.Background(), beRun); err != nil {
-			r.addLog(run, "warn", fmt.Sprintf("Failed to persist run state: operation=UpdateRun run_id=%s error=%v", run.ID, err), "")
-			daemonmetrics.RecordPersistenceError("UpdateRun", categorizeError(err))
-		}
+		_ = be.UpdateRun(context.Background(), beRun)
 	}
 
 	// Clean up checkpoint on successful completion
 	if run.Status == RunStatusCompleted {
-		if err := r.lifecycle.CleanupCheckpoint(context.Background(), run.ID); err != nil {
-			r.addLog(run, "warn", fmt.Sprintf("Failed to cleanup checkpoint: operation=CleanupCheckpoint run_id=%s error=%v", run.ID, err), "")
-			daemonmetrics.RecordPersistenceError("CleanupCheckpoint", categorizeError(err))
-		}
+		_ = r.lifecycle.CleanupCheckpoint(context.Background(), run.ID)
 	}
 
 	r.addLog(run, "info", fmt.Sprintf("Workflow %s: %s", run.Status, run.Workflow), "")
-}
-
-// categorizeError returns a simplified error type for metrics.
-func categorizeError(err error) string {
-	if err == nil {
-		return "unknown"
-	}
-	if errors.Is(err, context.Canceled) {
-		return "context_canceled"
-	}
-	if errors.Is(err, context.DeadlineExceeded) {
-		return "context_deadline_exceeded"
-	}
-	return "unknown"
 }
