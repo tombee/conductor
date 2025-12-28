@@ -112,12 +112,19 @@ type Manager struct {
 
 	// wg tracks active server monitors
 	wg sync.WaitGroup
+
+	// stopTimeout is the maximum time to wait for servers to stop gracefully
+	stopTimeout time.Duration
 }
 
 // ManagerConfig configures the MCP manager.
 type ManagerConfig struct {
 	// Logger is used for structured logging (optional)
 	Logger *slog.Logger
+
+	// StopTimeout is the maximum time to wait for all servers to stop gracefully.
+	// If zero, defaults to 30 seconds.
+	StopTimeout time.Duration
 }
 
 // NewManager creates a new MCP server manager.
@@ -129,11 +136,17 @@ func NewManager(cfg ManagerConfig) *Manager {
 		logger = slog.Default()
 	}
 
+	stopTimeout := cfg.StopTimeout
+	if stopTimeout == 0 {
+		stopTimeout = 30 * time.Second
+	}
+
 	return &Manager{
-		servers: make(map[string]*serverState),
-		logger:  logger,
-		ctx:     ctx,
-		cancel:  cancel,
+		servers:     make(map[string]*serverState),
+		logger:      logger,
+		ctx:         ctx,
+		cancel:      cancel,
+		stopTimeout: stopTimeout,
 	}
 }
 
@@ -204,6 +217,8 @@ func (m *Manager) Stop(name string) error {
 }
 
 // StopAll stops all managed MCP servers.
+// It waits for all server monitors to complete, up to the configured stopTimeout.
+// If the timeout is exceeded, it logs a warning and returns.
 func (m *Manager) StopAll() {
 	m.mu.Lock()
 	serverNames := make([]string, 0, len(m.servers))
@@ -217,8 +232,30 @@ func (m *Manager) StopAll() {
 		_ = m.Stop(name)
 	}
 
-	// Wait for all monitors to finish
-	m.wg.Wait()
+	// Wait for all monitors to finish with timeout
+	if !waitGroupTimeout(&m.wg, m.stopTimeout) {
+		m.logger.Warn("timeout waiting for MCP servers to stop",
+			"timeout", m.stopTimeout,
+			"servers", serverNames,
+		)
+	}
+}
+
+// waitGroupTimeout waits for a WaitGroup with a timeout.
+// Returns true if the wait completed successfully, false if it timed out.
+func waitGroupTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
 }
 
 // GetClient returns the MCP client for a server by name.
