@@ -32,7 +32,6 @@ export default defineConfig({
         {
           label: 'Building Workflows',
           items: [
-            { label: 'Overview', slug: 'building-workflows' },
             { label: 'Patterns', slug: 'building-workflows/patterns' },
             { label: 'Flow Control', slug: 'building-workflows/flow-control' },
             { label: 'Error Handling', slug: 'building-workflows/error-handling' },
@@ -41,6 +40,7 @@ export default defineConfig({
             { label: 'Performance', slug: 'building-workflows/performance' },
             { label: 'Profiles', slug: 'building-workflows/profiles' },
             { label: 'Daemon Mode', slug: 'building-workflows/daemon-mode' },
+            { label: 'Endpoints', slug: 'building-workflows/endpoints' },
           ],
         },
         {
