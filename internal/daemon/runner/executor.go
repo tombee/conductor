@@ -72,10 +72,10 @@ func (r *Runner) execute(run *Run) {
 		metrics.DecrementQueueDepth()
 	}
 
-	// Update backend
+	// Update backend with run context (respects cancellation during execution)
 	if be := r.getBackend(); be != nil {
 		beRun := r.toBackendRun(run)
-		if err := be.UpdateRun(context.Background(), beRun); err != nil {
+		if err := be.UpdateRun(run.ctx, beRun); err != nil {
 			r.addLog(run, "warn", fmt.Sprintf("Failed to persist run state: operation=UpdateRun run_id=%s error=%v", run.ID, err), "")
 			daemonmetrics.RecordPersistenceError("UpdateRun", categorizeError(err))
 		}
@@ -134,10 +134,10 @@ func (r *Runner) execute(run *Run) {
 		run.mu.Unlock()
 		r.addLog(run, "error", "No execution adapter configured for step execution", "")
 
-		// Update backend
+		// Update backend with run context (respects cancellation during execution)
 		if be := r.getBackend(); be != nil {
 			beRun := r.toBackendRun(run)
-			if err := be.UpdateRun(context.Background(), beRun); err != nil {
+			if err := be.UpdateRun(run.ctx, beRun); err != nil {
 				r.addLog(run, "warn", fmt.Sprintf("Failed to persist run state: operation=UpdateRun run_id=%s error=%v", run.ID, err), "")
 				daemonmetrics.RecordPersistenceError("UpdateRun", categorizeError(err))
 			}
@@ -159,7 +159,8 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 			run.Progress.Completed = stepIndex
 			run.mu.Unlock()
 
-			// Save checkpoint before step using LifecycleManager
+			// Save checkpoint before step using LifecycleManager.
+			// Use context.Background() to ensure checkpoint persists even if run is cancelled.
 			workflowCtx := make(map[string]any)
 			workflowCtx["inputs"] = run.Inputs
 			if err := r.lifecycle.SaveCheckpoint(context.Background(), run, stepIndex, workflowCtx); err != nil {
@@ -237,7 +238,8 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 		metrics.RecordRunComplete(run.ctx, run.ID, run.WorkflowID, status, "api", duration)
 	}
 
-	// Update backend
+	// Update backend with final status.
+	// Use context.Background() to ensure final state persists even if run was cancelled.
 	if be := r.getBackend(); be != nil {
 		beRun := r.toBackendRun(run)
 		if err := be.UpdateRun(context.Background(), beRun); err != nil {
@@ -246,7 +248,8 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 		}
 	}
 
-	// Clean up checkpoint on successful completion
+	// Clean up checkpoint on successful completion.
+	// Use context.Background() to ensure cleanup completes.
 	if run.Status == RunStatusCompleted {
 		if err := r.lifecycle.CleanupCheckpoint(context.Background(), run.ID); err != nil {
 			r.addLog(run, "warn", fmt.Sprintf("Failed to cleanup checkpoint: operation=CleanupCheckpoint run_id=%s error=%v", run.ID, err), "")
