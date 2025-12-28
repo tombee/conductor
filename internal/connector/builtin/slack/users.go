@@ -3,11 +3,11 @@ package slack
 import (
 	"context"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // listUsers lists workspace members.
-func (c *SlackConnector) listUsers(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *SlackConnector) listUsers(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Build URL
 	url, err := c.BuildURL("/users.list", inputs)
 	if err != nil {
@@ -64,7 +64,7 @@ func (c *SlackConnector) listUsers(ctx context.Context, inputs map[string]interf
 }
 
 // getUser gets information about a specific user.
-func (c *SlackConnector) getUser(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *SlackConnector) getUser(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"user"}); err != nil {
 		return nil, err

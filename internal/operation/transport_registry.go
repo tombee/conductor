@@ -1,7 +1,7 @@
-package connector
+package operation
 
 import (
-	"github.com/tombee/conductor/internal/connector/transport"
+	"github.com/tombee/conductor/internal/operation/transport"
 )
 
 // NewDefaultTransportRegistry creates a transport registry with all built-in transports.

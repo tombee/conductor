@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tombee/conductor/internal/connector"
-	"github.com/tombee/conductor/internal/connector/api"
+	"github.com/tombee/conductor/internal/operation"
+	"github.com/tombee/conductor/internal/operation/api"
 )
 
 // SlackConnector implements the Connector interface for Slack API.
@@ -14,7 +14,7 @@ type SlackConnector struct {
 }
 
 // NewSlackConnector creates a new Slack connector.
-func NewSlackConnector(config *api.ConnectorConfig) (connector.Connector, error) {
+func NewSlackConnector(config *api.ConnectorConfig) (operation.Connector, error) {
 	if config.BaseURL == "" {
 		config.BaseURL = "https://slack.com/api"
 	}
@@ -27,7 +27,7 @@ func NewSlackConnector(config *api.ConnectorConfig) (connector.Connector, error)
 }
 
 // Execute runs a named operation with the given inputs.
-func (c *SlackConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *SlackConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*operation.Result, error) {
 	switch operation {
 	// Messages
 	case "post_message":

@@ -3,8 +3,8 @@ package builtin
 import (
 	"strings"
 
-	"github.com/tombee/conductor/internal/connector"
-	"github.com/tombee/conductor/internal/connector/api"
+	"github.com/tombee/conductor/internal/operation"
+	"github.com/tombee/conductor/internal/operation/api"
 	"github.com/tombee/conductor/internal/connector/builtin/cloudwatch"
 	"github.com/tombee/conductor/internal/connector/builtin/discord"
 	"github.com/tombee/conductor/internal/connector/builtin/github"
@@ -16,7 +16,7 @@ import (
 // BuiltinRegistry holds all built-in API connector factories.
 // These connectors provide type-safe, Go-based implementations with
 // API-specific error handling and pagination support.
-var BuiltinRegistry = map[string]func(config *api.ConnectorConfig) (connector.Connector, error){
+var BuiltinRegistry = map[string]func(config *api.ConnectorConfig) (operation.Connector, error){
 	"github":     github.NewGitHubConnector,
 	"slack":      slack.NewSlackConnector,
 	"jira":       jira.NewJiraConnector,
@@ -26,10 +26,10 @@ var BuiltinRegistry = map[string]func(config *api.ConnectorConfig) (connector.Co
 }
 
 func init() {
-	// Register all builtin API connectors with the parent connector package
+	// Register all builtin API connectors with the parent operation package
 	for name := range BuiltinRegistry {
 		connName := name // capture for closure
-		connector.RegisterBuiltinAPI(name, func(connectorName string, baseURL string, authType string, authToken string) (connector.Connector, error) {
+		operation.RegisterBuiltinAPI(name, func(connectorName string, baseURL string, authType string, authToken string) (operation.Connector, error) {
 			config := &api.ConnectorConfig{
 				BaseURL: baseURL,
 				Token:   authToken,

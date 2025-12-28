@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // sendMessage sends a message to a Discord channel.
-func (c *DiscordConnector) sendMessage(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *DiscordConnector) sendMessage(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"channel_id", "content"}); err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (c *DiscordConnector) sendMessage(ctx context.Context, inputs map[string]in
 }
 
 // editMessage edits an existing Discord message.
-func (c *DiscordConnector) editMessage(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *DiscordConnector) editMessage(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"channel_id", "message_id"}); err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func (c *DiscordConnector) editMessage(ctx context.Context, inputs map[string]in
 }
 
 // deleteMessage deletes a Discord message.
-func (c *DiscordConnector) deleteMessage(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *DiscordConnector) deleteMessage(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"channel_id", "message_id"}); err != nil {
 		return nil, err
@@ -128,7 +128,7 @@ func (c *DiscordConnector) deleteMessage(ctx context.Context, inputs map[string]
 }
 
 // addReaction adds a reaction to a Discord message.
-func (c *DiscordConnector) addReaction(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *DiscordConnector) addReaction(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"channel_id", "message_id", "emoji"}); err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func (c *DiscordConnector) addReaction(ctx context.Context, inputs map[string]in
 }
 
 // createThread creates a thread from a message in a Discord channel.
-func (c *DiscordConnector) createThread(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *DiscordConnector) createThread(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"channel_id", "message_id", "name"}); err != nil {
 		return nil, err
@@ -211,7 +211,7 @@ func (c *DiscordConnector) createThread(ctx context.Context, inputs map[string]i
 }
 
 // sendEmbed sends a rich embed message to a Discord channel.
-func (c *DiscordConnector) sendEmbed(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *DiscordConnector) sendEmbed(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"channel_id"}); err != nil {
 		return nil, err

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/tombee/conductor/internal/connector/transport"
+	"github.com/tombee/conductor/internal/operation/transport"
 )
 
 // SlackError represents a Slack API error.

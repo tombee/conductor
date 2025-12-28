@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // uploadFile uploads a file to Slack channels.
-func (c *SlackConnector) uploadFile(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *SlackConnector) uploadFile(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"channels"}); err != nil {
 		return nil, err

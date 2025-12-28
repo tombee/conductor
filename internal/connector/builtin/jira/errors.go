@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tombee/conductor/internal/connector/transport"
+	"github.com/tombee/conductor/internal/operation/transport"
 )
 
 // JiraError represents a Jira API error response.

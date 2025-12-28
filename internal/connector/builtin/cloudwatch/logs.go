@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tombee/conductor/internal/connector"
-	"github.com/tombee/conductor/internal/connector/transport"
+	"github.com/tombee/conductor/internal/operation"
+	"github.com/tombee/conductor/internal/operation/transport"
 )
 
 // putLogEvents sends log events to CloudWatch Logs using PutLogEvents API.
 // Handles sequence token management and auto-creates log streams if configured.
-func (c *CloudWatchConnector) putLogEvents(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *CloudWatchConnector) putLogEvents(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Extract required fields
 	logGroup, ok := inputs["log_group"].(string)
 	if !ok || logGroup == "" {
@@ -68,7 +68,7 @@ func (c *CloudWatchConnector) putLogEvents(ctx context.Context, inputs map[strin
 }
 
 // putLogEventsWithRetry sends log events with automatic retry for sequence token errors.
-func (c *CloudWatchConnector) putLogEventsWithRetry(ctx context.Context, logGroup, logStream string, logEvents []map[string]interface{}) (*connector.Result, error) {
+func (c *CloudWatchConnector) putLogEventsWithRetry(ctx context.Context, logGroup, logStream string, logEvents []map[string]interface{}) (*operation.Result, error) {
 	const maxRetries = 3
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
@@ -119,7 +119,7 @@ func (c *CloudWatchConnector) putLogEventsWithRetry(ctx context.Context, logGrou
 }
 
 // sendPutLogEvents sends a single PutLogEvents request.
-func (c *CloudWatchConnector) sendPutLogEvents(ctx context.Context, logGroup, logStream, sequenceToken string, logEvents []map[string]interface{}) (*connector.Result, error) {
+func (c *CloudWatchConnector) sendPutLogEvents(ctx context.Context, logGroup, logStream, sequenceToken string, logEvents []map[string]interface{}) (*operation.Result, error) {
 	// Build request body
 	body := map[string]interface{}{
 		"logGroupName":  logGroup,
@@ -163,7 +163,7 @@ func (c *CloudWatchConnector) sendPutLogEvents(ctx context.Context, logGroup, lo
 		response = make(map[string]interface{})
 	}
 
-	return &connector.Result{
+	return &operation.Result{
 		Response:    response,
 		RawResponse: resp.Body,
 		StatusCode:  resp.StatusCode,

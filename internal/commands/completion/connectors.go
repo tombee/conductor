@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // CompleteConnectorNames provides completion for builtin connector names.
@@ -29,7 +29,7 @@ func CompleteConnectorNames(cmd *cobra.Command, args []string, toComplete string
 
 		completions := make([]string, 0, len(connectorNames))
 		for _, name := range connectorNames {
-			desc := connector.GetBuiltinDescription(name)
+			desc := operation.GetBuiltinDescription(name)
 			completions = append(completions, name+"\t"+desc)
 		}
 
@@ -47,7 +47,7 @@ func CompleteConnectorOperations(cmd *cobra.Command, args []string, toComplete s
 
 		// For each connector, add all its operations
 		for _, connectorName := range connectorNames {
-			operations := connector.GetBuiltinOperations(connectorName)
+			operations := operation.GetBuiltinOperations(connectorName)
 			for _, op := range operations {
 				// Format: "connector.operation\tdescription"
 				completion := fmt.Sprintf("%s.%s\t%s operation", connectorName, op, connectorName)

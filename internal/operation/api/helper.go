@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/tombee/conductor/internal/connector"
-	"github.com/tombee/conductor/internal/connector/transport"
+	"github.com/tombee/conductor/internal/operation"
+	"github.com/tombee/conductor/internal/operation/transport"
 )
 
 // BaseConnector provides common functionality for API connectors.
@@ -148,9 +148,9 @@ func (c *BaseConnector) ParseJSONResponse(resp *transport.Response, target inter
 	return json.Unmarshal(resp.Body, target)
 }
 
-// ToConnectorResult converts a transport response to a connector result.
-func (c *BaseConnector) ToConnectorResult(resp *transport.Response, response interface{}) *connector.Result {
-	return &connector.Result{
+// ToConnectorResult converts a transport response to an operation result.
+func (c *BaseConnector) ToConnectorResult(resp *transport.Response, response interface{}) *operation.Result {
+	return &operation.Result{
 		Response:    response,
 		RawResponse: resp.Body,
 		StatusCode:  resp.StatusCode,

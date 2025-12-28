@@ -3,11 +3,11 @@ package discord
 import (
 	"context"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // listChannels lists all channels in a Discord guild.
-func (c *DiscordConnector) listChannels(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *DiscordConnector) listChannels(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"guild_id"}); err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func (c *DiscordConnector) listChannels(ctx context.Context, inputs map[string]i
 }
 
 // getChannel gets details about a specific Discord channel.
-func (c *DiscordConnector) getChannel(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *DiscordConnector) getChannel(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"channel_id"}); err != nil {
 		return nil, err

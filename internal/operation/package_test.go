@@ -1,11 +1,11 @@
-package connector_test
+package operation_test
 
 import (
 	"testing"
 
-	"github.com/tombee/conductor/internal/connector"
 	// Import builtin package to trigger init() registration
 	_ "github.com/tombee/conductor/internal/connector/builtin"
+	"github.com/tombee/conductor/internal/operation"
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
@@ -102,11 +102,11 @@ func TestNewPackageConnector(t *testing.T) {
 		},
 	}
 
-	config := connector.DefaultConfig()
+	config := operation.DefaultConfig()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			conn, err := connector.New(tt.def, config)
+			conn, err := operation.New(tt.def, config)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("connector.New() error = %v, wantErr %v", err, tt.wantErr)
 				return

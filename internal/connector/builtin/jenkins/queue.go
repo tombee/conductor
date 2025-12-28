@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // getQueueItem gets the status of a queued build.
-func (c *JenkinsConnector) getQueueItem(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JenkinsConnector) getQueueItem(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"queue_id"}); err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (c *JenkinsConnector) getQueueItem(ctx context.Context, inputs map[string]i
 }
 
 // cancelQueueItem cancels a queued build before it starts.
-func (c *JenkinsConnector) cancelQueueItem(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JenkinsConnector) cancelQueueItem(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"queue_id"}); err != nil {
 		return nil, err

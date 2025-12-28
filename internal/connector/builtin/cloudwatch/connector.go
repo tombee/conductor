@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/tombee/conductor/internal/connector"
-	"github.com/tombee/conductor/internal/connector/api"
-	"github.com/tombee/conductor/internal/connector/transport"
+	"github.com/tombee/conductor/internal/operation"
+	"github.com/tombee/conductor/internal/operation/api"
+	"github.com/tombee/conductor/internal/operation/transport"
 )
 
 // CloudWatchConnector implements the Connector interface for AWS CloudWatch.
@@ -27,7 +27,7 @@ type CloudWatchConnector struct {
 }
 
 // NewCloudWatchConnector creates a new CloudWatch connector.
-func NewCloudWatchConnector(config *api.ConnectorConfig) (connector.Connector, error) {
+func NewCloudWatchConnector(config *api.ConnectorConfig) (operation.Connector, error) {
 	if config.Transport == nil {
 		return nil, fmt.Errorf("transport is required for CloudWatch connector")
 	}
@@ -68,7 +68,7 @@ func (c *CloudWatchConnector) Name() string {
 }
 
 // Execute runs a named operation with the given inputs.
-func (c *CloudWatchConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *CloudWatchConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*operation.Result, error) {
 	switch operation {
 	case "log":
 		return c.putLogEvents(ctx, inputs)

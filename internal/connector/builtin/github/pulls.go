@@ -3,11 +3,11 @@ package github
 import (
 	"context"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // createPR creates a new GitHub pull request.
-func (c *GitHubConnector) createPR(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *GitHubConnector) createPR(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"owner", "repo", "title", "head", "base"}); err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (c *GitHubConnector) createPR(ctx context.Context, inputs map[string]interf
 }
 
 // mergePR merges a GitHub pull request.
-func (c *GitHubConnector) mergePR(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *GitHubConnector) mergePR(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"owner", "repo", "pull_number"}); err != nil {
 		return nil, err
@@ -105,7 +105,7 @@ func (c *GitHubConnector) mergePR(ctx context.Context, inputs map[string]interfa
 }
 
 // listPRs lists pull requests for a repository.
-func (c *GitHubConnector) listPRs(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *GitHubConnector) listPRs(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"owner", "repo"}); err != nil {
 		return nil, err

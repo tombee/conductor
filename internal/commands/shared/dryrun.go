@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // DryRunAction represents an action type in dry-run output.
@@ -91,9 +91,9 @@ func (d *DryRunOutput) String() string {
 }
 
 // MaskSensitiveData masks sensitive values in dry-run output.
-// This is a convenience wrapper around connector.MaskSensitiveValue.
+// This is a convenience wrapper around operation.MaskSensitiveValue.
 func MaskSensitiveData(key, value string) string {
-	return connector.MaskSensitiveValue(key, value)
+	return operation.MaskSensitiveValue(key, value)
 }
 
 // PlaceholderPath converts a full system path to a placeholder path for dry-run output.

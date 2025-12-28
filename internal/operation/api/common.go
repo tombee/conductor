@@ -2,7 +2,7 @@
 package api
 
 import (
-	"github.com/tombee/conductor/internal/connector/transport"
+	"github.com/tombee/conductor/internal/operation/transport"
 )
 
 // ConnectorConfig holds configuration for API connectors.

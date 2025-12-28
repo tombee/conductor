@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tombee/conductor/internal/connector/api"
-	"github.com/tombee/conductor/internal/connector/transport"
+	"github.com/tombee/conductor/internal/operation/api"
+	"github.com/tombee/conductor/internal/operation/transport"
 )
 
 // mockTransport is a mock implementation of transport.Transport for testing.

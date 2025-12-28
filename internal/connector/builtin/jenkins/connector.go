@@ -5,9 +5,9 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/tombee/conductor/internal/connector"
-	"github.com/tombee/conductor/internal/connector/api"
-	"github.com/tombee/conductor/internal/connector/transport"
+	"github.com/tombee/conductor/internal/operation"
+	"github.com/tombee/conductor/internal/operation/api"
+	"github.com/tombee/conductor/internal/operation/transport"
 )
 
 // JenkinsConnector implements the Connector interface for Jenkins API.
@@ -20,7 +20,7 @@ type JenkinsConnector struct {
 }
 
 // NewJenkinsConnector creates a new Jenkins connector.
-func NewJenkinsConnector(config *api.ConnectorConfig) (connector.Connector, error) {
+func NewJenkinsConnector(config *api.ConnectorConfig) (operation.Connector, error) {
 	if config.BaseURL == "" {
 		return nil, fmt.Errorf("jenkins connector requires base_url configuration")
 	}
@@ -47,7 +47,7 @@ func NewJenkinsConnector(config *api.ConnectorConfig) (connector.Connector, erro
 }
 
 // Execute runs a named operation with the given inputs.
-func (c *JenkinsConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JenkinsConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*operation.Result, error) {
 	switch operation {
 	// Builds
 	case "trigger_build":

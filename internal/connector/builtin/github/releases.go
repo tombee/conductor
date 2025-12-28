@@ -3,11 +3,11 @@ package github
 import (
 	"context"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // createRelease creates a new GitHub release.
-func (c *GitHubConnector) createRelease(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *GitHubConnector) createRelease(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"owner", "repo", "tag_name"}); err != nil {
 		return nil, err

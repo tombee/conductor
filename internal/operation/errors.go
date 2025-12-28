@@ -1,4 +1,4 @@
-package connector
+package operation
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"regexp"
 )
 
-// ErrorType classifies connector errors for appropriate handling.
+// ErrorType classifies operation errors for appropriate handling.
 type ErrorType string
 
 const (
@@ -44,7 +44,7 @@ const (
 	ErrorTypeNotImplemented ErrorType = "not_implemented"
 )
 
-// Error represents a connector execution error with classification.
+// Error represents an operation execution error with classification.
 type Error struct {
 	// Type classifies the error for retry logic
 	Type ErrorType
@@ -74,7 +74,7 @@ type Error struct {
 
 // Error implements the error interface.
 func (e *Error) Error() string {
-	msg := fmt.Sprintf("ConnectorError: %s", e.Message)
+	msg := fmt.Sprintf("OperationError: %s", e.Message)
 
 	if e.Type != "" {
 		msg = fmt.Sprintf("%s (type: %s)", msg, e.Type)
@@ -111,7 +111,7 @@ func (e *Error) IsRetryable() bool {
 }
 
 // IsUserVisible implements pkg/errors.UserVisibleError.
-// Connector errors are always user-visible.
+// Operation errors are always user-visible.
 func (e *Error) IsUserVisible() bool {
 	return true
 }
@@ -170,7 +170,7 @@ func ErrorFromHTTPStatus(statusCode int, statusText, responseBody, requestID str
 		// NOTE: Response body is intentionally NOT included in the error message
 		// It should be logged separately with request_id for debugging
 	case ErrorTypeRateLimit:
-		err.SuggestText = "Wait for rate limit window or configure rate_limit in connector"
+		err.SuggestText = "Wait for rate limit window or configure rate_limit in operation"
 	case ErrorTypeServer:
 		err.SuggestText = "Retry or contact the service provider"
 	}

@@ -3,11 +3,11 @@ package jira
 import (
 	"context"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // listProjects retrieves all projects accessible to the user.
-func (c *JiraConnector) listProjects(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JiraConnector) listProjects(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Build URL
 	url, err := c.BuildURL("/project", inputs)
 	if err != nil {

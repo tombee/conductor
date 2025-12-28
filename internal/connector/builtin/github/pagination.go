@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/tombee/conductor/internal/connector"
+	op "github.com/tombee/conductor/internal/operation"
 )
 
 // ExecutePaginated implements paginated operations for GitHub connector.
 // Supports list_issues, list_prs, and list_repos operations.
-func (c *GitHubConnector) ExecutePaginated(ctx context.Context, operation string, inputs map[string]interface{}) (<-chan *connector.Result, error) {
+func (c *GitHubConnector) ExecutePaginated(ctx context.Context, operation string, inputs map[string]interface{}) (<-chan *op.Result, error) {
 	// Check if pagination is enabled
 	paginate, _ := inputs["paginate"].(bool)
 	if !paginate {
@@ -20,7 +20,7 @@ func (c *GitHubConnector) ExecutePaginated(ctx context.Context, operation string
 			return nil, err
 		}
 
-		ch := make(chan *connector.Result, 1)
+		ch := make(chan *op.Result, 1)
 		ch <- result
 		close(ch)
 		return ch, nil
@@ -35,7 +35,7 @@ func (c *GitHubConnector) ExecutePaginated(ctx context.Context, operation string
 	}
 
 	// Create results channel
-	resultsChan := make(chan *connector.Result)
+	resultsChan := make(chan *op.Result)
 
 	// Start pagination in goroutine
 	go func() {
@@ -76,7 +76,7 @@ func (c *GitHubConnector) ExecutePaginated(ctx context.Context, operation string
 			result, err := c.Execute(ctx, operation, inputs)
 			if err != nil {
 				// Send error in metadata
-				errResult := &connector.Result{
+				errResult := &op.Result{
 					Metadata: map[string]interface{}{
 						"error": err.Error(),
 					},

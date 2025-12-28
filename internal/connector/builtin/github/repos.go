@@ -3,11 +3,11 @@ package github
 import (
 	"context"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // getFile gets file contents from a GitHub repository.
-func (c *GitHubConnector) getFile(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *GitHubConnector) getFile(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"owner", "repo", "path"}); err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (c *GitHubConnector) getFile(ctx context.Context, inputs map[string]interfa
 }
 
 // listRepos lists repositories for a GitHub user.
-func (c *GitHubConnector) listRepos(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *GitHubConnector) listRepos(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"username"}); err != nil {
 		return nil, err

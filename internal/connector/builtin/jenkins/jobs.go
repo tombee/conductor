@@ -3,11 +3,11 @@ package jenkins
 import (
 	"context"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // getJob gets job configuration and details.
-func (c *JenkinsConnector) getJob(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JenkinsConnector) getJob(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"job_name"}); err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func (c *JenkinsConnector) getJob(ctx context.Context, inputs map[string]interfa
 }
 
 // listJobs lists jobs in a folder (or root).
-func (c *JenkinsConnector) listJobs(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JenkinsConnector) listJobs(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// folder_path is optional, defaults to root
 	folderPath := ""
 	if fp, ok := inputs["folder_path"].(string); ok && fp != "" {

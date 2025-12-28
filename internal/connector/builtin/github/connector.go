@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tombee/conductor/internal/connector"
-	"github.com/tombee/conductor/internal/connector/api"
+	"github.com/tombee/conductor/internal/operation"
+	"github.com/tombee/conductor/internal/operation/api"
 )
 
 // GitHubConnector implements the Connector interface for GitHub API.
@@ -14,7 +14,7 @@ type GitHubConnector struct {
 }
 
 // NewGitHubConnector creates a new GitHub connector.
-func NewGitHubConnector(config *api.ConnectorConfig) (connector.Connector, error) {
+func NewGitHubConnector(config *api.ConnectorConfig) (operation.Connector, error) {
 	// Set default base URL if not provided
 	if config.BaseURL == "" {
 		config.BaseURL = "https://api.github.com"
@@ -28,7 +28,7 @@ func NewGitHubConnector(config *api.ConnectorConfig) (connector.Connector, error
 }
 
 // Execute runs a named operation with the given inputs.
-func (c *GitHubConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *GitHubConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*operation.Result, error) {
 	switch operation {
 	// Issues
 	case "create_issue":

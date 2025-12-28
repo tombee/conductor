@@ -3,11 +3,11 @@ package jenkins
 import (
 	"context"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // listNodes lists all build agents/nodes.
-func (c *JenkinsConnector) listNodes(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JenkinsConnector) listNodes(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Build URL
 	url := c.baseURL + "/computer/api/json"
 
@@ -51,7 +51,7 @@ func (c *JenkinsConnector) listNodes(ctx context.Context, inputs map[string]inte
 }
 
 // getNode gets details about a specific node.
-func (c *JenkinsConnector) getNode(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JenkinsConnector) getNode(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"node_name"}); err != nil {
 		return nil, err

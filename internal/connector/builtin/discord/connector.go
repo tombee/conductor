@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tombee/conductor/internal/connector"
-	"github.com/tombee/conductor/internal/connector/api"
-	"github.com/tombee/conductor/internal/connector/transport"
+	"github.com/tombee/conductor/internal/operation"
+	"github.com/tombee/conductor/internal/operation/api"
+	"github.com/tombee/conductor/internal/operation/transport"
 )
 
 // DiscordConnector implements the Connector interface for Discord API.
@@ -18,7 +18,7 @@ type DiscordConnector struct {
 }
 
 // NewDiscordConnector creates a new Discord connector.
-func NewDiscordConnector(config *api.ConnectorConfig) (connector.Connector, error) {
+func NewDiscordConnector(config *api.ConnectorConfig) (operation.Connector, error) {
 	if config.BaseURL == "" {
 		config.BaseURL = "https://discord.com/api/v10"
 	}
@@ -34,7 +34,7 @@ func NewDiscordConnector(config *api.ConnectorConfig) (connector.Connector, erro
 }
 
 // Execute runs a named operation with the given inputs.
-func (c *DiscordConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *DiscordConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*operation.Result, error) {
 	switch operation {
 	// Messages
 	case "send_message":

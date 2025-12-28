@@ -3,12 +3,12 @@ package discord
 import (
 	"context"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // listMembers lists members in a Discord guild.
 // Supports snowflake-based pagination with the "after" parameter.
-func (c *DiscordConnector) listMembers(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *DiscordConnector) listMembers(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"guild_id"}); err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func (c *DiscordConnector) listMembers(ctx context.Context, inputs map[string]in
 }
 
 // getMember gets details about a specific guild member.
-func (c *DiscordConnector) getMember(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *DiscordConnector) getMember(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"guild_id", "user_id"}); err != nil {
 		return nil, err

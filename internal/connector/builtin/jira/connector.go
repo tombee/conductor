@@ -5,9 +5,9 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/tombee/conductor/internal/connector"
-	"github.com/tombee/conductor/internal/connector/api"
-	"github.com/tombee/conductor/internal/connector/transport"
+	"github.com/tombee/conductor/internal/operation"
+	"github.com/tombee/conductor/internal/operation/api"
+	"github.com/tombee/conductor/internal/operation/transport"
 )
 
 // JiraConnector implements the Connector interface for Jira API.
@@ -19,7 +19,7 @@ type JiraConnector struct {
 }
 
 // NewJiraConnector creates a new Jira connector.
-func NewJiraConnector(config *api.ConnectorConfig) (connector.Connector, error) {
+func NewJiraConnector(config *api.ConnectorConfig) (operation.Connector, error) {
 	if config.BaseURL == "" {
 		return nil, fmt.Errorf("jira connector requires base_url configuration (e.g., https://your-domain.atlassian.net)")
 	}
@@ -55,7 +55,7 @@ func NewJiraConnector(config *api.ConnectorConfig) (connector.Connector, error) 
 }
 
 // Execute runs a named operation with the given inputs.
-func (c *JiraConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JiraConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*operation.Result, error) {
 	switch operation {
 	// Issues
 	case "create_issue":

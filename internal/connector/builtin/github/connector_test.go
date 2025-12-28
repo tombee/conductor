@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tombee/conductor/internal/connector/api"
-	"github.com/tombee/conductor/internal/connector/transport"
+	"github.com/tombee/conductor/internal/operation/api"
+	"github.com/tombee/conductor/internal/operation/transport"
 )
 
 func TestNewGitHubConnector(t *testing.T) {

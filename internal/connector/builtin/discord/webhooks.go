@@ -3,12 +3,12 @@ package discord
 import (
 	"context"
 
-	"github.com/tombee/conductor/internal/connector"
-	"github.com/tombee/conductor/internal/connector/transport"
+	"github.com/tombee/conductor/internal/operation"
+	"github.com/tombee/conductor/internal/operation/transport"
 )
 
 // createWebhook creates a webhook in a Discord channel.
-func (c *DiscordConnector) createWebhook(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *DiscordConnector) createWebhook(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"channel_id", "name"}); err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (c *DiscordConnector) createWebhook(ctx context.Context, inputs map[string]
 }
 
 // sendWebhook sends a message via a Discord webhook.
-func (c *DiscordConnector) sendWebhook(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *DiscordConnector) sendWebhook(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"webhook_id", "webhook_token"}); err != nil {
 		return nil, err

@@ -26,7 +26,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tombee/conductor/internal/commands/shared"
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
@@ -296,8 +296,8 @@ func runConnectorInvoke(cmd *cobra.Command, workflowPath, reference, inputsJSON 
 	}
 
 	// Create registry and load connectors
-	config := connector.DefaultConfig()
-	registry := connector.NewRegistry(config)
+	config := operation.DefaultConfig()
+	registry := operation.NewRegistry(config)
 	if err := registry.LoadFromDefinition(def); err != nil {
 		if useJSON {
 			shared.EmitJSONError("connector_invoke", []shared.JSONError{

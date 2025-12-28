@@ -3,11 +3,11 @@ package slack
 import (
 	"context"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // postMessage sends a message to a Slack channel.
-func (c *SlackConnector) postMessage(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *SlackConnector) postMessage(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"channel", "text"}); err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (c *SlackConnector) postMessage(ctx context.Context, inputs map[string]inte
 }
 
 // updateMessage updates an existing Slack message.
-func (c *SlackConnector) updateMessage(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *SlackConnector) updateMessage(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"channel", "ts", "text"}); err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ func (c *SlackConnector) updateMessage(ctx context.Context, inputs map[string]in
 }
 
 // deleteMessage deletes a Slack message.
-func (c *SlackConnector) deleteMessage(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *SlackConnector) deleteMessage(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"channel", "ts"}); err != nil {
 		return nil, err
@@ -140,7 +140,7 @@ func (c *SlackConnector) deleteMessage(ctx context.Context, inputs map[string]in
 }
 
 // addReaction adds a reaction emoji to a message.
-func (c *SlackConnector) addReaction(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *SlackConnector) addReaction(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"channel", "timestamp", "name"}); err != nil {
 		return nil, err

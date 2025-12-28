@@ -1,11 +1,11 @@
-package connector
+package operation
 
 import (
 	"context"
 	"fmt"
 	"strings"
 
-	"github.com/tombee/conductor/internal/connector/transport"
+	"github.com/tombee/conductor/internal/operation/transport"
 	"github.com/tombee/conductor/pkg/workflow"
 )
 

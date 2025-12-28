@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // triggerBuild triggers a build without parameters.
-func (c *JenkinsConnector) triggerBuild(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JenkinsConnector) triggerBuild(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"job_name"}); err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func (c *JenkinsConnector) triggerBuild(ctx context.Context, inputs map[string]i
 }
 
 // triggerBuildWithParameters triggers a parameterized build.
-func (c *JenkinsConnector) triggerBuildWithParameters(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JenkinsConnector) triggerBuildWithParameters(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"job_name", "parameters"}); err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ func (c *JenkinsConnector) triggerBuildWithParameters(ctx context.Context, input
 }
 
 // getBuild gets details about a specific build.
-func (c *JenkinsConnector) getBuild(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JenkinsConnector) getBuild(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"job_name", "build_number"}); err != nil {
 		return nil, err
@@ -149,7 +149,7 @@ func (c *JenkinsConnector) getBuild(ctx context.Context, inputs map[string]inter
 }
 
 // getBuildLog gets the console output for a build.
-func (c *JenkinsConnector) getBuildLog(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JenkinsConnector) getBuildLog(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"job_name", "build_number"}); err != nil {
 		return nil, err
@@ -182,7 +182,7 @@ func (c *JenkinsConnector) getBuildLog(ctx context.Context, inputs map[string]in
 }
 
 // cancelBuild stops a running build.
-func (c *JenkinsConnector) cancelBuild(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JenkinsConnector) cancelBuild(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"job_name", "build_number"}); err != nil {
 		return nil, err
@@ -217,22 +217,22 @@ func (c *JenkinsConnector) cancelBuild(ctx context.Context, inputs map[string]in
 }
 
 // getLastBuild gets the last build info.
-func (c *JenkinsConnector) getLastBuild(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JenkinsConnector) getLastBuild(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	return c.getBuildInfo(ctx, inputs, "lastBuild")
 }
 
 // getLastSuccessfulBuild gets the last successful build info.
-func (c *JenkinsConnector) getLastSuccessfulBuild(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JenkinsConnector) getLastSuccessfulBuild(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	return c.getBuildInfo(ctx, inputs, "lastSuccessfulBuild")
 }
 
 // getLastFailedBuild gets the last failed build info.
-func (c *JenkinsConnector) getLastFailedBuild(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JenkinsConnector) getLastFailedBuild(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	return c.getBuildInfo(ctx, inputs, "lastFailedBuild")
 }
 
 // getBuildInfo is a helper to get specific build info types.
-func (c *JenkinsConnector) getBuildInfo(ctx context.Context, inputs map[string]interface{}, buildType string) (*connector.Result, error) {
+func (c *JenkinsConnector) getBuildInfo(ctx context.Context, inputs map[string]interface{}, buildType string) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"job_name"}); err != nil {
 		return nil, err
@@ -299,7 +299,7 @@ func (c *JenkinsConnector) getBuildInfo(ctx context.Context, inputs map[string]i
 }
 
 // getTestReport gets test results for a build.
-func (c *JenkinsConnector) getTestReport(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JenkinsConnector) getTestReport(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"job_name", "build_number"}); err != nil {
 		return nil, err

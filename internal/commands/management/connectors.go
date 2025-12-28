@@ -23,7 +23,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tombee/conductor/internal/commands/completion"
 	"github.com/tombee/conductor/internal/commands/shared"
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
@@ -189,16 +189,16 @@ func runConnectorsList(cmd *cobra.Command, workflowPath string) error {
 		{
 			Name:           "file",
 			Type:           "builtin",
-			Description:    connector.GetBuiltinDescription("file"),
-			OperationCount: len(connector.GetBuiltinOperations("file")),
-			Operations:     connector.GetBuiltinOperations("file"),
+			Description:    operation.GetBuiltinDescription("file"),
+			OperationCount: len(operation.GetBuiltinOperations("file")),
+			Operations:     operation.GetBuiltinOperations("file"),
 		},
 		{
 			Name:           "shell",
 			Type:           "builtin",
-			Description:    connector.GetBuiltinDescription("shell"),
-			OperationCount: len(connector.GetBuiltinOperations("shell")),
-			Operations:     connector.GetBuiltinOperations("shell"),
+			Description:    operation.GetBuiltinDescription("shell"),
+			OperationCount: len(operation.GetBuiltinOperations("shell")),
+			Operations:     operation.GetBuiltinOperations("shell"),
 		},
 		{
 			Name:           "http",
@@ -210,9 +210,9 @@ func runConnectorsList(cmd *cobra.Command, workflowPath string) error {
 		{
 			Name:           "transform",
 			Type:           "builtin",
-			Description:    connector.GetBuiltinDescription("transform"),
-			OperationCount: len(connector.GetBuiltinOperations("transform")),
-			Operations:     connector.GetBuiltinOperations("transform"),
+			Description:    operation.GetBuiltinDescription("transform"),
+			OperationCount: len(operation.GetBuiltinOperations("transform")),
+			Operations:     operation.GetBuiltinOperations("transform"),
 		},
 	}
 
@@ -320,13 +320,13 @@ func runConnectorsShow(cmd *cobra.Command, connectorName, workflowPath string) e
 	var found bool
 
 	// Check if it's a builtin connector
-	if connector.IsBuiltin(connectorName) {
+	if operation.IsBuiltin(connectorName) {
 		info = ConnectorInfo{
 			Name:           connectorName,
 			Type:           "builtin",
-			Description:    connector.GetBuiltinDescription(connectorName),
-			Operations:     connector.GetBuiltinOperations(connectorName),
-			OperationCount: len(connector.GetBuiltinOperations(connectorName)),
+			Description:    operation.GetBuiltinDescription(connectorName),
+			Operations:     operation.GetBuiltinOperations(connectorName),
+			OperationCount: len(operation.GetBuiltinOperations(connectorName)),
 		}
 		found = true
 	} else if workflowPath != "" {
@@ -545,8 +545,8 @@ func getOperationInfo(connectorName, operationName, workflowPath string) (Operat
 	}
 
 	// Check builtin connectors first
-	if connector.IsBuiltin(connectorName) {
-		ops := connector.GetBuiltinOperations(connectorName)
+	if operation.IsBuiltin(connectorName) {
+		ops := operation.GetBuiltinOperations(connectorName)
 		found := false
 		for _, op := range ops {
 			if op == operationName {

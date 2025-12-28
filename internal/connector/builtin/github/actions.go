@@ -3,11 +3,11 @@ package github
 import (
 	"context"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // getWorkflowRuns lists GitHub Actions workflow runs.
-func (c *GitHubConnector) getWorkflowRuns(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *GitHubConnector) getWorkflowRuns(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"owner", "repo"}); err != nil {
 		return nil, err

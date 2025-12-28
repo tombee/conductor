@@ -1,4 +1,4 @@
-package connector
+package operation
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tombee/conductor/internal/connector/transport"
+	"github.com/tombee/conductor/internal/operation/transport"
 	"github.com/tombee/conductor/pkg/workflow"
 )
 

@@ -3,11 +3,11 @@ package slack
 import (
 	"context"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // listChannels lists conversations (channels) in the workspace.
-func (c *SlackConnector) listChannels(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *SlackConnector) listChannels(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Build URL
 	url, err := c.BuildURL("/conversations.list", inputs)
 	if err != nil {
@@ -61,7 +61,7 @@ func (c *SlackConnector) listChannels(ctx context.Context, inputs map[string]int
 }
 
 // createChannel creates a new Slack channel.
-func (c *SlackConnector) createChannel(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *SlackConnector) createChannel(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"name"}); err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func (c *SlackConnector) createChannel(ctx context.Context, inputs map[string]in
 }
 
 // inviteToChannel invites users to a channel.
-func (c *SlackConnector) inviteToChannel(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *SlackConnector) inviteToChannel(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"channel", "users"}); err != nil {
 		return nil, err

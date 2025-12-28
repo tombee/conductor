@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // createIssue creates a new Jira issue.
-func (c *JiraConnector) createIssue(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JiraConnector) createIssue(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"project", "summary", "issuetype"}); err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func (c *JiraConnector) createIssue(ctx context.Context, inputs map[string]inter
 }
 
 // updateIssue updates an existing Jira issue.
-func (c *JiraConnector) updateIssue(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JiraConnector) updateIssue(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"issue_key"}); err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func (c *JiraConnector) updateIssue(ctx context.Context, inputs map[string]inter
 }
 
 // getIssue retrieves details of a Jira issue.
-func (c *JiraConnector) getIssue(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JiraConnector) getIssue(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"issue_key"}); err != nil {
 		return nil, err
@@ -212,7 +212,7 @@ func (c *JiraConnector) getIssue(ctx context.Context, inputs map[string]interfac
 }
 
 // transitionIssue changes the status of a Jira issue.
-func (c *JiraConnector) transitionIssue(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JiraConnector) transitionIssue(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"issue_key", "transition"}); err != nil {
 		return nil, err
@@ -265,7 +265,7 @@ func (c *JiraConnector) transitionIssue(ctx context.Context, inputs map[string]i
 }
 
 // getTransitions retrieves available transitions for a Jira issue.
-func (c *JiraConnector) getTransitions(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JiraConnector) getTransitions(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"issue_key"}); err != nil {
 		return nil, err
@@ -313,7 +313,7 @@ func (c *JiraConnector) getTransitions(ctx context.Context, inputs map[string]in
 }
 
 // addComment adds a comment to a Jira issue.
-func (c *JiraConnector) addComment(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JiraConnector) addComment(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"issue_key", "body"}); err != nil {
 		return nil, err
@@ -361,7 +361,7 @@ func (c *JiraConnector) addComment(ctx context.Context, inputs map[string]interf
 }
 
 // assignIssue assigns a Jira issue to a user.
-func (c *JiraConnector) assignIssue(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JiraConnector) assignIssue(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"issue_key", "accountId"}); err != nil {
 		return nil, err
@@ -401,7 +401,7 @@ func (c *JiraConnector) assignIssue(ctx context.Context, inputs map[string]inter
 }
 
 // searchIssues searches for issues using JQL.
-func (c *JiraConnector) searchIssues(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JiraConnector) searchIssues(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"jql"}); err != nil {
 		return nil, err
@@ -487,7 +487,7 @@ func (c *JiraConnector) searchIssues(ctx context.Context, inputs map[string]inte
 }
 
 // addAttachment adds an attachment to a Jira issue.
-func (c *JiraConnector) addAttachment(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JiraConnector) addAttachment(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"issue_key", "file"}); err != nil {
 		return nil, err
@@ -506,7 +506,7 @@ func (c *JiraConnector) addAttachment(ctx context.Context, inputs map[string]int
 }
 
 // linkIssues creates a link between two Jira issues.
-func (c *JiraConnector) linkIssues(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *JiraConnector) linkIssues(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"type", "inwardIssue", "outwardIssue"}); err != nil {
 		return nil, err

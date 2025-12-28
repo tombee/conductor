@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/tombee/conductor/internal/connector"
-	"github.com/tombee/conductor/internal/connector/transport"
+	"github.com/tombee/conductor/internal/operation"
+	"github.com/tombee/conductor/internal/operation/transport"
 )
 
 // Valid CloudWatch metric units
@@ -23,7 +23,7 @@ var validUnits = map[string]bool{
 }
 
 // putMetricData sends metrics to CloudWatch using PutMetricData API.
-func (c *CloudWatchConnector) putMetricData(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *CloudWatchConnector) putMetricData(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Extract namespace (required)
 	namespace, ok := inputs["namespace"].(string)
 	if !ok || namespace == "" {
@@ -155,7 +155,7 @@ func (c *CloudWatchConnector) buildMetricDataArray(metrics []interface{}) ([]map
 }
 
 // sendPutMetricData sends a PutMetricData request to CloudWatch.
-func (c *CloudWatchConnector) sendPutMetricData(ctx context.Context, namespace string, metricData []map[string]interface{}) (*connector.Result, error) {
+func (c *CloudWatchConnector) sendPutMetricData(ctx context.Context, namespace string, metricData []map[string]interface{}) (*operation.Result, error) {
 	// Build request body
 	body := map[string]interface{}{
 		"Namespace":  namespace,
@@ -188,7 +188,7 @@ func (c *CloudWatchConnector) sendPutMetricData(ctx context.Context, namespace s
 		"status": "ok",
 	}
 
-	return &connector.Result{
+	return &operation.Result{
 		Response:    response,
 		RawResponse: resp.Body,
 		StatusCode:  resp.StatusCode,

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tombee/conductor/internal/connector/transport"
+	"github.com/tombee/conductor/internal/operation/transport"
 )
 
 // DiscordError represents a Discord API error response.

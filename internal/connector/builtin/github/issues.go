@@ -3,11 +3,11 @@ package github
 import (
 	"context"
 
-	"github.com/tombee/conductor/internal/connector"
+	"github.com/tombee/conductor/internal/operation"
 )
 
 // createIssue creates a new GitHub issue.
-func (c *GitHubConnector) createIssue(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *GitHubConnector) createIssue(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"owner", "repo", "title"}); err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (c *GitHubConnector) createIssue(ctx context.Context, inputs map[string]int
 }
 
 // updateIssue updates an existing GitHub issue.
-func (c *GitHubConnector) updateIssue(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *GitHubConnector) updateIssue(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"owner", "repo", "issue_number"}); err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ func (c *GitHubConnector) updateIssue(ctx context.Context, inputs map[string]int
 }
 
 // closeIssue closes a GitHub issue.
-func (c *GitHubConnector) closeIssue(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *GitHubConnector) closeIssue(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"owner", "repo", "issue_number"}); err != nil {
 		return nil, err
@@ -141,7 +141,7 @@ func (c *GitHubConnector) closeIssue(ctx context.Context, inputs map[string]inte
 }
 
 // addComment adds a comment to a GitHub issue or PR.
-func (c *GitHubConnector) addComment(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *GitHubConnector) addComment(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"owner", "repo", "issue_number", "body"}); err != nil {
 		return nil, err
@@ -185,7 +185,7 @@ func (c *GitHubConnector) addComment(ctx context.Context, inputs map[string]inte
 }
 
 // listIssues lists issues for a repository.
-func (c *GitHubConnector) listIssues(ctx context.Context, inputs map[string]interface{}) (*connector.Result, error) {
+func (c *GitHubConnector) listIssues(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"owner", "repo"}); err != nil {
 		return nil, err
