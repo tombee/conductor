@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tombee/conductor/internal/commands/shared"
 	"github.com/tombee/conductor/internal/output"
+	"github.com/tombee/conductor/internal/permissions"
 	"github.com/tombee/conductor/pkg/workflow"
 	workflowschema "github.com/tombee/conductor/pkg/workflow/schema"
 	"gopkg.in/yaml.v3"
@@ -30,10 +31,12 @@ import (
 // NewCommand creates the validate command
 func NewCommand() *cobra.Command {
 	var (
-		schemaPath string
-		jsonOutput bool
-		workspace  string
-		profile    string
+		schemaPath         string
+		jsonOutput         bool
+		workspace          string
+		profile            string
+		checkPermissions   bool
+		providerName       string
 	)
 
 	cmd := &cobra.Command{
@@ -52,6 +55,13 @@ Profile Validation:
 
 When --profile is specified, validates that all workflow requirements
 are satisfied by the profile bindings.
+
+Permission Validation (SPEC-141):
+  --check-permissions      Validate permission enforcement capabilities
+  --provider <name>        Provider to check against (default: anthropic)
+
+When --check-permissions is specified, validates that the configured permissions
+can be enforced by the LLM provider. Warns about unenforceable permissions.
 
 See also: conductor run, conductor schema`,
 		Example: `  # Example 1: Basic validation
@@ -72,7 +82,7 @@ See also: conductor run, conductor schema`,
 		SilenceUsage:  true, // Don't print usage on validation errors
 		SilenceErrors: true, // Don't print error message (we handle it ourselves)
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runValidate(cmd, args, schemaPath, jsonOutput, workspace, profile)
+			return runValidate(cmd, args, schemaPath, jsonOutput, workspace, profile, checkPermissions, providerName)
 		},
 	}
 
@@ -80,11 +90,13 @@ See also: conductor run, conductor schema`,
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output validation results as JSON")
 	cmd.Flags().StringVarP(&workspace, "workspace", "w", "", "Workspace for profile resolution")
 	cmd.Flags().StringVarP(&profile, "profile", "p", "", "Profile to validate against workflow requirements")
+	cmd.Flags().BoolVar(&checkPermissions, "check-permissions", false, "Validate permission enforcement capabilities")
+	cmd.Flags().StringVar(&providerName, "provider", "anthropic", "Provider to check permissions against")
 
 	return cmd
 }
 
-func runValidate(cmd *cobra.Command, args []string, schemaPath string, jsonOutput bool, workspace, profile string) error {
+func runValidate(cmd *cobra.Command, args []string, schemaPath string, jsonOutput bool, workspace, profile string, checkPermissions bool, providerName string) error {
 	workflowPath := args[0]
 
 	// Check global --json flag in addition to local flag
@@ -168,6 +180,14 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, jsonOutpu
 		}
 	}
 
+	// Step 5: Run permission validation if requested (SPEC-141)
+	var permissionResult *permissions.ValidationResult
+	if checkPermissions && def != nil && def.Permissions != nil {
+		// Merge workflow-level permissions to create effective context
+		permCtx := permissions.Merge(def.Permissions, nil)
+		permissionResult = permissions.ValidateEnforcement(providerName, permCtx)
+	}
+
 	// Report errors
 	if len(validationErrors) > 0 {
 		if useJSON {
@@ -232,10 +252,17 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, jsonOutpu
 			Profile   string `json:"profile,omitempty"`
 		}
 
+		type permissionInfo struct {
+			Provider       string   `json:"provider"`
+			AllEnforceable bool     `json:"all_enforceable"`
+			Warnings       []string `json:"warnings,omitempty"`
+		}
+
 		type validateResponse struct {
 			output.JSONResponse
-			Workflow workflowMetadata `json:"workflow"`
-			Profile  *profileInfo     `json:"profile,omitempty"`
+			Workflow    workflowMetadata `json:"workflow"`
+			Profile     *profileInfo     `json:"profile,omitempty"`
+			Permissions *permissionInfo  `json:"permissions,omitempty"`
 		}
 
 		var profileData *profileInfo
@@ -243,6 +270,15 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, jsonOutpu
 			profileData = &profileInfo{
 				Workspace: workspace,
 				Profile:   profile,
+			}
+		}
+
+		var permissionData *permissionInfo
+		if permissionResult != nil {
+			permissionData = &permissionInfo{
+				Provider:       permissionResult.Provider,
+				AllEnforceable: permissionResult.AllEnforceable,
+				Warnings:       permissionResult.Warnings,
 			}
 		}
 
@@ -261,7 +297,8 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, jsonOutpu
 				Connectors:       extractConnectorNames(def),
 				SecurityWarnings: securityWarnings,
 			},
-			Profile: profileData,
+			Profile:     profileData,
+			Permissions: permissionData,
 		}
 
 		return output.EmitJSON(resp)
@@ -295,6 +332,23 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, jsonOutpu
 				}
 			}
 			cmd.Println("\nNote: Security warnings are non-blocking but should be reviewed.")
+		}
+
+		// Show permission enforcement warnings (SPEC-141)
+		if permissionResult != nil {
+			cmd.Println("\nPermission Enforcement:")
+			cmd.Printf("  Provider: %s\n", permissionResult.Provider)
+			if permissionResult.AllEnforceable {
+				cmd.Println("  Status: ✓ All permissions can be enforced")
+			} else {
+				cmd.Println("  Status: ⚠ Some permissions cannot be enforced")
+				cmd.Println("\n  Warnings:")
+				for _, warning := range permissionResult.Warnings {
+					cmd.Printf("    • %s\n", warning)
+				}
+				cmd.Println("\n  Note: Unenforceable permissions will be logged but not blocked.")
+				cmd.Println("  Use --accept-unenforceable-permissions with 'conductor run' to proceed.")
+			}
 		}
 
 		// Show model tiers used
