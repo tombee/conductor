@@ -131,6 +131,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	})
 
 	// Apply request logging middleware
+	// Capture the inner handler to avoid closure over reassigned variable
+	innerHandler := handler
 	handler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		// Log request with correlation ID
 		start := time.Now()
@@ -145,7 +147,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			)
 		}()
 
-		handler.ServeHTTP(w, req)
+		innerHandler.ServeHTTP(w, req)
 	})
 
 	// Apply correlation middleware
