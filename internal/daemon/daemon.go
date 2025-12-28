@@ -47,6 +47,7 @@ import (
 	internallog "github.com/tombee/conductor/internal/log"
 	"github.com/tombee/conductor/internal/mcp"
 	"github.com/tombee/conductor/internal/tracing"
+	"github.com/tombee/conductor/internal/tracing/storage"
 	"github.com/tombee/conductor/pkg/llm"
 	"github.com/tombee/conductor/pkg/security"
 	"github.com/tombee/conductor/pkg/workflow"
@@ -264,6 +265,27 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 			// Wire workflow tracer to runner
 			r.SetWorkflowTracer(otelProvider.OTelTracer("workflow"))
 
+			// Initialize SQLite storage for traces
+			storePath := filepath.Join(cfg.Daemon.DataDir, "observability", "traces.db")
+			if err := os.MkdirAll(filepath.Dir(storePath), 0755); err != nil {
+				logger.Warn("failed to create observability directory",
+					internallog.Error(err))
+			} else {
+				store, err := storage.New(storage.Config{
+					Path:         storePath,
+					MaxOpenConns: 1, // SQLite works best with single connection
+				})
+				if err != nil {
+					logger.Warn("failed to initialize trace storage",
+						internallog.Error(err),
+						slog.String("path", storePath))
+				} else {
+					otelProvider.SetStore(store)
+					logger.Info("trace storage initialized",
+						slog.String("path", storePath))
+				}
+			}
+
 			// Wrap LLM provider with tracing and metrics if provider exists
 			if baseLLMProvider != nil {
 				baseLLMProvider = tracing.WrapProviderWithMetrics(
@@ -390,6 +412,17 @@ func (d *Daemon) Start(ctx context.Context) error {
 	if d.mcpRegistry != nil {
 		mcpHandler := api.NewMCPHandler(d.mcpRegistry)
 		mcpHandler.RegisterRoutes(router.Mux())
+	}
+
+	// Register observability API if storage is available
+	if d.otelProvider != nil && d.otelProvider.GetStore() != nil {
+		tracesHandler := api.NewTracesHandler(d.otelProvider.GetStore())
+		tracesHandler.RegisterRoutes(router.Mux())
+
+		eventsHandler := api.NewEventsHandler(d.otelProvider.GetStore())
+		eventsHandler.RegisterRoutes(router.Mux())
+
+		d.logger.Info("observability API handlers registered")
 	}
 
 	// Wire up scheduler to router for health endpoint

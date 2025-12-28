@@ -20,6 +20,7 @@ import (
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/tombee/conductor/internal/tracing/storage"
 	"github.com/tombee/conductor/pkg/observability"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -34,10 +35,11 @@ import (
 
 // OTelProvider wraps the OpenTelemetry SDK to implement our TracerProvider interface.
 type OTelProvider struct {
-	tp             *sdktrace.TracerProvider
-	mp             *metric.MeterProvider
-	promExporter   *prometheus.Exporter
+	tp               *sdktrace.TracerProvider
+	mp               *metric.MeterProvider
+	promExporter     *prometheus.Exporter
 	metricsCollector *MetricsCollector
+	store            *storage.SQLiteStore // Optional trace storage
 }
 
 // NewOTelProviderWithConfig creates a new OpenTelemetry-based tracer provider with full configuration.
@@ -122,7 +124,15 @@ func (p *OTelProvider) Shutdown(ctx context.Context) error {
 		return err
 	}
 	if p.mp != nil {
-		return p.mp.Shutdown(ctx)
+		if err := p.mp.Shutdown(ctx); err != nil {
+			return err
+		}
+	}
+	// Close trace storage if configured
+	if p.store != nil {
+		if err := p.store.Close(); err != nil {
+			return fmt.Errorf("failed to close trace storage: %w", err)
+		}
 	}
 	return nil
 }
@@ -154,6 +164,16 @@ func (p *OTelProvider) OTelTracer(name string) trace.Tracer {
 // so we use promhttp.Handler() to expose them.
 func (p *OTelProvider) MetricsHandler() http.Handler {
 	return promhttp.Handler()
+}
+
+// GetStore returns the trace storage backend if configured.
+func (p *OTelProvider) GetStore() *storage.SQLiteStore {
+	return p.store
+}
+
+// SetStore sets the trace storage backend.
+func (p *OTelProvider) SetStore(store *storage.SQLiteStore) {
+	p.store = store
 }
 
 // otelTracer wraps an OpenTelemetry tracer.
