@@ -294,11 +294,15 @@ func (e *MCPServerEntry) Validate() error {
 // ToServerConfig converts an MCPServerEntry to a ServerConfig for the manager.
 func (e *MCPServerEntry) ToServerConfig(name string) ServerConfig {
 	return ServerConfig{
-		Name:    name,
-		Command: e.Command,
-		Args:    e.Args,
-		Env:     e.Env,
-		Timeout: time.Duration(e.Timeout) * time.Second,
+		Name:               name,
+		Command:            e.Command,
+		Args:               e.Args,
+		Env:                e.Env,
+		Timeout:            time.Duration(e.Timeout) * time.Second,
+		RestartPolicy:      string(e.RestartPolicy),
+		MaxRestartAttempts: e.MaxRestartAttempts,
+		Source:             e.Source,
+		Version:            e.Version,
 	}
 }
 
