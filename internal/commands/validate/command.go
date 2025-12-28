@@ -31,12 +31,11 @@ import (
 // NewCommand creates the validate command
 func NewCommand() *cobra.Command {
 	var (
-		schemaPath         string
-		jsonOutput         bool
-		workspace          string
-		profile            string
-		checkPermissions   bool
-		providerName       string
+		schemaPath       string
+		workspace        string
+		profile          string
+		checkPermissions bool
+		providerName     string
 	)
 
 	cmd := &cobra.Command{
@@ -82,12 +81,11 @@ See also: conductor run, conductor schema`,
 		SilenceUsage:  true, // Don't print usage on validation errors
 		SilenceErrors: true, // Don't print error message (we handle it ourselves)
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runValidate(cmd, args, schemaPath, jsonOutput, workspace, profile, checkPermissions, providerName)
+			return runValidate(cmd, args, schemaPath, workspace, profile, checkPermissions, providerName)
 		},
 	}
 
 	cmd.Flags().StringVar(&schemaPath, "schema", "", "Path to custom schema (default: embedded schema)")
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output validation results as JSON")
 	cmd.Flags().StringVarP(&workspace, "workspace", "w", "", "Workspace for profile resolution")
 	cmd.Flags().StringVarP(&profile, "profile", "p", "", "Profile to validate against workflow requirements")
 	cmd.Flags().BoolVar(&checkPermissions, "check-permissions", false, "Validate permission enforcement capabilities")
@@ -96,11 +94,11 @@ See also: conductor run, conductor schema`,
 	return cmd
 }
 
-func runValidate(cmd *cobra.Command, args []string, schemaPath string, jsonOutput bool, workspace, profile string, checkPermissions bool, providerName string) error {
+func runValidate(cmd *cobra.Command, args []string, schemaPath string, workspace, profile string, checkPermissions bool, providerName string) error {
 	workflowPath := args[0]
 
-	// Check global --json flag in addition to local flag
-	useJSON := shared.GetJSON() || jsonOutput
+	// Use global --json flag
+	useJSON := shared.GetJSON()
 
 	// Apply environment variable defaults for workspace and profile
 	if workspace == "" {

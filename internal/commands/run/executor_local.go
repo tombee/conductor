@@ -26,6 +26,7 @@ import (
 	"github.com/tombee/conductor/internal/commands/shared"
 	"github.com/tombee/conductor/internal/config"
 	internalllm "github.com/tombee/conductor/internal/llm"
+	"github.com/tombee/conductor/pkg/security"
 	"github.com/tombee/conductor/pkg/workflow"
 
 	// Import connector package to register action registry factory
@@ -33,7 +34,7 @@ import (
 )
 
 // runWorkflowLocal executes a workflow locally (not via daemon)
-func runWorkflowLocal(workflowPath string, inputArgs []string, inputFile string, dryRun, quiet, verbose, noInteractive, helpInputs, acceptUnenforceablePermissions bool) error {
+func runWorkflowLocal(workflowPath string, inputArgs []string, inputFile string, dryRun, quiet, verbose, noInteractive, helpInputs, acceptUnenforceablePermissions bool, securityOpts SecurityOptions) error {
 	// Resolve workflow path
 	resolvedPath, err := shared.ResolveWorkflowPath(workflowPath)
 	if err != nil {
@@ -186,12 +187,18 @@ func runWorkflowLocal(workflowPath string, inputArgs []string, inputFile string,
 	// Get workflow directory for action resolution
 	workflowDir := filepath.Dir(resolvedPath)
 
+	// Build security profile from options
+	securityProfile, err := buildSecurityProfile(securityOpts)
+	if err != nil {
+		return shared.NewInvalidWorkflowError("invalid security configuration", err)
+	}
+
 	// Execute the workflow
-	return executeWorkflow(def, cfg, plan, inputs, workflowDir, quiet, verbose, acceptUnenforceablePermissions)
+	return executeWorkflow(def, cfg, plan, inputs, workflowDir, quiet, verbose, acceptUnenforceablePermissions, securityProfile)
 }
 
 // executeWorkflow runs the workflow using the step executor
-func executeWorkflow(def *workflow.Definition, cfg *config.Config, plan *ExecutionPlan, inputs map[string]interface{}, workflowDir string, quiet, verbose, acceptUnenforceablePermissions bool) error {
+func executeWorkflow(def *workflow.Definition, cfg *config.Config, plan *ExecutionPlan, inputs map[string]interface{}, workflowDir string, quiet, verbose, acceptUnenforceablePermissions bool, securityProfile *security.SecurityProfile) error {
 	ctx := context.Background()
 	startTime := time.Now()
 
@@ -226,6 +233,11 @@ func executeWorkflow(def *workflow.Definition, cfg *config.Config, plan *Executi
 	// Create the step executor with actions initialized
 	executor := workflow.NewExecutor(nil, adapter).
 		WithWorkflowDir(workflowDir)
+
+	// Apply security profile if configured
+	if securityProfile != nil {
+		executor = executor.WithSecurity(securityProfile)
+	}
 
 	// Build template context from inputs
 	templateCtx := workflow.NewTemplateContext()

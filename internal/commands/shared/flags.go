@@ -69,3 +69,8 @@ func GetVersion() (string, string, string) {
 func SetConfigPathForTest(path string) {
 	configFlag = path
 }
+
+// SetJSONForTest sets the JSON flag for testing purposes
+func SetJSONForTest(value bool) {
+	jsonFlag = value
+}

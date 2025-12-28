@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/tombee/conductor/pkg/errors"
+	"github.com/tombee/conductor/pkg/security"
 	"github.com/tombee/conductor/pkg/workflow/expression"
 	"github.com/tombee/conductor/pkg/workflow/schema"
 )
@@ -80,6 +81,9 @@ type Executor struct {
 
 	// parallelSem limits concurrent parallel step execution
 	parallelSem chan struct{}
+
+	// securityProfile defines security restrictions for workflow execution
+	securityProfile *security.SecurityProfile
 }
 
 // ToolRegistry defines the interface for tool lookup and execution.
@@ -209,6 +213,13 @@ func (e *Executor) WithWorkflowDir(workflowDir string) *Executor {
 	}
 
 	e.connectorRegistry = registry
+	return e
+}
+
+// WithSecurity sets the security profile for workflow execution.
+// Security checks will be applied to action executions when a profile is set.
+func (e *Executor) WithSecurity(profile *security.SecurityProfile) *Executor {
+	e.securityProfile = profile
 	return e
 }
 
