@@ -26,6 +26,12 @@ import (
 	"time"
 )
 
+// ProcessHandle represents the underlying process for an MCP server.
+// Allows force-kill during shutdown if graceful stop fails.
+type ProcessHandle interface {
+	Kill() error
+}
+
 // ServerConfig defines the configuration for an MCP server.
 type ServerConfig struct {
 	// Name is the unique identifier for this server
@@ -82,6 +88,9 @@ type serverState struct {
 
 	// client is the active MCP client connection
 	client *Client
+
+	// process is the underlying server process (for force-kill during shutdown)
+	process ProcessHandle
 
 	// startedAt is the timestamp when the server was last started
 	startedAt time.Time
@@ -277,12 +286,15 @@ func (m *Manager) Stop(name string) error {
 
 // StopAll stops all managed MCP servers.
 // It waits for all server monitors to complete, up to the configured stopTimeout.
+// If servers don't stop gracefully within the timeout, they are force-killed.
 // Returns an error containing all stop failures, if any.
 func (m *Manager) StopAll() error {
 	m.mu.Lock()
 	serverNames := make([]string, 0, len(m.servers))
+	serverStates := make([]*serverState, 0, len(m.servers))
 	for name := range m.servers {
 		serverNames = append(serverNames, name)
+		serverStates = append(serverStates, m.servers[name])
 	}
 	m.mu.Unlock()
 
@@ -297,10 +309,40 @@ func (m *Manager) StopAll() error {
 
 	// Wait for all monitors to finish with timeout
 	if !waitGroupTimeout(&m.wg, m.stopTimeout) {
-		m.logger.Warn("timeout waiting for MCP servers to stop",
+		m.logger.Warn("timeout waiting for MCP servers to stop gracefully",
 			"timeout", m.stopTimeout,
 			"servers", serverNames,
 		)
+
+		// Force-kill any servers that are still running
+		var killedServers []string
+		for i, state := range serverStates {
+			state.mu.RLock()
+			process := state.process
+			serverName := serverNames[i]
+			state.mu.RUnlock()
+
+			if process != nil {
+				m.logger.Warn("force-killing hung MCP server",
+					"server", serverName,
+					"timeout", m.stopTimeout)
+
+				if err := process.Kill(); err != nil {
+					m.logger.Error("failed to force-kill MCP server",
+						"server", serverName,
+						"error", err)
+					errs = append(errs, fmt.Errorf("force-kill %s: %w", serverName, err))
+				} else {
+					killedServers = append(killedServers, serverName)
+				}
+			}
+		}
+
+		if len(killedServers) > 0 {
+			m.logger.Warn("force-killed hung MCP servers",
+				"servers", killedServers,
+				"count", len(killedServers))
+		}
 	}
 
 	// Return aggregated errors if any

@@ -230,6 +230,9 @@ type Runner struct {
 
 	// draining indicates the runner is in graceful shutdown mode
 	draining atomic.Bool
+
+	// wg tracks active execute() goroutines for clean shutdown
+	wg sync.WaitGroup
 }
 
 // New creates a new Runner with the given configuration.
@@ -510,6 +513,32 @@ func (r *Runner) WaitForDrain(ctx context.Context, timeout time.Duration) error 
 				return nil
 			}
 		}
+	}
+}
+
+// Stop stops the runner and waits for all active runs to complete.
+// Cancels all active run contexts and waits for goroutines to exit.
+// Returns an error if runs don't complete within the context deadline.
+func (r *Runner) Stop(ctx context.Context) error {
+	// Cancel all active runs
+	r.state.CancelAll()
+
+	// Wait for all execute() goroutines to complete
+	done := make(chan struct{})
+	go func() {
+		r.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		remaining := r.ActiveRunCount()
+		if remaining > 0 {
+			return fmt.Errorf("stop timeout: %d workflow(s) still running after cancellation", remaining)
+		}
+		return ctx.Err()
 	}
 }
 

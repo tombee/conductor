@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"reflect"
 	"time"
 
 	"github.com/mark3labs/mcp-go/client"
@@ -24,6 +26,9 @@ type Client struct {
 
 	// timeout is the default timeout for tool calls
 	timeout time.Duration
+
+	// process is the underlying OS process (for force-kill during shutdown)
+	process ProcessHandle
 }
 
 // ClientConfig configures an MCP client connection.
@@ -74,6 +79,7 @@ func NewClient(ctx context.Context, config ClientConfig) (*Client, error) {
 		serverName: config.ServerName,
 		client:     mcpClient,
 		timeout:    timeout,
+		process:    extractProcess(mcpClient),
 	}
 
 	// Initialize the server (sends initialize request)
@@ -83,6 +89,50 @@ func NewClient(ctx context.Context, config ClientConfig) (*Client, error) {
 	}
 
 	return c, nil
+}
+
+// extractProcess attempts to extract the underlying OS process from the MCP client.
+// Uses reflection to access the stdio transport's process field.
+// Returns nil if extraction fails (non-fatal - we just won't be able to force-kill).
+func extractProcess(mcpClient *client.Client) ProcessHandle {
+	if mcpClient == nil {
+		return nil
+	}
+
+	// Get transport using GetTransport() method
+	transport := mcpClient.GetTransport()
+	if transport == nil {
+		return nil
+	}
+
+	// Use reflection to access the Cmd field from StdioTransport
+	// The transport should be *transport.StdioTransport which has a Cmd *exec.Cmd field
+	transportVal := reflect.ValueOf(transport)
+	if transportVal.Kind() == reflect.Ptr {
+		transportVal = transportVal.Elem()
+	}
+
+	// Look for Cmd field
+	cmdField := transportVal.FieldByName("Cmd")
+	if !cmdField.IsValid() || cmdField.IsNil() {
+		return nil
+	}
+
+	// The Cmd is *exec.Cmd, which has a Process field
+	if cmdField.Kind() == reflect.Ptr {
+		cmdVal := cmdField.Elem()
+		processField := cmdVal.FieldByName("Process")
+		if !processField.IsValid() || processField.IsNil() {
+			return nil
+		}
+
+		// Extract *os.Process
+		if proc, ok := processField.Interface().(*os.Process); ok {
+			return proc
+		}
+	}
+
+	return nil
 }
 
 // initialize sends the initialize request to the MCP server.
@@ -323,6 +373,12 @@ func (c *Client) Close() error {
 	}
 
 	return nil
+}
+
+// Process returns the underlying OS process for this MCP server.
+// Returns nil if the process is not available (e.g., not a stdio transport).
+func (c *Client) Process() ProcessHandle {
+	return c.process
 }
 
 // Ping checks if the server is still responsive.

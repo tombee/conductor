@@ -738,6 +738,15 @@ func (d *Daemon) Shutdown(ctx context.Context) error {
 		d.logger.Info("all workflows completed during drain")
 	}
 
+	// Stop runner and wait for all goroutines to exit
+	// Use remaining shutdown context time for runner stop
+	if err := d.runner.Stop(ctx); err != nil {
+		d.logger.Warn("runner stop timeout",
+			internallog.Error(err))
+	} else {
+		d.logger.Info("runner stopped cleanly")
+	}
+
 	// Stop leader election
 	if d.leader != nil {
 		d.leader.Stop()

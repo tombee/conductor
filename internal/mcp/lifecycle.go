@@ -110,6 +110,7 @@ func (m *Manager) monitorServer(state *serverState) {
 					m.logger.Warn("failed to close MCP client during restart", "server", serverName, "error", err)
 				}
 				state.client = nil
+				state.process = nil
 			}
 			// Reset tool count on restart - will be re-queried on next successful connection
 			state.toolCount = nil
@@ -190,7 +191,10 @@ func (m *Manager) startServerClient(state *serverState) error {
 	state.source = state.config.Source
 	state.version = state.config.Version
 
+	// Store the client and its process handle
 	state.client = client
+	state.process = client.Process()
+
 	return nil
 }
 

@@ -176,6 +176,18 @@ func (s *StateManager) ActiveRunCount() int {
 	return count
 }
 
+// CancelAll cancels all active runs.
+func (s *StateManager) CancelAll() {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for _, run := range s.runs {
+		if run.Status == RunStatusRunning || run.Status == RunStatusPending {
+			run.cancel()
+		}
+	}
+}
+
 // Snapshot creates an immutable snapshot of a run (must hold lock or call externally).
 func (s *StateManager) Snapshot(run *Run) *RunSnapshot {
 	s.mu.RLock()

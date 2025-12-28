@@ -27,6 +27,10 @@ import (
 
 // execute runs the workflow.
 func (r *Runner) execute(run *Run) {
+	// Track this goroutine for clean shutdown
+	r.wg.Add(1)
+	defer r.wg.Done()
+
 	// Check if cancelled before even starting
 	select {
 	case <-run.stopped:
@@ -70,10 +74,10 @@ func (r *Runner) execute(run *Run) {
 		metrics.DecrementQueueDepth()
 	}
 
-	// Update backend
+	// Update backend with run context (respects cancellation during execution)
 	if be := r.getBackend(); be != nil {
 		beRun := r.toBackendRun(run)
-		_ = be.UpdateRun(context.Background(), beRun)
+		_ = be.UpdateRun(run.ctx, beRun)
 	}
 
 	// Log run start with profile context
@@ -129,10 +133,10 @@ func (r *Runner) execute(run *Run) {
 		run.mu.Unlock()
 		r.addLog(run, "error", "No execution adapter configured for step execution", "")
 
-		// Update backend
+		// Update backend with run context (respects cancellation during execution)
 		if be := r.getBackend(); be != nil {
 			beRun := r.toBackendRun(run)
-			_ = be.UpdateRun(context.Background(), beRun)
+			_ = be.UpdateRun(run.ctx, beRun)
 		}
 		return
 	}
@@ -151,7 +155,8 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 			run.Progress.Completed = stepIndex
 			run.mu.Unlock()
 
-			// Save checkpoint before step using LifecycleManager
+			// Save checkpoint before step using LifecycleManager.
+			// Use context.Background() to ensure checkpoint persists even if run is cancelled.
 			workflowCtx := make(map[string]any)
 			workflowCtx["inputs"] = run.Inputs
 			if err := r.lifecycle.SaveCheckpoint(context.Background(), run, stepIndex, workflowCtx); err != nil {
@@ -229,13 +234,15 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 		metrics.RecordRunComplete(run.ctx, run.ID, run.WorkflowID, status, "api", duration)
 	}
 
-	// Update backend
+	// Update backend with final status.
+	// Use context.Background() to ensure final state persists even if run was cancelled.
 	if be := r.getBackend(); be != nil {
 		beRun := r.toBackendRun(run)
 		_ = be.UpdateRun(context.Background(), beRun)
 	}
 
-	// Clean up checkpoint on successful completion
+	// Clean up checkpoint on successful completion.
+	// Use context.Background() to ensure cleanup completes.
 	if run.Status == RunStatusCompleted {
 		_ = r.lifecycle.CleanupCheckpoint(context.Background(), run.ID)
 	}
