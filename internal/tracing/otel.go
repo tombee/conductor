@@ -98,6 +98,9 @@ func NewOTelProvider(serviceName, version string, opts ...sdktrace.TracerProvide
 	// Set as global tracer provider (for libraries that use otel.Tracer)
 	otel.SetTracerProvider(tp)
 
+	// Register W3C Trace Context propagator for distributed tracing
+	otel.SetTextMapPropagator(W3CPropagator())
+
 	// Create Prometheus exporter for metrics
 	promExporter, err := prometheus.New()
 	if err != nil {
