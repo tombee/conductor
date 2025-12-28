@@ -29,6 +29,10 @@ import (
 
 // execute runs the workflow.
 func (r *Runner) execute(run *Run) {
+	// Track this goroutine for clean shutdown
+	r.wg.Add(1)
+	defer r.wg.Done()
+
 	// Check if cancelled before even starting
 	select {
 	case <-run.stopped:
