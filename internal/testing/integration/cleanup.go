@@ -2,6 +2,7 @@ package integration
 
 import (
 	"fmt"
+	"os"
 	"sync"
 	"testing"
 )
@@ -78,7 +79,9 @@ func (cm *CleanupManager) Count() int {
 // Returns a function suitable for use with Add().
 func CleanupFile(path string) CleanupFunc {
 	return func() error {
-		// Import os locally to avoid package-level dependency
-		return fmt.Errorf("file cleanup not implemented: %s", path)
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("failed to remove file %s: %w", path, err)
+		}
+		return nil
 	}
 }

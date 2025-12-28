@@ -252,12 +252,12 @@ func TestMemoryRunFiltering(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
 
-	// Create runs with different statuses
+	// Create runs with different statuses and workflows
 	runs := []*backend.Run{
 		{
 			ID:         "run-pending-1",
 			WorkflowID: "workflow-a",
-			Workflow:   "name: test",
+			Workflow:   "workflow-a",
 			Status:     "pending",
 			CreatedAt:  now,
 			UpdatedAt:  now,
@@ -265,7 +265,7 @@ func TestMemoryRunFiltering(t *testing.T) {
 		{
 			ID:         "run-running-1",
 			WorkflowID: "workflow-a",
-			Workflow:   "name: test",
+			Workflow:   "workflow-a",
 			Status:     "running",
 			CreatedAt:  now,
 			UpdatedAt:  now,
@@ -273,7 +273,7 @@ func TestMemoryRunFiltering(t *testing.T) {
 		{
 			ID:         "run-completed-1",
 			WorkflowID: "workflow-b",
-			Workflow:   "name: test",
+			Workflow:   "workflow-b",
 			Status:     "completed",
 			CreatedAt:  now,
 			UpdatedAt:  now,
