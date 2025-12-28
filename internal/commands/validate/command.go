@@ -20,6 +20,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/tombee/conductor/internal/commands/completion"
 	"github.com/tombee/conductor/internal/commands/shared"
 	"github.com/tombee/conductor/internal/output"
 	"github.com/tombee/conductor/internal/permissions"
@@ -44,6 +45,7 @@ func NewCommand() *cobra.Command {
 		Annotations: map[string]string{
 			"group": "execution",
 		},
+		ValidArgsFunction: completion.CompleteWorkflowFiles,
 		Long: `Validate checks that a workflow file has valid YAML syntax and conforms
 to the Conductor workflow schema. This validation does not require provider
 configuration and only checks the workflow structure itself.

@@ -16,6 +16,7 @@ package run
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/tombee/conductor/internal/commands/completion"
 	"github.com/tombee/conductor/internal/commands/shared"
 )
 
@@ -52,6 +53,7 @@ func NewCommand() *cobra.Command {
 		Annotations: map[string]string{
 			"group": "execution",
 		},
+		ValidArgsFunction: completion.CompleteWorkflowFiles,
 		Long: `Run executes a Conductor workflow with provider resolution.
 
 Provider Resolution Order:
@@ -139,6 +141,9 @@ Verbosity levels:
 	cmd.Flags().StringVarP(&workspace, "workspace", "w", "", "Workspace for profile resolution (env: CONDUCTOR_WORKSPACE)")
 	cmd.Flags().StringVarP(&profile, "profile", "p", "", "Profile for binding resolution (env: CONDUCTOR_PROFILE)")
 	cmd.Flags().BoolVar(&acceptUnenforceablePermissions, "accept-unenforceable-permissions", false, "Allow workflow execution even if some permissions cannot be enforced by the provider (SPEC-141)")
+
+	// Register flag completions
+	cmd.RegisterFlagCompletionFunc("provider", completion.CompleteProviderNames)
 
 	return cmd
 }

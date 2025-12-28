@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package diagnostics
+package completion
 
 import (
 	"os"
@@ -20,10 +20,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCompletionCommand creates the completion command with subcommands
-func NewCompletionCommand() *cobra.Command {
+// NewCommand creates the completion command for generating shell completion scripts.
+func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "completion [bash|zsh|fish]",
+		Use:   "completion [bash|zsh|fish|powershell]",
 		Annotations: map[string]string{
 			"group": "diagnostics",
 		},
@@ -56,9 +56,16 @@ Fish:
 
   # To load completions for each session, execute once:
   $ conductor completion fish > ~/.config/fish/completions/conductor.fish
+
+PowerShell:
+  Add to your PowerShell profile (run 'echo $PROFILE'):
+  conductor completion powershell | Out-String | Invoke-Expression
+
+  # For persistent completions:
+  conductor completion powershell >> $PROFILE
 `,
 		DisableFlagsInUseLine: true,
-		ValidArgs:             []string{"bash", "zsh", "fish"},
+		ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
 		Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		RunE:                  runCompletion,
 	}
@@ -74,6 +81,8 @@ func runCompletion(cmd *cobra.Command, args []string) error {
 		return cmd.Root().GenZshCompletion(os.Stdout)
 	case "fish":
 		return cmd.Root().GenFishCompletion(os.Stdout, true)
+	case "powershell":
+		return cmd.Root().GenPowerShellCompletion(os.Stdout)
 	}
 	return nil
 }

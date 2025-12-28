@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/tombee/conductor/internal/commands/completion"
 	"github.com/tombee/conductor/internal/commands/shared"
 	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/pkg/llm"
@@ -365,6 +366,9 @@ Examples:
 	cmd.Flags().StringVar(&configPath, "config-path", "", "Custom config path (for claude-code)")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be modified without executing")
 
+	// Register completion for --type flag
+	cmd.RegisterFlagCompletionFunc("type", completion.CompleteProviderTypes)
+
 	return cmd
 }
 
@@ -372,10 +376,11 @@ func newProvidersRemoveCmd() *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:   "remove <name>",
-		Short: "Remove a provider",
-		Long:  "Remove a provider configuration from the config file.",
-		Args:  cobra.ExactArgs(1),
+		Use:               "remove <name>",
+		Short:             "Remove a provider",
+		Long:              "Remove a provider configuration from the config file.",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completion.CompleteProviderNames,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			providerName := args[0]
 
@@ -448,8 +453,9 @@ func newProvidersTestCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:   "test [name]",
-		Short: "Test provider connectivity",
+		Use:               "test [name]",
+		Short:             "Test provider connectivity",
+		ValidArgsFunction: completion.CompleteProviderNames,
 		Long: `Run health check on a provider to verify it's working.
 
 Tests three aspects:
@@ -568,8 +574,9 @@ See also: conductor providers list, conductor doctor, conductor providers add`,
 
 func newProvidersSetDefaultCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "set-default <name>",
-		Short: "Set the default provider",
+		Use:               "set-default <name>",
+		Short:             "Set the default provider",
+		ValidArgsFunction: completion.CompleteProviderNames,
 		Long: `Set which provider to use by default for workflow execution.
 
 The default provider is used when:
