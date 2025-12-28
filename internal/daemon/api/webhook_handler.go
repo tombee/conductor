@@ -22,8 +22,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/tombee/conductor/internal/daemon/httputil"
 	"github.com/tombee/conductor/internal/daemon/runner"
 	"github.com/tombee/conductor/internal/daemon/webhook"
+	"github.com/tombee/conductor/internal/util"
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
@@ -63,7 +65,7 @@ func (h *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	// Check if runner is draining
 	if h.runner.IsDraining() {
 		w.Header().Set("Retry-After", "10")
-		writeError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
+		httputil.WriteError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
 		return
 	}
 
@@ -71,14 +73,14 @@ func (h *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	workflowName := r.PathValue("workflow")
 
 	if source == "" || workflowName == "" {
-		writeError(w, http.StatusBadRequest, "source and workflow required")
+		httputil.WriteError(w, http.StatusBadRequest, "source and workflow required")
 		return
 	}
 
 	// Clean workflow name to prevent directory traversal
 	workflowName = filepath.Clean(workflowName)
 	if strings.Contains(workflowName, "..") {
-		writeError(w, http.StatusBadRequest, "invalid workflow name")
+		httputil.WriteError(w, http.StatusBadRequest, "invalid workflow name")
 		return
 	}
 
@@ -91,7 +93,7 @@ func (h *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	// Read body (limit to 10MB for webhooks)
 	body, err := io.ReadAll(io.LimitReader(r.Body, maxWebhookBodySize))
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "failed to read body")
+		httputil.WriteError(w, http.StatusBadRequest, "failed to read body")
 		return
 	}
 
@@ -99,27 +101,27 @@ func (h *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	workflowPath, err := h.findWorkflow(workflowName)
 	if err != nil {
 		// Return 404 to prevent workflow enumeration
-		writeError(w, http.StatusNotFound, "webhook not found or not available")
+		httputil.WriteError(w, http.StatusNotFound, "webhook not found or not available")
 		return
 	}
 
 	workflowYAML, err := os.ReadFile(workflowPath)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "webhook not found or not available")
+		httputil.WriteError(w, http.StatusNotFound, "webhook not found or not available")
 		return
 	}
 
 	// Parse workflow definition
 	def, err := workflow.ParseDefinition(workflowYAML)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to parse workflow")
+		httputil.WriteError(w, http.StatusInternalServerError, "failed to parse workflow")
 		return
 	}
 
 	// Verify workflow has listen.webhook configured
 	if def.Listen == nil || def.Listen.Webhook == nil {
 		// Return 404 to prevent enumeration of workflows without webhook listeners
-		writeError(w, http.StatusNotFound, "webhook not found or not available")
+		httputil.WriteError(w, http.StatusNotFound, "webhook not found or not available")
 		return
 	}
 
@@ -135,7 +137,7 @@ func (h *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	// Verify signature if secret is configured
 	if secret != "" {
 		if err := handler.Verify(r, body, secret); err != nil {
-			writeError(w, http.StatusUnauthorized, "webhook signature verification failed")
+			httputil.WriteError(w, http.StatusUnauthorized, "webhook signature verification failed")
 			return
 		}
 	}
@@ -144,8 +146,8 @@ func (h *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	event := handler.ParseEvent(r)
 
 	// Check if event is allowed (if events filter is configured)
-	if len(webhookConfig.Events) > 0 && !contains(webhookConfig.Events, event) {
-		writeJSON(w, http.StatusOK, map[string]string{
+	if len(webhookConfig.Events) > 0 && !util.Contains(webhookConfig.Events, event) {
+		httputil.WriteJSON(w, http.StatusOK, map[string]string{
 			"status":  "ignored",
 			"message": fmt.Sprintf("event %s not configured for this webhook", event),
 		})
@@ -155,7 +157,7 @@ func (h *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	// Extract payload
 	payload, err := handler.ExtractPayload(body)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("failed to parse payload: %v", err))
+		httputil.WriteError(w, http.StatusBadRequest, fmt.Sprintf("failed to parse payload: %v", err))
 		return
 	}
 
@@ -187,11 +189,11 @@ func (h *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		Inputs:       inputs,
 	})
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to trigger workflow: %v", err))
+		httputil.WriteError(w, http.StatusInternalServerError, fmt.Sprintf("failed to trigger workflow: %v", err))
 		return
 	}
 
-	writeJSON(w, http.StatusAccepted, map[string]any{
+	httputil.WriteJSON(w, http.StatusAccepted, map[string]any{
 		"status":   "triggered",
 		"run_id":   run.ID,
 		"workflow": run.Workflow,
@@ -218,14 +220,4 @@ func (h *WebhookHandler) findWorkflow(name string) (string, error) {
 	}
 
 	return "", fmt.Errorf("workflow not found: %s", name)
-}
-
-// contains checks if a slice contains a string.
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
 }

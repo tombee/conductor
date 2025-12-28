@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/tombee/conductor/internal/daemon/httputil"
 	"github.com/tombee/conductor/pkg/security"
 )
 
@@ -58,13 +59,13 @@ type ListOverridesResponse struct {
 // HandleCreate handles POST /v1/override
 func (h *OverrideHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	if h.manager == nil {
-		writeError(w, http.StatusServiceUnavailable, "override management not enabled")
+		httputil.WriteError(w, http.StatusServiceUnavailable, "override management not enabled")
 		return
 	}
 
 	var req CreateOverrideRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON: "+err.Error())
+		httputil.WriteError(w, http.StatusBadRequest, "invalid JSON: "+err.Error())
 		return
 	}
 
@@ -73,18 +74,18 @@ func (h *OverrideHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 
 	// Block disable-audit type at API level (defense in depth)
 	if overrideType == security.OverrideDisableAudit {
-		writeError(w, http.StatusForbidden, "disable-audit override type is not allowed")
+		httputil.WriteError(w, http.StatusForbidden, "disable-audit override type is not allowed")
 		return
 	}
 
 	if !isValidOverrideType(overrideType) {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid override type: %s (valid types: disable-enforcement, disable-sandbox)", req.Type))
+		httputil.WriteError(w, http.StatusBadRequest, fmt.Sprintf("invalid override type: %s (valid types: disable-enforcement, disable-sandbox)", req.Type))
 		return
 	}
 
 	// Validate reason
 	if req.Reason == "" {
-		writeError(w, http.StatusBadRequest, "reason is required")
+		httputil.WriteError(w, http.StatusBadRequest, "reason is required")
 		return
 	}
 
@@ -94,7 +95,7 @@ func (h *OverrideHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		var err error
 		ttl, err = time.ParseDuration(req.TTL)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid TTL format: "+err.Error())
+			httputil.WriteError(w, http.StatusBadRequest, "invalid TTL format: "+err.Error())
 			return
 		}
 	} else {
@@ -106,7 +107,7 @@ func (h *OverrideHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	// Use "api" as appliedBy since we don't have user authentication yet
 	override, err := h.manager.ApplyWithTTL(overrideType, req.Reason, "api", ttl)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to apply override: "+err.Error())
+		httputil.WriteError(w, http.StatusInternalServerError, "failed to apply override: "+err.Error())
 		return
 	}
 
@@ -117,13 +118,13 @@ func (h *OverrideHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: override.AppliedAt,
 	}
 
-	writeJSON(w, http.StatusCreated, response)
+	httputil.WriteJSON(w, http.StatusCreated, response)
 }
 
 // HandleList handles GET /v1/override
 func (h *OverrideHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	if h.manager == nil {
-		writeError(w, http.StatusServiceUnavailable, "override management not enabled")
+		httputil.WriteError(w, http.StatusServiceUnavailable, "override management not enabled")
 		return
 	}
 
@@ -143,32 +144,32 @@ func (h *OverrideHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 		Overrides: overrides,
 	}
 
-	writeJSON(w, http.StatusOK, response)
+	httputil.WriteJSON(w, http.StatusOK, response)
 }
 
 // HandleRevoke handles DELETE /v1/override/{type}
 func (h *OverrideHandler) HandleRevoke(w http.ResponseWriter, r *http.Request) {
 	if h.manager == nil {
-		writeError(w, http.StatusServiceUnavailable, "override management not enabled")
+		httputil.WriteError(w, http.StatusServiceUnavailable, "override management not enabled")
 		return
 	}
 
 	// Extract type from path
 	typeStr := r.PathValue("type")
 	if typeStr == "" {
-		writeError(w, http.StatusBadRequest, "override type is required")
+		httputil.WriteError(w, http.StatusBadRequest, "override type is required")
 		return
 	}
 
 	overrideType := security.OverrideType(typeStr)
 	if !isValidOverrideType(overrideType) {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid override type: %s", typeStr))
+		httputil.WriteError(w, http.StatusBadRequest, fmt.Sprintf("invalid override type: %s", typeStr))
 		return
 	}
 
 	// Revoke override
 	if err := h.manager.Revoke(overrideType); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to revoke override: "+err.Error())
+		httputil.WriteError(w, http.StatusInternalServerError, "failed to revoke override: "+err.Error())
 		return
 	}
 

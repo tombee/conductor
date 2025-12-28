@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/tombee/conductor/internal/daemon/auth"
+	"github.com/tombee/conductor/internal/daemon/httputil"
 	"github.com/tombee/conductor/internal/daemon/runner"
 	"github.com/tombee/conductor/pkg/workflow"
 )
@@ -56,20 +57,20 @@ func (h *StartHandler) handleStart(w http.ResponseWriter, r *http.Request) {
 	// Check if runner is draining (graceful shutdown in progress)
 	if h.runner.IsDraining() {
 		w.Header().Set("Retry-After", "10")
-		writeError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
+		httputil.WriteError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
 		return
 	}
 
 	workflowName := r.PathValue("workflow")
 	if workflowName == "" {
-		writeError(w, http.StatusBadRequest, "workflow name required")
+		httputil.WriteError(w, http.StatusBadRequest, "workflow name required")
 		return
 	}
 
 	// Clean the workflow name to prevent directory traversal
 	workflowName = filepath.Clean(workflowName)
 	if strings.Contains(workflowName, "..") {
-		writeError(w, http.StatusBadRequest, "invalid workflow name")
+		httputil.WriteError(w, http.StatusBadRequest, "invalid workflow name")
 		return
 	}
 
@@ -78,27 +79,27 @@ func (h *StartHandler) handleStart(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// Return 404 to prevent workflow enumeration
 		// Don't reveal whether the workflow exists but lacks listen.api config
-		writeError(w, http.StatusNotFound, "workflow not found or not available via API")
+		httputil.WriteError(w, http.StatusNotFound, "workflow not found or not available via API")
 		return
 	}
 
 	// Read and parse workflow definition
 	workflowYAML, err := os.ReadFile(workflowPath)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "workflow not found or not available via API")
+		httputil.WriteError(w, http.StatusNotFound, "workflow not found or not available via API")
 		return
 	}
 
 	def, err := workflow.ParseDefinition(workflowYAML)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to parse workflow")
+		httputil.WriteError(w, http.StatusInternalServerError, "failed to parse workflow")
 		return
 	}
 
 	// Verify workflow has listen.api configured
 	if def.Listen == nil || def.Listen.API == nil {
 		// Return 404 to prevent enumeration of workflows without API access
-		writeError(w, http.StatusNotFound, "workflow not found or not available via API")
+		httputil.WriteError(w, http.StatusNotFound, "workflow not found or not available via API")
 		return
 	}
 
@@ -110,7 +111,7 @@ func (h *StartHandler) handleStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if secret == "" {
-		writeError(w, http.StatusInternalServerError, "workflow API secret not configured")
+		httputil.WriteError(w, http.StatusInternalServerError, "workflow API secret not configured")
 		return
 	}
 
@@ -118,14 +119,14 @@ func (h *StartHandler) handleStart(w http.ResponseWriter, r *http.Request) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		w.Header().Set("WWW-Authenticate", `Bearer realm="Conductor API"`)
-		writeError(w, http.StatusUnauthorized, "missing Authorization header")
+		httputil.WriteError(w, http.StatusUnauthorized, "missing Authorization header")
 		return
 	}
 
 	// Parse Bearer token
 	if !strings.HasPrefix(authHeader, "Bearer ") {
 		w.Header().Set("WWW-Authenticate", `Bearer realm="Conductor API"`)
-		writeError(w, http.StatusUnauthorized, "invalid Authorization header format")
+		httputil.WriteError(w, http.StatusUnauthorized, "invalid Authorization header format")
 		return
 	}
 
@@ -134,34 +135,34 @@ func (h *StartHandler) handleStart(w http.ResponseWriter, r *http.Request) {
 
 	if token == "" {
 		w.Header().Set("WWW-Authenticate", `Bearer realm="Conductor API"`)
-		writeError(w, http.StatusUnauthorized, "empty Bearer token")
+		httputil.WriteError(w, http.StatusUnauthorized, "empty Bearer token")
 		return
 	}
 
 	// Verify the Bearer token against the workflow's secret
 	authenticator := auth.NewBearerAuthenticator()
 	if !authenticator.VerifyToken(token, secret) {
-		writeError(w, http.StatusUnauthorized, "invalid Bearer token")
+		httputil.WriteError(w, http.StatusUnauthorized, "invalid Bearer token")
 		return
 	}
 
 	// Parse inputs from request body (limit to 1MB)
 	var inputs map[string]any
 	if r.ContentLength > maxRequestBodySize {
-		writeError(w, http.StatusRequestEntityTooLarge, "request body too large (max 1MB)")
+		httputil.WriteError(w, http.StatusRequestEntityTooLarge, "request body too large (max 1MB)")
 		return
 	}
 
 	if r.ContentLength > 0 {
 		body, err := io.ReadAll(io.LimitReader(r.Body, maxRequestBodySize))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "failed to read request body")
+			httputil.WriteError(w, http.StatusBadRequest, "failed to read request body")
 			return
 		}
 
 		if len(body) > 0 {
 			if err := json.Unmarshal(body, &inputs); err != nil {
-				writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid JSON: %v", err))
+				httputil.WriteError(w, http.StatusBadRequest, fmt.Sprintf("invalid JSON: %v", err))
 				return
 			}
 		}
@@ -173,11 +174,11 @@ func (h *StartHandler) handleStart(w http.ResponseWriter, r *http.Request) {
 		Inputs:       inputs,
 	})
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to submit workflow: %v", err))
+		httputil.WriteError(w, http.StatusInternalServerError, fmt.Sprintf("failed to submit workflow: %v", err))
 		return
 	}
 
-	writeJSON(w, http.StatusAccepted, map[string]any{
+	httputil.WriteJSON(w, http.StatusAccepted, map[string]any{
 		"id":       run.ID,
 		"workflow": run.Workflow,
 		"status":   run.Status,

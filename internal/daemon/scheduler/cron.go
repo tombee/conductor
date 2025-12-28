@@ -19,6 +19,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/tombee/conductor/internal/util"
 )
 
 // CronExpr represents a parsed cron expression.
@@ -186,14 +188,14 @@ func (c *CronExpr) Next(from time.Time) time.Time {
 
 	for t.Before(maxTime) {
 		// Check month
-		if !contains(c.month, int(t.Month())) {
+		if !util.Contains(c.month, int(t.Month())) {
 			t = time.Date(t.Year(), t.Month()+1, 1, 0, 0, 0, 0, t.Location())
 			continue
 		}
 
 		// Check day of month and day of week
-		dayOfMonthMatch := contains(c.dayOfMonth, t.Day())
-		dayOfWeekMatch := contains(c.dayOfWeek, int(t.Weekday()))
+		dayOfMonthMatch := util.Contains(c.dayOfMonth, t.Day())
+		dayOfWeekMatch := util.Contains(c.dayOfWeek, int(t.Weekday()))
 
 		// Both day constraints must be satisfied if they're both restricted
 		// (If one is *, only the other matters)
@@ -205,13 +207,13 @@ func (c *CronExpr) Next(from time.Time) time.Time {
 		}
 
 		// Check hour
-		if !contains(c.hour, t.Hour()) {
+		if !util.Contains(c.hour, t.Hour()) {
 			t = time.Date(t.Year(), t.Month(), t.Day(), t.Hour()+1, 0, 0, 0, t.Location())
 			continue
 		}
 
 		// Check minute
-		if !contains(c.minute, t.Minute()) {
+		if !util.Contains(c.minute, t.Minute()) {
 			t = t.Add(time.Minute)
 			continue
 		}
@@ -222,16 +224,6 @@ func (c *CronExpr) Next(from time.Time) time.Time {
 
 	// No match found within 4 years
 	return time.Time{}
-}
-
-// contains checks if a slice contains a value.
-func contains(slice []int, val int) bool {
-	for _, v := range slice {
-		if v == val {
-			return true
-		}
-	}
-	return false
 }
 
 // unique removes duplicates from a slice.

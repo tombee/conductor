@@ -16,11 +16,11 @@
 package api
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/tombee/conductor/internal/daemon/httputil"
 	"github.com/tombee/conductor/internal/log"
 	"github.com/tombee/conductor/internal/tracing"
 )
@@ -197,24 +197,8 @@ func (r *Router) Mux() *http.ServeMux {
 
 // handleRoot handles GET / for basic connectivity.
 func (r *Router) handleRoot(w http.ResponseWriter, req *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{
+	httputil.WriteJSON(w, http.StatusOK, map[string]string{
 		"name":    "conductord",
 		"version": r.config.Version,
-	})
-}
-
-// writeJSON writes a JSON response.
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-		slog.Error("Failed to write JSON response", slog.Any("error", err))
-	}
-}
-
-// writeError writes a JSON error response.
-func writeError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]string{
-		"error": message,
 	})
 }

@@ -17,6 +17,8 @@ package api
 import (
 	"net/http"
 	"runtime"
+
+	"github.com/tombee/conductor/internal/daemon/httputil"
 )
 
 // VersionResponse is the response format for /v1/version.
@@ -40,5 +42,5 @@ func (r *Router) handleVersion(w http.ResponseWriter, req *http.Request) {
 		Arch:      runtime.GOARCH,
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	httputil.WriteJSON(w, http.StatusOK, resp)
 }

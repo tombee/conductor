@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/tombee/conductor/internal/daemon/auth"
+	"github.com/tombee/conductor/internal/daemon/httputil"
 	"github.com/tombee/conductor/internal/daemon/runner"
 	"github.com/tombee/conductor/pkg/workflow"
 	"go.opentelemetry.io/otel/attribute"
@@ -142,7 +143,7 @@ func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{
 		"endpoints": response,
 	})
 }
@@ -153,13 +154,13 @@ func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "endpoint name is required")
+		httputil.WriteError(w, http.StatusBadRequest, "endpoint name is required")
 		return
 	}
 
 	ep := h.registry.Get(name)
 	if ep == nil {
-		writeError(w, http.StatusNotFound, fmt.Sprintf("endpoint %q not found", name))
+		httputil.WriteError(w, http.StatusNotFound, fmt.Sprintf("endpoint %q not found", name))
 		return
 	}
 
@@ -177,7 +178,7 @@ func (h *Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 			slog.String("user", getUserID(user)),
 			slog.Any("user_scopes", userScopes),
 		)
-		writeError(w, http.StatusNotFound, fmt.Sprintf("endpoint %q not found", name))
+		httputil.WriteError(w, http.StatusNotFound, fmt.Sprintf("endpoint %q not found", name))
 		return
 	}
 
@@ -189,7 +190,7 @@ func (h *Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
-	writeJSON(w, http.StatusOK, EndpointResponse{
+	httputil.WriteJSON(w, http.StatusOK, EndpointResponse{
 		Name:        ep.Name,
 		Description: ep.Description,
 		Inputs:      ep.Inputs,
@@ -235,12 +236,12 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 	if h.runner.IsDraining() {
 		statusCode = http.StatusServiceUnavailable
 		w.Header().Set("Retry-After", "10")
-		writeError(w, statusCode, "daemon is shutting down gracefully")
+		httputil.WriteError(w, statusCode, "daemon is shutting down gracefully")
 		return
 	}
 	if name == "" {
 		statusCode = http.StatusBadRequest
-		writeError(w, statusCode, "endpoint name is required")
+		httputil.WriteError(w, statusCode, "endpoint name is required")
 		return
 	}
 
@@ -248,7 +249,7 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 	ep := h.registry.Get(name)
 	if ep == nil {
 		statusCode = http.StatusNotFound
-		writeError(w, statusCode, fmt.Sprintf("endpoint %q not found", name))
+		httputil.WriteError(w, statusCode, fmt.Sprintf("endpoint %q not found", name))
 		return
 	}
 
@@ -267,7 +268,7 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 			slog.Any("user_scopes", userScopes),
 		)
 		statusCode = http.StatusNotFound
-		writeError(w, statusCode, fmt.Sprintf("endpoint %q not found", name))
+		httputil.WriteError(w, statusCode, fmt.Sprintf("endpoint %q not found", name))
 		return
 	}
 
@@ -288,7 +289,7 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		statusCode = http.StatusBadRequest
-		writeError(w, statusCode, "failed to read request body")
+		httputil.WriteError(w, statusCode, "failed to read request body")
 		return
 	}
 
@@ -296,7 +297,7 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 	if len(body) > 0 {
 		if err := json.Unmarshal(body, &req); err != nil {
 			statusCode = http.StatusBadRequest
-			writeError(w, statusCode, fmt.Sprintf("invalid JSON: %v", err))
+			httputil.WriteError(w, statusCode, fmt.Sprintf("invalid JSON: %v", err))
 			return
 		}
 	}
@@ -310,7 +311,7 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 			slog.Any("error", err),
 		)
 		statusCode = http.StatusInternalServerError
-		writeError(w, statusCode, fmt.Sprintf("workflow %q not found", ep.Workflow))
+		httputil.WriteError(w, statusCode, fmt.Sprintf("workflow %q not found", ep.Workflow))
 		return
 	}
 
@@ -323,7 +324,7 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 			slog.Any("error", err),
 		)
 		statusCode = http.StatusInternalServerError
-		writeError(w, statusCode, "failed to read workflow file")
+		httputil.WriteError(w, statusCode, "failed to read workflow file")
 		return
 	}
 	defer workflowFile.Close()
@@ -336,7 +337,7 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 			slog.Any("error", err),
 		)
 		statusCode = http.StatusInternalServerError
-		writeError(w, statusCode, "failed to read workflow file")
+		httputil.WriteError(w, statusCode, "failed to read workflow file")
 		return
 	}
 
@@ -348,7 +349,7 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 			slog.Any("error", err),
 		)
 		statusCode = http.StatusInternalServerError
-		writeError(w, statusCode, "failed to parse workflow definition")
+		httputil.WriteError(w, statusCode, "failed to parse workflow definition")
 		return
 	}
 
@@ -369,7 +370,7 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 			slog.Any("error", err),
 		)
 		statusCode = http.StatusBadRequest
-		writeError(w, statusCode, fmt.Sprintf("input validation failed: %v", err))
+		httputil.WriteError(w, statusCode, fmt.Sprintf("input validation failed: %v", err))
 		return
 	}
 
@@ -390,7 +391,7 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 			slog.Any("error", err),
 		)
 		statusCode = http.StatusBadRequest
-		writeError(w, statusCode, fmt.Sprintf("failed to submit run: %v", err))
+		httputil.WriteError(w, statusCode, fmt.Sprintf("failed to submit run: %v", err))
 		return
 	}
 
@@ -415,7 +416,7 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 	// Async mode - return 202 Accepted with run details
 	statusCode = http.StatusAccepted
 	w.Header().Set("Location", fmt.Sprintf("/v1/runs/%s", run.ID))
-	writeJSON(w, statusCode, run)
+	httputil.WriteJSON(w, statusCode, run)
 }
 
 // handleListRuns handles GET /v1/endpoints/{name}/runs.
@@ -423,14 +424,14 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleListRuns(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "endpoint name is required")
+		httputil.WriteError(w, http.StatusBadRequest, "endpoint name is required")
 		return
 	}
 
 	// Verify endpoint exists
 	ep := h.registry.Get(name)
 	if ep == nil {
-		writeError(w, http.StatusNotFound, fmt.Sprintf("endpoint %q not found", name))
+		httputil.WriteError(w, http.StatusNotFound, fmt.Sprintf("endpoint %q not found", name))
 		return
 	}
 
@@ -448,7 +449,7 @@ func (h *Handler) handleListRuns(w http.ResponseWriter, r *http.Request) {
 			slog.String("user", getUserID(user)),
 			slog.Any("user_scopes", userScopes),
 		)
-		writeError(w, http.StatusNotFound, fmt.Sprintf("endpoint %q not found", name))
+		httputil.WriteError(w, http.StatusNotFound, fmt.Sprintf("endpoint %q not found", name))
 		return
 	}
 
@@ -474,7 +475,7 @@ func (h *Handler) handleListRuns(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{
 		"runs": endpointRuns,
 	})
 }
@@ -495,7 +496,7 @@ func (h *Handler) handleSyncExecution(w http.ResponseWriter, r *http.Request, ru
 			if seconds, err := strconv.Atoi(timeoutParam); err == nil {
 				parsedTimeout = time.Duration(seconds) * time.Second
 			} else {
-				writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid timeout: %v", err))
+				httputil.WriteError(w, http.StatusBadRequest, fmt.Sprintf("invalid timeout: %v", err))
 				return
 			}
 		}
@@ -503,7 +504,7 @@ func (h *Handler) handleSyncExecution(w http.ResponseWriter, r *http.Request, ru
 		// Enforce max timeout of 5 minutes
 		maxTimeout := 5 * time.Minute
 		if parsedTimeout > maxTimeout {
-			writeError(w, http.StatusBadRequest, fmt.Sprintf("timeout exceeds maximum of %v", maxTimeout))
+			httputil.WriteError(w, http.StatusBadRequest, fmt.Sprintf("timeout exceeds maximum of %v", maxTimeout))
 			return
 		}
 
@@ -540,7 +541,7 @@ func (h *Handler) handleSyncExecution(w http.ResponseWriter, r *http.Request, ru
 
 				w.Header().Set("X-Run-ID", run.ID)
 				w.Header().Set("X-Run-Duration-Ms", fmt.Sprintf("%d", time.Since(startTime).Milliseconds()))
-				writeError(w, http.StatusRequestTimeout, fmt.Sprintf("execution timed out after %v, run continues as %s", timeout, run.ID))
+				httputil.WriteError(w, http.StatusRequestTimeout, fmt.Sprintf("execution timed out after %v, run continues as %s", timeout, run.ID))
 				return
 			}
 
@@ -555,7 +556,7 @@ func (h *Handler) handleSyncExecution(w http.ResponseWriter, r *http.Request, ru
 			// Got a log entry, check if run is complete
 			currentRun, err := h.runner.Get(run.ID)
 			if err != nil {
-				writeError(w, http.StatusInternalServerError, "failed to get run status")
+				httputil.WriteError(w, http.StatusInternalServerError, "failed to get run status")
 				return
 			}
 
@@ -573,7 +574,7 @@ func (h *Handler) handleSyncExecution(w http.ResponseWriter, r *http.Request, ru
 				// Return output or error
 				if currentRun.Status == runner.RunStatusCompleted {
 					// Success - return output
-					writeJSON(w, http.StatusOK, map[string]any{
+					httputil.WriteJSON(w, http.StatusOK, map[string]any{
 						"status": currentRun.Status,
 						"output": currentRun.Output,
 					})
@@ -584,7 +585,7 @@ func (h *Handler) handleSyncExecution(w http.ResponseWriter, r *http.Request, ru
 						statusCode = http.StatusConflict
 					}
 
-					writeJSON(w, statusCode, map[string]any{
+					httputil.WriteJSON(w, statusCode, map[string]any{
 						"status": currentRun.Status,
 						"error":  currentRun.Error,
 					})
@@ -605,7 +606,7 @@ func (h *Handler) streamRunExecution(w http.ResponseWriter, r *http.Request, run
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		writeError(w, http.StatusInternalServerError, "streaming not supported")
+		httputil.WriteError(w, http.StatusInternalServerError, "streaming not supported")
 		return
 	}
 
@@ -685,20 +686,6 @@ func (h *Handler) streamRunExecution(w http.ResponseWriter, r *http.Request, run
 
 // Helper functions
 
-func writeJSON(w http.ResponseWriter, status int, data any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		slog.Error("Failed to write JSON response", slog.Any("error", err))
-	}
-}
-
-func writeError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]string{
-		"error": message,
-	})
-}
-
 func containsPath(sourceURL, workflow string) bool {
 	// Simple check if workflow name appears in source URL
 	// This is a heuristic for matching runs to endpoints
@@ -763,7 +750,7 @@ func (h *Handler) checkRateLimit(w http.ResponseWriter, ctx context.Context, end
 
 		// Return 429 Too Many Requests
 		*statusCode = http.StatusTooManyRequests
-		writeJSON(w, *statusCode, map[string]any{
+		httputil.WriteJSON(w, *statusCode, map[string]any{
 			"error":       "rate limit exceeded",
 			"limit":       int(limit),
 			"remaining":   0,

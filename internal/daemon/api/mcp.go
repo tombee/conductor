@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tombee/conductor/internal/daemon/httputil"
 	"github.com/tombee/conductor/internal/mcp"
 )
 
@@ -141,23 +142,23 @@ func (h *MCPHandler) handleListServers(w http.ResponseWriter, r *http.Request) {
 		servers = append(servers, resp)
 	}
 
-	writeJSON(w, http.StatusOK, MCPListResponse{Servers: servers})
+	httputil.WriteJSON(w, http.StatusOK, MCPListResponse{Servers: servers})
 }
 
 // handleGetServer handles GET /v1/mcp/servers/{name}
 func (h *MCPHandler) handleGetServer(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "server name is required")
+		httputil.WriteError(w, http.StatusBadRequest, "server name is required")
 		return
 	}
 
 	status, err := h.registry.GetServerStatus(name)
 	if err != nil {
 		if mcpErr := mcp.GetMCPError(err); mcpErr != nil && mcpErr.Code == mcp.ErrorCodeNotFound {
-			writeError(w, http.StatusNotFound, err.Error())
+			httputil.WriteError(w, http.StatusNotFound, err.Error())
 		} else {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			httputil.WriteError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
@@ -198,25 +199,25 @@ func (h *MCPHandler) handleGetServer(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	httputil.WriteJSON(w, http.StatusOK, resp)
 }
 
 // handleGetServerTools handles GET /v1/mcp/servers/{name}/tools
 func (h *MCPHandler) handleGetServerTools(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "server name is required")
+		httputil.WriteError(w, http.StatusBadRequest, "server name is required")
 		return
 	}
 
 	client, err := h.registry.GetClient(name)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			writeError(w, http.StatusNotFound, err.Error())
+			httputil.WriteError(w, http.StatusNotFound, err.Error())
 		} else if strings.Contains(err.Error(), "not ready") || strings.Contains(err.Error(), "not running") {
-			writeError(w, http.StatusServiceUnavailable, "server is not running")
+			httputil.WriteError(w, http.StatusServiceUnavailable, "server is not running")
 		} else {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			httputil.WriteError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
@@ -226,7 +227,7 @@ func (h *MCPHandler) handleGetServerTools(w http.ResponseWriter, r *http.Request
 
 	tools, err := client.ListTools(ctx)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to list tools: "+err.Error())
+		httputil.WriteError(w, http.StatusInternalServerError, "failed to list tools: "+err.Error())
 		return
 	}
 
@@ -239,23 +240,23 @@ func (h *MCPHandler) handleGetServerTools(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{"tools": resp})
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{"tools": resp})
 }
 
 // handleGetServerHealth handles GET /v1/mcp/servers/{name}/health
 func (h *MCPHandler) handleGetServerHealth(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "server name is required")
+		httputil.WriteError(w, http.StatusBadRequest, "server name is required")
 		return
 	}
 
 	client, err := h.registry.GetClient(name)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			writeError(w, http.StatusNotFound, err.Error())
+			httputil.WriteError(w, http.StatusNotFound, err.Error())
 		} else {
-			writeJSON(w, http.StatusOK, MCPHealthResponse{Status: "stopped", LatencyMs: 0})
+			httputil.WriteJSON(w, http.StatusOK, MCPHealthResponse{Status: "stopped", LatencyMs: 0})
 		}
 		return
 	}
@@ -269,18 +270,18 @@ func (h *MCPHandler) handleGetServerHealth(w http.ResponseWriter, r *http.Reques
 	latency := time.Since(start)
 
 	if err != nil {
-		writeJSON(w, http.StatusOK, MCPHealthResponse{Status: "unhealthy", LatencyMs: latency.Milliseconds()})
+		httputil.WriteJSON(w, http.StatusOK, MCPHealthResponse{Status: "unhealthy", LatencyMs: latency.Milliseconds()})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, MCPHealthResponse{Status: "healthy", LatencyMs: latency.Milliseconds()})
+	httputil.WriteJSON(w, http.StatusOK, MCPHealthResponse{Status: "healthy", LatencyMs: latency.Milliseconds()})
 }
 
 // handleStartServer handles POST /v1/mcp/servers/{name}/start
 func (h *MCPHandler) handleStartServer(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "server name is required")
+		httputil.WriteError(w, http.StatusBadRequest, "server name is required")
 		return
 	}
 
@@ -289,26 +290,26 @@ func (h *MCPHandler) handleStartServer(w http.ResponseWriter, r *http.Request) {
 		if mcpErr := mcp.GetMCPError(err); mcpErr != nil {
 			switch mcpErr.Code {
 			case mcp.ErrorCodeNotFound:
-				writeError(w, http.StatusNotFound, mcpErr.Message)
+				httputil.WriteError(w, http.StatusNotFound, mcpErr.Message)
 			case mcp.ErrorCodeAlreadyRunning:
-				writeError(w, http.StatusConflict, mcpErr.Message)
+				httputil.WriteError(w, http.StatusConflict, mcpErr.Message)
 			default:
-				writeError(w, http.StatusInternalServerError, mcpErr.Message)
+				httputil.WriteError(w, http.StatusInternalServerError, mcpErr.Message)
 			}
 		} else {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			httputil.WriteError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"status": "started"})
+	httputil.WriteJSON(w, http.StatusOK, map[string]string{"status": "started"})
 }
 
 // handleStopServer handles POST /v1/mcp/servers/{name}/stop
 func (h *MCPHandler) handleStopServer(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "server name is required")
+		httputil.WriteError(w, http.StatusBadRequest, "server name is required")
 		return
 	}
 
@@ -317,26 +318,26 @@ func (h *MCPHandler) handleStopServer(w http.ResponseWriter, r *http.Request) {
 		if mcpErr := mcp.GetMCPError(err); mcpErr != nil {
 			switch mcpErr.Code {
 			case mcp.ErrorCodeNotFound:
-				writeError(w, http.StatusNotFound, mcpErr.Message)
+				httputil.WriteError(w, http.StatusNotFound, mcpErr.Message)
 			case mcp.ErrorCodeNotRunning:
-				writeError(w, http.StatusConflict, mcpErr.Message)
+				httputil.WriteError(w, http.StatusConflict, mcpErr.Message)
 			default:
-				writeError(w, http.StatusInternalServerError, mcpErr.Message)
+				httputil.WriteError(w, http.StatusInternalServerError, mcpErr.Message)
 			}
 		} else {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			httputil.WriteError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"status": "stopped"})
+	httputil.WriteJSON(w, http.StatusOK, map[string]string{"status": "stopped"})
 }
 
 // handleRestartServer handles POST /v1/mcp/servers/{name}/restart
 func (h *MCPHandler) handleRestartServer(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "server name is required")
+		httputil.WriteError(w, http.StatusBadRequest, "server name is required")
 		return
 	}
 
@@ -345,33 +346,33 @@ func (h *MCPHandler) handleRestartServer(w http.ResponseWriter, r *http.Request)
 		if mcpErr := mcp.GetMCPError(err); mcpErr != nil {
 			switch mcpErr.Code {
 			case mcp.ErrorCodeNotFound:
-				writeError(w, http.StatusNotFound, mcpErr.Message)
+				httputil.WriteError(w, http.StatusNotFound, mcpErr.Message)
 			default:
-				writeError(w, http.StatusInternalServerError, mcpErr.Message)
+				httputil.WriteError(w, http.StatusInternalServerError, mcpErr.Message)
 			}
 		} else {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			httputil.WriteError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"status": "restarting"})
+	httputil.WriteJSON(w, http.StatusOK, map[string]string{"status": "restarting"})
 }
 
 // handleRegisterServer handles POST /v1/mcp/servers
 func (h *MCPHandler) handleRegisterServer(w http.ResponseWriter, r *http.Request) {
 	var req MCPRegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body: "+err.Error())
+		httputil.WriteError(w, http.StatusBadRequest, "invalid request body: "+err.Error())
 		return
 	}
 
 	if req.Name == "" {
-		writeError(w, http.StatusBadRequest, "name is required")
+		httputil.WriteError(w, http.StatusBadRequest, "name is required")
 		return
 	}
 	if req.Command == "" {
-		writeError(w, http.StatusBadRequest, "command is required")
+		httputil.WriteError(w, http.StatusBadRequest, "command is required")
 		return
 	}
 
@@ -393,26 +394,26 @@ func (h *MCPHandler) handleRegisterServer(w http.ResponseWriter, r *http.Request
 		if mcpErr := mcp.GetMCPError(err); mcpErr != nil {
 			switch mcpErr.Code {
 			case mcp.ErrorCodeAlreadyExists:
-				writeError(w, http.StatusConflict, mcpErr.Message)
+				httputil.WriteError(w, http.StatusConflict, mcpErr.Message)
 			case mcp.ErrorCodeValidation:
-				writeError(w, http.StatusBadRequest, mcpErr.Message)
+				httputil.WriteError(w, http.StatusBadRequest, mcpErr.Message)
 			default:
-				writeError(w, http.StatusInternalServerError, mcpErr.Message)
+				httputil.WriteError(w, http.StatusInternalServerError, mcpErr.Message)
 			}
 		} else {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			httputil.WriteError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, map[string]string{"status": "registered", "name": req.Name})
+	httputil.WriteJSON(w, http.StatusCreated, map[string]string{"status": "registered", "name": req.Name})
 }
 
 // handleRemoveServer handles DELETE /v1/mcp/servers/{name}
 func (h *MCPHandler) handleRemoveServer(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "server name is required")
+		httputil.WriteError(w, http.StatusBadRequest, "server name is required")
 		return
 	}
 
@@ -421,17 +422,17 @@ func (h *MCPHandler) handleRemoveServer(w http.ResponseWriter, r *http.Request) 
 		if mcpErr := mcp.GetMCPError(err); mcpErr != nil {
 			switch mcpErr.Code {
 			case mcp.ErrorCodeNotFound:
-				writeError(w, http.StatusNotFound, mcpErr.Message)
+				httputil.WriteError(w, http.StatusNotFound, mcpErr.Message)
 			default:
-				writeError(w, http.StatusInternalServerError, mcpErr.Message)
+				httputil.WriteError(w, http.StatusInternalServerError, mcpErr.Message)
 			}
 		} else {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			httputil.WriteError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"status": "removed"})
+	httputil.WriteJSON(w, http.StatusOK, map[string]string{"status": "removed"})
 }
 
 // MCPLogEntry represents a log entry in API responses.
@@ -453,7 +454,7 @@ type MCPLogsResponse struct {
 func (h *MCPHandler) handleGetServerLogs(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "server name is required")
+		httputil.WriteError(w, http.StatusBadRequest, "server name is required")
 		return
 	}
 
@@ -461,9 +462,9 @@ func (h *MCPHandler) handleGetServerLogs(w http.ResponseWriter, r *http.Request)
 	_, err := h.registry.GetServerStatus(name)
 	if err != nil {
 		if mcpErr := mcp.GetMCPError(err); mcpErr != nil && mcpErr.Code == mcp.ErrorCodeNotFound {
-			writeError(w, http.StatusNotFound, err.Error())
+			httputil.WriteError(w, http.StatusNotFound, err.Error())
 		} else {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			httputil.WriteError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
@@ -506,7 +507,7 @@ func (h *MCPHandler) handleGetServerLogs(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	httputil.WriteJSON(w, http.StatusOK, resp)
 }
 
 // parseInt parses an integer from a string.

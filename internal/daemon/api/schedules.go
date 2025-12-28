@@ -17,6 +17,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/tombee/conductor/internal/daemon/httputil"
 	"github.com/tombee/conductor/internal/daemon/scheduler"
 )
 
@@ -41,14 +42,14 @@ func (h *SchedulesHandler) RegisterRoutes(mux *http.ServeMux) {
 // handleList returns all schedules.
 func (h *SchedulesHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	if h.scheduler == nil {
-		writeJSON(w, http.StatusOK, map[string]any{
+		httputil.WriteJSON(w, http.StatusOK, map[string]any{
 			"schedules": []any{},
 		})
 		return
 	}
 
 	statuses := h.scheduler.GetStatus()
-	writeJSON(w, http.StatusOK, map[string]any{
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{
 		"schedules": statuses,
 	})
 }
@@ -57,31 +58,31 @@ func (h *SchedulesHandler) handleList(w http.ResponseWriter, r *http.Request) {
 func (h *SchedulesHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "schedule name required")
+		httputil.WriteError(w, http.StatusBadRequest, "schedule name required")
 		return
 	}
 
 	if h.scheduler == nil {
-		writeError(w, http.StatusNotFound, "schedule not found")
+		httputil.WriteError(w, http.StatusNotFound, "schedule not found")
 		return
 	}
 
 	sched, ok := h.scheduler.GetSchedule(name)
 	if !ok {
-		writeError(w, http.StatusNotFound, "schedule not found")
+		httputil.WriteError(w, http.StatusNotFound, "schedule not found")
 		return
 	}
 
 	statuses := h.scheduler.GetStatus()
 	for _, status := range statuses {
 		if status.Name == name {
-			writeJSON(w, http.StatusOK, status)
+			httputil.WriteJSON(w, http.StatusOK, status)
 			return
 		}
 	}
 
 	// Fallback to basic info
-	writeJSON(w, http.StatusOK, map[string]any{
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{
 		"name":     sched.Name,
 		"cron":     sched.Cron,
 		"workflow": sched.Workflow,
@@ -93,21 +94,21 @@ func (h *SchedulesHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 func (h *SchedulesHandler) handleEnable(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "schedule name required")
+		httputil.WriteError(w, http.StatusBadRequest, "schedule name required")
 		return
 	}
 
 	if h.scheduler == nil {
-		writeError(w, http.StatusNotFound, "schedule not found")
+		httputil.WriteError(w, http.StatusNotFound, "schedule not found")
 		return
 	}
 
 	if err := h.scheduler.SetEnabled(name, true); err != nil {
-		writeError(w, http.StatusNotFound, err.Error())
+		httputil.WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{
 		"status":  "enabled",
 		"message": "Schedule enabled",
 	})
@@ -117,21 +118,21 @@ func (h *SchedulesHandler) handleEnable(w http.ResponseWriter, r *http.Request) 
 func (h *SchedulesHandler) handleDisable(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "schedule name required")
+		httputil.WriteError(w, http.StatusBadRequest, "schedule name required")
 		return
 	}
 
 	if h.scheduler == nil {
-		writeError(w, http.StatusNotFound, "schedule not found")
+		httputil.WriteError(w, http.StatusNotFound, "schedule not found")
 		return
 	}
 
 	if err := h.scheduler.SetEnabled(name, false); err != nil {
-		writeError(w, http.StatusNotFound, err.Error())
+		httputil.WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{
 		"status":  "disabled",
 		"message": "Schedule disabled",
 	})

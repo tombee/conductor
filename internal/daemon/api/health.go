@@ -19,6 +19,8 @@ import (
 	"net/http"
 	"runtime"
 	"time"
+
+	"github.com/tombee/conductor/internal/daemon/httputil"
 )
 
 // HealthResponse is the response format for /v1/health.
@@ -66,7 +68,7 @@ func (r *Router) handleHealth(w http.ResponseWriter, req *http.Request) {
 		Checks:    checks,
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	httputil.WriteJSON(w, http.StatusOK, resp)
 }
 
 // formatScheduleStatus formats schedule status for display.

@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tombee/conductor/internal/daemon/httputil"
 	"github.com/tombee/conductor/internal/daemon/runner"
 )
 
@@ -58,7 +59,7 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	// Check if runner is draining (graceful shutdown in progress)
 	if h.runner.IsDraining() {
 		w.Header().Set("Retry-After", "10")
-		writeError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
+		httputil.WriteError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
 		return
 	}
 
@@ -84,11 +85,11 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		var err error
 		timeout, err = time.ParseDuration(timeoutStr)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid timeout format: %s, expected duration like 5s, 10m, 1h", timeoutStr))
+			httputil.WriteError(w, http.StatusBadRequest, fmt.Sprintf("invalid timeout format: %s, expected duration like 5s, 10m, 1h", timeoutStr))
 			return
 		}
 		if timeout <= 0 {
-			writeError(w, http.StatusBadRequest, "timeout must be > 0")
+			httputil.WriteError(w, http.StatusBadRequest, "timeout must be > 0")
 			return
 		}
 	}
@@ -135,11 +136,11 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 			MCPDev:     mcpDev,
 		})
 		if err != nil {
-			writeError(w, http.StatusBadRequest, fmt.Sprintf("failed to submit run: %v", err))
+			httputil.WriteError(w, http.StatusBadRequest, fmt.Sprintf("failed to submit run: %v", err))
 			return
 		}
 
-		writeJSON(w, http.StatusAccepted, run)
+		httputil.WriteJSON(w, http.StatusAccepted, run)
 		return
 	}
 
@@ -153,20 +154,20 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(contentType, "application/json") {
 		// JSON request with workflow name reference
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid request body: %v", err))
+			httputil.WriteError(w, http.StatusBadRequest, fmt.Sprintf("invalid request body: %v", err))
 			return
 		}
 
 		// For now, workflow must be provided inline in a workflow_yaml field
 		// In the future, we'll support referencing workflows by name
-		writeError(w, http.StatusBadRequest, "workflow_yaml field required (workflow reference not yet supported)")
+		httputil.WriteError(w, http.StatusBadRequest, "workflow_yaml field required (workflow reference not yet supported)")
 		return
 	} else if strings.HasPrefix(contentType, "application/x-yaml") || strings.HasPrefix(contentType, "text/yaml") {
 		// YAML workflow directly in body
 		var err error
 		workflowYAML, err = io.ReadAll(r.Body)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, fmt.Sprintf("failed to read workflow: %v", err))
+			httputil.WriteError(w, http.StatusBadRequest, fmt.Sprintf("failed to read workflow: %v", err))
 			return
 		}
 
@@ -180,20 +181,20 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	} else if strings.HasPrefix(contentType, "multipart/form-data") {
 		// Multipart form with workflow file
 		if err := r.ParseMultipartForm(10 << 20); err != nil { // 10MB limit
-			writeError(w, http.StatusBadRequest, fmt.Sprintf("failed to parse form: %v", err))
+			httputil.WriteError(w, http.StatusBadRequest, fmt.Sprintf("failed to parse form: %v", err))
 			return
 		}
 
 		file, _, err := r.FormFile("workflow")
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "workflow file required")
+			httputil.WriteError(w, http.StatusBadRequest, "workflow file required")
 			return
 		}
 		defer file.Close()
 
 		workflowYAML, err = io.ReadAll(file)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, fmt.Sprintf("failed to read workflow file: %v", err))
+			httputil.WriteError(w, http.StatusBadRequest, fmt.Sprintf("failed to read workflow file: %v", err))
 			return
 		}
 
@@ -205,7 +206,7 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
-		writeError(w, http.StatusUnsupportedMediaType, "content-type must be application/json, application/x-yaml, or multipart/form-data")
+		httputil.WriteError(w, http.StatusUnsupportedMediaType, "content-type must be application/json, application/x-yaml, or multipart/form-data")
 		return
 	}
 
@@ -235,11 +236,11 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		MCPDev:       mcpDev,
 	})
 	if err != nil {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("failed to submit run: %v", err))
+		httputil.WriteError(w, http.StatusBadRequest, fmt.Sprintf("failed to submit run: %v", err))
 		return
 	}
 
-	writeJSON(w, http.StatusAccepted, run)
+	httputil.WriteJSON(w, http.StatusAccepted, run)
 }
 
 // handleList handles GET /v1/runs.
@@ -255,7 +256,7 @@ func (h *RunsHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	runs := h.runner.List(filter)
-	writeJSON(w, http.StatusOK, map[string]any{
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{
 		"runs":  runs,
 		"count": len(runs),
 	})
@@ -265,39 +266,39 @@ func (h *RunsHandler) handleList(w http.ResponseWriter, r *http.Request) {
 func (h *RunsHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		writeError(w, http.StatusBadRequest, "run ID required")
+		httputil.WriteError(w, http.StatusBadRequest, "run ID required")
 		return
 	}
 
 	run, err := h.runner.Get(id)
 	if err != nil {
-		writeError(w, http.StatusNotFound, err.Error())
+		httputil.WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusOK, run)
+	httputil.WriteJSON(w, http.StatusOK, run)
 }
 
 // handleGetOutput handles GET /v1/runs/{id}/output.
 func (h *RunsHandler) handleGetOutput(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		writeError(w, http.StatusBadRequest, "run ID required")
+		httputil.WriteError(w, http.StatusBadRequest, "run ID required")
 		return
 	}
 
 	run, err := h.runner.Get(id)
 	if err != nil {
-		writeError(w, http.StatusNotFound, err.Error())
+		httputil.WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
 	if run.Status != runner.RunStatusCompleted {
-		writeError(w, http.StatusConflict, fmt.Sprintf("run not completed (status: %s)", run.Status))
+		httputil.WriteError(w, http.StatusConflict, fmt.Sprintf("run not completed (status: %s)", run.Status))
 		return
 	}
 
-	writeJSON(w, http.StatusOK, run.Output)
+	httputil.WriteJSON(w, http.StatusOK, run.Output)
 }
 
 // handleGetLogs handles GET /v1/runs/{id}/logs.
@@ -305,13 +306,13 @@ func (h *RunsHandler) handleGetOutput(w http.ResponseWriter, r *http.Request) {
 func (h *RunsHandler) handleGetLogs(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		writeError(w, http.StatusBadRequest, "run ID required")
+		httputil.WriteError(w, http.StatusBadRequest, "run ID required")
 		return
 	}
 
 	run, err := h.runner.Get(id)
 	if err != nil {
-		writeError(w, http.StatusNotFound, err.Error())
+		httputil.WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
@@ -323,7 +324,7 @@ func (h *RunsHandler) handleGetLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return existing logs as JSON
-	writeJSON(w, http.StatusOK, map[string]any{
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{
 		"logs":  run.Logs,
 		"count": len(run.Logs),
 	})
@@ -338,7 +339,7 @@ func (h *RunsHandler) streamLogs(w http.ResponseWriter, r *http.Request, run *ru
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		writeError(w, http.StatusInternalServerError, "streaming not supported")
+		httputil.WriteError(w, http.StatusInternalServerError, "streaming not supported")
 		return
 	}
 
@@ -396,20 +397,20 @@ func (h *RunsHandler) streamLogs(w http.ResponseWriter, r *http.Request, run *ru
 func (h *RunsHandler) handleCancel(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		writeError(w, http.StatusBadRequest, "run ID required")
+		httputil.WriteError(w, http.StatusBadRequest, "run ID required")
 		return
 	}
 
 	if err := h.runner.Cancel(id); err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			writeError(w, http.StatusNotFound, err.Error())
+			httputil.WriteError(w, http.StatusNotFound, err.Error())
 		} else {
-			writeError(w, http.StatusConflict, err.Error())
+			httputil.WriteError(w, http.StatusConflict, err.Error())
 		}
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{
+	httputil.WriteJSON(w, http.StatusOK, map[string]string{
 		"status":  "cancelled",
 		"message": "run cancelled successfully",
 	})

@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/tombee/conductor/internal/daemon/httputil"
 	"github.com/tombee/conductor/internal/daemon/runner"
 )
 
@@ -52,34 +53,34 @@ func (h *TriggerHandler) handleTrigger(w http.ResponseWriter, r *http.Request) {
 	// Check if runner is draining (graceful shutdown in progress)
 	if h.runner.IsDraining() {
 		w.Header().Set("Retry-After", "10")
-		writeError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
+		httputil.WriteError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
 		return
 	}
 
 	workflowName := r.PathValue("workflow")
 	if workflowName == "" {
-		writeError(w, http.StatusBadRequest, "workflow name required")
+		httputil.WriteError(w, http.StatusBadRequest, "workflow name required")
 		return
 	}
 
 	// Clean the workflow name to prevent directory traversal
 	workflowName = filepath.Clean(workflowName)
 	if strings.Contains(workflowName, "..") {
-		writeError(w, http.StatusBadRequest, "invalid workflow name")
+		httputil.WriteError(w, http.StatusBadRequest, "invalid workflow name")
 		return
 	}
 
 	// Try to find the workflow file
 	workflowPath, err := h.findWorkflow(workflowName)
 	if err != nil {
-		writeError(w, http.StatusNotFound, fmt.Sprintf("workflow not found: %s", workflowName))
+		httputil.WriteError(w, http.StatusNotFound, fmt.Sprintf("workflow not found: %s", workflowName))
 		return
 	}
 
 	// Read workflow file
 	workflowYAML, err := os.ReadFile(workflowPath)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to read workflow: %v", err))
+		httputil.WriteError(w, http.StatusInternalServerError, fmt.Sprintf("failed to read workflow: %v", err))
 		return
 	}
 
@@ -88,13 +89,13 @@ func (h *TriggerHandler) handleTrigger(w http.ResponseWriter, r *http.Request) {
 	if r.ContentLength > 0 {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "failed to read request body")
+			httputil.WriteError(w, http.StatusBadRequest, "failed to read request body")
 			return
 		}
 
 		if len(body) > 0 {
 			if err := json.Unmarshal(body, &inputs); err != nil {
-				writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid JSON: %v", err))
+				httputil.WriteError(w, http.StatusBadRequest, fmt.Sprintf("invalid JSON: %v", err))
 				return
 			}
 		}
@@ -118,11 +119,11 @@ func (h *TriggerHandler) handleTrigger(w http.ResponseWriter, r *http.Request) {
 		Inputs:       inputs,
 	})
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to submit workflow: %v", err))
+		httputil.WriteError(w, http.StatusInternalServerError, fmt.Sprintf("failed to submit workflow: %v", err))
 		return
 	}
 
-	writeJSON(w, http.StatusAccepted, map[string]any{
+	httputil.WriteJSON(w, http.StatusAccepted, map[string]any{
 		"id":       run.ID,
 		"workflow": run.Workflow,
 		"status":   run.Status,

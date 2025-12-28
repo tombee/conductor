@@ -16,7 +16,6 @@
 package webhook
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -25,7 +24,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/tombee/conductor/internal/daemon/httputil"
 	"github.com/tombee/conductor/internal/daemon/runner"
+	"github.com/tombee/conductor/internal/util"
 )
 
 // Route defines a webhook route mapping.
@@ -112,14 +113,14 @@ func (router *Router) handleWebhook(w http.ResponseWriter, r *http.Request, rout
 	// Check if runner is draining (graceful shutdown in progress)
 	if router.runner.IsDraining() {
 		w.Header().Set("Retry-After", "10")
-		writeError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
+		httputil.WriteError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
 		return
 	}
 
 	// Read body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "failed to read body")
+		httputil.WriteError(w, http.StatusBadRequest, "failed to read body")
 		return
 	}
 
@@ -137,7 +138,7 @@ func (router *Router) handleWebhook(w http.ResponseWriter, r *http.Request, rout
 				slog.String("source", route.Source),
 				slog.Any("error", err),
 			)
-			writeError(w, http.StatusUnauthorized, "signature verification failed")
+			httputil.WriteError(w, http.StatusUnauthorized, "signature verification failed")
 			return
 		}
 	}
@@ -146,8 +147,8 @@ func (router *Router) handleWebhook(w http.ResponseWriter, r *http.Request, rout
 	event := handler.ParseEvent(r)
 
 	// Check if this event should trigger the workflow
-	if len(route.Events) > 0 && !contains(route.Events, event) {
-		writeJSON(w, http.StatusOK, map[string]string{
+	if len(route.Events) > 0 && !util.Contains(route.Events, event) {
+		httputil.WriteJSON(w, http.StatusOK, map[string]string{
 			"status":  "ignored",
 			"message": fmt.Sprintf("Event '%s' not in configured events", event),
 		})
@@ -157,7 +158,7 @@ func (router *Router) handleWebhook(w http.ResponseWriter, r *http.Request, rout
 	// Extract payload
 	payload, err := handler.ExtractPayload(body)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("failed to parse payload: %v", err))
+		httputil.WriteError(w, http.StatusBadRequest, fmt.Sprintf("failed to parse payload: %v", err))
 		return
 	}
 
@@ -167,13 +168,13 @@ func (router *Router) handleWebhook(w http.ResponseWriter, r *http.Request, rout
 	// Load and trigger workflow
 	workflowPath, err := router.findWorkflow(route.Workflow)
 	if err != nil {
-		writeError(w, http.StatusNotFound, fmt.Sprintf("workflow not found: %s", route.Workflow))
+		httputil.WriteError(w, http.StatusNotFound, fmt.Sprintf("workflow not found: %s", route.Workflow))
 		return
 	}
 
 	workflowYAML, err := os.ReadFile(workflowPath)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to read workflow: %v", err))
+		httputil.WriteError(w, http.StatusInternalServerError, fmt.Sprintf("failed to read workflow: %v", err))
 		return
 	}
 
@@ -182,11 +183,11 @@ func (router *Router) handleWebhook(w http.ResponseWriter, r *http.Request, rout
 		Inputs:       inputs,
 	})
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to trigger workflow: %v", err))
+		httputil.WriteError(w, http.StatusInternalServerError, fmt.Sprintf("failed to trigger workflow: %v", err))
 		return
 	}
 
-	writeJSON(w, http.StatusAccepted, map[string]any{
+	httputil.WriteJSON(w, http.StatusAccepted, map[string]any{
 		"status":   "triggered",
 		"run_id":   run.ID,
 		"workflow": run.Workflow,
@@ -199,7 +200,7 @@ func (router *Router) handleDynamicWebhook(w http.ResponseWriter, r *http.Reques
 	// Check if runner is draining (graceful shutdown in progress)
 	if router.runner.IsDraining() {
 		w.Header().Set("Retry-After", "10")
-		writeError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
+		httputil.WriteError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
 		return
 	}
 
@@ -207,7 +208,7 @@ func (router *Router) handleDynamicWebhook(w http.ResponseWriter, r *http.Reques
 	workflowName := r.PathValue("workflow")
 
 	if source == "" || workflowName == "" {
-		writeError(w, http.StatusBadRequest, "source and workflow required")
+		httputil.WriteError(w, http.StatusBadRequest, "source and workflow required")
 		return
 	}
 
@@ -220,7 +221,7 @@ func (router *Router) handleDynamicWebhook(w http.ResponseWriter, r *http.Reques
 	// Read body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "failed to read body")
+		httputil.WriteError(w, http.StatusBadRequest, "failed to read body")
 		return
 	}
 
@@ -230,7 +231,7 @@ func (router *Router) handleDynamicWebhook(w http.ResponseWriter, r *http.Reques
 	// Extract payload
 	payload, err := handler.ExtractPayload(body)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("failed to parse payload: %v", err))
+		httputil.WriteError(w, http.StatusBadRequest, fmt.Sprintf("failed to parse payload: %v", err))
 		return
 	}
 
@@ -249,13 +250,13 @@ func (router *Router) handleDynamicWebhook(w http.ResponseWriter, r *http.Reques
 	// Load and trigger workflow
 	workflowPath, err := router.findWorkflow(workflowName)
 	if err != nil {
-		writeError(w, http.StatusNotFound, fmt.Sprintf("workflow not found: %s", workflowName))
+		httputil.WriteError(w, http.StatusNotFound, fmt.Sprintf("workflow not found: %s", workflowName))
 		return
 	}
 
 	workflowYAML, err := os.ReadFile(workflowPath)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to read workflow: %v", err))
+		httputil.WriteError(w, http.StatusInternalServerError, fmt.Sprintf("failed to read workflow: %v", err))
 		return
 	}
 
@@ -264,11 +265,11 @@ func (router *Router) handleDynamicWebhook(w http.ResponseWriter, r *http.Reques
 		Inputs:       inputs,
 	})
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to trigger workflow: %v", err))
+		httputil.WriteError(w, http.StatusInternalServerError, fmt.Sprintf("failed to trigger workflow: %v", err))
 		return
 	}
 
-	writeJSON(w, http.StatusAccepted, map[string]any{
+	httputil.WriteJSON(w, http.StatusAccepted, map[string]any{
 		"status":   "triggered",
 		"run_id":   run.ID,
 		"workflow": run.Workflow,
@@ -353,23 +354,4 @@ func (router *Router) findWorkflow(name string) (string, error) {
 	}
 
 	return "", fmt.Errorf("workflow not found: %s", name)
-}
-
-func writeJSON(w http.ResponseWriter, status int, data any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
-}
-
-func writeError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]string{"error": message})
-}
-
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
 }
