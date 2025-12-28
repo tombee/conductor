@@ -121,9 +121,10 @@ type EventLogger interface {
 
 // eventLogger implements EventLogger.
 type eventLogger struct {
-	enabled      bool
-	destinations []AuditDestination
-	logger       *slog.Logger
+	enabled          bool
+	destinations     []AuditDestination
+	logger           *slog.Logger
+	metricsCollector *MetricsCollector
 }
 
 // NewEventLogger creates a new event logger from audit configuration.
@@ -139,10 +140,23 @@ func NewEventLogger(config AuditConfig) EventLogger {
 	}
 }
 
+// SetMetricsCollector sets the metrics collector for the event logger.
+func (l *eventLogger) SetMetricsCollector(collector *MetricsCollector) {
+	l.metricsCollector = collector
+}
+
 // Log records a security event.
 func (l *eventLogger) Log(event SecurityEvent) {
 	if !l.enabled {
 		return
+	}
+
+	// Record audit event metrics
+	logged := true
+	bufferUsed := 0
+	bufferCapacity := 0
+	if l.metricsCollector != nil {
+		l.metricsCollector.RecordAuditEvent(logged, bufferUsed, bufferCapacity)
 	}
 
 	// Log to structured logger

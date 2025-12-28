@@ -45,11 +45,12 @@ type Manager interface {
 
 // manager implements the Manager interface.
 type manager struct {
-	mu              sync.RWMutex
-	activeProfile   *SecurityProfile
-	customProfiles  map[string]*SecurityProfile
-	eventLogger     EventLogger
-	prewarmSandbox  bool
+	mu               sync.RWMutex
+	activeProfile    *SecurityProfile
+	customProfiles   map[string]*SecurityProfile
+	eventLogger      EventLogger
+	prewarmSandbox   bool
+	metricsCollector *MetricsCollector
 }
 
 // NewManager creates a new security manager with the given configuration.
@@ -76,6 +77,13 @@ func NewManager(config *SecurityConfig) (Manager, error) {
 	return m, nil
 }
 
+// SetMetricsCollector sets the metrics collector for recording security metrics.
+func (m *manager) SetMetricsCollector(collector *MetricsCollector) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.metricsCollector = collector
+}
+
 // LoadProfile loads and validates a security profile.
 func (m *manager) LoadProfile(name string) (*SecurityProfile, error) {
 	profile, err := LoadProfile(name, m.customProfiles)
@@ -88,6 +96,9 @@ func (m *manager) LoadProfile(name string) (*SecurityProfile, error) {
 
 	m.mu.Lock()
 	m.activeProfile = profile
+	if m.metricsCollector != nil {
+		m.metricsCollector.RecordProfileSwitch(profile.Name)
+	}
 	m.mu.Unlock()
 
 	return profile, nil
@@ -104,22 +115,31 @@ func (m *manager) GetActiveProfile() *SecurityProfile {
 func (m *manager) CheckAccess(req AccessRequest) AccessDecision {
 	m.mu.RLock()
 	profile := m.activeProfile
+	collector := m.metricsCollector
 	m.mu.RUnlock()
 
+	var decision AccessDecision
 	switch req.ResourceType {
 	case ResourceTypeFile:
-		return m.checkFileAccess(profile, req)
+		decision = m.checkFileAccess(profile, req)
 	case ResourceTypeNetwork:
-		return m.checkNetworkAccess(profile, req)
+		decision = m.checkNetworkAccess(profile, req)
 	case ResourceTypeCommand:
-		return m.checkCommandAccess(profile, req)
+		decision = m.checkCommandAccess(profile, req)
 	default:
-		return AccessDecision{
+		decision = AccessDecision{
 			Allowed: false,
 			Reason:  fmt.Sprintf("unknown resource type: %s", req.ResourceType),
 			Profile: profile.Name,
 		}
 	}
+
+	// Record access decision metrics
+	if collector != nil {
+		collector.RecordAccessDecision(decision, req.ResourceType)
+	}
+
+	return decision
 }
 
 // CreateContext creates a security context for a workflow.

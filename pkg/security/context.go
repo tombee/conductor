@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/tombee/conductor/pkg/security/sandbox"
 )
@@ -60,6 +61,9 @@ type WorkflowSecurityContext struct {
 	// eventLogger logs security events
 	eventLogger EventLogger
 
+	// metricsCollector records security metrics
+	metricsCollector *MetricsCollector
+
 	// degraded indicates if running in degraded mode (no sandbox available)
 	degraded bool
 
@@ -75,6 +79,13 @@ func NewWorkflowSecurityContext(workflowID string, profile *SecurityProfile, eve
 		eventLogger: eventLogger,
 		prewarm:     prewarm,
 	}
+}
+
+// SetMetricsCollector sets the metrics collector for this context.
+func (sc *WorkflowSecurityContext) SetMetricsCollector(collector *MetricsCollector) {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+	sc.metricsCollector = collector
 }
 
 // WithWorkflowSecurityContext adds a WorkflowSecurityContext to a context.
@@ -151,20 +162,38 @@ func (sc *WorkflowSecurityContext) initializeSandbox(ctx context.Context) error 
 	// Determine sandbox factory to use
 	factory := sc.determineSandboxFactory(ctx)
 	if factory == nil {
+		// Record sandbox creation failure
+		if sc.metricsCollector != nil {
+			sc.metricsCollector.RecordSandboxFailed()
+		}
 		return fmt.Errorf("no sandbox factory available")
 	}
 
 	// Build sandbox configuration
 	cfg := sc.buildSandboxConfig()
 
+	// Measure sandbox creation time
+	startTime := currentTimeMillis()
+
 	// Create sandbox
 	sb, err := factory.Create(ctx, cfg)
+	latencyMs := currentTimeMillis() - startTime
+
 	if err != nil {
+		// Record sandbox creation failure
+		if sc.metricsCollector != nil {
+			sc.metricsCollector.RecordSandboxFailed()
+		}
 		return fmt.Errorf("failed to create sandbox: %w", err)
 	}
 
 	sc.sandbox = sb
 	sc.sandboxFactory = factory
+
+	// Record successful sandbox creation
+	if sc.metricsCollector != nil {
+		sc.metricsCollector.RecordSandboxCreated(string(factory.Type()), latencyMs)
+	}
 
 	// Log sandbox creation
 	sc.eventLogger.Log(SecurityEvent{
@@ -192,6 +221,10 @@ func (sc *WorkflowSecurityContext) determineSandboxFactory(ctx context.Context) 
 	fallbackFactory := sandbox.NewFallbackFactory()
 	if fallbackFactory.Available(ctx) {
 		sc.degraded = true // Mark as degraded
+		// Record fallback usage
+		if sc.metricsCollector != nil {
+			sc.metricsCollector.RecordSandboxFallback()
+		}
 		return fallbackFactory
 	}
 
@@ -272,4 +305,9 @@ func (sc *WorkflowSecurityContext) LogEvent(event SecurityEvent) {
 	}
 
 	sc.eventLogger.Log(event)
+}
+
+// currentTimeMillis returns the current time in milliseconds since epoch.
+func currentTimeMillis() int64 {
+	return time.Now().UnixNano() / int64(time.Millisecond)
 }
