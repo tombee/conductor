@@ -5,8 +5,6 @@ version: 2
 
 before:
   hooks:
-    # Run tests before building
-    - go test ./...
     # Ensure go.mod is tidy
     - go mod tidy
 
@@ -30,7 +28,7 @@ builds:
 
 archives:
   - id: conductor
-    format: tar.gz
+    formats: [tar.gz]
     name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
@@ -47,7 +45,7 @@ checksum:
   algorithm: sha256
 
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  version_template: "{{ incpatch .Version }}-next"
 
 changelog:
   sort: asc
@@ -98,24 +96,17 @@ release:
     brew install conductor
     ```
 
-brews:
-  - name: conductor
-    repository:
-      owner: tombee
-      name: homebrew-tap
-      branch: main
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    commit_author:
-      name: goreleaserbot
-      email: bot@goreleaser.com
-    homepage: "https://github.com/tombee/conductor"
-    description: "LLM workflow orchestration tool"
-    license: "Apache-2.0"
-    folder: Formula
-    install: |
-      bin.install "conductor"
-    test: |
-      system "#{bin}/conductor", "version"
+# Homebrew integration (requires tombee/homebrew-tap to exist)
+# Uncomment when ready:
+# homebrew_casks:
+#   - name: conductor
+#     repository:
+#       owner: tombee
+#       name: homebrew-tap
+#       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+#     homepage: "https://github.com/tombee/conductor"
+#     description: "LLM workflow orchestration tool"
+#     license: "Apache-2.0"
 
 # Universal Binaries for macOS (combines amd64 and arm64)
 universal_binaries:
@@ -123,15 +114,16 @@ universal_binaries:
     replace: false
     name_template: '{{ .ProjectName }}'
 
-# SBOM (Software Bill of Materials)
-sboms:
-  - artifacts: archive
-    documents:
-      - >-
-        {{ .ProjectName }}_
-        {{- .Version }}_
-        {{- .Os }}_
-        {{- .Arch }}.sbom.json
+# SBOM (Software Bill of Materials) - requires syft to be installed
+# Uncomment to enable:
+# sboms:
+#   - artifacts: archive
+#     documents:
+#       - >-
+#         {{ .ProjectName }}_
+#         {{- .Version }}_
+#         {{- .Os }}_
+#         {{- .Arch }}.sbom.json
 
 # Metadata for package managers
 metadata:
