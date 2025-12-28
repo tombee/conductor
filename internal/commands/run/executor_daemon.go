@@ -32,7 +32,7 @@ import (
 )
 
 // runWorkflowViaDaemon submits a workflow to the daemon for execution
-func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, outputFile string, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs bool, provider, model, timeout, workspace, profile string) error {
+func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, outputFile string, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun bool, provider, model, timeout, workspace, profile, security string, allowHosts, allowPaths []string) error {
 	ctx := context.Background()
 
 	// Apply environment variable defaults for workspace and profile
@@ -151,24 +151,6 @@ func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, ou
 		inputs = analyzer.ApplyDefaults()
 	}
 
-	// Note: Override flags are accepted but not yet passed to daemon
-	// Log if verbose mode is enabled
-	if verbose {
-		if provider != "" {
-			fmt.Fprintf(os.Stderr, "Note: --provider flag accepted but not yet implemented for daemon execution\n")
-		}
-		if model != "" {
-			fmt.Fprintf(os.Stderr, "Note: --model flag accepted but not yet implemented for daemon execution\n")
-		}
-		if timeout != "" {
-			fmt.Fprintf(os.Stderr, "Note: --timeout flag accepted but not yet implemented for daemon execution\n")
-		}
-		if mcpDev {
-			fmt.Fprintf(os.Stderr, "Note: --mcp-dev flag accepted but not yet implemented for daemon execution\n")
-		}
-	}
-	_, _, _, _ = provider, model, timeout, mcpDev // Silence unused variable warnings
-
 	// Load config for auto-start settings
 	cfg, err := loadConfig()
 	if err != nil && !os.IsNotExist(err) {
@@ -217,6 +199,32 @@ func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, ou
 	}
 	if profile != "" {
 		params.Add("profile", profile)
+	}
+
+	// Add runtime override parameters
+	if provider != "" {
+		params.Add("provider", provider)
+	}
+	if model != "" {
+		params.Add("model", model)
+	}
+	if timeout != "" {
+		params.Add("timeout", timeout)
+	}
+	if dryRun {
+		params.Add("dry_run", "true")
+	}
+	if security != "" {
+		params.Add("security", security)
+	}
+	for _, host := range allowHosts {
+		params.Add("allow_hosts", host)
+	}
+	for _, path := range allowPaths {
+		params.Add("allow_paths", path)
+	}
+	if mcpDev {
+		params.Add("mcp_dev", "true")
 	}
 
 	if len(params) > 0 {

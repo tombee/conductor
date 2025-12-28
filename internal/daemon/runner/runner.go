@@ -70,6 +70,15 @@ type Run struct {
 	Workspace     string         `json:"workspace,omitempty"`  // Workspace used for profile resolution
 	Profile       string         `json:"profile,omitempty"`    // Profile used for binding resolution
 
+	// Runtime overrides
+	Provider   string        `json:"provider,omitempty"`    // Provider override
+	Model      string        `json:"model,omitempty"`       // Model tier override
+	Timeout    time.Duration `json:"timeout,omitempty"`     // Step timeout override
+	Security   string        `json:"security,omitempty"`    // Security profile name
+	AllowHosts []string      `json:"allow_hosts,omitempty"` // Extended allowed hosts
+	AllowPaths []string      `json:"allow_paths,omitempty"` // Extended allowed paths
+	MCPDev     bool          `json:"mcp_dev,omitempty"`     // MCP development mode
+
 	// Internal
 	mu         sync.RWMutex // Protects mutable fields (Status, Progress, Output, Error, etc.)
 	ctx        context.Context
@@ -99,6 +108,15 @@ type RunSnapshot struct {
 	SourceURL     string         `json:"source_url,omitempty"`
 	Workspace     string         `json:"workspace,omitempty"` // Workspace used for profile resolution
 	Profile       string         `json:"profile,omitempty"`   // Profile used for binding resolution
+
+	// Runtime overrides
+	Provider   string        `json:"provider,omitempty"`    // Provider override
+	Model      string        `json:"model,omitempty"`       // Model tier override
+	Timeout    time.Duration `json:"timeout,omitempty"`     // Step timeout override
+	Security   string        `json:"security,omitempty"`    // Security profile name
+	AllowHosts []string      `json:"allow_hosts,omitempty"` // Extended allowed hosts
+	AllowPaths []string      `json:"allow_paths,omitempty"` // Extended allowed paths
+	MCPDev     bool          `json:"mcp_dev,omitempty"`     // MCP development mode
 }
 
 // Progress tracks workflow execution progress.
@@ -130,6 +148,17 @@ type ListFilter struct {
 	Limit    int
 }
 
+// RunOverrides contains runtime override parameters for a workflow run.
+type RunOverrides struct {
+	Provider   string
+	Model      string
+	Timeout    time.Duration
+	Security   string
+	AllowHosts []string
+	AllowPaths []string
+	MCPDev     bool
+}
+
 // SubmitRequest contains the parameters for submitting a workflow run.
 type SubmitRequest struct {
 	WorkflowYAML []byte
@@ -145,6 +174,22 @@ type SubmitRequest struct {
 	// Profile selects the profile within the workspace.
 	// If empty, uses the workspace's default profile
 	Profile string
+	// Provider overrides the default LLM provider for this run
+	Provider string
+	// Model overrides the model tier for LLM steps
+	Model string
+	// Timeout sets the step timeout duration
+	Timeout time.Duration
+	// DryRun returns execution plan without running the workflow
+	DryRun bool
+	// Security applies a security profile name
+	Security string
+	// AllowHosts extends allowed network hosts
+	AllowHosts []string
+	// AllowPaths extends allowed filesystem paths
+	AllowPaths []string
+	// MCPDev enables MCP development mode
+	MCPDev bool
 }
 
 // Runner manages workflow executions by composing focused components.
@@ -236,6 +281,11 @@ func (r *Runner) SetMetrics(metrics MetricsCollector) {
 
 // Submit submits a workflow for execution and returns an immutable snapshot.
 func (r *Runner) Submit(ctx context.Context, req SubmitRequest) (*RunSnapshot, error) {
+	// Handle dry-run requests separately
+	if req.DryRun {
+		return r.DryRun(ctx, req)
+	}
+
 	var workflowYAML []byte
 	var sourceURL string
 
@@ -276,8 +326,23 @@ func (r *Runner) Submit(ctx context.Context, req SubmitRequest) (*RunSnapshot, e
 		return nil, fmt.Errorf("failed to resolve profile bindings: %w", err)
 	}
 
+	// Build runtime overrides from request
+	var overrides *RunOverrides
+	if req.Provider != "" || req.Model != "" || req.Timeout != 0 || req.Security != "" ||
+		len(req.AllowHosts) > 0 || len(req.AllowPaths) > 0 || req.MCPDev {
+		overrides = &RunOverrides{
+			Provider:   req.Provider,
+			Model:      req.Model,
+			Timeout:    req.Timeout,
+			Security:   req.Security,
+			AllowHosts: req.AllowHosts,
+			AllowPaths: req.AllowPaths,
+			MCPDev:     req.MCPDev,
+		}
+	}
+
 	// Create run via StateManager
-	run, err := r.state.CreateRun(ctx, def, req.Inputs, sourceURL, workspace, profile, resolvedBindings)
+	run, err := r.state.CreateRun(ctx, def, req.Inputs, sourceURL, workspace, profile, resolvedBindings, overrides)
 	if err != nil {
 		return nil, err
 	}

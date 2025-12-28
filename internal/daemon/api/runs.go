@@ -20,6 +20,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/tombee/conductor/internal/daemon/runner"
 )
@@ -67,24 +68,71 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	workspace := r.URL.Query().Get("workspace")
 	profile := r.URL.Query().Get("profile")
 
+	// Parse runtime override parameters
+	provider := r.URL.Query().Get("provider")
+	model := r.URL.Query().Get("model")
+	timeoutStr := r.URL.Query().Get("timeout")
+	dryRun := r.URL.Query().Get("dry_run") == "true"
+	security := r.URL.Query().Get("security")
+	allowHosts := r.URL.Query()["allow_hosts"]
+	allowPaths := r.URL.Query()["allow_paths"]
+	mcpDev := r.URL.Query().Get("mcp_dev") == "true"
+
+	// Parse and validate timeout if provided
+	var timeout time.Duration
+	if timeoutStr != "" {
+		var err error
+		timeout, err = time.ParseDuration(timeoutStr)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid timeout format: %s, expected duration like 5s, 10m, 1h", timeoutStr))
+			return
+		}
+		if timeout <= 0 {
+			writeError(w, http.StatusBadRequest, "timeout must be > 0")
+			return
+		}
+	}
+
 	// If remote ref is provided, workflow YAML in body should be empty
 	if remoteRef != "" {
 		// Remote workflow - ignore body and use ref
 		// Parse inputs from query params (excluding reserved params)
+		reservedParams := map[string]bool{
+			"remote_ref":  true,
+			"no_cache":    true,
+			"workspace":   true,
+			"profile":     true,
+			"provider":    true,
+			"model":       true,
+			"timeout":     true,
+			"dry_run":     true,
+			"security":    true,
+			"allow_hosts": true,
+			"allow_paths": true,
+			"mcp_dev":     true,
+		}
 		inputs := make(map[string]any)
 		for key, values := range r.URL.Query() {
-			if key != "remote_ref" && key != "no_cache" && key != "workspace" && key != "profile" && len(values) > 0 {
+			if !reservedParams[key] && len(values) > 0 {
 				inputs[key] = values[0]
 			}
 		}
 
 		// Submit remote workflow run
 		run, err := h.runner.Submit(r.Context(), runner.SubmitRequest{
-			RemoteRef: remoteRef,
-			NoCache:   noCache,
-			Inputs:    inputs,
-			Workspace: workspace,
-			Profile:   profile,
+			RemoteRef:  remoteRef,
+			NoCache:    noCache,
+			Inputs:     inputs,
+			Workspace:  workspace,
+			Profile:    profile,
+			Provider:   provider,
+			Model:      model,
+			Timeout:    timeout,
+			DryRun:     dryRun,
+			Security:   security,
+			AllowHosts: allowHosts,
+			AllowPaths: allowPaths,
+			MCPDev:     mcpDev,
 		})
 		if err != nil {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("failed to submit run: %v", err))
@@ -177,6 +225,14 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		Inputs:       req.Inputs,
 		Workspace:    submitWorkspace,
 		Profile:      submitProfile,
+		Provider:     provider,
+		Model:        model,
+		Timeout:      timeout,
+		DryRun:       dryRun,
+		Security:     security,
+		AllowHosts:   allowHosts,
+		AllowPaths:   allowPaths,
+		MCPDev:       mcpDev,
 	})
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Sprintf("failed to submit run: %v", err))

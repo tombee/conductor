@@ -49,6 +49,15 @@ type ExecutionOptions struct {
 	// OnLog is called for log messages during execution.
 	// level is one of "debug", "info", "warn", "error".
 	OnLog func(level, message, stepID string)
+
+	// Runtime overrides
+	Provider   string        // Override provider for all LLM steps
+	Model      string        // Override model tier for all LLM steps
+	Timeout    time.Duration // Override step timeout
+	Security   string        // Security profile name
+	AllowHosts []string      // Extended allowed network hosts
+	AllowPaths []string      // Extended allowed filesystem paths
+	MCPDev     bool          // Enable MCP development mode
 }
 
 // ExecutionResult contains the aggregated results of a workflow execution.
@@ -127,8 +136,29 @@ func (a *ExecutorAdapter) ExecuteWorkflow(ctx context.Context, def *workflow.Def
 			opts.OnLog("info", fmt.Sprintf("Executing step: %s (%s)", step.Name, step.Type), step.ID)
 		}
 
+		// Apply runtime overrides to step
+		stepToExecute := step
+		if step.Type == workflow.StepTypeLLM && opts.Model != "" {
+			// Override model for LLM steps
+			stepToExecute.Model = opts.Model
+			if opts.OnLog != nil {
+				opts.OnLog("debug", fmt.Sprintf("Applied model override: %s", opts.Model), step.ID)
+			}
+		}
+
+		// Apply timeout override by wrapping context with deadline
+		stepCtx := ctx
+		if opts.Timeout > 0 {
+			var cancel context.CancelFunc
+			stepCtx, cancel = context.WithTimeout(ctx, opts.Timeout)
+			defer cancel()
+			if opts.OnLog != nil {
+				opts.OnLog("debug", fmt.Sprintf("Applied timeout override: %v", opts.Timeout), step.ID)
+			}
+		}
+
 		// Execute the step
-		stepResult, err := a.executor.Execute(ctx, &step, workflowContext)
+		stepResult, err := a.executor.Execute(stepCtx, &stepToExecute, workflowContext)
 
 		// Notify step end
 		if opts.OnStepEnd != nil {
