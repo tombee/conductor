@@ -22,6 +22,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var (
@@ -171,7 +173,7 @@ func renderTemplate(content, name string) string {
 	replacements := map[string]string{
 		"{{.Name}}":       name,
 		"{{.Identifier}}": identifier,
-		"{{.NameTitle}}":  strings.Title(identifier),
+		"{{.NameTitle}}":  cases.Title(language.English).String(identifier),
 	}
 
 	result := content
