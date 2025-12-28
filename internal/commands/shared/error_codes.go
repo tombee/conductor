@@ -43,23 +43,3 @@ const (
 	ErrorCodeInternal           = "E402" // Internal error
 	ErrorCodeExecutionFailed    = "E403" // Execution failed
 )
-
-// mapExitErrorToCode maps ExitError codes to JSON error codes
-func mapExitErrorToCode(exitErr *ExitError) string {
-	if exitErr == nil {
-		return ""
-	}
-
-	switch exitErr.Code {
-	case ExitInvalidWorkflow:
-		return ErrorCodeSchemaViolation
-	case ExitMissingInput:
-		return ErrorCodeMissingInput
-	case ExitProviderError:
-		return ErrorCodeProviderNotFound
-	case ExitExecutionFailed:
-		return ErrorCodeStepFailed
-	default:
-		return ErrorCodeStepFailed
-	}
-}

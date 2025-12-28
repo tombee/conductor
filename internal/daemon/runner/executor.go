@@ -24,7 +24,6 @@ import (
 	"time"
 
 	daemonmetrics "github.com/tombee/conductor/internal/daemon/metrics"
-	"github.com/tombee/conductor/internal/tracing"
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
@@ -152,14 +151,6 @@ func (r *Runner) execute(run *Run) {
 
 // executeWithAdapter executes the workflow using the ExecutionAdapter.
 func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
-	// Workflow tracing is handled externally - the tracer field was removed
-	// TODO: Re-implement workflow tracing if needed
-	var workflowSpan *tracing.WorkflowSpan
-	_ = workflowSpan // Suppress unused variable warning
-
-	// Track active step spans for proper cleanup
-	stepSpans := make(map[string]*tracing.WorkflowSpan)
-
 	opts := ExecutionOptions{
 		RunID: run.ID,
 		OnStepStart: func(stepID string, stepIndex int, total int) {
@@ -167,9 +158,6 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 			run.Progress.CurrentStep = stepID
 			run.Progress.Completed = stepIndex
 			run.mu.Unlock()
-
-			// Workflow tracing temporarily disabled - the tracer field was removed
-			// Step tracing will be re-implemented when needed
 
 			// Save checkpoint before step using LifecycleManager
 			workflowCtx := make(map[string]any)
@@ -179,40 +167,6 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 			}
 		},
 		OnStepEnd: func(stepID string, result *workflow.StepResult, err error) {
-			// Get step span if it exists
-			stepSpan, hasSpan := stepSpans[stepID]
-
-			// Record step span attributes and status
-			if hasSpan && stepSpan != nil {
-				status := "success"
-				if err != nil {
-					status = "error"
-				} else if result != nil {
-					if result.Status == workflow.StepStatusSkipped {
-						status = "skipped"
-					} else if result.Status == workflow.StepStatusFailed {
-						status = "failed"
-					}
-				}
-
-				// Set span attributes
-				attrs := map[string]any{
-					"step.status": status,
-				}
-				if result != nil {
-					attrs["step.duration_ms"] = result.Duration.Milliseconds()
-				}
-				if err != nil {
-					attrs["step.error_message"] = err.Error()
-					safeRecordWorkflowSpanError(stepSpan, err)
-				}
-				safeSetWorkflowSpanAttributes(stepSpan, attrs)
-
-				// End step span
-				safeEndWorkflowSpan(stepSpan)
-				delete(stepSpans, stepID)
-			}
-
 			// Record step metrics
 			r.mu.RLock()
 			metricsCollector := r.metrics
@@ -274,19 +228,6 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 
 	status := string(run.Status)
 	run.mu.Unlock()
-
-	// Set workflow span status and attributes
-	if workflowSpan != nil {
-		spanAttrs := map[string]any{
-			"workflow.status":      status,
-			"workflow.duration_ms": duration.Milliseconds(),
-		}
-		if err != nil {
-			spanAttrs["workflow.error_message"] = err.Error()
-			safeRecordWorkflowSpanError(workflowSpan, err)
-		}
-		safeSetWorkflowSpanAttributes(workflowSpan, spanAttrs)
-	}
 
 	// Record run completion for metrics
 	r.mu.RLock()

@@ -65,9 +65,7 @@ func TestObservability_WorkflowTracing(t *testing.T) {
 		DefaultTimeout: 30 * time.Second,
 	}, backend, nil)
 
-	// Wire up tracing
-	// TODO: SetWorkflowTracer was removed - need to re-implement workflow tracing
-	// r.SetWorkflowTracer(otelProvider.OTelTracer("workflow"))
+	// Wire up metrics
 	r.SetMetrics(otelProvider.MetricsCollector())
 
 	// Set mock adapter to avoid actual workflow execution
@@ -184,8 +182,6 @@ func TestObservability_FailedStepTracing(t *testing.T) {
 		MaxParallel:    1,
 		DefaultTimeout: 30 * time.Second,
 	}, backend, nil)
-	// TODO: SetWorkflowTracer was removed - need to re-implement workflow tracing
-	// r.SetWorkflowTracer(otelProvider.OTelTracer("workflow"))
 	r.SetMetrics(otelProvider.MetricsCollector())
 
 	// Note: For this test, we'll just verify the storage and API work

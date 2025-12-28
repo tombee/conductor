@@ -27,23 +27,8 @@ var (
 	buildDate = "unknown"
 )
 
-// SetFlags is called by the root command to bind flag variables
-func SetFlags(verbose, quiet, json *bool, config *string) {
-	if verbose != nil {
-		verboseFlag = *verbose
-	}
-	if quiet != nil {
-		quietFlag = *quiet
-	}
-	if json != nil {
-		jsonFlag = *json
-	}
-	if config != nil {
-		configFlag = *config
-	}
-}
-
-// RegisterFlagPointers is called by root command after flag parsing
+// RegisterFlagPointers returns pointers to flag variables for binding.
+// Called by root command to register flags.
 func RegisterFlagPointers() (*bool, *bool, *bool, *string) {
 	return &verboseFlag, &quietFlag, &jsonFlag, &configFlag
 }
