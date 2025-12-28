@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/tombee/conductor/internal/commands/completion"
 )
 // newMCPStatusCommand creates the 'mcp status' command.
 func newMCPStatusCommand() *cobra.Command {
@@ -36,7 +37,8 @@ uptime, failure history, and capabilities.
 Examples:
   conductor mcp status github
   conductor mcp status github --json`,
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completion.CompleteMCPServerNames,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runMCPStatus(args[0], jsonOutput)
 		},

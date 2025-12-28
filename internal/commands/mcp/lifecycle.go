@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/tombee/conductor/internal/commands/completion"
 )
 // newMCPStartCommand creates the 'mcp start' command.
 func newMCPStartCommand() *cobra.Command {
@@ -31,7 +32,8 @@ The server must be registered in the global configuration.
 
 Examples:
   conductor mcp start github`,
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completion.CompleteMCPServerNames,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runMCPStart(args[0])
 		},
@@ -62,7 +64,8 @@ func newMCPStopCommand() *cobra.Command {
 
 Examples:
   conductor mcp stop github`,
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completion.CompleteMCPServerNames,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runMCPStop(args[0])
 		},
@@ -93,7 +96,8 @@ func newMCPRestartCommand() *cobra.Command {
 
 Examples:
   conductor mcp restart github`,
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completion.CompleteMCPServerNames,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runMCPRestart(args[0])
 		},

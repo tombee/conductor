@@ -144,6 +144,7 @@ Verbosity levels:
 
 	// Register flag completions
 	cmd.RegisterFlagCompletionFunc("provider", completion.CompleteProviderNames)
+	cmd.RegisterFlagCompletionFunc("security", completion.CompleteSecurityModes)
 
 	return cmd
 }

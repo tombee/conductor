@@ -8,6 +8,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
+	"github.com/tombee/conductor/internal/commands/completion"
 	"github.com/tombee/conductor/internal/commands/shared"
 	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/internal/examples"
@@ -114,7 +115,8 @@ See also: conductor examples list, conductor examples copy, conductor validate`,
 
   # Example 3: View example and extract step names
   conductor examples show data-pipeline | grep "id:"`,
-		Args:  cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completion.CompleteExampleNames,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
 
@@ -161,7 +163,8 @@ See also: conductor examples list, conductor run, conductor validate`,
 
   # Example 4: Run with JSON output
   conductor examples run hello-world --json`,
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completion.CompleteExampleNames,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
 
@@ -239,7 +242,8 @@ See also: conductor examples show, conductor examples list, conductor init`,
 
   # Example 4: Copy and immediately validate
   conductor examples copy hello-world && conductor validate hello-world.yaml`,
-		Args: cobra.RangeArgs(1, 2),
+		Args:              cobra.RangeArgs(1, 2),
+		ValidArgsFunction: completion.CompleteExampleNames,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
 
