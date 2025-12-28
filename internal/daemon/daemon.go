@@ -47,6 +47,7 @@ import (
 	internallog "github.com/tombee/conductor/internal/log"
 	"github.com/tombee/conductor/internal/mcp"
 	"github.com/tombee/conductor/internal/tracing"
+	"github.com/tombee/conductor/internal/tracing/audit"
 	"github.com/tombee/conductor/pkg/security"
 	"github.com/tombee/conductor/pkg/workflow"
 )
@@ -77,6 +78,7 @@ type Daemon struct {
 	mcpRegistry     *mcp.Registry
 	otelProvider    *tracing.OTelProvider
 	retentionMgr    *tracing.RetentionManager
+	auditLogger     *audit.Logger
 
 	mu      sync.Mutex
 	started bool
@@ -305,6 +307,19 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 		}
 	}
 
+	// Create audit logger if enabled
+	var auditLogger *audit.Logger
+	if cfg.Daemon.Observability.Enabled && cfg.Daemon.Observability.Audit.Enabled {
+		auditCfg := cfg.Daemon.Observability.Audit
+		var err error
+		auditLogger, err = audit.NewLoggerFromDestination(auditCfg.Destination, auditCfg.FilePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create audit logger: %w", err)
+		}
+		logger.Info("audit logging enabled",
+			slog.String("destination", auditCfg.Destination))
+	}
+
 	return &Daemon{
 		cfg:             cfg,
 		opts:            opts,
@@ -319,6 +334,7 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 		mcpRegistry:     mcpRegistry,
 		otelProvider:    otelProvider,
 		retentionMgr:    retentionMgr,
+		auditLogger:     auditLogger,
 	}, nil
 }
 
@@ -426,8 +442,21 @@ func (d *Daemon) Start(ctx context.Context) error {
 		router.SetMetricsHandler(d.otelProvider.MetricsHandler())
 	}
 
-	// Create HTTP server with auth middleware
+	// Create HTTP server with middleware chain
+	// Middleware order (from outer to inner):
+	// 1. Auth middleware (validates credentials, sets user context)
+	// 2. Audit middleware (logs API access using user from context)
+	// 3. Router (handles requests)
 	var handler http.Handler = router
+
+	// Apply audit middleware if enabled (before auth so it can log auth failures too)
+	// Actually, apply after auth so we have user context
+	if d.auditLogger != nil {
+		trustedProxies := d.cfg.Daemon.Observability.Audit.TrustedProxies
+		handler = audit.Middleware(d.auditLogger, trustedProxies)(handler)
+	}
+
+	// Apply auth middleware (outer layer)
 	if d.authMw != nil {
 		handler = d.authMw.Wrap(handler)
 	}
@@ -647,6 +676,14 @@ func (d *Daemon) Shutdown(ctx context.Context) error {
 		defer cancel()
 		if err := d.otelProvider.Shutdown(shutdownCtx); err != nil {
 			d.logger.Error("OpenTelemetry provider shutdown error",
+				internallog.Error(err))
+		}
+	}
+
+	// Close audit logger
+	if d.auditLogger != nil {
+		if err := d.auditLogger.Close(); err != nil {
+			d.logger.Error("failed to close audit logger",
 				internallog.Error(err))
 		}
 	}
