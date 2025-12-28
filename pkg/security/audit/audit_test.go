@@ -381,3 +381,179 @@ func TestCreateDestination_UnknownType(t *testing.T) {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
+
+// TestRotatingFileDestination_Integration tests end-to-end rotation behavior.
+func TestRotatingFileDestination_Integration(t *testing.T) {
+	tmpDir := t.TempDir()
+	basePath := filepath.Join(tmpDir, "audit.log")
+
+	// Create logger with rotating destination
+	logger, err := NewLogger(Config{
+		Destinations: []DestinationConfig{
+			{
+				Type:        "rotating-file",
+				Path:        basePath,
+				Format:      "json",
+				MaxSize:     1024, // 1KB for testing
+				MaxAge:      24 * time.Hour,
+				RotateDaily: false,
+				Compress:    false,
+			},
+		},
+		BufferSize: 100,
+	})
+	if err != nil {
+		t.Fatalf("NewLogger() error = %v", err)
+	}
+	defer logger.Close()
+
+	// Write events that will trigger rotation
+	largeReason := strings.Repeat("x", 500) // Large event to trigger rotation quickly
+	for i := 0; i < 5; i++ {
+		logger.Log(Event{
+			Timestamp: time.Now(),
+			EventType: "rotation_test",
+			Decision:  "allowed",
+			Reason:    largeReason,
+		})
+	}
+
+	// Give time for events to be written
+	time.Sleep(200 * time.Millisecond)
+
+	// Check that files exist
+	files, err := filepath.Glob(filepath.Join(tmpDir, "audit*"))
+	if err != nil {
+		t.Fatalf("failed to list files: %v", err)
+	}
+
+	if len(files) == 0 {
+		t.Error("expected at least one audit file")
+	}
+
+	// Verify we can read the current file
+	data, err := os.ReadFile(basePath)
+	if err != nil && !os.IsNotExist(err) {
+		t.Errorf("failed to read audit log: %v", err)
+	}
+
+	// Verify JSON format
+	if len(data) > 0 {
+		lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+		for _, line := range lines {
+			if line == "" {
+				continue
+			}
+			var event Event
+			if err := json.Unmarshal([]byte(line), &event); err != nil {
+				t.Errorf("invalid JSON in log file: %v", err)
+			}
+		}
+	}
+}
+
+// TestRotatingFileDestination_LoggerIntegration tests that rotating destination works via NewLogger.
+func TestRotatingFileDestination_LoggerIntegration(t *testing.T) {
+	tmpDir := t.TempDir()
+	basePath := filepath.Join(tmpDir, "audit.log")
+
+	// Create logger with rotating destination through config
+	logger, err := NewLogger(Config{
+		Destinations: []DestinationConfig{
+			{
+				Type:        "rotating-file",
+				Path:        basePath,
+				Format:      "json",
+				MaxSize:     DefaultMaxSize,
+				MaxAge:      DefaultMaxAge,
+				RotateDaily: true,
+				Compress:    true,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewLogger() with rotating-file error = %v", err)
+	}
+	defer logger.Close()
+
+	// Log some events
+	for i := 0; i < 10; i++ {
+		logger.Log(Event{
+			Timestamp: time.Now(),
+			EventType: "integration_test",
+			Decision:  "allowed",
+			Profile:   "standard",
+		})
+	}
+
+	// Give time for background writer
+	time.Sleep(100 * time.Millisecond)
+
+	// Verify file was created
+	if _, err := os.Stat(basePath); os.IsNotExist(err) {
+		t.Error("audit log file was not created")
+	}
+
+	// Verify buffer utilization
+	util := logger.BufferUtilization()
+	if util < 0 || util > 1 {
+		t.Errorf("buffer utilization out of range: %.2f", util)
+	}
+}
+
+// TestRotatingFileDestination_ListRotatedLogs tests listing rotated log files.
+func TestRotatingFileDestination_ListRotatedLogs(t *testing.T) {
+	tmpDir := t.TempDir()
+	basePath := filepath.Join(tmpDir, "audit.log")
+
+	// Create a rotating destination and write some data
+	dest, err := NewRotatingFileDestination(RotationConfig{
+		Path:        basePath,
+		Format:      "json",
+		MaxSize:     100, // Very small to force rotation
+		MaxAge:      24 * time.Hour,
+		RotateDaily: false,
+		Compress:    false,
+	})
+	if err != nil {
+		t.Fatalf("NewRotatingFileDestination() error = %v", err)
+	}
+
+	// Write enough data to trigger rotation
+	largeEvent := Event{
+		Timestamp: time.Now(),
+		EventType: "list_test",
+		Decision:  "allowed",
+		Reason:    strings.Repeat("x", 200),
+	}
+
+	for i := 0; i < 3; i++ {
+		if err := dest.Write(largeEvent); err != nil {
+			t.Errorf("Write() error = %v", err)
+		}
+	}
+
+	dest.Close()
+
+	// List rotated logs
+	logs, err := ListRotatedLogs(basePath)
+	if err != nil {
+		t.Fatalf("ListRotatedLogs() error = %v", err)
+	}
+
+	// Should have some rotated files (depending on rotation trigger)
+	t.Logf("Found %d rotated log files", len(logs))
+
+	// Verify log info structure
+	for _, log := range logs {
+		if log.Path == "" {
+			t.Error("log path is empty")
+		}
+		if log.Size < 0 {
+			t.Error("log size is negative")
+		}
+		if log.ModTime.IsZero() {
+			t.Error("log mod time is zero")
+		}
+	}
+}

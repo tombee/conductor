@@ -53,6 +53,12 @@ func (r *Router) handleHealth(w http.ResponseWriter, req *http.Request) {
 		checks["mcp_servers"] = formatMCPStatus(summary)
 	}
 
+	// Add audit rotation status if available
+	if r.auditProvider != nil {
+		status := r.auditProvider.GetAuditRotationStatus()
+		checks["audit_rotation"] = formatAuditStatus(status)
+	}
+
 	resp := HealthResponse{
 		Status:    "healthy",
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
@@ -80,4 +86,19 @@ func formatMCPStatus(summary MCPServerSummary) string {
 		return fmt.Sprintf("%d/%d running (%d errors)", summary.Running, summary.Total, summary.Error)
 	}
 	return fmt.Sprintf("%d/%d running", summary.Running, summary.Total)
+}
+
+// formatAuditStatus formats audit rotation status for display.
+func formatAuditStatus(status AuditRotationStatus) string {
+	if !status.Enabled {
+		return "disabled"
+	}
+	if status.Status != "" {
+		return status.Status
+	}
+	if status.CurrentFiles > 0 {
+		sizeKB := status.TotalSize / 1024
+		return fmt.Sprintf("%d files (%.1f KB)", status.CurrentFiles, float64(sizeKB))
+	}
+	return "enabled"
 }

@@ -15,11 +15,11 @@
 package security
 
 import (
-	"encoding/json"
-	"fmt"
 	"log/slog"
 	"strings"
 	"time"
+
+	"github.com/tombee/conductor/pkg/security/audit"
 )
 
 // EventType represents the type of security event.
@@ -117,12 +117,13 @@ func NewSecurityEvent(eventType EventType, req AccessRequest, decision AccessDec
 // EventLogger logs security events.
 type EventLogger interface {
 	Log(event SecurityEvent)
+	Close() error
 }
 
 // eventLogger implements EventLogger.
 type eventLogger struct {
 	enabled          bool
-	destinations     []AuditDestination
+	auditLogger      *audit.Logger
 	logger           *slog.Logger
 	metricsCollector *MetricsCollector
 }
@@ -133,10 +134,85 @@ func NewEventLogger(config AuditConfig) EventLogger {
 		return &eventLogger{enabled: false}
 	}
 
+	// Convert security audit config to audit.Config
+	auditCfg := audit.Config{
+		Destinations: make([]audit.DestinationConfig, 0, len(config.Destinations)+1),
+		BufferSize:   1000, // Default buffer size
+	}
+
+	// If rotation is enabled, replace file destinations with rotating-file
+	if config.Rotation.Enabled {
+		// Find a file destination to use as the base path for rotation
+		var basePath string
+		var format string = "json"
+
+		for _, dest := range config.Destinations {
+			if dest.Type == "file" {
+				basePath = dest.Path
+				if dest.Format != "" {
+					format = dest.Format
+				}
+				break
+			}
+		}
+
+		// If no file destination, use a default path
+		if basePath == "" {
+			basePath = "~/.conductor/logs/audit.log"
+		}
+
+		// Add rotating file destination
+		auditCfg.Destinations = append(auditCfg.Destinations, audit.DestinationConfig{
+			Type:        "rotating-file",
+			Path:        basePath,
+			Format:      format,
+			MaxSize:     config.Rotation.MaxSizeMB * 1024 * 1024, // Convert MB to bytes
+			MaxAge:      time.Duration(config.Rotation.MaxAgeDays) * 24 * time.Hour,
+			RotateDaily: true,
+			Compress:    config.Rotation.Compress,
+		})
+
+		// Add non-file destinations (syslog, webhook) as-is
+		for _, dest := range config.Destinations {
+			if dest.Type != "file" {
+				auditCfg.Destinations = append(auditCfg.Destinations, audit.DestinationConfig{
+					Type:     dest.Type,
+					Path:     dest.Path,
+					Format:   dest.Format,
+					Facility: dest.Facility,
+					Severity: dest.Severity,
+					URL:      dest.URL,
+					Headers:  dest.Headers,
+				})
+			}
+		}
+	} else {
+		// No rotation - use destinations as-is
+		for _, dest := range config.Destinations {
+			auditCfg.Destinations = append(auditCfg.Destinations, audit.DestinationConfig{
+				Type:     dest.Type,
+				Path:     dest.Path,
+				Format:   dest.Format,
+				Facility: dest.Facility,
+				Severity: dest.Severity,
+				URL:      dest.URL,
+				Headers:  dest.Headers,
+			})
+		}
+	}
+
+	// Create audit logger
+	auditLogger, err := audit.NewLogger(auditCfg)
+	if err != nil {
+		slog.Default().Error("failed to create audit logger",
+			"error", err)
+		return &eventLogger{enabled: false}
+	}
+
 	return &eventLogger{
-		enabled:      true,
-		destinations: config.Destinations,
-		logger:       slog.Default(),
+		enabled:     true,
+		auditLogger: auditLogger,
+		logger:      slog.Default(),
 	}
 }
 
@@ -151,15 +227,35 @@ func (l *eventLogger) Log(event SecurityEvent) {
 		return
 	}
 
-	// Record audit event metrics
-	logged := true
-	bufferUsed := 0
-	bufferCapacity := 0
-	if l.metricsCollector != nil {
-		l.metricsCollector.RecordAuditEvent(logged, bufferUsed, bufferCapacity)
+	// Convert SecurityEvent to audit.Event
+	auditEvent := audit.Event{
+		Timestamp:    event.Timestamp,
+		EventType:    string(event.EventType),
+		WorkflowID:   event.WorkflowID,
+		StepID:       event.StepID,
+		ToolName:     event.ToolName,
+		Resource:     event.Resource,
+		ResourceType: "", // Not used in SecurityEvent
+		Action:       string(event.Action),
+		Decision:     event.Decision,
+		Reason:       event.Reason,
+		Profile:      event.Profile,
+		UserID:       event.UserID,
 	}
 
-	// Log to structured logger
+	// Log to audit logger if available
+	if l.auditLogger != nil {
+		l.auditLogger.Log(auditEvent)
+
+		// Record audit event metrics with buffer utilization
+		if l.metricsCollector != nil {
+			bufferUtil := l.auditLogger.BufferUtilization()
+			bufferUsed := int(bufferUtil * 1000) // Approximation based on buffer size
+			l.metricsCollector.RecordAuditEvent(true, bufferUsed, 1000)
+		}
+	}
+
+	// Also log to structured logger for visibility
 	l.logger.Info("security event",
 		"event_type", event.EventType,
 		"timestamp", event.Timestamp,
@@ -172,19 +268,12 @@ func (l *eventLogger) Log(event SecurityEvent) {
 		"reason", event.Reason,
 		"profile", event.Profile,
 	)
+}
 
-	// TODO: Phase 4 - Implement multi-destination logging
-	// For now, just log to default logger
-	for _, dest := range l.destinations {
-		if dest.Type == "file" {
-			// Log to file in JSON format
-			data, err := json.Marshal(event)
-			if err != nil {
-				l.logger.Error("failed to marshal security event", "error", err)
-				continue
-			}
-			// Write to file (simplified for Phase 1)
-			fmt.Printf("%s\n", string(data))
-		}
+// Close closes the event logger and flushes any buffered events.
+func (l *eventLogger) Close() error {
+	if l.auditLogger != nil {
+		return l.auditLogger.Close()
 	}
+	return nil
 }

@@ -50,6 +50,7 @@ import (
 	"github.com/tombee/conductor/internal/tracing/audit"
 	"github.com/tombee/conductor/pkg/llm/cost"
 	"github.com/tombee/conductor/pkg/security"
+	securityaudit "github.com/tombee/conductor/pkg/security/audit"
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
@@ -81,6 +82,14 @@ type Daemon struct {
 	otelProvider    *tracing.OTelProvider
 	retentionMgr    *tracing.RetentionManager
 	auditLogger     *audit.Logger
+
+	// Security components
+	dnsMonitor          *security.DNSQueryMonitor
+	overrideManager     *security.OverrideManager
+	metricsCollector    *security.MetricsCollector
+	rotatingDestination interface{} // Will be *securityaudit.RotatingFileDestination when enabled
+	securityManager     security.Manager
+	overrideStopChan    chan struct{}
 
 	mu           sync.Mutex
 	started      bool
@@ -237,7 +246,7 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 			slog.Int("count", registry.Count()))
 	}
 
-	// Create auth middleware
+	// Prepare API keys for auth middleware (will be initialized later)
 	apiKeys := make([]auth.APIKey, len(cfg.Daemon.DaemonAuth.APIKeys))
 	for i, key := range cfg.Daemon.DaemonAuth.APIKeys {
 		apiKeys[i] = auth.APIKey{
@@ -246,11 +255,6 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 			CreatedAt: time.Now(),
 		}
 	}
-	authMw := auth.NewMiddleware(auth.Config{
-		Enabled:         cfg.Daemon.DaemonAuth.Enabled,
-		APIKeys:         apiKeys,
-		AllowUnixSocket: cfg.Daemon.DaemonAuth.AllowUnixSocket,
-	})
 
 	// Create leader elector if distributed mode is enabled
 	var elector *leader.Elector
@@ -340,6 +344,72 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 			slog.String("destination", auditCfg.Destination))
 	}
 
+	// Initialize security components
+	// Initialize security Manager first
+	var securityMgr security.Manager
+	if cfg.Security.DefaultProfile != "" || len(cfg.Security.Profiles) > 0 {
+		var err error
+		securityMgr, err = security.NewManager(&cfg.Security)
+		if err != nil {
+			logger.Warn("failed to initialize security manager",
+				internallog.Error(err))
+			logger.Warn("security enforcement will not be available")
+		} else {
+			logger.Info("security manager initialized",
+				slog.String("default_profile", cfg.Security.DefaultProfile))
+		}
+	}
+
+	// Initialize DNSQueryMonitor if configured
+	var dnsMonitor *security.DNSQueryMonitor
+	if cfg.Security.DNS.RebindingPrevention || cfg.Security.DNS.BlockDynamicDNS ||
+		cfg.Security.DNS.ExfiltrationLimits.MaxQueriesPerMinute > 0 {
+		dnsMonitor = security.NewDNSQueryMonitor(cfg.Security.DNS)
+		logger.Info("DNS query monitor initialized")
+	}
+
+	// Initialize security MetricsCollector and wire to Manager
+	var metricsCollector *security.MetricsCollector
+	if cfg.Security.Metrics.Enabled {
+		metricsCollector = security.NewMetricsCollector()
+		logger.Info("security metrics collector initialized")
+
+		// Wire MetricsCollector to security Manager
+		if securityMgr != nil {
+			securityMgr.SetMetricsCollector(metricsCollector)
+			logger.Info("security metrics collector wired to security manager")
+		}
+	}
+
+	// Initialize OverrideManager with event logger
+	var overrideManager *security.OverrideManager
+	if cfg.Security.Override.Enabled {
+		// Create event logger for override auditing
+		eventLogger := security.NewEventLogger(cfg.Security.Audit)
+		overrideManager = security.NewOverrideManager(eventLogger)
+		logger.Info("security override manager initialized with event logger")
+	}
+
+	// Audit rotation is handled by EventLogger
+	// The rotation destination is created automatically when Rotation.Enabled is true
+	var rotatingDest interface{}
+	if cfg.Security.Audit.Rotation.Enabled && cfg.Security.Audit.Enabled {
+		logger.Info("audit rotation configured",
+			slog.Int64("max_size_mb", cfg.Security.Audit.Rotation.MaxSizeMB),
+			slog.Int("max_age_days", cfg.Security.Audit.Rotation.MaxAgeDays),
+			slog.Bool("compress", cfg.Security.Audit.Rotation.Compress))
+	}
+
+	// Create auth middleware (after security components are initialized)
+	authMw := auth.NewMiddleware(auth.Config{
+		Enabled:         cfg.Daemon.DaemonAuth.Enabled,
+		APIKeys:         apiKeys,
+		AllowUnixSocket: cfg.Daemon.DaemonAuth.AllowUnixSocket,
+		OverrideManager: overrideManager,
+		Logger:          logger,
+	})
+
+
 	return &Daemon{
 		cfg:             cfg,
 		opts:            opts,
@@ -358,6 +428,13 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 		auditLogger:     auditLogger,
 		lastActivity:    time.Now(),
 		autoStarted:     autoStarted,
+
+		// Security components
+		dnsMonitor:          dnsMonitor,
+		metricsCollector:    metricsCollector,
+		overrideManager:     overrideManager,
+		rotatingDestination: rotatingDest,
+		securityManager:     securityMgr,
 	}, nil
 }
 
@@ -470,9 +547,34 @@ func (d *Daemon) Start(ctx context.Context) error {
 		router.SetMCPProvider(&mcpStatusAdapter{registry: d.mcpRegistry})
 	}
 
+	// Wire up audit status provider to router for health endpoint
+	router.SetAuditProvider(&auditStatusAdapter{cfg: d.cfg})
+
 	// Wire up metrics handler if observability is enabled
+	// Combine OTel metrics with security metrics if both are available
 	if d.otelProvider != nil {
-		router.SetMetricsHandler(d.otelProvider.MetricsHandler())
+		var metricsHandler http.Handler
+		if d.metricsCollector != nil {
+			// Create combined handler with both OTel and security metrics
+			metricsHandler = NewCombinedMetricsHandler(d.otelProvider.MetricsHandler(), d.metricsCollector)
+		} else {
+			// Use OTel metrics only
+			metricsHandler = d.otelProvider.MetricsHandler()
+		}
+		router.SetMetricsHandler(metricsHandler)
+	} else if d.metricsCollector != nil {
+		// If only security metrics are available (no OTel), create a simple handler
+		metricsHandler := NewCombinedMetricsHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// No OTel metrics, empty base
+			w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+		}), d.metricsCollector)
+		router.SetMetricsHandler(metricsHandler)
+	}
+
+	// Wire up override management handler if enabled
+	if d.overrideManager != nil {
+		overrideHandler := api.NewOverrideHandler(d.overrideManager)
+		router.SetOverrideHandler(overrideHandler)
 	}
 
 	// Create HTTP server with middleware chain
@@ -549,6 +651,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 	if d.retentionMgr != nil {
 		d.retentionMgr.Start()
 		d.logger.Info("trace retention manager started")
+	}
+
+	// Start OverrideManager cleanup goroutine
+	if d.overrideManager != nil {
+		d.overrideStopChan = make(chan struct{})
+		go d.overrideManager.StartAutoCleanup(d.overrideStopChan)
+		d.logger.Info("security override cleanup goroutine started")
 	}
 
 	// Create and start public API server if enabled
@@ -644,6 +753,22 @@ func (d *Daemon) Shutdown(ctx context.Context) error {
 		if err := d.mcpRegistry.Stop(); err != nil {
 			d.logger.Error("MCP registry shutdown error",
 				internallog.Error(err))
+		}
+	}
+
+	// T7: Stop OverrideManager cleanup goroutine
+	if d.overrideStopChan != nil {
+		close(d.overrideStopChan)
+		d.logger.Info("security override cleanup goroutine stopped")
+	}
+
+	// T7: Close audit logger via security manager
+	if d.securityManager != nil {
+		if err := d.securityManager.Close(); err != nil {
+			d.logger.Error("security manager shutdown error",
+				internallog.Error(err))
+		} else {
+			d.logger.Info("security manager shutdown complete")
 		}
 	}
 
@@ -849,9 +974,65 @@ func (a *mcpStatusAdapter) GetSummary() api.MCPServerSummary {
 	summary := a.registry.GetSummary()
 	return api.MCPServerSummary{
 		Total:   summary.Total,
-		Running: summary.Running,
+		Running:summary.Running,
 		Stopped: summary.Stopped,
 		Error:   summary.Error,
+	}
+}
+
+// auditStatusAdapter provides audit rotation status for health checks.
+type auditStatusAdapter struct {
+	cfg *config.Config
+}
+
+// GetAuditRotationStatus returns the audit rotation status.
+func (a *auditStatusAdapter) GetAuditRotationStatus() api.AuditRotationStatus {
+	if !a.cfg.Security.Audit.Enabled {
+		return api.AuditRotationStatus{
+			Enabled: false,
+			Status:  "audit disabled",
+		}
+	}
+
+	if !a.cfg.Security.Audit.Rotation.Enabled {
+		return api.AuditRotationStatus{
+			Enabled: false,
+			Status:  "rotation disabled",
+		}
+	}
+
+	// Find the file path for rotation
+	basePath := ""
+	for _, dest := range a.cfg.Security.Audit.Destinations {
+		if dest.Type == "file" {
+			basePath = dest.Path
+			break
+		}
+	}
+
+	if basePath == "" {
+		basePath = "~/.conductor/logs/audit.log"
+	}
+
+	// List rotated logs to get status
+	logs, err := securityaudit.ListRotatedLogs(basePath)
+	if err != nil {
+		return api.AuditRotationStatus{
+			Enabled: true,
+			Status:  "error reading logs",
+		}
+	}
+
+	var totalSize int64
+	for _, log := range logs {
+		totalSize += log.Size
+	}
+
+	return api.AuditRotationStatus{
+		Enabled:      true,
+		CurrentFiles: len(logs),
+		TotalSize:    totalSize,
+		Status:       "ok",
 	}
 }
 

@@ -51,6 +51,19 @@ type MCPServerSummary struct {
 	Error   int
 }
 
+// AuditStatusProvider provides audit rotation status for health checks.
+type AuditStatusProvider interface {
+	GetAuditRotationStatus() AuditRotationStatus
+}
+
+// AuditRotationStatus represents the status of audit log rotation.
+type AuditRotationStatus struct {
+	Enabled      bool   `json:"enabled"`
+	CurrentFiles int    `json:"current_files,omitempty"`
+	TotalSize    int64  `json:"total_size,omitempty"`
+	Status       string `json:"status"`
+}
+
 // MetricsHandler provides a Prometheus metrics endpoint
 type MetricsHandler interface {
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
@@ -67,6 +80,7 @@ type Router struct {
 	config           RouterConfig
 	scheduleProvider ScheduleStatusProvider
 	mcpProvider      MCPStatusProvider
+	auditProvider    AuditStatusProvider
 	metricsHandler   MetricsHandler
 	activityRecorder ActivityRecorder
 	logger           *slog.Logger
@@ -82,6 +96,11 @@ func (r *Router) SetMCPProvider(provider MCPStatusProvider) {
 	r.mcpProvider = provider
 }
 
+// SetAuditProvider sets the audit status provider.
+func (r *Router) SetAuditProvider(provider AuditStatusProvider) {
+	r.auditProvider = provider
+}
+
 // SetMetricsHandler sets the Prometheus metrics handler.
 func (r *Router) SetMetricsHandler(handler MetricsHandler) {
 	r.metricsHandler = handler
@@ -93,6 +112,15 @@ func (r *Router) SetMetricsHandler(handler MetricsHandler) {
 // SetActivityRecorder sets the activity recorder for idle timeout tracking.
 func (r *Router) SetActivityRecorder(recorder ActivityRecorder) {
 	r.activityRecorder = recorder
+}
+
+// SetOverrideHandler sets the override management handler and registers override routes.
+func (r *Router) SetOverrideHandler(handler *OverrideHandler) {
+	if handler != nil {
+		r.mux.HandleFunc("POST /v1/override", handler.HandleCreate)
+		r.mux.HandleFunc("GET /v1/override", handler.HandleList)
+		r.mux.HandleFunc("DELETE /v1/override/{type}", handler.HandleRevoke)
+	}
 }
 
 // NewRouter creates a new HTTP router with all API endpoints.

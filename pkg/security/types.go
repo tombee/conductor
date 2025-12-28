@@ -194,6 +194,15 @@ type SecurityConfig struct {
 
 	// PrewarmSandbox enables sandbox pre-warming for latency-sensitive workflows
 	PrewarmSandbox bool `yaml:"prewarm_sandbox,omitempty" json:"prewarm_sandbox,omitempty"`
+
+	// DNS configures DNS monitoring and exfiltration prevention
+	DNS DNSSecurityConfig `yaml:"dns,omitempty" json:"dns,omitempty"`
+
+	// Metrics configures security metrics collection
+	Metrics MetricsConfig `yaml:"metrics,omitempty" json:"metrics,omitempty"`
+
+	// Override configures emergency security override system
+	Override OverrideConfig `yaml:"override,omitempty" json:"override,omitempty"`
 }
 
 // PolicyConfig defines organization-level security policy.
@@ -213,6 +222,9 @@ type AuditConfig struct {
 
 	// Destinations defines where audit events are sent
 	Destinations []AuditDestination `yaml:"destinations,omitempty" json:"destinations,omitempty"`
+
+	// Rotation configures audit log rotation
+	Rotation AuditRotationConfig `yaml:"rotation,omitempty" json:"rotation,omitempty"`
 }
 
 // AuditDestination represents a destination for audit logs.
@@ -237,4 +249,46 @@ type AuditDestination struct {
 
 	// Headers are HTTP headers to send with webhook requests
 	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
+}
+
+// MetricsConfig configures security metrics collection.
+type MetricsConfig struct {
+	// Enabled controls whether metrics collection is active
+	Enabled bool `yaml:"enabled" json:"enabled"`
+
+	// Namespace is the Prometheus namespace for metrics (default: conductor)
+	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty"`
+}
+
+// OverrideConfig configures the security override system.
+type OverrideConfig struct {
+	// Enabled controls whether security overrides are allowed
+	Enabled bool `yaml:"enabled" json:"enabled"`
+
+	// DefaultTTL is the default duration for overrides
+	DefaultTTL time.Duration `yaml:"default_ttl,omitempty" json:"default_ttl,omitempty"`
+
+	// MaxTTL is the maximum allowed override duration
+	MaxTTL time.Duration `yaml:"max_ttl,omitempty" json:"max_ttl,omitempty"`
+
+	// RequireReason requires a reason when creating overrides
+	RequireReason bool `yaml:"require_reason" json:"require_reason"`
+}
+
+// AuditRotationConfig configures audit log rotation.
+type AuditRotationConfig struct {
+	// Enabled controls whether log rotation is active
+	Enabled bool `yaml:"enabled" json:"enabled"`
+
+	// MaxSizeMB is the maximum file size before rotation in megabytes
+	MaxSizeMB int64 `yaml:"max_size_mb,omitempty" json:"max_size_mb,omitempty"`
+
+	// MaxAgeDays is the number of days to retain rotated logs
+	MaxAgeDays int `yaml:"max_age_days,omitempty" json:"max_age_days,omitempty"`
+
+	// MaxBackups is the maximum number of rotated logs to keep
+	MaxBackups int `yaml:"max_backups,omitempty" json:"max_backups,omitempty"`
+
+	// Compress enables gzip compression of rotated logs
+	Compress bool `yaml:"compress" json:"compress"`
 }

@@ -81,6 +81,12 @@ type DestinationConfig struct {
 	Severity string            `yaml:"severity,omitempty" json:"severity,omitempty"`
 	URL      string            `yaml:"url,omitempty" json:"url,omitempty"`
 	Headers  map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
+
+	// Rotation settings (for type=rotating-file)
+	MaxSize     int64         `yaml:"max_size,omitempty" json:"max_size,omitempty"`
+	MaxAge      time.Duration `yaml:"max_age,omitempty" json:"max_age,omitempty"`
+	RotateDaily bool          `yaml:"rotate_daily,omitempty" json:"rotate_daily,omitempty"`
+	Compress    bool          `yaml:"compress,omitempty" json:"compress,omitempty"`
 }
 
 const (
@@ -196,6 +202,24 @@ func createDestination(config DestinationConfig) (Destination, error) {
 	switch config.Type {
 	case "file":
 		return NewFileDestination(config)
+	case "rotating-file":
+		// For rotating files, convert DestinationConfig to RotationConfig
+		rotationCfg := RotationConfig{
+			Path:        config.Path,
+			Format:      config.Format,
+			MaxSize:     config.MaxSize,
+			MaxAge:      config.MaxAge,
+			RotateDaily: config.RotateDaily,
+			Compress:    config.Compress,
+		}
+		// Apply defaults if not set
+		if rotationCfg.MaxSize == 0 {
+			rotationCfg.MaxSize = DefaultMaxSize
+		}
+		if rotationCfg.MaxAge == 0 {
+			rotationCfg.MaxAge = DefaultMaxAge
+		}
+		return NewRotatingFileDestination(rotationCfg)
 	case "syslog":
 		return NewSyslogDestination(config)
 	case "webhook":
