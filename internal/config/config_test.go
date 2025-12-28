@@ -49,6 +49,14 @@ func TestDefault(t *testing.T) {
 		t.Errorf("expected log add_source false, got true")
 	}
 
+	// Daemon auth defaults - secure by default
+	if !cfg.Daemon.DaemonAuth.Enabled {
+		t.Errorf("expected daemon auth enabled by default, got disabled")
+	}
+	if !cfg.Daemon.DaemonAuth.AllowUnixSocket {
+		t.Errorf("expected daemon auth allow_unix_socket true by default, got false")
+	}
+
 	// LLM defaults
 	if cfg.LLM.DefaultProvider != "anthropic" {
 		t.Errorf("expected default provider 'anthropic', got %q", cfg.LLM.DefaultProvider)
@@ -159,6 +167,41 @@ func TestValidate(t *testing.T) {
 			},
 			wantErr: true,
 			errText: "llm.retry_backoff_base must be positive",
+		},
+		{
+			name: "invalid trace_days when observability enabled",
+			modify: func(c *Config) {
+				c.Daemon.Observability.Enabled = true
+				c.Daemon.Observability.Storage.Retention.TraceDays = 0
+			},
+			wantErr: true,
+			errText: "trace_days must be positive",
+		},
+		{
+			name: "invalid event_days when observability enabled",
+			modify: func(c *Config) {
+				c.Daemon.Observability.Enabled = true
+				c.Daemon.Observability.Storage.Retention.EventDays = -1
+			},
+			wantErr: true,
+			errText: "event_days must be positive",
+		},
+		{
+			name: "invalid aggregate_days when observability enabled",
+			modify: func(c *Config) {
+				c.Daemon.Observability.Enabled = true
+				c.Daemon.Observability.Storage.Retention.AggregateDays = 0
+			},
+			wantErr: true,
+			errText: "aggregate_days must be positive",
+		},
+		{
+			name: "zero retention days allowed when observability disabled",
+			modify: func(c *Config) {
+				c.Daemon.Observability.Enabled = false
+				c.Daemon.Observability.Storage.Retention.TraceDays = 0
+			},
+			wantErr: false,
 		},
 	}
 

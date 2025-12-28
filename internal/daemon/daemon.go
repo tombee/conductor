@@ -300,6 +300,9 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// Check permissions on critical directories and files at startup
 	d.checkPermissionsAtStartup()
 
+	// Log security warnings for risky configurations
+	d.logSecurityWarnings()
+
 	// Write PID file if configured
 	if d.cfg.Daemon.PIDFile != "" {
 		if err := d.writePIDFile(); err != nil {
@@ -632,6 +635,68 @@ func (d *Daemon) checkPermissionsAtStartup() {
 				slog.String("warning", warning))
 		}
 	}
+}
+
+// logSecurityWarnings logs warnings for risky security configurations.
+func (d *Daemon) logSecurityWarnings() {
+	// If force-insecure is set, log a single warning and skip detailed checks
+	if d.cfg.Daemon.ForceInsecure {
+		d.logger.Warn("security: running with --force-insecure flag",
+			slog.String("warning", "security warnings suppressed - not recommended for production"))
+		return
+	}
+
+	// Warn if authentication is disabled
+	if !d.cfg.Daemon.DaemonAuth.Enabled {
+		d.logger.Warn("security: authentication is disabled",
+			slog.String("recommendation", "enable daemon_auth.enabled for production use"))
+
+		// Extra warning if listening on non-localhost TCP
+		if d.cfg.Daemon.Listen.TCPAddr != "" && !isLocalhostAddr(d.cfg.Daemon.Listen.TCPAddr) {
+			d.logger.Warn("security: authentication disabled on network-accessible address",
+				slog.String("tcp_addr", d.cfg.Daemon.Listen.TCPAddr),
+				slog.String("risk", "unauthenticated API access from network"))
+		}
+
+		// Warning if public API is enabled without auth
+		if d.cfg.Daemon.Listen.PublicAPI.Enabled {
+			d.logger.Warn("security: public API enabled without authentication",
+				slog.String("public_api_tcp", d.cfg.Daemon.Listen.PublicAPI.TCP),
+				slog.String("risk", "publicly accessible unauthenticated webhooks"))
+		}
+	}
+
+	// Warn if TLS is not enabled for TCP listener
+	if d.cfg.Daemon.Listen.TCPAddr != "" && d.cfg.Daemon.Listen.TLSCert == "" {
+		if !isLocalhostAddr(d.cfg.Daemon.Listen.TCPAddr) {
+			d.logger.Warn("security: TLS not configured for network listener",
+				slog.String("tcp_addr", d.cfg.Daemon.Listen.TCPAddr),
+				slog.String("recommendation", "configure tls_cert and tls_key for encrypted connections"))
+		}
+	}
+}
+
+// isLocalhostAddr returns true if the address is localhost-only.
+func isLocalhostAddr(addr string) bool {
+	// Parse host from address (host:port format)
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		// Try without port
+		host = addr
+	}
+
+	// Empty host or 127.x.x.x is localhost
+	if host == "" || host == "localhost" {
+		return true
+	}
+
+	// Parse as IP to check for loopback
+	ip := net.ParseIP(host)
+	if ip != nil {
+		return ip.IsLoopback()
+	}
+
+	return false
 }
 
 // writePIDFile writes the current process ID to the PID file.

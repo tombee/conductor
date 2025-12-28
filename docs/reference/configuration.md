@@ -350,6 +350,91 @@ daemon:
   socket_path: ~/.config/conductor/conductor.sock
 ```
 
+### daemon.force_insecure
+
+**Type:** `boolean`
+**Default:** `false`
+**CLI Flag:** `--force-insecure`
+
+Explicitly acknowledge running with insecure configuration. When set, security warnings about disabled authentication or TLS are suppressed. **For development/testing environments only.**
+
+```yaml
+daemon:
+  force_insecure: false  # Not recommended for production
+```
+
+> **Warning:** Never use `force_insecure: true` in production. This flag is intended only for local development or testing scenarios where you understand the security implications.
+
+---
+
+## Daemon Authentication
+
+Security settings for daemon API authentication. **Authentication is enabled by default** as a secure default.
+
+### daemon_auth.enabled
+
+**Type:** `boolean`
+**Default:** `true`
+
+Enable API authentication for the daemon. When enabled, all API requests must include a valid authentication token.
+
+```yaml
+daemon_auth:
+  enabled: true  # Secure by default
+```
+
+When authentication is disabled and the daemon is accessible over the network, a security warning is logged at startup.
+
+### daemon_auth.allow_unix_socket
+
+**Type:** `boolean`
+**Default:** `true`
+
+Allow unauthenticated access via Unix socket. This is convenient for local development while maintaining security for network access.
+
+```yaml
+daemon_auth:
+  allow_unix_socket: true
+```
+
+---
+
+## Observability Storage Retention
+
+Settings for how long observability data is retained.
+
+### daemon.observability.storage.retention.trace_days
+
+**Type:** `integer`
+**Default:** `7`
+
+Number of days to retain trace data. Must be a positive integer when observability is enabled.
+
+### daemon.observability.storage.retention.event_days
+
+**Type:** `integer`
+**Default:** `30`
+
+Number of days to retain event data. Must be a positive integer when observability is enabled.
+
+### daemon.observability.storage.retention.aggregate_days
+
+**Type:** `integer`
+**Default:** `90`
+
+Number of days to retain aggregate metrics. Must be a positive integer when observability is enabled.
+
+```yaml
+daemon:
+  observability:
+    enabled: true
+    storage:
+      retention:
+        trace_days: 7
+        event_days: 30
+        aggregate_days: 90
+```
+
 ---
 
 ## Environment Variables
@@ -479,6 +564,11 @@ providers:
 
 daemon:
   auto_start: true
+  # Authentication is enabled by default - no need to specify
+
+daemon_auth:
+  enabled: true  # Secure by default
+  allow_unix_socket: true
 ```
 
 ### Development Configuration
@@ -542,6 +632,10 @@ conductor doctor
 4. **Use credential managers** for API keys when possible
 5. **Rotate API keys** regularly
 6. **Enable rate limiting** in production environments
+7. **Keep authentication enabled** - the daemon enables auth by default; only disable for local development
+8. **Use TLS for remote access** - if exposing the daemon over TCP, configure TLS
+9. **Review security warnings** - the daemon logs warnings at startup for insecure configurations
+10. **Never use `--force-insecure` in production** - this flag suppresses security warnings and should only be used for testing
 
 ---
 

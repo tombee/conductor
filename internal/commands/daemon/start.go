@@ -31,13 +31,14 @@ import (
 // NewStartCommand creates the daemon start command.
 func NewStartCommand() *cobra.Command {
 	var (
-		foreground   bool
-		timeout      time.Duration
-		socket       string
-		tcpAddr      string
-		allowRemote  bool
-		workflowsDir string
-		backend      string
+		foreground    bool
+		timeout       time.Duration
+		socket        string
+		tcpAddr       string
+		allowRemote   bool
+		forceInsecure bool
+		workflowsDir  string
+		backend       string
 	)
 
 	cmd := &cobra.Command{
@@ -66,13 +67,14 @@ it exits successfully without starting a new instance.`,
   conductor daemon start --timeout 60s`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runStart(cmd.Context(), startOptions{
-				foreground:   foreground,
-				timeout:      timeout,
-				socket:       socket,
-				tcpAddr:      tcpAddr,
-				allowRemote:  allowRemote,
-				workflowsDir: workflowsDir,
-				backend:      backend,
+				foreground:    foreground,
+				timeout:       timeout,
+				socket:        socket,
+				tcpAddr:       tcpAddr,
+				allowRemote:   allowRemote,
+				forceInsecure: forceInsecure,
+				workflowsDir:  workflowsDir,
+				backend:       backend,
 			})
 		},
 	}
@@ -82,6 +84,7 @@ it exits successfully without starting a new instance.`,
 	cmd.Flags().StringVar(&socket, "socket", "", "Unix socket path")
 	cmd.Flags().StringVar(&tcpAddr, "tcp", "", "TCP address to listen on")
 	cmd.Flags().BoolVar(&allowRemote, "allow-remote", false, "Allow non-localhost TCP connections")
+	cmd.Flags().BoolVar(&forceInsecure, "force-insecure", false, "Acknowledge insecure config (dev only)")
 	cmd.Flags().StringVar(&workflowsDir, "workflows-dir", "", "Workflows directory")
 	cmd.Flags().StringVar(&backend, "backend", "", "Storage backend (memory, postgres)")
 
@@ -89,13 +92,14 @@ it exits successfully without starting a new instance.`,
 }
 
 type startOptions struct {
-	foreground   bool
-	timeout      time.Duration
-	socket       string
-	tcpAddr      string
-	allowRemote  bool
-	workflowsDir string
-	backend      string
+	foreground    bool
+	timeout       time.Duration
+	socket        string
+	tcpAddr       string
+	allowRemote   bool
+	forceInsecure bool
+	workflowsDir  string
+	backend       string
 }
 
 func runStart(ctx context.Context, opts startOptions) error {
@@ -120,6 +124,9 @@ func runStart(ctx context.Context, opts startOptions) error {
 	}
 	if opts.backend != "" {
 		cfg.Daemon.Backend.Type = opts.backend
+	}
+	if opts.forceInsecure {
+		cfg.Daemon.ForceInsecure = true
 	}
 
 	// Determine PID file path (unless foreground mode)
@@ -293,6 +300,9 @@ func buildDaemonArgs(cfg *config.Config, opts startOptions) []string {
 	}
 	if cfg.Daemon.Backend.Type != "" {
 		args = append(args, "--backend", cfg.Daemon.Backend.Type)
+	}
+	if cfg.Daemon.ForceInsecure {
+		args = append(args, "--force-insecure")
 	}
 
 	return args
