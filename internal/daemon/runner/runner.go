@@ -281,6 +281,11 @@ func (r *Runner) SetMetrics(metrics MetricsCollector) {
 
 // Submit submits a workflow for execution and returns an immutable snapshot.
 func (r *Runner) Submit(ctx context.Context, req SubmitRequest) (*RunSnapshot, error) {
+	// Handle dry-run requests separately (SPEC-156 Phase 4)
+	if req.DryRun {
+		return r.DryRun(ctx, req)
+	}
+
 	var workflowYAML []byte
 	var sourceURL string
 
