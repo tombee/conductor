@@ -6,7 +6,7 @@ Control how steps execute in your workflows.
 
 By default, steps run in order:
 
-```yaml
+```conductor
 steps:
   - id: step1
     model: fast
@@ -25,7 +25,7 @@ steps:
 
 Run independent steps concurrently:
 
-```yaml
+```conductor
 steps:
   - id: fetch_data
     file.read: "{{.inputs.data_file}}"
@@ -49,7 +49,7 @@ steps:
 
 Access parallel results:
 
-```yaml
+```conductor
   - id: consolidate
     model: balanced
     prompt: |
@@ -63,7 +63,7 @@ Access parallel results:
 
 Run steps only when conditions are met:
 
-```yaml
+```conductor
   - id: security_scan
     condition: 'inputs.include_security == true'
     model: strategic
@@ -79,7 +79,7 @@ Run steps only when conditions are met:
 
 Route to different steps based on classification:
 
-```yaml
+```conductor
   - id: classify
     model: fast
     prompt: |
@@ -101,7 +101,7 @@ Route to different steps based on classification:
 
 Break complex workflows into reusable components:
 
-```yaml
+```conductor
 # analyze-sentiment.yaml
 name: analyze-sentiment
 inputs:
@@ -118,7 +118,7 @@ outputs:
 
 Call from another workflow:
 
-```yaml
+```conductor
 # main.yaml
 steps:
   - id: analyze
@@ -136,7 +136,7 @@ steps:
 
 ### Read-Process-Write
 
-```yaml
+```conductor
 steps:
   - id: read
     file.read: "{{.inputs.file}}"
@@ -155,7 +155,7 @@ steps:
 
 Validate before expensive operations:
 
-```yaml
+```conductor
   - id: validate
     model: fast
     prompt: "Is this valid code? Output: VALID or INVALID"

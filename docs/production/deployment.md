@@ -68,7 +68,7 @@ docker run -d \
 
 **Docker Compose:**
 
-```yaml
+```conductor
 version: '3.8'
 services:
   conductor:

@@ -86,7 +86,7 @@ conductor run examples/iac-review \
 
 ### GitHub Actions Integration
 
-```yaml
+```conductor
 # .github/workflows/iac-review.yml
 name: IaC Review
 on:
@@ -144,7 +144,7 @@ The workflow consists of four sequential steps that transform raw IaC plans into
 
 ### 1. Generate Plan (Step 1)
 
-```yaml
+```conductor
 - id: generate_plan
   name: Generate IaC Plan
   condition: "{{not .inputs.plan_output}}"
@@ -168,7 +168,7 @@ The workflow consists of four sequential steps that transform raw IaC plans into
 
 ### 2. Risk Analysis (Step 2)
 
-```yaml
+```conductor
 - id: risk_analysis
   name: Risk Analysis
   type: llm
@@ -211,7 +211,7 @@ The workflow consists of four sequential steps that transform raw IaC plans into
 
 ### 3. Operator-Friendly Summary (Step 3)
 
-```yaml
+```conductor
 - id: change_summary
   name: Change Summary for Operators
   type: llm
@@ -251,7 +251,7 @@ The workflow consists of four sequential steps that transform raw IaC plans into
 
 ### 4. Consolidate Report (Step 4)
 
-```yaml
+```conductor
 - id: final_report
   name: Generate Final Report
   type: llm
@@ -286,7 +286,7 @@ The workflow consists of four sequential steps that transform raw IaC plans into
 
 Extend risk detection for your compliance requirements:
 
-```yaml
+```conductor
 system: |
   **CRITICAL Risks:**
   - Changes to PCI-scoped resources (add your resource tags/names)
@@ -298,7 +298,7 @@ system: |
 
 Define your team structure for approval routing:
 
-```yaml
+```conductor
 prompt: |
   For approval routing, use these teams:
   - Database changes → DBA team
@@ -311,7 +311,7 @@ prompt: |
 
 Include a separate step for cost estimation:
 
-```yaml
+```conductor
 - id: cost_analysis
   type: llm
   model: fast
@@ -365,7 +365,7 @@ esac
 
 Create additional validation steps:
 
-```yaml
+```conductor
 - id: compliance_check
   type: llm
   model: fast
@@ -402,7 +402,7 @@ conductor run examples/iac-review -i plan_output="$(cat plan.txt)"
 
 **Solution**: Adjust risk thresholds in the system prompt:
 
-```yaml
+```conductor
 system: |
   **HIGH Risks (not CRITICAL):**
   - Resource destruction in PRODUCTION ONLY (dev/staging is MEDIUM)
@@ -415,7 +415,7 @@ system: |
 
 **Solution**: Add more explicit guidance in the system prompt:
 
-```yaml
+```conductor
 system: |
   **Translation examples:**
   - "aws_security_group ingress rule" → "Firewall rule allowing port X"

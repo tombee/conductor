@@ -159,7 +159,7 @@ conductor daemon start
 
 Store secrets in Kubernetes:
 
-```yaml
+```conductor
 apiVersion: v1
 kind: Secret
 metadata:
@@ -173,7 +173,7 @@ stringData:
 
 Mount as environment variables:
 
-```yaml
+```conductor
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -198,7 +198,7 @@ spec:
 
 Or use external secrets operator:
 
-```yaml
+```conductor
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
@@ -262,7 +262,7 @@ kubectl rollout status deployment/conductor -n conductor
 
 Never hardcode secrets in workflow files:
 
-```yaml
+```conductor
 # ❌ INSECURE - API key in workflow
 steps:
   - id: call_api
@@ -276,7 +276,7 @@ steps:
 
 Use input variables instead:
 
-```yaml
+```conductor
 # ✅ SECURE - API key from input
 inputs:
   - name: api_key
@@ -315,7 +315,7 @@ Conductor supports multiple security profiles:
 
 Default profile with no restrictions:
 
-```yaml
+```conductor
 # config.yaml
 security:
   profile: unrestricted
@@ -335,7 +335,7 @@ security:
 
 Balanced security for production:
 
-```yaml
+```conductor
 # config.yaml
 security:
   profile: standard
@@ -371,7 +371,7 @@ security:
 
 Maximum security restrictions:
 
-```yaml
+```conductor
 # config.yaml
 security:
   profile: strict
@@ -396,7 +396,7 @@ security:
 
 No network access except LLM providers:
 
-```yaml
+```conductor
 # config.yaml
 security:
   profile: air-gapped
@@ -411,7 +411,7 @@ security:
 
 Run shell commands in isolated containers:
 
-```yaml
+```conductor
 # config.yaml
 security:
   sandbox:
@@ -426,7 +426,7 @@ security:
 
 Workflow steps execute in containers:
 
-```yaml
+```conductor
 steps:
   - id: run_script
     type: action
@@ -440,7 +440,7 @@ steps:
 
 Configure per-workflow sandboxing:
 
-```yaml
+```conductor
 name: sandboxed-workflow
 security:
   sandbox:
@@ -458,7 +458,7 @@ steps:
 
 Limit file access:
 
-```yaml
+```conductor
 # config.yaml
 security:
   filesystem:
@@ -486,7 +486,7 @@ security:
 
 Control network access:
 
-```yaml
+```conductor
 # config.yaml
 security:
   network:
@@ -517,7 +517,7 @@ security:
 
 Limit shell commands:
 
-```yaml
+```conductor
 # config.yaml
 security:
   shell:
@@ -546,7 +546,7 @@ Secure webhook endpoints against unauthorized access.
 
 Verify webhook signatures:
 
-```yaml
+```conductor
 # config.yaml
 webhooks:
   - path: /webhooks/github
@@ -573,7 +573,7 @@ X-Hub-Signature-256: sha256=<hmac-signature>
 
 Restrict webhook sources:
 
-```yaml
+```conductor
 # config.yaml
 webhooks:
   - path: /webhooks/github
@@ -603,7 +603,7 @@ location /webhooks/github {
 
 Prevent abuse:
 
-```yaml
+```conductor
 # config.yaml
 webhooks:
   - path: /webhooks/github
@@ -656,7 +656,7 @@ server {
 
 Validate webhook payloads:
 
-```yaml
+```conductor
 # config.yaml
 webhooks:
   - path: /webhooks/github
@@ -679,7 +679,7 @@ webhooks:
 
 Log all webhook requests:
 
-```yaml
+```conductor
 # config.yaml
 webhooks:
   audit_log:
@@ -725,7 +725,7 @@ sudo ufw allow 443/tcp
 
 Verify TLS certificates:
 
-```yaml
+```conductor
 # config.yaml
 llm:
   providers:
@@ -750,7 +750,7 @@ conductor daemon start
 
 Track security-relevant events:
 
-```yaml
+```conductor
 # config.yaml
 audit:
   enabled: true
@@ -799,7 +799,7 @@ Audit log format:
 
 Prevent credential leakage:
 
-```yaml
+```conductor
 # config.yaml
 logging:
   redact_patterns:
@@ -820,7 +820,7 @@ logging:
 
 Sanitize sensitive outputs:
 
-```yaml
+```conductor
 steps:
   - id: get_secret
     type: action

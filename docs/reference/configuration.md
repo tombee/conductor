@@ -12,7 +12,7 @@ Conductor can be configured via YAML configuration file or environment variables
 
 ## Configuration File Structure
 
-```yaml
+```conductor
 # Server configuration
 server:
   port: 9876
@@ -59,7 +59,7 @@ Configuration for the Conductor server (when running as a daemon).
 
 Port for the daemon server. To use a different port:
 
-```yaml
+```conductor
 server:
   port: 8080
 ```
@@ -74,7 +74,7 @@ If the port is already in use, the daemon will fail immediately with a clear err
 
 Maximum duration to wait for graceful shutdown.
 
-```yaml
+```conductor
 server:
   shutdown_timeout: 5s
 ```
@@ -93,7 +93,7 @@ Security settings for daemon authentication.
 
 Length of generated auth tokens in bytes.
 
-```yaml
+```conductor
 auth:
   token_length: 32
 ```
@@ -118,7 +118,7 @@ Minimum log level to output.
 - `warn`/`warning`: Warning messages
 - `error`: Error conditions
 
-```yaml
+```conductor
 log:
   level: info
 ```
@@ -135,7 +135,7 @@ Output format for log messages.
 - `json`: Structured JSON logs (recommended for production)
 - `text`: Human-readable text logs
 
-```yaml
+```conductor
 log:
   format: json
 ```
@@ -148,7 +148,7 @@ log:
 
 Add source file and line information to logs.
 
-```yaml
+```conductor
 log:
   add_source: false
 ```
@@ -168,7 +168,7 @@ Global settings for LLM provider interactions.
 
 Default LLM provider to use when not specified in workflow.
 
-```yaml
+```conductor
 llm:
   default_provider: claude-code
 ```
@@ -181,7 +181,7 @@ llm:
 
 Maximum duration for LLM requests.
 
-```yaml
+```conductor
 llm:
   request_timeout: 5s
 ```
@@ -194,7 +194,7 @@ llm:
 
 Maximum number of retry attempts for failed requests.
 
-```yaml
+```conductor
 llm:
   max_retries: 3
 ```
@@ -207,7 +207,7 @@ llm:
 
 Base duration for exponential backoff retries.
 
-```yaml
+```conductor
 llm:
   retry_backoff_base: 100ms
 ```
@@ -237,7 +237,7 @@ export CONDUCTOR_ALL_PROVIDERS=1
 
 When using experimental providers via the `--type` flag or manual configuration, you will see a warning message. The workflow will still execute, but use experimental providers at your own risk.
 
-```yaml
+```conductor
 providers:
   claudecode:
     type: claudecode  # Officially supported
@@ -262,7 +262,7 @@ providers:
 **Description:** Claude Code CLI provider
 
 **Configuration:**
-```yaml
+```conductor
 providers:
   claudecode:
     type: claudecode
@@ -275,7 +275,7 @@ No additional configuration required. Uses the `claude` CLI under the hood.
 **Description:** Anthropic API provider
 
 **Configuration:**
-```yaml
+```conductor
 providers:
   anthropic:
     type: anthropic
@@ -292,7 +292,7 @@ providers:
 **Description:** OpenAI API provider
 
 **Configuration:**
-```yaml
+```conductor
 providers:
   openai:
     type: openai
@@ -309,7 +309,7 @@ providers:
 **Description:** Ollama local models provider
 
 **Configuration:**
-```yaml
+```conductor
 providers:
   ollama:
     type: ollama
@@ -332,7 +332,7 @@ Settings for the Conductor daemon.
 
 Automatically start the daemon when running `conductor run --daemon` if not already running.
 
-```yaml
+```conductor
 daemon:
   auto_start: false
 ```
@@ -345,7 +345,7 @@ daemon:
 
 Path to the daemon Unix socket.
 
-```yaml
+```conductor
 daemon:
   socket_path: ~/.config/conductor/conductor.sock
 ```
@@ -358,7 +358,7 @@ daemon:
 
 Explicitly acknowledge running with insecure configuration. When set, security warnings about disabled authentication or TLS are suppressed. **For development/testing environments only.**
 
-```yaml
+```conductor
 daemon:
   force_insecure: false  # Not recommended for production
 ```
@@ -378,7 +378,7 @@ Security settings for daemon API authentication. **Authentication is enabled by 
 
 Enable API authentication for the daemon. When enabled, all API requests must include a valid authentication token.
 
-```yaml
+```conductor
 daemon_auth:
   enabled: true  # Secure by default
 ```
@@ -392,7 +392,7 @@ When authentication is disabled and the daemon is accessible over the network, a
 
 Allow unauthenticated access via Unix socket. This is convenient for local development while maintaining security for network access.
 
-```yaml
+```conductor
 daemon_auth:
   allow_unix_socket: true
 ```
@@ -424,7 +424,7 @@ Number of days to retain event data. Must be a positive integer when observabili
 
 Number of days to retain aggregate metrics. Must be a positive integer when observability is enabled.
 
-```yaml
+```conductor
 daemon:
   observability:
     enabled: true
@@ -493,7 +493,7 @@ All configuration options can be set via environment variables. Environment vari
 
 Configuration files support environment variable substitution using `${VARIABLE_NAME}` syntax:
 
-```yaml
+```conductor
 providers:
   anthropic:
     type: anthropic
@@ -527,7 +527,7 @@ Examples:
 
 ### Minimal Configuration
 
-```yaml
+```conductor
 llm:
   default_provider: claude-code
 
@@ -538,7 +538,7 @@ providers:
 
 ### Production Configuration
 
-```yaml
+```conductor
 server:
   port: 9876
   shutdown_timeout: 30s
@@ -573,7 +573,7 @@ daemon_auth:
 
 ### Development Configuration
 
-```yaml
+```conductor
 log:
   level: debug
   format: text

@@ -50,7 +50,7 @@ conductord \
 
 Create `~/.config/conductor/config.yaml`:
 
-```yaml
+```conductor
 daemon:
   listen:
     tcp: :9000
@@ -125,7 +125,7 @@ curl http://localhost:9000/runs?workflow=code-review&status=completed
 ### GitHub Webhooks
 
 **Workflow configuration:**
-```yaml
+```conductor
 name: pr-review
 trigger:
   github:
@@ -158,7 +158,7 @@ http://your-server:9000/webhooks/github/pr-review
 ### Slack Webhooks
 
 **Workflow configuration:**
-```yaml
+```conductor
 name: slack-assistant
 trigger:
   slack:
@@ -190,7 +190,7 @@ http://your-server:9000/webhooks/slack/slack-assistant
 
 Run workflows on a schedule:
 
-```yaml
+```conductor
 name: daily-report
 trigger:
   schedule:
@@ -229,7 +229,7 @@ steps:
 
 Secure your daemon with API key authentication:
 
-```yaml
+```conductor
 daemon:
   auth:
     enabled: true
@@ -315,7 +315,7 @@ sudo journalctl -u conductor -f
 - `json` — Structured for log aggregation
 
 **Configure in config.yaml:**
-```yaml
+```conductor
 logging:
   level: info
   format: json
@@ -325,7 +325,7 @@ logging:
 ## Best Practices
 
 **1. Use authentication in production:**
-```yaml
+```conductor
 daemon:
   auth:
     enabled: true
@@ -333,21 +333,21 @@ daemon:
 ```
 
 **2. Validate webhook signatures:**
-```yaml
+```conductor
 trigger:
   github:
     secret: ${GITHUB_WEBHOOK_SECRET}
 ```
 
 **3. Set resource limits:**
-```yaml
+```conductor
 daemon:
   max_concurrent_runs: 10
   run_timeout: 30m
 ```
 
 **4. Enable structured logging:**
-```yaml
+```conductor
 logging:
   format: json
   level: info

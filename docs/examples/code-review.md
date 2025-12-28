@@ -78,7 +78,7 @@ The workflow consists of four main steps:
 
 ### 1. Extract Git Information (Steps 1-3)
 
-```yaml
+```conductor
 - id: get_branch
   name: Get Current Branch
   shell.run: ["git", "rev-parse", "--abbrev-ref", "HEAD"]
@@ -98,7 +98,7 @@ The workflow consists of four main steps:
 
 ### 2. Parallel Persona Reviews (Step 4)
 
-```yaml
+```conductor
 - id: reviews
   name: Parallel Persona Reviews
   type: parallel
@@ -126,7 +126,7 @@ The workflow consists of four main steps:
 
 ### 3. Consolidate Findings (Step 5)
 
-```yaml
+```conductor
 - id: generate_report
   name: Generate Review Report
   type: llm
@@ -152,7 +152,7 @@ The workflow consists of four main steps:
 
 ### 4. Write Report to File (Step 6)
 
-```yaml
+```conductor
 - id: write_report
   name: Write Report File
   file.write:
@@ -170,7 +170,7 @@ The workflow consists of four main steps:
 
 Change model tiers based on your speed/quality needs:
 
-```yaml
+```conductor
 - id: security_review
   model: balanced  # Faster than strategic, still good quality
 ```
@@ -179,7 +179,7 @@ Change model tiers based on your speed/quality needs:
 
 Add new review focuses to the parallel section:
 
-```yaml
+```conductor
 - id: accessibility_review
   name: Accessibility Review
   model: balanced
@@ -197,7 +197,7 @@ Add new review focuses to the parallel section:
 
 Only review specific files:
 
-```yaml
+```conductor
 - id: get_diff
   shell.run: "git diff {{.inputs.base_branch}}...HEAD -- '*.go' '*.js'"
 ```
@@ -206,7 +206,7 @@ Only review specific files:
 
 Modify system prompts to match your team's standards:
 
-```yaml
+```conductor
 system: |
   You are a security engineer reviewing code for:
   - OWASP Top 10 vulnerabilities
@@ -218,7 +218,7 @@ system: |
 
 Add exit code based on findings:
 
-```yaml
+```conductor
 - id: check_critical
   shell.run: |
     if grep -q "CRITICAL" {{.inputs.output_file}}; then
@@ -273,7 +273,7 @@ conductor run examples/code-review -i output_file="reviews/review.md"
 
 **Solution**: Reduce concurrency or use lower-tier models:
 
-```yaml
+```conductor
 type: parallel
 max_concurrency: 1  # Run reviews sequentially
 ```
@@ -286,7 +286,7 @@ Or switch all reviews to `fast` model tier.
 
 **Solution**: Increase `max_tokens` for better completeness:
 
-```yaml
+```conductor
 - id: security_review
   type: llm
   model: strategic

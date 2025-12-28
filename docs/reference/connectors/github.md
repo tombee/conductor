@@ -4,7 +4,7 @@ The GitHub connector provides integration with the GitHub API for managing issue
 
 ## Quick Start
 
-```yaml
+```conductor
 connectors:
   github:
     from: connectors/github
@@ -14,7 +14,7 @@ connectors:
 
 For GitHub Enterprise, override the `base_url`:
 
-```yaml
+```conductor
 connectors:
   github:
     from: connectors/github
@@ -58,7 +58,7 @@ export GITHUB_TOKEN=ghp_your_token_here
 
 Create a new issue in a repository.
 
-```yaml
+```conductor
 - id: create_bug_report
   type: connector
   connector: github.create_issue
@@ -99,7 +99,7 @@ Create a new issue in a repository.
 
 Update an existing issue.
 
-```yaml
+```conductor
 - id: update_issue_status
   type: connector
   connector: github.update_issue
@@ -127,7 +127,7 @@ Update an existing issue.
 
 Close an issue.
 
-```yaml
+```conductor
 - id: close_resolved_issue
   type: connector
   connector: github.close_issue
@@ -148,7 +148,7 @@ Close an issue.
 
 Add a comment to an issue or pull request.
 
-```yaml
+```conductor
 - id: post_analysis
   type: connector
   connector: github.add_comment
@@ -174,7 +174,7 @@ Add a comment to an issue or pull request.
 
 List issues in a repository with filters.
 
-```yaml
+```conductor
 - id: get_open_bugs
   type: connector
   connector: github.list_issues
@@ -202,7 +202,7 @@ List issues in a repository with filters.
 
 Create a pull request.
 
-```yaml
+```conductor
 - id: create_feature_pr
   type: connector
   connector: github.create_pr
@@ -237,7 +237,7 @@ Create a pull request.
 
 Merge a pull request.
 
-```yaml
+```conductor
 - id: merge_approved_pr
   type: connector
   connector: github.merge_pr
@@ -263,7 +263,7 @@ Merge a pull request.
 
 List pull requests with filters.
 
-```yaml
+```conductor
 - id: get_open_prs
   type: connector
   connector: github.list_prs
@@ -290,7 +290,7 @@ List pull requests with filters.
 
 Get details of a specific pull request.
 
-```yaml
+```conductor
 - id: get_pr_details
   type: connector
   connector: github.get_pr
@@ -311,7 +311,7 @@ Get details of a specific pull request.
 
 Get the diff for a pull request.
 
-```yaml
+```conductor
 - id: get_pr_changes
   type: connector
   connector: github.get_pr_diff
@@ -332,7 +332,7 @@ Get the diff for a pull request.
 
 Submit a review on a pull request.
 
-```yaml
+```conductor
 - id: approve_pr
   type: connector
   connector: github.create_review
@@ -359,7 +359,7 @@ Submit a review on a pull request.
 
 Example with inline comments:
 
-```yaml
+```conductor
 - id: request_changes
   type: connector
   connector: github.create_review
@@ -384,7 +384,7 @@ Example with inline comments:
 
 List repositories for a user or organization.
 
-```yaml
+```conductor
 - id: list_org_repos
   type: connector
   connector: github.list_repos
@@ -406,7 +406,7 @@ List repositories for a user or organization.
 
 Get file contents from a repository.
 
-```yaml
+```conductor
 - id: read_config
   type: connector
   connector: github.get_file
@@ -426,7 +426,7 @@ Get file contents from a repository.
 **Output:** `{content, encoding, sha}`
 
 Note: Content is base64-encoded. Decode with:
-```yaml
+```conductor
 - id: decode_content
   type: action
   action: base64_decode
@@ -440,7 +440,7 @@ Note: Content is base64-encoded. Decode with:
 
 Create a release with assets.
 
-```yaml
+```conductor
 - id: publish_release
   type: connector
   connector: github.create_release
@@ -475,7 +475,7 @@ Create a release with assets.
 
 Get workflow run history.
 
-```yaml
+```conductor
 - id: check_ci_status
   type: connector
   connector: github.get_workflow_runs
@@ -500,7 +500,7 @@ Get workflow run history.
 
 ### Create Issue from Analysis
 
-```yaml
+```conductor
 steps:
   - id: analyze_logs
     type: llm
@@ -524,7 +524,7 @@ steps:
 
 ### PR Review Bot
 
-```yaml
+```conductor
 steps:
   - id: get_pr
     type: connector
@@ -568,7 +568,7 @@ steps:
 
 ### Auto-close Stale Issues
 
-```yaml
+```conductor
 steps:
   - id: find_stale
     type: connector
@@ -600,7 +600,7 @@ GitHub API has rate limits:
 
 The connector includes conservative defaults:
 
-```yaml
+```conductor
 connectors:
   github:
     from: connectors/github
@@ -613,7 +613,7 @@ connectors:
 
 Adjust based on your needs:
 
-```yaml
+```conductor
 # More aggressive rate limiting for high-volume workflows
 rate_limit:
   requests_per_second: 5

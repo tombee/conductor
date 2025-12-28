@@ -36,7 +36,7 @@ Or configure another LLM provider in `~/.config/conductor/config.yaml`.
 
 YAML is whitespace-sensitive. Common issues:
 
-```yaml
+```conductor
 # Wrong: tabs instead of spaces
 steps:
 	-id: analyze
@@ -61,7 +61,7 @@ conductor validate workflow.yaml
 
 Every step needs `id` and `type`:
 
-```yaml
+```conductor
 # Wrong: missing id
 - type: llm
   prompt: "..."
@@ -76,7 +76,7 @@ Every step needs `id` and `type`:
 
 Use correct template variable syntax:
 
-```yaml
+```conductor
 # Wrong
 prompt: "Analyze ${inputs.code}"
 prompt: "Analyze {{code}}"
@@ -117,7 +117,7 @@ prompt: "Use {{.steps.analyze.response}}"
 
 **Solution:** Check variable paths:
 
-```yaml
+```conductor
 # Verify step IDs match
 - id: analyze
   ...

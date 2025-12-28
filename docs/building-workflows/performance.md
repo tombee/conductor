@@ -18,7 +18,7 @@ conductor run workflow.yaml --output json | jq '.steps | map({id: .id, duration:
 
 Run independent steps concurrently:
 
-```yaml
+```conductor
 steps:
   - id: parallel_analysis
     type: parallel
@@ -51,7 +51,7 @@ Use the fastest model that meets requirements:
 
 Filter data before processing:
 
-```yaml
+```conductor
   - id: extract_relevant
     model: fast
     prompt: "Extract authentication functions from: {{.inputs.code}}"
@@ -65,7 +65,7 @@ Filter data before processing:
 
 Skip expensive steps when possible:
 
-```yaml
+```conductor
   - id: quick_check
     model: fast
     prompt: "Is this input valid? {{.inputs.data}}"
@@ -90,7 +90,7 @@ Skip expensive steps when possible:
 
 Keep prompts concise:
 
-```yaml
+```conductor
 # Before: Verbose
 prompt: "Please analyze this code carefully and identify any bugs..."
 
@@ -102,7 +102,7 @@ prompt: "Find bugs in this code. Output JSON array of {line, issue, fix}."
 
 Cache expensive LLM results:
 
-```yaml
+```conductor
   - id: check_cache
     file.read: "/tmp/cache/{{.inputs.hash}}.json"
     on_error: { strategy: ignore }
@@ -117,7 +117,7 @@ Cache expensive LLM results:
 
 Control parallel execution:
 
-```yaml
+```conductor
   - id: bulk_process
     type: parallel
     max_concurrency: 5

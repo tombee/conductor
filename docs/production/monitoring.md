@@ -40,7 +40,7 @@ curl http://localhost:9000/metrics
 
 Enable JSON logging for log aggregation:
 
-```yaml
+```conductor
 # config.yaml
 logging:
   level: info
@@ -78,7 +78,7 @@ tail -f /var/log/conductor/conductor.log
 
 Scrape metrics for time-series analysis:
 
-```yaml
+```conductor
 # prometheus.yml
 scrape_configs:
   - job_name: 'conductor'
@@ -105,7 +105,7 @@ Set up alerts for:
 ## Best Practices
 
 **1. Enable structured logging:**
-```yaml
+```conductor
 logging:
   format: json
 ```

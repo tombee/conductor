@@ -69,7 +69,7 @@ conductor run examples/slack-integration \
 
 #### GitHub Actions
 
-```yaml
+```conductor
 # .github/workflows/notify-slack.yml
 name: Notify Slack
 on:
@@ -96,7 +96,7 @@ jobs:
 
 #### GitLab CI
 
-```yaml
+```conductor
 notify-slack:
   stage: notify
   script:
@@ -115,7 +115,7 @@ The workflow consists of three sequential steps that transform raw event data in
 
 ### 1. Generate Intelligent Summary (Step 1)
 
-```yaml
+```conductor
 - id: generate_summary
   name: Generate Event Summary
   type: llm
@@ -143,7 +143,7 @@ The workflow consists of three sequential steps that transform raw event data in
 
 ### 2. Format for Slack (Step 2)
 
-```yaml
+```conductor
 - id: format_message
   name: Format Slack Message
   type: llm
@@ -185,7 +185,7 @@ The workflow consists of three sequential steps that transform raw event data in
 
 ### 3. Post to Slack (Step 3)
 
-```yaml
+```conductor
 - id: post_to_slack
   name: Post Message to Slack
   type: llm
@@ -203,7 +203,7 @@ The workflow consists of three sequential steps that transform raw event data in
 
 **Production implementation**: Replace with a shell command using `curl` or the Slack CLI:
 
-```yaml
+```conductor
 - id: post_to_slack
   type: action
   action: shell.run
@@ -224,7 +224,7 @@ The workflow consists of three sequential steps that transform raw event data in
 
 Define specific emojis for your event types:
 
-```yaml
+```conductor
 system: |
   Use these emojis for event types:
   - build: 🏗️ (success), 💥 (failed)
@@ -237,7 +237,7 @@ system: |
 
 Add dynamic links to build logs or dashboards:
 
-```yaml
+```conductor
 - id: format_message
   prompt: |
     Format this message and include:
@@ -249,7 +249,7 @@ Add dynamic links to build logs or dashboards:
 
 Use Slack's Block Kit for more sophisticated formatting:
 
-```yaml
+```conductor
 - id: create_blocks
   type: llm
   model: fast
@@ -265,7 +265,7 @@ Use Slack's Block Kit for more sophisticated formatting:
 
 Post follow-up messages as thread replies:
 
-```yaml
+```conductor
 inputs:
   - name: thread_ts
     type: string
@@ -284,7 +284,7 @@ inputs:
 
 Only notify on failures or specific conditions:
 
-```yaml
+```conductor
 - id: post_to_slack
   condition:
     expression: 'inputs.status in ["failed", "critical"]'
@@ -300,7 +300,7 @@ Only notify on failures or specific conditions:
 
 **Solution**: Ensure you're using Slack's mrkdwn syntax, not standard Markdown:
 
-```yaml
+```conductor
 # Slack mrkdwn (correct)
 *bold* `code` ~strike~
 
@@ -347,7 +347,7 @@ curl -X POST https://slack.com/api/conversations.join \
 
 **Solution**: Add length constraints to the prompt:
 
-```yaml
+```conductor
 prompt: |
   Summarize in 1-2 sentences maximum (under 200 characters).
   Focus only on the most critical information.
@@ -359,7 +359,7 @@ prompt: |
 
 **Solution**: Add delays between posts or batch notifications:
 
-```yaml
+```conductor
 - id: rate_limit_delay
   type: action
   action: shell.run

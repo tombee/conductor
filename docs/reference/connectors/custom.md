@@ -4,7 +4,7 @@ This guide shows you how to create custom connectors for any REST API in your wo
 
 ## Quick Example
 
-```yaml
+```conductor
 connectors:
   my_api:
     base_url: https://api.example.com
@@ -34,7 +34,7 @@ steps:
 
 ### Base Configuration
 
-```yaml
+```conductor
 connectors:
   my_api:
     base_url: https://api.example.com  # Required for inline connectors
@@ -53,7 +53,7 @@ connectors:
 
 ### Operation Definition
 
-```yaml
+```conductor
 operations:
   operation_name:
     method: POST                       # Required: GET, POST, PUT, PATCH, DELETE
@@ -76,7 +76,7 @@ operations:
 
 Most APIs use bearer tokens:
 
-```yaml
+```conductor
 auth:
   type: bearer  # Optional, inferred if only 'token' is present
   token: ${API_TOKEN}
@@ -92,7 +92,7 @@ Sets header: `Authorization: Bearer ${API_TOKEN}`
 
 For APIs using HTTP Basic Authentication:
 
-```yaml
+```conductor
 auth:
   type: basic
   username: ${API_USER}
@@ -105,7 +105,7 @@ Sets header: `Authorization: Basic base64(username:password)`
 
 For custom API key headers:
 
-```yaml
+```conductor
 auth:
   type: api_key
   header: X-API-Key      # Header name
@@ -122,7 +122,7 @@ Omit the `auth` section for public APIs.
 
 Use `{param}` placeholders in paths:
 
-```yaml
+```conductor
 operations:
   get_user:
     method: GET
@@ -135,7 +135,7 @@ operations:
 ```
 
 When called:
-```yaml
+```conductor
 inputs:
   user_id: "alice"
 ```
@@ -164,7 +164,7 @@ Path parameters are validated to prevent path traversal:
 
 For POST, PUT, and PATCH operations, non-path parameters become the request body:
 
-```yaml
+```conductor
 operations:
   create_user:
     method: POST
@@ -178,7 +178,7 @@ operations:
 ```
 
 Called with:
-```yaml
+```conductor
 inputs:
   name: "Alice"
   email: "alice@example.com"
@@ -196,7 +196,7 @@ Extract only needed data from API responses using jq syntax.
 
 ### Basic Transforms
 
-```yaml
+```conductor
 # Extract single field
 response_transform: ".id"
 
@@ -212,7 +212,7 @@ response_transform: "{user_id: .id, user_name: .name}"
 
 ### Array Transforms
 
-```yaml
+```conductor
 # Get first element
 response_transform: ".[0]"
 
@@ -228,7 +228,7 @@ response_transform: "[.[].name]"
 
 ### Common Patterns
 
-```yaml
+```conductor
 # Unwrap data envelope
 response_transform: ".data"
 
@@ -265,7 +265,7 @@ response_transform: ".tags | join(\", \")"
 
 Define JSON Schema to validate inputs before execution:
 
-```yaml
+```conductor
 operations:
   create_user:
     method: POST
@@ -302,7 +302,7 @@ Benefits:
 
 Protect against API quota exhaustion:
 
-```yaml
+```conductor
 connectors:
   my_api:
     base_url: https://api.example.com
@@ -320,7 +320,7 @@ Uses token bucket algorithm for smooth rate limiting. Requests exceeding the lim
 
 Apply to all operations:
 
-```yaml
+```conductor
 connectors:
   my_api:
     base_url: https://api.example.com
@@ -334,7 +334,7 @@ connectors:
 
 Override or add to global headers:
 
-```yaml
+```conductor
 operations:
   upload_file:
     method: POST
@@ -348,7 +348,7 @@ operations:
 
 Reference environment variables in any header or auth value:
 
-```yaml
+```conductor
 headers:
   X-API-Key: ${API_KEY}
   X-Tenant-ID: ${TENANT_ID}
@@ -358,7 +358,7 @@ headers:
 
 Here's a full example for an internal API:
 
-```yaml
+```conductor
 name: process-feedback
 description: Analyze user feedback and create tickets
 
@@ -479,7 +479,7 @@ conductor validate workflow.yaml
 
 Always use environment variables:
 
-```yaml
+```conductor
 # Good
 auth:
   token: ${API_TOKEN}
@@ -493,7 +493,7 @@ auth:
 
 Limit which hosts can be accessed:
 
-```yaml
+```conductor
 security:
   allowed_hosts:
     - api.example.com
@@ -506,7 +506,7 @@ security:
 
 Always define `request_schema` to validate inputs:
 
-```yaml
+```conductor
 request_schema:
   type: object
   properties:
@@ -522,7 +522,7 @@ request_schema:
 **Error**: `operation "get_user" not found in connector "my_api"`
 
 **Fix**: Check operation name in connector definition matches usage:
-```yaml
+```conductor
 operations:
   get_user:  # Must match connector.get_user in step
 ```
@@ -532,7 +532,7 @@ operations:
 **Error**: `request validation failed: missing required field "name"`
 
 **Fix**: Ensure all required fields are provided:
-```yaml
+```conductor
 inputs:
   name: "value"  # Add missing field
 ```
@@ -552,7 +552,7 @@ conductor run --log-level debug workflow.yaml
 **Error**: `rate limit exceeded, waited 30s`
 
 **Fix**: Reduce request rate:
-```yaml
+```conductor
 rate_limit:
   requests_per_second: 5  # Lower from 10
 ```

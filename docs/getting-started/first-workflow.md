@@ -16,7 +16,7 @@ touch greeting.yaml
 
 ## Write the Workflow
 
-```yaml
+```conductor
 name: greeting
 description: Generate personalized greetings
 
@@ -91,7 +91,7 @@ and are ready for something exciting. Welcome!
 ## Understanding the Workflow
 
 ### Metadata
-```yaml
+```conductor
 name: greeting
 description: Generate personalized greetings
 ```
@@ -99,7 +99,7 @@ description: Generate personalized greetings
 Identifies the workflow and explains what it does.
 
 ### Inputs
-```yaml
+```conductor
 inputs:
   - name: user_name
     type: string
@@ -111,7 +111,7 @@ Parameters the workflow accepts. Use `{{.inputs.user_name}}` to reference them.
 ### Steps
 
 **LLM Step:**
-```yaml
+```conductor
 - id: generate
   type: llm
   model: fast
@@ -121,7 +121,7 @@ Parameters the workflow accepts. Use `{{.inputs.user_name}}` to reference them.
 Sends a prompt to an AI model. Access the response with `{{.steps.generate.response}}`.
 
 **Conditional Step:**
-```yaml
+```conductor
 - id: translate
   condition: 'inputs.language != "English"'
   type: llm
@@ -131,7 +131,7 @@ Sends a prompt to an AI model. Access the response with `{{.steps.generate.respo
 Only runs if the condition is true.
 
 **Tool Step:**
-```yaml
+```conductor
 - id: save
   file.write:
     path: "greeting.txt"
@@ -141,7 +141,7 @@ Only runs if the condition is true.
 Writes the greeting to a file.
 
 ### Outputs
-```yaml
+```conductor
 outputs:
   - name: greeting
     value: "{{.steps.generate.response}}"
@@ -169,7 +169,7 @@ Values returned from the workflow.
 ## Try These Variations
 
 **Add another input:**
-```yaml
+```conductor
 inputs:
   - name: tone
     type: string
@@ -178,7 +178,7 @@ inputs:
 ```
 
 **Add parallel steps:**
-```yaml
+```conductor
 - id: greetings
   type: parallel
   steps:
@@ -191,7 +191,7 @@ inputs:
 ```
 
 **Add error handling:**
-```yaml
+```conductor
 - id: translate
   type: llm
   prompt: "Translate..."

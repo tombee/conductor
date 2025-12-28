@@ -10,7 +10,7 @@ Process data through multiple stages, where each step depends on the previous on
 
 ### Pattern
 
-```yaml
+```conductor
 name: sequential-processing
 description: Multi-stage content generation
 
@@ -60,7 +60,7 @@ Run independent tasks concurrently to reduce total execution time.
 
 ### Pattern
 
-```yaml
+```conductor
 name: parallel-reviews
 description: Multi-perspective code review
 
@@ -113,12 +113,12 @@ steps:
 ### Customization
 
 Control concurrency for rate limits:
-```yaml
+```conductor
 max_concurrency: 2  # Limit concurrent LLM calls
 ```
 
 Add conditional branches within parallel steps:
-```yaml
+```conductor
 - id: optional_check
   condition:
     expression: '"advanced" in inputs.mode'
@@ -131,7 +131,7 @@ Execute different logic based on data or classification.
 
 ### Pattern
 
-```yaml
+```conductor
 name: conditional-routing
 description: Route support tickets by type
 
@@ -196,13 +196,13 @@ steps:
 ### Customization
 
 Use multiple conditions:
-```yaml
+```conductor
 condition:
   expression: '"urgent" in inputs.priority && "bug" in steps.classify.response'
 ```
 
 Chain classifications for multi-level routing:
-```yaml
+```conductor
 - id: severity_classify
   condition:
     expression: '"BUG" in steps.classify.response'
@@ -215,7 +215,7 @@ Handle failures gracefully with retry logic and fallbacks.
 
 ### Pattern
 
-```yaml
+```conductor
 name: error-recovery
 description: Resilient API integration with fallbacks
 
@@ -286,7 +286,7 @@ steps:
 ### Customization
 
 Adjust retry strategies:
-```yaml
+```conductor
 retry:
   max_attempts: 5
   backoff_base: 1      # Start with 1 second
@@ -295,7 +295,7 @@ retry:
 ```
 
 Add circuit breaker pattern:
-```yaml
+```conductor
 - id: check_health
   type: action
   action: http
@@ -315,7 +315,7 @@ Combine multiple outputs into a single structured result.
 
 ### Pattern
 
-```yaml
+```conductor
 name: output-aggregation
 description: Analyze multiple files and create summary report
 
@@ -387,7 +387,7 @@ outputs:
 ### Customization
 
 Filter results before aggregation:
-```yaml
+```conductor
 - id: filter
   type: llm
   model: fast
@@ -399,7 +399,7 @@ Filter results before aggregation:
 ```
 
 Use structured output for easier aggregation:
-```yaml
+```conductor
 - id: analyze
   type: llm
   model: balanced
@@ -418,7 +418,7 @@ Process items in parallel, then combine results.
 
 ### Pattern
 
-```yaml
+```conductor
 name: map-reduce
 description: Analyze pull request files in parallel, then consolidate
 
@@ -482,7 +482,7 @@ outputs:
 ### Customization
 
 Add filtering between map and reduce:
-```yaml
+```conductor
 - id: filter_critical
   type: action
   action: transform.filter
@@ -492,7 +492,7 @@ Add filtering between map and reduce:
 ```
 
 Process in batches to manage rate limits:
-```yaml
+```conductor
 - id: batch_process
   type: foreach
   items: "{{chunk .inputs.pr_files 10}}"  # Process 10 at a time

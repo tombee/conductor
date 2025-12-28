@@ -49,7 +49,7 @@ Auto-detects format based on file extension and returns parsed content.
 
 **Example:**
 
-```yaml
+```conductor
 steps:
   # Auto-parses based on extension
   - file.read: ./config.json        # Returns parsed JSON
@@ -61,7 +61,7 @@ steps:
 
 Depends on file format. JSON/YAML return parsed structures, text returns string.
 
-```yaml
+```conductor
 # For config.json containing {"port": 8080}
 steps:
   - id: load_config
@@ -95,13 +95,13 @@ Read file as raw text without any parsing.
 
 **Example:**
 
-```yaml
+```conductor
 - file.read_text: ./template.html
 ```
 
 **Response:**
 
-```yaml
+```conductor
 response: "<!DOCTYPE html>\n<html>..."
 metadata:
   path: /absolute/path/to/template.html
@@ -128,7 +128,7 @@ Read and parse JSON file.
 
 **Example:**
 
-```yaml
+```conductor
 # Read entire JSON file
 - file.read_json: ./data.json
 
@@ -140,7 +140,7 @@ Read and parse JSON file.
 
 **Response:**
 
-```yaml
+```conductor
 # Full file
 response: {"users": [{"name": "Alice", "age": 30}]}
 
@@ -169,13 +169,13 @@ Read and parse YAML file.
 
 **Example:**
 
-```yaml
+```conductor
 - file.read_yaml: ./config.yaml
 ```
 
 **Response:**
 
-```yaml
+```conductor
 response: {"key": "value", "nested": {"field": 123}}
 metadata:
   path: /absolute/path/to/config.yaml
@@ -197,7 +197,7 @@ Read and parse CSV file.
 
 **Example:**
 
-```yaml
+```conductor
 # Read CSV with comma delimiter
 - file.read_csv: ./data.csv
 
@@ -209,7 +209,7 @@ Read and parse CSV file.
 
 **Response:**
 
-```yaml
+```conductor
 response:
   - ["Name", "Age", "City"]
   - ["Alice", "30", "NYC"]
@@ -232,13 +232,13 @@ Read file as array of lines.
 
 **Example:**
 
-```yaml
+```conductor
 - file.read_lines: ./log.txt
 ```
 
 **Response:**
 
-```yaml
+```conductor
 response:
   - "Line 1"
   - "Line 2"
@@ -272,7 +272,7 @@ Write content to file with auto-formatting based on extension.
 
 **Example:**
 
-```yaml
+```conductor
 # Write object as JSON
 - file.write:
     path: $out/result.json
@@ -293,7 +293,7 @@ Write content to file with auto-formatting based on extension.
 
 **Response:**
 
-```yaml
+```conductor
 response: null
 metadata:
   path: /absolute/path/to/result.json
@@ -323,7 +323,7 @@ Write raw text to file.
 
 **Example:**
 
-```yaml
+```conductor
 - file.write_text:
     path: $out/output.txt
     content: "{{.steps.generate.response}}"
@@ -344,7 +344,7 @@ Write content as pretty-printed JSON.
 
 **Example:**
 
-```yaml
+```conductor
 - file.write_json:
     path: $out/data.json
     content:
@@ -375,7 +375,7 @@ Write content as YAML.
 
 **Example:**
 
-```yaml
+```conductor
 - file.write_yaml:
     path: $out/config.yaml
     content:
@@ -399,7 +399,7 @@ Append text to existing file (or create if doesn't exist).
 
 **Example:**
 
-```yaml
+```conductor
 - file.append:
     path: $out/log.txt
     content: "[{{.timestamp}}] Event occurred\n"
@@ -441,7 +441,7 @@ Render Go template to file.
 ```
 
 **Workflow:**
-```yaml
+```conductor
 - file.render:
     template: ./report-template.md
     output: $out/report.md
@@ -479,7 +479,7 @@ List files and directories with optional filtering.
 
 **Example:**
 
-```yaml
+```conductor
 # List all files in directory
 - file.list:
     path: ./src
@@ -498,7 +498,7 @@ List files and directories with optional filtering.
 
 **Response:**
 
-```yaml
+```conductor
 response:
   - path: /absolute/path/to/file1.go
     name: file1.go
@@ -538,7 +538,7 @@ Check if file or directory exists.
 
 **Example:**
 
-```yaml
+```conductor
 - id: check_config
   file.exists:
     path: ./config.json
@@ -552,7 +552,7 @@ Check if file or directory exists.
 
 **Response:**
 
-```yaml
+```conductor
 response: true
 metadata:
   path: /absolute/path/to/config.json
@@ -572,13 +572,13 @@ Get file or directory information.
 
 **Example:**
 
-```yaml
+```conductor
 - file.stat: ./large-file.dat
 ```
 
 **Response:**
 
-```yaml
+```conductor
 response:
   path: /absolute/path/to/large-file.dat
   name: large-file.dat
@@ -605,7 +605,7 @@ Create directory (with optional parent directories).
 
 **Example:**
 
-```yaml
+```conductor
 # Create directory and parents
 - file.mkdir:
     path: $out/results/2025-01-15
@@ -618,7 +618,7 @@ Create directory (with optional parent directories).
 
 **Response:**
 
-```yaml
+```conductor
 response: null
 metadata:
   path: /absolute/path/to/results/2025-01-15
@@ -643,7 +643,7 @@ Copy file or directory.
 
 **Example:**
 
-```yaml
+```conductor
 # Copy single file
 - file.copy:
     src: ./template.yaml
@@ -658,7 +658,7 @@ Copy file or directory.
 
 **Response:**
 
-```yaml
+```conductor
 response: null
 metadata:
   src: /absolute/path/to/template.yaml
@@ -687,7 +687,7 @@ Move or rename file or directory.
 
 **Example:**
 
-```yaml
+```conductor
 # Rename file
 - file.move:
     src: $temp/draft.txt
@@ -701,7 +701,7 @@ Move or rename file or directory.
 
 **Response:**
 
-```yaml
+```conductor
 response: null
 metadata:
   src: /absolute/path/to/draft.txt
@@ -731,7 +731,7 @@ Delete file or directory.
 
 **Example:**
 
-```yaml
+```conductor
 # Delete single file
 - file.delete:
     path: $temp/work.json
@@ -744,7 +744,7 @@ Delete file or directory.
 
 **Response:**
 
-```yaml
+```conductor
 response: null
 metadata:
   path: /absolute/path/temp/work.json
@@ -760,7 +760,7 @@ metadata:
 
 ## Complete Example
 
-```yaml
+```conductor
 name: file-processing-workflow
 description: "Demonstrates file connector operations"
 
@@ -849,7 +849,7 @@ All file operations return consistent error types:
 
 **Error Handling Example:**
 
-```yaml
+```conductor
 - id: try_read
   file.read: ./optional-config.json
   on_error:
@@ -869,7 +869,7 @@ All file operations return consistent error types:
 
 File connector behavior can be customized via workflow execution config (not in workflow YAML):
 
-```yaml
+```conductor
 # config.yaml (daemon/runtime config)
 builtin_connectors:
   file:
@@ -891,7 +891,7 @@ builtin_connectors:
 
 ### 1. Use Path Prefixes
 
-```yaml
+```conductor
 # GOOD - Organized, secure
 - file.write: $out/result.json        # Clear it goes to output
 - file.read: ./input.yaml             # Relative to workflow
@@ -902,7 +902,7 @@ builtin_connectors:
 
 ### 2. Handle Missing Files
 
-```yaml
+```conductor
 # GOOD - Check before reading
 - id: check_cache
   file.exists: $temp/cache.json
@@ -920,7 +920,7 @@ builtin_connectors:
 
 ### 3. Prefer Explicit Format Operations
 
-```yaml
+```conductor
 # GOOD - Explicit about format
 - file.read_json: ./config.json
 
@@ -930,7 +930,7 @@ builtin_connectors:
 
 ### 4. Use Atomic Operations
 
-```yaml
+```conductor
 # GOOD - Atomic write (safe)
 - file.write:
     path: $out/critical-data.json

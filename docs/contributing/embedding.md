@@ -629,7 +629,7 @@ func Load(path string) (*Config, error) {
 
 Example config.yaml:
 
-```yaml
+```conductor
 llm:
   default_provider: anthropic
   providers:

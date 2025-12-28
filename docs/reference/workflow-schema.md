@@ -10,7 +10,7 @@ Conductor workflows are defined in YAML files with a declarative structure. This
 
 The most basic workflow requires only a name and steps:
 
-```yaml
+```conductor
 name: hello-world
 steps:
   - id: greet
@@ -27,7 +27,7 @@ steps:
 
 Unique identifier for this workflow.
 
-```yaml
+```conductor
 name: code-review-workflow
 ```
 
@@ -36,7 +36,7 @@ name: code-review-workflow
 
 Human-readable description of what this workflow does.
 
-```yaml
+```conductor
 description: "Performs multi-step code review with security and performance checks"
 ```
 
@@ -46,7 +46,7 @@ description: "Performs multi-step code review with security and performance chec
 
 Workflow schema version. Optional field that defaults to "1.0".
 
-```yaml
+```conductor
 version: "1.0"
 ```
 
@@ -55,7 +55,7 @@ version: "1.0"
 
 Defines expected input parameters for the workflow.
 
-```yaml
+```conductor
 inputs:
   - name: code
     type: string
@@ -75,7 +75,7 @@ See [Input Definition](#input-definition) for details.
 
 Executable units of the workflow, run sequentially unless otherwise specified.
 
-```yaml
+```conductor
 steps:
   - id: analyze
     type: llm
@@ -92,7 +92,7 @@ See [Step Definition](#step-definition) for details.
 
 Defines what data is returned when the workflow completes.
 
-```yaml
+```conductor
 outputs:
   - name: summary
     type: string
@@ -107,7 +107,7 @@ See [Output Definition](#output-definition) for details.
 
 Defines how this workflow can be invoked (webhooks, schedules, manual).
 
-```yaml
+```conductor
 triggers:
   - type: webhook
     webhook:
@@ -127,7 +127,7 @@ See [Trigger Definition](#trigger-definition) for details.
 
 Named agents with provider preferences and capability requirements.
 
-```yaml
+```conductor
 agents:
   vision-agent:
     prefers: anthropic
@@ -151,7 +151,7 @@ Describes a workflow input parameter.
 
 Input parameter identifier.
 
-```yaml
+```conductor
 name: user_query
 ```
 
@@ -161,7 +161,7 @@ name: user_query
 
 Data type of the input.
 
-```yaml
+```conductor
 type: string
 ```
 
@@ -171,7 +171,7 @@ type: string
 
 Whether this input must be provided.
 
-```yaml
+```conductor
 required: true
 ```
 
@@ -180,7 +180,7 @@ required: true
 
 Fallback value if input is not provided.
 
-```yaml
+```conductor
 default: "balanced"
 ```
 
@@ -189,13 +189,13 @@ default: "balanced"
 
 Explanation of what this input is for.
 
-```yaml
+```conductor
 description: "User's natural language query"
 ```
 
 ### Example
 
-```yaml
+```conductor
 inputs:
   - name: file_path
     type: string
@@ -221,7 +221,7 @@ Represents a single step in a workflow.
 
 Unique step identifier within this workflow.
 
-```yaml
+```conductor
 id: analyze_code
 ```
 
@@ -230,7 +230,7 @@ id: analyze_code
 
 Human-readable step name (optional).
 
-```yaml
+```conductor
 name: "Code Analysis"
 ```
 
@@ -240,7 +240,7 @@ name: "Code Analysis"
 
 Specifies the step type.
 
-```yaml
+```conductor
 type: llm
 ```
 
@@ -251,7 +251,7 @@ type: llm
 
 Maximum execution time for this step.
 
-```yaml
+```conductor
 timeout: 60
 ```
 
@@ -260,7 +260,7 @@ timeout: 60
 
 Configures retry behavior.
 
-```yaml
+```conductor
 retry:
   max_attempts: 3
   backoff_base: 2
@@ -274,7 +274,7 @@ See [Retry Definition](#retry-definition) for details.
 
 Specifies error handling behavior.
 
-```yaml
+```conductor
 on_error:
   strategy: fallback
   fallback_step: error_handler
@@ -295,7 +295,7 @@ User prompt for the LLM. Supports template variables:
 - `{{.input_name}}` - workflow inputs
 - `{{.steps.step_id.response}}` - previous step outputs
 
-```yaml
+```conductor
 prompt: "Review this code: {{.code}}"
 ```
 
@@ -310,7 +310,7 @@ Model tier selection. Abstracts specific provider models.
 - **balanced**: Most tasks, good quality/cost tradeoff (e.g., sonnet, gpt-4o)
 - **strategic**: Complex reasoning, advanced capabilities (e.g., opus, o1)
 
-```yaml
+```conductor
 model: strategic
 ```
 
@@ -319,7 +319,7 @@ model: strategic
 
 System prompt to guide model behavior (optional).
 
-```yaml
+```conductor
 system: "You are a security expert reviewing code for vulnerabilities."
 ```
 
@@ -328,7 +328,7 @@ system: "You are a security expert reviewing code for vulnerabilities."
 
 References an agent definition for provider resolution.
 
-```yaml
+```conductor
 agent: vision-agent
 ```
 
@@ -337,7 +337,7 @@ agent: vision-agent
 
 JSON Schema defining expected structured output.
 
-```yaml
+```conductor
 output_schema:
   type: object
   properties:
@@ -364,14 +364,14 @@ output_schema:
 Built-in output type that expands to a schema.
 
 **classification** - Categorizes input into predefined categories:
-```yaml
+```conductor
 output_type: classification
 output_options:
   categories: [bug, feature, documentation, question]
 ```
 
 **decision** - Makes a choice with optional reasoning:
-```yaml
+```conductor
 output_type: decision
 output_options:
   choices: [approve, reject, needs-changes]
@@ -379,7 +379,7 @@ output_options:
 ```
 
 **extraction** - Extracts specific fields:
-```yaml
+```conductor
 output_type: extraction
 output_options:
   fields: [name, email, phone]
@@ -395,14 +395,14 @@ See examples under `output_type`.
 ### Example LLM Steps
 
 **Simple prompt:**
-```yaml
+```conductor
 - id: summarize
   type: llm
   prompt: "Summarize this in 3 sentences: {{.text}}"
 ```
 
 **With system prompt and model tier:**
-```yaml
+```conductor
 - id: security_review
   type: llm
   model: strategic
@@ -411,7 +411,7 @@ See examples under `output_type`.
 ```
 
 **With structured output:**
-```yaml
+```conductor
 - id: classify_issue
   type: llm
   prompt: "Classify this issue: {{.issue_text}}"
@@ -432,7 +432,7 @@ Connector steps execute operations on builtin or external connectors. The prefer
 
 The connector and operation are specified as a single key following the pattern `connector.operation:`. The value becomes the inputs for that operation.
 
-```yaml
+```conductor
 # Inline form (simple inputs)
 - file.read: ./config.json
 - shell.run: git status
@@ -450,7 +450,7 @@ The connector and operation are specified as a single key following the pattern 
 
 Steps using shorthand syntax automatically get IDs in the format `{connector}_{operation}_{N}`:
 
-```yaml
+```conductor
 steps:
   - file.read: ./config.json      # id: file_read_1
   - file.read: ./data.json        # id: file_read_2
@@ -459,7 +459,7 @@ steps:
 
 You can still provide an explicit `id:` when needed:
 
-```yaml
+```conductor
 - id: load_config
   file.read: ./config.json
 ```
@@ -469,7 +469,7 @@ You can still provide an explicit `id:` when needed:
 These connectors work without configuration:
 
 **file** - File system operations
-```yaml
+```conductor
 # Read a file
 - file.read: ./data.json
 
@@ -485,7 +485,7 @@ These connectors work without configuration:
 ```
 
 **shell** - Execute shell commands
-```yaml
+```conductor
 # Simple command (string form)
 - shell.run: git status
 
@@ -495,7 +495,7 @@ These connectors work without configuration:
 ```
 
 **http** - HTTP requests
-```yaml
+```conductor
 # GET request
 - http.get: https://api.github.com/repos/owner/repo
 
@@ -509,7 +509,7 @@ These connectors work without configuration:
 ```
 
 **transform** - Data transformations
-```yaml
+```conductor
 # Parse JSON
 - transform.parse_json: "{{.steps.fetch.body}}"
 
@@ -523,7 +523,7 @@ These connectors work without configuration:
 
 External connectors require configuration in the `connectors:` section:
 
-```yaml
+```conductor
 connectors:
   github:
     from: connectors/github
@@ -542,7 +542,7 @@ steps:
 
 For complex cases, you can use the verbose syntax:
 
-```yaml
+```conductor
 - id: create_issue
   type: connector
   connector: github
@@ -569,7 +569,7 @@ Evaluates a condition and branches execution.
 
 Defines the condition and branching logic.
 
-```yaml
+```conductor
 condition:
   expression: "$.analyze.severity == 'critical'"
   then_steps: [alert_team]
@@ -589,7 +589,7 @@ Executes multiple steps concurrently.
 
 Nested steps that run in parallel.
 
-```yaml
+```conductor
 steps:
   - id: check_style
     type: llm
@@ -617,7 +617,7 @@ Enables iteration over an array, executing the nested steps once for each elemen
 
 **Example:**
 
-```yaml
+```conductor
 # Split array and process each element
 - id: split_issues
   transform.split: '{{.steps.analyze.issues}}'
@@ -641,7 +641,7 @@ Enables iteration over an array, executing the nested steps once for each elemen
 
 **Fixed parallel execution:**
 
-```yaml
+```conductor
 - id: parallel_checks
   type: parallel
   steps:
@@ -653,7 +653,7 @@ Enables iteration over an array, executing the nested steps once for each elemen
 
 **Dynamic array iteration with foreach:**
 
-```yaml
+```conductor
 - id: review_files
   type: parallel
   foreach: '{{.steps.changed_files}}'
@@ -682,7 +682,7 @@ Describes a workflow output value.
 
 Output identifier.
 
-```yaml
+```conductor
 name: result
 ```
 
@@ -692,7 +692,7 @@ name: result
 
 Output data type.
 
-```yaml
+```conductor
 type: string
 ```
 
@@ -704,7 +704,7 @@ JSONPath expression that computes the output value.
 - `$.step_id.response` - step's full response
 - `$.step_id.field_name` - specific field from structured output
 
-```yaml
+```conductor
 value: "$.final_step.response"
 ```
 
@@ -713,13 +713,13 @@ value: "$.final_step.response"
 
 Explanation of what this output represents.
 
-```yaml
+```conductor
 description: "Final code review summary"
 ```
 
 ### Example
 
-```yaml
+```conductor
 outputs:
   - name: severity
     type: string
@@ -745,7 +745,7 @@ Defines how a workflow can be triggered.
 
 Trigger type.
 
-```yaml
+```conductor
 type: webhook
 ```
 
@@ -754,7 +754,7 @@ type: webhook
 
 Configuration for webhook triggers (when type is `webhook`).
 
-```yaml
+```conductor
 webhook:
   path: /webhooks/my-workflow
   source: github
@@ -769,7 +769,7 @@ See [Webhook Trigger](#webhook-trigger) for details.
 
 Configuration for schedule triggers (when type is `schedule`).
 
-```yaml
+```conductor
 schedule:
   cron: "0 9 * * *"
   timezone: "America/New_York"
@@ -787,7 +787,7 @@ See [Schedule Trigger](#schedule-trigger) for details.
 
 URL path for the webhook (e.g., `/webhooks/my-workflow`).
 
-```yaml
+```conductor
 path: /webhooks/code-review
 ```
 
@@ -797,7 +797,7 @@ path: /webhooks/code-review
 
 Webhook source type.
 
-```yaml
+```conductor
 source: github
 ```
 
@@ -806,7 +806,7 @@ source: github
 
 Limits which events trigger the workflow.
 
-```yaml
+```conductor
 events: [push, pull_request]
 ```
 
@@ -815,7 +815,7 @@ events: [push, pull_request]
 
 Secret for signature verification. Can be environment variable reference like `${SECRET_NAME}`.
 
-```yaml
+```conductor
 secret: ${GITHUB_WEBHOOK_SECRET}
 ```
 
@@ -824,7 +824,7 @@ secret: ${GITHUB_WEBHOOK_SECRET}
 
 Maps webhook payload fields to workflow inputs.
 
-```yaml
+```conductor
 input_mapping:
   repo: "repository.name"
   pr_number: "pull_request.number"
@@ -839,7 +839,7 @@ input_mapping:
 
 Cron expression for scheduling.
 
-```yaml
+```conductor
 cron: "0 9 * * MON"  # 9 AM every Monday
 ```
 
@@ -849,7 +849,7 @@ cron: "0 9 * * MON"  # 9 AM every Monday
 
 Timezone for cron evaluation.
 
-```yaml
+```conductor
 timezone: "America/New_York"
 ```
 
@@ -859,7 +859,7 @@ timezone: "America/New_York"
 
 Controls if this schedule is active.
 
-```yaml
+```conductor
 enabled: false
 ```
 
@@ -868,7 +868,7 @@ enabled: false
 
 Static inputs to pass when scheduled.
 
-```yaml
+```conductor
 inputs:
   environment: production
   notify: true
@@ -888,7 +888,7 @@ Describes an agent with provider preferences and capability requirements.
 
 Hint about which provider family works best (not enforced).
 
-```yaml
+```conductor
 prefers: anthropic
 ```
 
@@ -898,13 +898,13 @@ prefers: anthropic
 
 Required provider capabilities.
 
-```yaml
+```conductor
 capabilities: [vision, tool-use]
 ```
 
 ### Example
 
-```yaml
+```conductor
 agents:
   vision-agent:
     prefers: anthropic
@@ -929,7 +929,7 @@ Defines a conditional expression for branching.
 
 JSONPath condition to evaluate.
 
-```yaml
+```conductor
 expression: "$.previous_step.status == 'success'"
 ```
 
@@ -938,7 +938,7 @@ expression: "$.previous_step.status == 'success'"
 
 Step IDs to execute if condition is true.
 
-```yaml
+```conductor
 then_steps: [success_handler, notify]
 ```
 
@@ -947,13 +947,13 @@ then_steps: [success_handler, notify]
 
 Step IDs to execute if condition is false.
 
-```yaml
+```conductor
 else_steps: [error_handler]
 ```
 
 ### Example
 
-```yaml
+```conductor
 - id: check_severity
   type: condition
   condition:
@@ -981,7 +981,7 @@ Error handling approach.
 - **retry**: Retry according to retry configuration
 - **fallback**: Execute fallback step on error
 
-```yaml
+```conductor
 strategy: fallback
 ```
 
@@ -990,13 +990,13 @@ strategy: fallback
 
 Step ID to execute on error (required when strategy is `fallback`).
 
-```yaml
+```conductor
 fallback_step: error_handler
 ```
 
 ### Example
 
-```yaml
+```conductor
 on_error:
   strategy: fallback
   fallback_step: use_cached_result
@@ -1016,7 +1016,7 @@ Configures retry behavior for a step.
 
 Maximum number of retry attempts.
 
-```yaml
+```conductor
 max_attempts: 3
 ```
 
@@ -1027,7 +1027,7 @@ max_attempts: 3
 
 Base duration for exponential backoff.
 
-```yaml
+```conductor
 backoff_base: 2
 ```
 
@@ -1037,13 +1037,13 @@ backoff_base: 2
 
 Multiplier for exponential backoff.
 
-```yaml
+```conductor
 backoff_multiplier: 1.5
 ```
 
 ### Example
 
-```yaml
+```conductor
 retry:
   max_attempts: 5
   backoff_base: 1
@@ -1071,7 +1071,7 @@ Use double curly braces with dot notation:
 
 Reference workflow inputs directly:
 
-```yaml
+```conductor
 prompt: "Analyze {{.language}} code: {{.code}}"
 ```
 
@@ -1079,19 +1079,19 @@ prompt: "Analyze {{.language}} code: {{.code}}"
 
 Reference previous step outputs:
 
-```yaml
+```conductor
 prompt: "Summarize this analysis: {{.steps.analyze.response}}"
 ```
 
 For structured outputs, access specific fields:
 
-```yaml
+```conductor
 prompt: "The severity is {{.steps.analyze.severity}}"
 ```
 
 ### Example
 
-```yaml
+```conductor
 name: code-review
 inputs:
   - name: code
@@ -1126,7 +1126,7 @@ outputs:
 
 ## Complete Example
 
-```yaml
+```conductor
 name: code-review-workflow
 description: "Multi-step code review with security and style checks"
 version: "1.0"
@@ -1217,7 +1217,7 @@ triggers:
 
 **NEVER hardcode credentials in workflows.** Always use environment variables or secret references:
 
-```yaml
+```conductor
 # GOOD - Environment variable
 connectors:
   github:
@@ -1244,7 +1244,7 @@ connectors:
 
 When using `shell.run`, prefer the array form to prevent command injection:
 
-```yaml
+```conductor
 # SAFE - Array form (arguments not shell-interpreted)
 - shell.run:
     command: ["git", "commit", "-m", "{{.inputs.message}}"]
@@ -1262,7 +1262,7 @@ The array form passes arguments directly to the command without shell interpreta
 
 Be specific with file paths to prevent unauthorized file access:
 
-```yaml
+```conductor
 # GOOD - Specific paths
 - file.read: ./config/app.json
 - file.list:
@@ -1279,7 +1279,7 @@ Be specific with file paths to prevent unauthorized file access:
 
 External connectors should always include authentication:
 
-```yaml
+```conductor
 connectors:
   github:
     from: connectors/github

@@ -117,7 +117,7 @@ For providers that don't include usage in primary response.
 
 **Configuration:**
 
-```yaml
+```conductor
 providers:
   anthropic:
     api_key: ${ANTHROPIC_API_KEY}
@@ -143,7 +143,7 @@ providers:
 
 **Configuration:**
 
-```yaml
+```conductor
 providers:
   openai:
     api_key: ${OPENAI_API_KEY}
@@ -169,7 +169,7 @@ providers:
 
 **Configuration:**
 
-```yaml
+```conductor
 providers:
   google:
     api_key: ${GOOGLE_API_KEY}
@@ -195,7 +195,7 @@ providers:
 
 **Configuration:**
 
-```yaml
+```conductor
 providers:
   ollama:
     base_url: http://localhost:11434
@@ -277,7 +277,7 @@ Models: []ModelInfo{
 
 ### Using Tiers in Workflows
 
-```yaml
+```conductor
 steps:
   - id: classify
     type: llm
@@ -299,7 +299,7 @@ steps:
 
 Override specific models for fine-grained control:
 
-```yaml
+```conductor
 providers:
   anthropic:
     tier_overrides:
@@ -338,7 +338,7 @@ registry.SetDefault("anthropic")
 
 Workflows can specify which provider to use:
 
-```yaml
+```conductor
 # Use default provider
 steps:
   - id: step1
@@ -381,7 +381,7 @@ provider, err := llm.GetDefault()
 
 Configure provider failover order for high availability:
 
-```yaml
+```conductor
 providers:
   anthropic:
     api_key: ${ANTHROPIC_API_KEY}
@@ -465,7 +465,7 @@ All LLM providers use the shared `pkg/httpclient` package for HTTP communication
 
 Prevent cascading failures with circuit breaker pattern:
 
-```yaml
+```conductor
 resilience:
   circuit_breaker:
     enabled: true
@@ -536,7 +536,7 @@ costs, err := tracker.GetCostByProvider(ctx)
 
 Set spending limits:
 
-```yaml
+```conductor
 cost:
   budget:
     daily_limit: 10.00    # USD

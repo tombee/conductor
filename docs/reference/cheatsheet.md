@@ -6,7 +6,7 @@ Essential syntax and commands for working with Conductor workflows.
 
 ### Minimal Workflow
 
-```yaml
+```conductor
 name: hello-world
 steps:
   - id: greet
@@ -16,7 +16,7 @@ steps:
 
 ### Complete Workflow
 
-```yaml
+```conductor
 name: my-workflow
 description: "What this workflow does"
 version: "1.0"
@@ -43,7 +43,7 @@ outputs:
 
 ### Referencing Inputs
 
-```yaml
+```conductor
 # Access workflow input
 {{.inputs.input_name}}
 
@@ -56,7 +56,7 @@ outputs:
 
 ### Referencing Step Outputs
 
-```yaml
+```conductor
 # Access step response
 {{$.step_id.response}}
 
@@ -69,7 +69,7 @@ outputs:
 
 ### Conditional Logic
 
-```yaml
+```conductor
 # If statement
 {{if .inputs.enabled}}
   Content when true
@@ -90,7 +90,7 @@ outputs:
 
 ### Iteration
 
-```yaml
+```conductor
 # Range over array
 {{range .inputs.items}}
   - {{.}}
@@ -106,7 +106,7 @@ outputs:
 
 ### LLM Step
 
-```yaml
+```conductor
 - id: analyze
   type: llm
   model: balanced  # fast, balanced, strategic
@@ -118,7 +118,7 @@ outputs:
 
 ### Action Step
 
-```yaml
+```conductor
 - id: read_file
   type: action
   action: file.read
@@ -128,7 +128,7 @@ outputs:
 
 ### Parallel Step
 
-```yaml
+```conductor
 - id: parallel_tasks
   type: parallel
   max_concurrency: 3
@@ -141,7 +141,7 @@ outputs:
 
 ### Foreach Step
 
-```yaml
+```conductor
 - id: process_items
   type: foreach
   items: "{{.inputs.file_list}}"
@@ -155,7 +155,7 @@ outputs:
 
 ### File Operations
 
-```yaml
+```conductor
 # Read file
 - id: read
   file.read: "path/to/file.txt"
@@ -175,7 +175,7 @@ outputs:
 
 ### Shell Commands
 
-```yaml
+```conductor
 # Run shell command
 - id: run
   shell.run: "ls -la"
@@ -188,7 +188,7 @@ outputs:
 
 ### HTTP Requests
 
-```yaml
+```conductor
 # GET request
 - id: get
   http:
@@ -208,7 +208,7 @@ outputs:
 
 ### GitHub
 
-```yaml
+```conductor
 # Get file from repository
 - id: get_file
   github.get_file:
@@ -226,7 +226,7 @@ outputs:
 
 ### Slack
 
-```yaml
+```conductor
 # Post message
 - id: notify
   slack.post_message:
@@ -238,7 +238,7 @@ outputs:
 
 ### Retry Configuration
 
-```yaml
+```conductor
 - id: api_call
   type: action
   action: http
@@ -253,7 +253,7 @@ outputs:
 
 ### Error Behavior
 
-```yaml
+```conductor
 # Stop workflow on error (default)
 - id: critical
   on_error: fail
@@ -271,7 +271,7 @@ outputs:
 
 ### Step Conditions
 
-```yaml
+```conductor
 # Simple condition
 - id: production_only
   condition:
@@ -388,7 +388,7 @@ conductor init --list
 
 ### Read-Process-Write
 
-```yaml
+```conductor
 steps:
   - id: read
     file.read: "input.txt"
@@ -403,7 +403,7 @@ steps:
 
 ### Conditional Routing
 
-```yaml
+```conductor
 - id: classify
   type: llm
   prompt: "Classify: {{.inputs.text}}"
@@ -423,7 +423,7 @@ steps:
 
 ### Map-Reduce
 
-```yaml
+```conductor
 # Map: Process in parallel
 - id: map
   type: parallel
@@ -447,7 +447,7 @@ steps:
 
 Location: `~/.config/conductor/config.yaml`
 
-```yaml
+```conductor
 # Provider configuration
 providers:
   anthropic:
@@ -487,7 +487,7 @@ export CONDUCTOR_SKIP_TLS_VERIFY="true"
 
 ### Structured JSON Output
 
-```yaml
+```conductor
 - id: extract
   type: llm
   prompt: "Extract user data from: {{.inputs.text}}"
@@ -506,7 +506,7 @@ export CONDUCTOR_SKIP_TLS_VERIFY="true"
 
 ### Template Variable Not Found
 
-```yaml
+```conductor
 # Wrong: Missing $ prefix
 prompt: "{{.step1.response}}"
 
@@ -516,7 +516,7 @@ prompt: "{{$.step1.response}}"
 
 ### Indentation Errors
 
-```yaml
+```conductor
 # Wrong: Inconsistent spaces
 steps:
   - id: step1
@@ -530,7 +530,7 @@ steps:
 
 ### Missing Required Fields
 
-```yaml
+```conductor
 # Wrong: Missing required 'name'
 steps:
   - id: greet

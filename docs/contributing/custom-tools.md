@@ -55,7 +55,7 @@ HTTP tools make HTTP requests with templated inputs.
 
 **Example: Slack Notification Tool**
 
-```yaml
+```conductor
 name: slack-notifier
 functions:
   send_slack_message:
@@ -105,7 +105,7 @@ steps:
 
 Use `${VAR_NAME}` syntax to reference environment variables:
 
-```yaml
+```conductor
 http:
   url: "${API_BASE_URL}/users"
   headers:
@@ -128,7 +128,7 @@ Script tools execute shell scripts or commands with structured inputs.
 
 **Example: Git Status Tool**
 
-```yaml
+```conductor
 functions:
   git_status:
     type: script
@@ -162,7 +162,7 @@ functions:
 
 **Using Script Content:**
 
-```yaml
+```conductor
 functions:
   process_data:
     type: script
@@ -190,7 +190,7 @@ Script tools execute arbitrary commands. Follow these security practices:
 - **Enable sandboxing** - Use tool sandboxing profiles (see [Tool Sandboxing](../architecture/tool-sandboxing.md))
 
 Example of unsafe pattern:
-```yaml
+```conductor
 # DANGEROUS - Don't do this!
 script:
   command: bash
@@ -207,7 +207,7 @@ Define clear schemas for tool inputs and outputs using JSON Schema conventions.
 
 **Input Schema Fields:**
 
-```yaml
+```conductor
 inputs:
   field_name:
     type: string|number|boolean|object|array
@@ -221,7 +221,7 @@ inputs:
 
 Use jq expressions to extract and transform tool outputs:
 
-```yaml
+```conductor
 outputs:
   response_type: object
   jq: |
@@ -595,7 +595,7 @@ registry.SetInterceptor(&SecurityInterceptor{
 
 For script and shell tools, use sandboxing profiles to restrict operations:
 
-```yaml
+```conductor
 # In conductor config
 sandbox:
   profile: strict  # Options: strict, air-gapped, permissive
@@ -674,7 +674,7 @@ func TestDatabaseTool_Execute(t *testing.T) {
 
 Test tools in actual workflows:
 
-```yaml
+```conductor
 # test-workflow.yaml
 name: test-database-tool
 steps:
@@ -712,7 +712,7 @@ func TestDatabaseToolInWorkflow(t *testing.T) {
 
 ### Example: Weather API Tool
 
-```yaml
+```conductor
 functions:
   get_weather:
     type: http

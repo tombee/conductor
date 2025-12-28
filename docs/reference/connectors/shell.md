@@ -31,7 +31,7 @@ Execute a shell command and capture output.
 
 Use for static commands without user input:
 
-```yaml
+```conductor
 - shell.run: "git status"
 - shell.run: "ls -la /tmp"
 - shell.run: "npm install"
@@ -39,7 +39,7 @@ Use for static commands without user input:
 
 **Caution:** String form passes the command through shell interpretation. Never use with untrusted input:
 
-```yaml
+```conductor
 # DANGEROUS - Command injection risk!
 - shell.run: "git commit -m '{{.inputs.user_message}}'"
 ```
@@ -48,7 +48,7 @@ Use for static commands without user input:
 
 Use for commands with dynamic input or user-provided data:
 
-```yaml
+```conductor
 # SAFE - Arguments are NOT shell-interpreted
 - shell.run:
     command: ["git", "commit", "-m", "{{.inputs.user_message}}"]
@@ -69,7 +69,7 @@ Use for commands with dynamic input or user-provided data:
 
 ### Basic Command Execution
 
-```yaml
+```conductor
 steps:
   # Check Git status
   - id: git_status
@@ -82,7 +82,7 @@ steps:
 
 ### Working with Output
 
-```yaml
+```conductor
 steps:
   # Get current branch name
   - id: get_branch
@@ -97,7 +97,7 @@ steps:
 
 ### Command with Dynamic Arguments
 
-```yaml
+```conductor
 steps:
   # Safe: Array form prevents injection
   - id: commit_changes
@@ -112,7 +112,7 @@ steps:
 
 ### Multi-Step Git Workflow
 
-```yaml
+```conductor
 name: git-branch-analysis
 description: "Analyze changes in a Git branch"
 
@@ -159,7 +159,7 @@ steps:
 
 ### Error Handling
 
-```yaml
+```conductor
 steps:
   # Attempt to run tests
   - id: run_tests
@@ -186,7 +186,7 @@ steps:
 
 ### CI/CD Pipeline Example
 
-```yaml
+```conductor
 name: build-and-deploy
 description: "Build, test, and deploy application"
 
@@ -234,7 +234,7 @@ steps:
 
 All `shell.run` operations return:
 
-```yaml
+```conductor
 response:
   success: true              # true if exit code = 0
   stdout: "command output"   # Standard output
@@ -255,7 +255,7 @@ response:
 
 ### Accessing Response Fields
 
-```yaml
+```conductor
 steps:
   - id: run_command
     shell.run: "some-command"
@@ -289,7 +289,7 @@ Default timeout: **30 seconds**
 
 Commands that exceed the timeout are terminated and return:
 
-```yaml
+```conductor
 response:
   success: false
   stdout: "partial output..."
@@ -300,7 +300,7 @@ response:
 
 **Handling Timeouts:**
 
-```yaml
+```conductor
 - id: long_build
   shell.run: "npm run build"
   timeout: 300  # 5 minutes
@@ -318,7 +318,7 @@ response:
 
 **ALWAYS use array form when working with user input:**
 
-```yaml
+```conductor
 # DANGEROUS - Vulnerable to injection
 - shell.run: "rm -rf {{.inputs.path}}"  # User can provide "; rm -rf /"
 
@@ -331,7 +331,7 @@ response:
 
 For production workflows, restrict allowed commands:
 
-```yaml
+```conductor
 # config.yaml (runtime configuration)
 builtin_tools:
   shell:
@@ -345,7 +345,7 @@ builtin_tools:
 
 **With allowlist enabled:**
 
-```yaml
+```conductor
 # Allowed
 - shell.run: "git status"
 - shell.run: ["npm", "install"]
@@ -366,7 +366,7 @@ Shell commands run in a sandboxed environment when available:
 
 **Security Configuration:**
 
-```yaml
+```conductor
 # config.yaml (runtime configuration)
 builtin_tools:
   shell:
@@ -394,7 +394,7 @@ Sensitive environment variables are **automatically filtered** from command outp
 
 Environment variables from the workflow execution context are available to commands:
 
-```yaml
+```conductor
 # Environment variables are inherited
 - shell.run: "git push"  # Uses GIT_TOKEN if set in environment
 ```
@@ -407,7 +407,7 @@ Commands execute in the **workflow directory** by default (the directory contain
 
 **Change working directory:**
 
-```yaml
+```conductor
 # Runtime configuration
 builtin_tools:
   shell:
@@ -416,7 +416,7 @@ builtin_tools:
 
 **Relative paths in commands:**
 
-```yaml
+```conductor
 # These paths are relative to workflow directory
 - shell.run: "cat ./config.json"
 - shell.run: "ls ./src"
@@ -442,7 +442,7 @@ Common exit codes and their meanings:
 
 **Check specific exit codes:**
 
-```yaml
+```conductor
 - id: check_exit
   type: condition
   condition:
@@ -458,7 +458,7 @@ Common exit codes and their meanings:
 
 Continue workflow even if command fails:
 
-```yaml
+```conductor
 - id: optional_step
   shell.run: "make lint"
   on_error:
@@ -467,7 +467,7 @@ Continue workflow even if command fails:
 
 ### Retry on Failure
 
-```yaml
+```conductor
 - id: flaky_test
   shell.run: "npm test"
   retry:
@@ -478,7 +478,7 @@ Continue workflow even if command fails:
 
 ### Fallback Handler
 
-```yaml
+```conductor
 - id: try_primary
   shell.run: "curl https://api.primary.com/data"
   on_error:
@@ -495,7 +495,7 @@ Continue workflow even if command fails:
 
 ### 1. Use Array Form for Security
 
-```yaml
+```conductor
 # GOOD - Safe from injection
 - shell.run:
     command: ["git", "commit", "-m", "{{.inputs.message}}"]
@@ -506,7 +506,7 @@ Continue workflow even if command fails:
 
 ### 2. Set Appropriate Timeouts
 
-```yaml
+```conductor
 # Default (30s) - Fine for most commands
 - shell.run: "git status"
 
@@ -521,7 +521,7 @@ Continue workflow even if command fails:
 
 ### 3. Handle Errors Appropriately
 
-```yaml
+```conductor
 # Critical step - fail workflow on error
 - shell.run: "npm run build"
 
@@ -538,7 +538,7 @@ Continue workflow even if command fails:
 
 ### 4. Check Exit Codes
 
-```yaml
+```conductor
 # Don't assume success
 - id: build
   shell.run: "make build"
@@ -553,7 +553,7 @@ Continue workflow even if command fails:
 
 ### 5. Capture and Use Output
 
-```yaml
+```conductor
 - id: get_version
   shell.run:
     command: ["git", "describe", "--tags"]
@@ -576,7 +576,7 @@ Continue workflow even if command fails:
 
 Use string form for shell features, but only with trusted input:
 
-```yaml
+```conductor
 # Pipes and redirection (string form required)
 - shell.run: "git log --oneline | head -n 5"
 - shell.run: "echo 'data' > output.txt"

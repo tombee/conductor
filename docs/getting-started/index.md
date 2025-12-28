@@ -11,7 +11,7 @@ Instead of building individual applications for every AI task, you define workfl
 - **Production-ready** - Observability, reliability, and cost management built-in
 - **Portable** - Switch LLM providers with a config change
 
-```yaml
+```conductor
 # code-review.yaml
 name: code-review
 steps:
@@ -76,7 +76,7 @@ Conductor will prompt you for inputs. After a few seconds, you'll get an AI-gene
 
 Create `hello.yaml`:
 
-```yaml
+```conductor
 name: hello-conductor
 description: Your first custom workflow
 
@@ -123,7 +123,7 @@ Each step does one thing:
 - **Tool steps**: Run shell commands, read files, make HTTP requests
 - **Connector steps**: Interact with external services (GitHub, Slack, etc.)
 
-```yaml
+```conductor
 steps:
   # LLM step
   - id: analyze
@@ -161,7 +161,7 @@ This lets you swap providers without changing workflows.
 
 Run multiple steps concurrently:
 
-```yaml
+```conductor
 - id: reviews
   type: parallel
   steps:
@@ -176,7 +176,7 @@ Run multiple steps concurrently:
 ## Common Patterns
 
 **Read-Process-Write:**
-```yaml
+```conductor
 - id: read
   file.read:
     path: "{{.inputs.file_path}}"
@@ -192,7 +192,7 @@ Run multiple steps concurrently:
 ```
 
 **Chain of Thought:**
-```yaml
+```conductor
 - id: analyze
   type: llm
   prompt: "Analyze this code..."
