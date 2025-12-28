@@ -21,6 +21,11 @@ func NewRegistry(config *Config) *Registry {
 		config = DefaultConfig()
 	}
 
+	// Initialize transport registry if not provided
+	if config.TransportRegistry == nil {
+		config.TransportRegistry = NewDefaultTransportRegistry()
+	}
+
 	return &Registry{
 		connectors: make(map[string]Connector),
 		config:     config,

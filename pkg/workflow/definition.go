@@ -1640,6 +1640,50 @@ func (c *ConnectorDefinition) Validate() error {
 		}
 	}
 
+	// Validate transport field if specified
+	if c.Transport != "" {
+		validTransports := map[string]bool{
+			"http":       true,
+			"aws_sigv4":  true,
+			"oauth2":     true,
+		}
+		if !validTransports[c.Transport] {
+			return fmt.Errorf("invalid transport %q: must be http, aws_sigv4, or oauth2", c.Transport)
+		}
+
+		// Validate AWS config when transport is aws_sigv4
+		if c.Transport == "aws_sigv4" {
+			if c.AWS == nil {
+				return fmt.Errorf("aws configuration is required when transport is aws_sigv4")
+			}
+			if c.AWS.Service == "" {
+				return fmt.Errorf("aws.service is required when transport is aws_sigv4")
+			}
+			if c.AWS.Region == "" {
+				return fmt.Errorf("aws.region is required when transport is aws_sigv4")
+			}
+		}
+
+		// Validate OAuth2 config when transport is oauth2
+		if c.Transport == "oauth2" {
+			if c.OAuth2 == nil {
+				return fmt.Errorf("oauth2 configuration is required when transport is oauth2")
+			}
+			if c.OAuth2.ClientID == "" {
+				return fmt.Errorf("oauth2.client_id is required when transport is oauth2")
+			}
+			if c.OAuth2.ClientSecret == "" {
+				return fmt.Errorf("oauth2.client_secret is required when transport is oauth2")
+			}
+			if c.OAuth2.TokenURL == "" {
+				return fmt.Errorf("oauth2.token_url is required when transport is oauth2")
+			}
+			if c.OAuth2.Flow != "" && c.OAuth2.Flow != "client_credentials" && c.OAuth2.Flow != "authorization_code" {
+				return fmt.Errorf("oauth2.flow must be client_credentials or authorization_code, got %q", c.OAuth2.Flow)
+			}
+		}
+	}
+
 	// Validate rate limit if specified
 	if c.RateLimit != nil {
 		if err := c.RateLimit.Validate(); err != nil {

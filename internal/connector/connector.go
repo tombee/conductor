@@ -2,10 +2,16 @@ package connector
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
+	"github.com/tombee/conductor/internal/connector/transport"
 	"github.com/tombee/conductor/pkg/workflow"
 )
+
+// TransportRegistry is an alias for transport.Registry to avoid import cycles
+// and provide a cleaner API at the connector package level.
+type TransportRegistry = transport.Registry
 
 // builtinAPIFactory is a function type for creating builtin API connectors.
 type builtinAPIFactory func(connectorName string, baseURL string, authType string, authToken string) (Connector, error)
@@ -127,6 +133,10 @@ type Config struct {
 	// BlockedHosts prevents access to specific hosts (SSRF protection)
 	// Defaults to private IP ranges and metadata endpoints
 	BlockedHosts []string
+
+	// TransportRegistry manages transport instances (HTTP, AWS SigV4, OAuth2)
+	// If nil, a default registry will be created
+	TransportRegistry *TransportRegistry
 }
 
 // DefaultConfig returns sensible default configuration.
@@ -155,6 +165,11 @@ func DefaultConfig() *Config {
 
 // New creates a connector from a workflow definition.
 func New(def *workflow.ConnectorDefinition, config *Config) (Connector, error) {
+	// Initialize transport registry if not provided
+	if config.TransportRegistry == nil {
+		config.TransportRegistry = NewDefaultTransportRegistry()
+	}
+
 	// For package-based connectors (from: connectors/github)
 	if def.From != "" {
 		return newPackageConnector(def, config)
@@ -227,20 +242,87 @@ func newHTTPConnector(def *workflow.ConnectorDefinition, config *Config) (Connec
 		}
 	}
 
+	// Create transport based on connector definition
+	transportType := def.Transport
+	if transportType == "" {
+		transportType = "http" // Default to HTTP transport
+	}
+
+	var transportInstance transport.Transport
+	var err error
+
+	switch transportType {
+	case "http":
+		httpConfig := toHTTPTransportConfig(def)
+		transportInstance, err = config.TransportRegistry.Create("http", httpConfig)
+		if err != nil {
+			return nil, &Error{
+				Type:        ErrorTypeValidation,
+				Message:     fmt.Sprintf("failed to create HTTP transport for connector %q: %v", def.Name, err),
+				SuggestText: "Check that base_url is valid and authentication is properly configured",
+			}
+		}
+
+	case "aws_sigv4":
+		awsConfig, configErr := toAWSTransportConfig(def)
+		if configErr != nil {
+			return nil, &Error{
+				Type:        ErrorTypeValidation,
+				Message:     fmt.Sprintf("invalid AWS configuration for connector %q: %v", def.Name, configErr),
+				SuggestText: "Ensure 'aws' section includes 'service' and 'region' fields",
+			}
+		}
+		transportInstance, err = config.TransportRegistry.Create("aws_sigv4", awsConfig)
+		if err != nil {
+			return nil, &Error{
+				Type:        ErrorTypeValidation,
+				Message:     fmt.Sprintf("failed to create AWS SigV4 transport for connector %q: %v", def.Name, err),
+				SuggestText: "Check AWS credentials and region configuration",
+			}
+		}
+
+	case "oauth2":
+		oauth2Config, configErr := toOAuth2TransportConfig(def)
+		if configErr != nil {
+			return nil, &Error{
+				Type:        ErrorTypeValidation,
+				Message:     fmt.Sprintf("invalid OAuth2 configuration for connector %q: %v", def.Name, configErr),
+				SuggestText: "Ensure 'oauth2' section includes client_id, client_secret, and token_url",
+			}
+		}
+		transportInstance, err = config.TransportRegistry.Create("oauth2", oauth2Config)
+		if err != nil {
+			return nil, &Error{
+				Type:        ErrorTypeValidation,
+				Message:     fmt.Sprintf("failed to create OAuth2 transport for connector %q: %v", def.Name, err),
+				SuggestText: "Check OAuth2 credentials and token URL configuration",
+			}
+		}
+
+	default:
+		return nil, &Error{
+			Type:        ErrorTypeValidation,
+			Message:     fmt.Sprintf("unsupported transport type %q for connector %q", transportType, def.Name),
+			SuggestText: "Supported transport types: http, aws_sigv4, oauth2",
+		}
+	}
+
 	return &httpConnector{
-		name:            def.Name,
-		def:             def,
-		config:          config,
+		name:             def.Name,
+		def:              def,
+		config:           config,
 		metricsCollector: metricsCollector,
+		transport:        transportInstance,
 	}, nil
 }
 
 // httpConnector implements Connector for inline HTTP definitions.
 type httpConnector struct {
-	name            string
-	def             *workflow.ConnectorDefinition
-	config          *Config
+	name             string
+	def              *workflow.ConnectorDefinition
+	config           *Config
 	metricsCollector *MetricsCollector
+	transport        transport.Transport
 }
 
 // Name returns the connector identifier.
