@@ -45,7 +45,7 @@ func NewStateManager(be backend.Backend) *StateManager {
 
 // CreateRun creates a new run and persists to backend (best-effort).
 // Returns the created Run (internal) for further processing.
-func (s *StateManager) CreateRun(ctx context.Context, def *workflow.Definition, inputs map[string]any, sourceURL, workspace, profile string, bindings *binding.ResolvedBinding) (*Run, error) {
+func (s *StateManager) CreateRun(ctx context.Context, def *workflow.Definition, inputs map[string]any, sourceURL, workspace, profile string, bindings *binding.ResolvedBinding, overrides *RunOverrides) (*Run, error) {
 	runID := uuid.New().String()[:8]
 	runCtx, cancel := context.WithCancel(ctx)
 
@@ -71,6 +71,17 @@ func (s *StateManager) CreateRun(ctx context.Context, def *workflow.Definition, 
 		definition: def,
 		bindings:   bindings,
 		stopped:    make(chan struct{}),
+	}
+
+	// Apply runtime overrides if provided (SPEC-156)
+	if overrides != nil {
+		run.Provider = overrides.Provider
+		run.Model = overrides.Model
+		run.Timeout = overrides.Timeout
+		run.Security = overrides.Security
+		run.AllowHosts = overrides.AllowHosts
+		run.AllowPaths = overrides.AllowPaths
+		run.MCPDev = overrides.MCPDev
 	}
 
 	s.mu.Lock()
@@ -197,6 +208,18 @@ func (s *StateManager) snapshotRun(run *Run) *RunSnapshot {
 		}
 	}
 
+	// Deep copy AllowHosts and AllowPaths slices to prevent aliasing (SPEC-156)
+	var allowHosts []string
+	if run.AllowHosts != nil {
+		allowHosts = make([]string, len(run.AllowHosts))
+		copy(allowHosts, run.AllowHosts)
+	}
+	var allowPaths []string
+	if run.AllowPaths != nil {
+		allowPaths = make([]string, len(run.AllowPaths))
+		copy(allowPaths, run.AllowPaths)
+	}
+
 	return &RunSnapshot{
 		ID:            run.ID,
 		WorkflowID:    run.WorkflowID,
@@ -214,6 +237,13 @@ func (s *StateManager) snapshotRun(run *Run) *RunSnapshot {
 		SourceURL:     run.SourceURL,
 		Workspace:     run.Workspace,
 		Profile:       run.Profile,
+		Provider:      run.Provider,
+		Model:         run.Model,
+		Timeout:       run.Timeout,
+		Security:      run.Security,
+		AllowHosts:    allowHosts,
+		AllowPaths:    allowPaths,
+		MCPDev:        run.MCPDev,
 	}
 }
 

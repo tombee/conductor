@@ -87,6 +87,14 @@ Verbosity levels:
 				noInteractive = true
 			}
 
+			// Validate flag combinations (SPEC-156)
+			if mcpDev && background {
+				return shared.NewInvalidWorkflowError("cannot use --mcp-dev in background mode", nil)
+			}
+			if dryRun && background {
+				return shared.NewInvalidWorkflowError("cannot use --dry-run in background mode", nil)
+			}
+
 			if background {
 				daemon = true // --background implies --daemon
 			}
@@ -94,7 +102,7 @@ Verbosity levels:
 				daemon = true // --mcp-dev requires daemon mode
 			}
 			if daemon {
-				return runWorkflowViaDaemon(args[0], inputs, inputFile, outputFile, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, provider, model, timeout, workspace, profile)
+				return runWorkflowViaDaemon(args[0], inputs, inputFile, outputFile, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun, provider, model, timeout, workspace, profile, securityMode, allowHosts, allowPaths)
 			}
 			return runWorkflowLocal(args[0], inputs, inputFile, dryRun, quiet, verbose, noInteractive, helpInputs)
 		},
