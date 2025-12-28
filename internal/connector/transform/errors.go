@@ -30,6 +30,10 @@ const (
 )
 
 // OperationError represents an error from a transform connector operation.
+// This type is specific to transform operations and includes transform-specific
+// fields (Position for parse errors, Context for expression errors). While similar
+// to file.OperationError, these are separate types to accommodate different error
+// contexts and fields specific to their respective operations.
 type OperationError struct {
 	Operation  string
 	Message    string

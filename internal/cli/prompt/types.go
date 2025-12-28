@@ -47,7 +47,10 @@ type PromptConfig struct {
 	Options     []string // For enum types
 }
 
-// ValidationError represents an input validation failure.
+// ValidationError represents an input validation failure during CLI prompting.
+// This is intentionally separate from pkg/errors.ValidationError, which is used
+// for workflow validation errors. This type is specific to interactive prompt
+// validation and includes prompt-specific fields (InputName, InputType).
 type ValidationError struct {
 	InputName string
 	InputType string

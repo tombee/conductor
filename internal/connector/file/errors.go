@@ -45,6 +45,9 @@ const (
 )
 
 // OperationError represents an error from a file connector operation.
+// This type is specific to file operations and includes file-specific fields
+// (ErrorType for file errors, SuggestText). It implements the UserVisibleError
+// interface differently than transform.OperationError due to different contexts.
 type OperationError struct {
 	Operation  string
 	Message    string

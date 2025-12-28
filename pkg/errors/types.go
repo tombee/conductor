@@ -19,8 +19,10 @@ import (
 	"time"
 )
 
-// ValidationError represents user input validation failures.
+// ValidationError represents user input validation failures in workflow execution.
 // Use this for invalid user input, malformed data, or constraint violations.
+// This is intentionally separate from internal/cli/prompt.ValidationError, which
+// handles interactive CLI prompt validation with different fields and use cases.
 type ValidationError struct {
 	// Field identifies which input field failed validation
 	Field string

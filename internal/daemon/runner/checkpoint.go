@@ -43,10 +43,13 @@ func (r *Runner) ResumeInterrupted(ctx context.Context) error {
 			continue
 		}
 
-		// TODO: Implement actual resume logic
-		// For now, just log that we found interrupted runs
-		// Real implementation would reload workflow definition and continue from checkpoint
-		_ = cp // Placeholder
+		// TODO: Implement checkpoint resume logic
+		// Resume should reload workflow definition and continue execution from the checkpoint.
+		// This requires:
+		// - Restoring step state and outputs
+		// - Reconnecting to running steps (via PID or container ID)
+		// - Handling partial step execution
+		_ = cp
 	}
 
 	return nil
