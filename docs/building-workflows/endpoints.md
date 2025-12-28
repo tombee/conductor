@@ -20,7 +20,7 @@ The endpoints feature provides:
 
 Add endpoints to your daemon configuration (`config.yaml`):
 
-```yaml
+```conductor
 daemon:
   endpoints:
     enabled: true
@@ -90,7 +90,7 @@ Each endpoint has the following configuration options:
 
 ### Example Configuration
 
-```yaml
+```conductor
 daemon:
   endpoints:
     enabled: true
@@ -118,7 +118,7 @@ daemon:
 
 Endpoints use API key scopes for fine-grained access control:
 
-```yaml
+```conductor
 daemon:
   api_keys:
     - id: bot-key
@@ -238,7 +238,7 @@ Endpoints validate request inputs against the workflow's input schema:
 
 **Workflow Definition:**
 
-```yaml
+```conductor
 name: review-pr
 inputs:
   - name: pr_url
@@ -307,7 +307,7 @@ Response:
 
 Protect endpoints from abuse with configurable rate limits:
 
-```yaml
+```conductor
 endpoints:
   - name: expensive-analysis
     workflow: analysis.yaml
@@ -358,7 +358,7 @@ X-RateLimit-Reset: 1642252800
 
 Enable CORS for browser-based applications (disabled by default):
 
-```yaml
+```conductor
 daemon:
   http:
     cors:
@@ -560,7 +560,7 @@ Response:
 
 ### CI/CD Integration
 
-```yaml
+```conductor
 # GitHub Actions workflow
 name: Review PR
 on: pull_request
@@ -604,7 +604,7 @@ app.command('/review-pr', async ({ command, ack, say }) => {
 
 ### Webhook Handler
 
-```yaml
+```conductor
 # Endpoint that processes webhooks
 endpoints:
   - name: github-webhook

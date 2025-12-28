@@ -81,7 +81,7 @@ This is the simplest example workflow—a single LLM step with carefully crafted
 
 ### Single-Step Composition
 
-```yaml
+```conductor
 - id: compose
   name: Compose Song
   type: llm
@@ -182,7 +182,7 @@ Dancing shadows beneath the moon
 
 Add length constraints to the prompt:
 
-```yaml
+```conductor
 prompt: |
   Write a {{.inputs.length}} {{.inputs.genre}} song...
   (short: 2 verses + chorus, medium: 3 verses + chorus + bridge, long: full song)
@@ -192,7 +192,7 @@ prompt: |
 
 Include musical direction:
 
-```yaml
+```conductor
 inputs:
   - name: tempo
     type: string
@@ -211,7 +211,7 @@ prompt: |
 
 Guide lyrical content:
 
-```yaml
+```conductor
 inputs:
   - name: mood
     type: string
@@ -225,7 +225,7 @@ prompt: |
 
 Request various output formats:
 
-```yaml
+```conductor
 # Chord chart format
 prompt: |
   ...
@@ -248,7 +248,7 @@ prompt: |
 
 Expand into a workflow with multiple steps:
 
-```yaml
+```conductor
 steps:
   - id: structure
     type: llm
@@ -342,7 +342,7 @@ City nights, they'll never let me go
 
 **Solution**: Be more explicit about diatonic chords:
 
-```yaml
+```conductor
 prompt: |
   Write a song in {{.inputs.key}}.
 
@@ -359,7 +359,7 @@ prompt: |
 
 **Solution**: Be specific about expected structure:
 
-```yaml
+```conductor
 prompt: |
   Write a {{.inputs.genre}} song using the AUTHENTIC structure:
 
@@ -376,14 +376,14 @@ prompt: |
 
 **Solution**: Specify length explicitly:
 
-```yaml
+```conductor
 prompt: |
   Write a SHORT {{.inputs.genre}} song (2-3 verses maximum)...
 ```
 
 Or request specific section counts:
 
-```yaml
+```conductor
 prompt: |
   Include:
   - 2 verses
@@ -397,7 +397,7 @@ prompt: |
 
 **Solution**: Request rhythmic consistency:
 
-```yaml
+```conductor
 prompt: |
   Ensure consistent syllable counts per line so lyrics fit the rhythm.
   Each line in a verse should have similar syllable counts.

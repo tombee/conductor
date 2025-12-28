@@ -64,7 +64,7 @@ See [Getting Started](getting-started/) for details.
 
 Use the template syntax `{{$.step_id.field}}`:
 
-```yaml
+```conductor
 steps:
   - id: analyze
     type: llm
@@ -83,7 +83,7 @@ The `$` prefix indicates a step reference. For workflow inputs, use `{{.input_na
 
 Yes! Use the `parallel` step type:
 
-```yaml
+```conductor
 - id: reviews
   type: parallel
   max_concurrency: 3
@@ -102,7 +102,7 @@ See [Flow Control: Parallel Execution](building-workflows/flow-control.md#parall
 
 Configure retry and fallback behavior on individual steps:
 
-```yaml
+```conductor
 steps:
   - id: api_call
     type: action
@@ -121,7 +121,7 @@ See [Error Handling](building-workflows/error-handling.md) for comprehensive str
 
 Yes, through workflow inputs with default values from environment variables, or by using the shell connector:
 
-```yaml
+```conductor
 # Method 1: Environment variable as input default
 inputs:
   - name: api_key
@@ -180,7 +180,7 @@ Several strategies:
 3. **Optimize prompts** - Be concise, remove unnecessary context
 4. **Cache reusable content** - Store frequently-used data
 
-```yaml
+```conductor
 steps:
   - id: quick_task
     type: llm
@@ -204,7 +204,7 @@ conductor daemon
 
 Configure schedules in `conductord.yaml`:
 
-```yaml
+```conductor
 schedules:
   - cron: "0 9 * * *"  # 9 AM daily
     workflow: workflows/daily-report.yaml
@@ -231,7 +231,7 @@ See [Deployment Guide](production/deployment.md) for best practices.
 
 Use environment variables or secure secret management:
 
-```yaml
+```conductor
 # conductord.yaml
 providers:
   anthropic:
@@ -240,7 +240,7 @@ providers:
 
 In Kubernetes, use Secrets:
 
-```yaml
+```conductor
 env:
   - name: ANTHROPIC_API_KEY
     valueFrom:
@@ -274,7 +274,7 @@ See [Monitoring](production/monitoring.md) for setup details.
 
 By default, workflow execution stops at the first failed step. You can configure per-step error handling:
 
-```yaml
+```conductor
 steps:
   - id: critical_step
     on_error: fail  # Stop workflow (default)
@@ -334,7 +334,7 @@ See [Testing Workflows](building-workflows/testing.md) for test strategies.
 
 Yes, use the workflow connector:
 
-```yaml
+```conductor
 steps:
   - id: run_subworkflow
     type: action

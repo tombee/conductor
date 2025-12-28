@@ -159,7 +159,7 @@ conductor daemon start
 
 Store secrets in Kubernetes:
 
-```yaml
+```conductor
 apiVersion: v1
 kind: Secret
 metadata:
@@ -173,7 +173,7 @@ stringData:
 
 Mount as environment variables:
 
-```yaml
+```conductor
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -198,7 +198,7 @@ spec:
 
 Or use external secrets operator:
 
-```yaml
+```conductor
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
@@ -262,7 +262,7 @@ kubectl rollout status deployment/conductor -n conductor
 
 Never hardcode secrets in workflow files:
 
-```yaml
+```conductor
 # ❌ INSECURE - API key in workflow
 steps:
   - id: call_api
@@ -276,7 +276,7 @@ steps:
 
 Use input variables instead:
 
-```yaml
+```conductor
 # ✅ SECURE - API key from input
 inputs:
   - name: api_key
@@ -303,11 +303,9 @@ conductor run workflow.yaml --input api_key="${API_KEY}"
 echo "${API_KEY}" | conductor run workflow.yaml --input-stdin api_key
 ```
 
-## Security Controls
+## Sandboxing
 
-Conductor provides security controls through allowlists, command validation, and security profiles.
-
-**Important:** Conductor does not provide process-level isolation. Users who need container isolation should run Conductor itself in a containerized environment. See [Docker Deployment Guide](./deployment/docker.md) for details.
+Conductor can execute arbitrary shell commands and file operations. Use sandboxing to limit risk.
 
 ### Security Profiles
 
@@ -317,7 +315,7 @@ Conductor supports multiple security profiles:
 
 Default profile with no restrictions:
 
-```yaml
+```conductor
 # config.yaml
 security:
   profile: unrestricted
@@ -329,15 +327,15 @@ security:
 - Full control required
 
 **Risks:**
+- No sandboxing
 - Full filesystem access
 - Unrestricted network access
-- No command restrictions
 
 #### Standard Profile
 
 Balanced security for production:
 
-```yaml
+```conductor
 # config.yaml
 security:
   profile: standard
@@ -369,13 +367,98 @@ security:
 - Multi-tenant environments
 - Standard workflows
 
-For additional isolation, run Conductor in a container. See [Docker Deployment Guide](./deployment/docker.md).
+#### Strict Profile
+
+Maximum security restrictions:
+
+```conductor
+# config.yaml
+security:
+  profile: strict
+  allowed_tools:
+    - llm  # LLM calls only
+  filesystem:
+    read_only: true
+    allowed_paths:
+      - /opt/conductor/workflows
+  network:
+    allowed_domains:
+      - api.anthropic.com
+      - api.openai.com
+```
+
+**Use cases:**
+- Highly sensitive environments
+- Compliance requirements
+- Untrusted workflows
+
+#### Air-Gapped Profile
+
+No network access except LLM providers:
+
+```conductor
+# config.yaml
+security:
+  profile: air-gapped
+  network:
+    deny_private_ips: true
+    deny_cloud_metadata: true
+    allowed_domains:
+      - api.anthropic.com
+```
+
+### Container Sandboxing
+
+Run shell commands in isolated containers:
+
+```conductor
+# config.yaml
+security:
+  sandbox:
+    enabled: true
+    runtime: docker  # or: podman
+    image: alpine:latest
+    resources:
+      memory: 512M
+      cpu: 1.0
+      timeout: 300s
+```
+
+Workflow steps execute in containers:
+
+```conductor
+steps:
+  - id: run_script
+    type: action
+    action: shell.exec
+    inputs:
+      command: |
+        # This runs inside the container
+        echo "Hello from sandbox"
+        ls -la
+```
+
+Configure per-workflow sandboxing:
+
+```conductor
+name: sandboxed-workflow
+security:
+  sandbox:
+    enabled: true
+    image: python:3.11-slim
+steps:
+  - id: run_python
+    type: action
+    action: shell.exec
+    inputs:
+      command: "python3 -c 'print(\"Hello\")'"
+```
 
 ### Filesystem Restrictions
 
 Limit file access:
 
-```yaml
+```conductor
 # config.yaml
 security:
   filesystem:
@@ -403,7 +486,7 @@ security:
 
 Control network access:
 
-```yaml
+```conductor
 # config.yaml
 security:
   network:
@@ -434,7 +517,7 @@ security:
 
 Limit shell commands:
 
-```yaml
+```conductor
 # config.yaml
 security:
   shell:
@@ -463,7 +546,7 @@ Secure webhook endpoints against unauthorized access.
 
 Verify webhook signatures:
 
-```yaml
+```conductor
 # config.yaml
 webhooks:
   - path: /webhooks/github
@@ -490,7 +573,7 @@ X-Hub-Signature-256: sha256=<hmac-signature>
 
 Restrict webhook sources:
 
-```yaml
+```conductor
 # config.yaml
 webhooks:
   - path: /webhooks/github
@@ -520,7 +603,7 @@ location /webhooks/github {
 
 Prevent abuse:
 
-```yaml
+```conductor
 # config.yaml
 webhooks:
   - path: /webhooks/github
@@ -573,7 +656,7 @@ server {
 
 Validate webhook payloads:
 
-```yaml
+```conductor
 # config.yaml
 webhooks:
   - path: /webhooks/github
@@ -596,7 +679,7 @@ webhooks:
 
 Log all webhook requests:
 
-```yaml
+```conductor
 # config.yaml
 webhooks:
   audit_log:
@@ -642,7 +725,7 @@ sudo ufw allow 443/tcp
 
 Verify TLS certificates:
 
-```yaml
+```conductor
 # config.yaml
 llm:
   providers:
@@ -667,7 +750,7 @@ conductor daemon start
 
 Track security-relevant events:
 
-```yaml
+```conductor
 # config.yaml
 audit:
   enabled: true
@@ -716,7 +799,7 @@ Audit log format:
 
 Prevent credential leakage:
 
-```yaml
+```conductor
 # config.yaml
 logging:
   redact_patterns:
@@ -737,7 +820,7 @@ logging:
 
 Sanitize sensitive outputs:
 
-```yaml
+```conductor
 steps:
   - id: get_secret
     type: action
@@ -772,12 +855,12 @@ Use this checklist before deploying to production:
 - [ ] Credential rotation schedule established
 - [ ] Secrets access audited and logged
 
-### Security Configuration
+### Sandboxing
 
-- [ ] Security profile configured (unrestricted or standard)
+- [ ] Security profile configured (standard or strict)
+- [ ] Container sandboxing enabled for untrusted workflows
 - [ ] Filesystem access restricted to necessary paths
 - [ ] Network access limited to required domains
-- [ ] For isolation needs, Conductor running in container (see [Docker Guide](./deployment/docker.md))
 
 ### Webhooks
 

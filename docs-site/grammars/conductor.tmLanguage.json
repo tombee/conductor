@@ -1,0 +1,239 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Conductor YAML",
+  "id": "conductor",
+  "scopeName": "source.conductor",
+  "aliases": [
+    "conductor",
+    "conductor-yaml",
+    "conductor-workflow"
+  ],
+  "fileTypes": [
+    "conductor.yaml",
+    "conductor.yml"
+  ],
+  "patterns": [
+    {
+      "include": "#conductor-keys"
+    },
+    {
+      "include": "#connector-shorthand"
+    },
+    {
+      "include": "#template-syntax"
+    },
+    {
+      "include": "source.yaml"
+    }
+  ],
+  "repository": {
+    "conductor-keys": {
+      "patterns": [
+        {
+          "include": "#top-level-keywords"
+        },
+        {
+          "include": "#step-keywords"
+        },
+        {
+          "include": "#nested-config-keywords"
+        },
+        {
+          "include": "#enum-values"
+        },
+        {
+          "include": "#env-var-refs"
+        }
+      ]
+    },
+    "top-level-keywords": {
+      "comment": "Top-level workflow keywords (FR1)",
+      "match": "^\\\\s*(agents|connectors|description|functions|inputs|listen|mcp_servers|name|outputs|steps|version)\\\\s*:",
+      "captures": {
+        "1": {
+          "name": "keyword.control.conductor"
+        }
+      }
+    },
+    "step-keywords": {
+      "comment": "Step configuration keywords (FR2)",
+      "match": "^\\\\s+(agent|condition|connector|foreach|functions|id|inputs|max_concurrency|model|name|on_error|operation|output_options|output_schema|output_type|prompt|retry|steps|system|timeout|type)\\\\s*:",
+      "captures": {
+        "1": {
+          "name": "keyword.other.conductor"
+        }
+      }
+    },
+    "nested-config-keywords": {
+      "comment": "Nested configuration keywords (FR6-FR10)",
+      "patterns": [
+        {
+          "comment": "Listen/trigger configuration (FR6)",
+          "match": "^\\\\s+(api|args|capabilities|command|cron|enabled|env|events|input_mapping|inputs|name|path|prefers|schedule|secret|source|timeout|timezone|webhook)\\\\s*:",
+          "captures": {
+            "1": {
+              "name": "keyword.other.conductor"
+            }
+          }
+        },
+        {
+          "comment": "Agent configuration (FR7)",
+          "match": "^\\s+(prefers|capabilities)\\s*:",
+          "captures": {
+            "1": {
+              "name": "keyword.other.conductor"
+            }
+          }
+        },
+        {
+          "comment": "MCP server configuration (FR8)",
+          "match": "^\\s+(command|args|env)\\s*:",
+          "captures": {
+            "1": {
+              "name": "keyword.other.conductor"
+            }
+          }
+        },
+        {
+          "comment": "Retry configuration (FR9)",
+          "match": "^\\s+(max_attempts|backoff_base|backoff_multiplier)\\s*:",
+          "captures": {
+            "1": {
+              "name": "keyword.other.conductor"
+            }
+          }
+        },
+        {
+          "comment": "Condition configuration (FR10)",
+          "match": "^\\s+(expression|then_steps|else_steps)\\s*:",
+          "captures": {
+            "1": {
+              "name": "keyword.other.conductor"
+            }
+          }
+        }
+      ]
+    },
+    "connector-shorthand": {
+      "comment": "Connector shorthand syntax (FR3): connector.operation:",
+      "match": "^\\s*([a-z][a-z0-9_]*)\\.([a-z][a-z0-9_]*)\\s*:",
+      "captures": {
+        "1": {
+          "name": "entity.name.namespace.conductor"
+        },
+        "2": {
+          "name": "entity.name.function.conductor"
+        }
+      }
+    },
+    "template-syntax": {
+      "comment": "Go template syntax within YAML strings (FR4)",
+      "begin": "\\{\\{",
+      "end": "\\}\\}",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.begin.conductor"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.end.conductor"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#template-control-flow"
+        },
+        {
+          "include": "#template-functions"
+        },
+        {
+          "include": "#template-variables"
+        },
+        {
+          "include": "#template-pipes"
+        }
+      ]
+    },
+    "template-control-flow": {
+      "comment": "Template control flow keywords",
+      "match": "\\b(if|else|end|range)\\b",
+      "name": "keyword.control.conductor"
+    },
+    "template-functions": {
+      "comment": "Template function names",
+      "match": "\\b(truncate|contains|default|trim|upper|lower|replace|split|join)\\b",
+      "name": "support.function.conductor"
+    },
+    "template-variables": {
+      "comment": "Template variable paths (.inputs.name, .steps.id.response, .item, .env.VAR)",
+      "match": "\\.(inputs|steps|item|env)([a-zA-Z0-9_.]*)",
+      "captures": {
+        "0": {
+          "name": "variable.other.conductor"
+        }
+      }
+    },
+    "template-pipes": {
+      "comment": "Pipe operators in templates",
+      "match": "\\|",
+      "name": "keyword.operator.pipe.conductor"
+    },
+    "enum-values": {
+      "comment": "Enumerated constant values (FR5)",
+      "patterns": [
+        {
+          "comment": "Step types",
+          "match": ":\\\\s*(condition|connector|llm|parallel)\\\\b",
+          "captures": {
+            "1": {
+              "name": "constant.language.conductor"
+            }
+          }
+        },
+        {
+          "comment": "Model tiers",
+          "match": ":\\\\s*(balanced|fast|strategic)\\\\b",
+          "captures": {
+            "1": {
+              "name": "constant.language.conductor"
+            }
+          }
+        },
+        {
+          "comment": "Error strategies",
+          "match": ":\\\\s*(fail|fallback|ignore|retry)\\\\b",
+          "captures": {
+            "1": {
+              "name": "constant.language.conductor"
+            }
+          }
+        },
+        {
+          "comment": "Input types",
+          "match": ":\\\\s*(array|boolean|number|object|string)\\\\b",
+          "captures": {
+            "1": {
+              "name": "constant.language.conductor"
+            }
+          }
+        }
+      ]
+    },
+    "env-var-refs": {
+      "comment": "Environment variable references (FR11)",
+      "patterns": [
+        {
+          "comment": "${VAR_NAME} pattern",
+          "match": "\\$\\{[A-Z_][A-Z0-9_]*\\}",
+          "name": "variable.other.environment.conductor"
+        },
+        {
+          "comment": "$secret:name pattern",
+          "match": "\\$secret:[a-zA-Z_][a-zA-Z0-9_]*",
+          "name": "variable.other.environment.conductor"
+        }
+      ]
+    }
+  }
+}

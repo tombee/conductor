@@ -84,7 +84,7 @@ jq -r '.summary' triage.json | gh issue comment $ISSUE_NUMBER --body-file -
 
 Automatically triage new issues:
 
-```yaml
+```conductor
 # .github/workflows/auto-triage.yml
 name: Auto Triage Issues
 on:
@@ -132,7 +132,7 @@ The workflow consists of four sequential analysis steps:
 
 ### 1. Classify Issue (Step 1)
 
-```yaml
+```conductor
 - id: classify_issue
   name: Issue Classification
   type: llm
@@ -164,7 +164,7 @@ The workflow consists of four sequential analysis steps:
 
 ### 2. Extract Labels (Step 2)
 
-```yaml
+```conductor
 - id: extract_labels
   name: Label Extraction
   type: llm
@@ -195,7 +195,7 @@ The workflow consists of four sequential analysis steps:
 
 ### 3. Suggest Team Assignment (Step 3)
 
-```yaml
+```conductor
 - id: suggest_assignment
   name: Team Assignment Suggestion
   type: llm
@@ -223,7 +223,7 @@ The workflow consists of four sequential analysis steps:
 
 ### 4. Generate Triage Summary (Step 4)
 
-```yaml
+```conductor
 - id: generate_summary
   name: Generate Triage Summary
   type: llm
@@ -258,7 +258,7 @@ The workflow consists of four sequential analysis steps:
 
 Customize labels to match your project:
 
-```yaml
+```conductor
 system: |
   **Available Labels:**
   - Type: bug, feature, enhancement
@@ -271,7 +271,7 @@ system: |
 
 Define priority levels specific to your needs:
 
-```yaml
+```conductor
 system: |
   **Priority Levels:**
   - p0: Production outage affecting all users (immediate response)
@@ -284,7 +284,7 @@ system: |
 
 Adjust team definitions for your organization:
 
-```yaml
+```conductor
 system: |
   **Teams:**
   - mobile: iOS and Android development
@@ -298,7 +298,7 @@ system: |
 
 Create a separate step to flag urgent issues:
 
-```yaml
+```conductor
 - id: check_urgency
   type: llm
   model: fast
@@ -319,7 +319,7 @@ outputs:
 
 Add steps to create tickets in other systems:
 
-```yaml
+```conductor
 - id: create_jira_ticket
   condition:
     expression: 'steps.classify_issue.priority in ["critical", "high"]'
@@ -341,7 +341,7 @@ Add steps to create tickets in other systems:
 
 **Solution**: Refine system prompts with more specific examples:
 
-```yaml
+```conductor
 system: |
   **Issue Types with Examples:**
   - bug: "App crashes", "Error message appears", "Feature doesn't work"
@@ -355,7 +355,7 @@ system: |
 
 **Solution**: Adjust the prompt to be more selective:
 
-```yaml
+```conductor
 prompt: |
   Extract 2-3 most relevant labels (maximum 5 only if truly necessary).
   Be selective - only include labels that clearly apply.
@@ -367,7 +367,7 @@ prompt: |
 
 **Solution**: Add domain keywords to team descriptions:
 
-```yaml
+```conductor
 **Teams:**
 - frontend: UI, React, TypeScript, CSS, user interface, browser
 - backend: API, database, Python, server, authentication, data processing
@@ -379,7 +379,7 @@ prompt: |
 
 **Solution**: Increase timeout values:
 
-```yaml
+```conductor
 - id: classify_issue
   timeout: 30  # Increased from default 20
   retry:
@@ -393,7 +393,7 @@ prompt: |
 
 **Solution**: Add rate limiting to GitHub Actions workflow:
 
-```yaml
+```conductor
 - name: Rate Limit
   run: sleep $((RANDOM % 10))  # Random delay 0-10 seconds
 ```

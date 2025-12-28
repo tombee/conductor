@@ -4,7 +4,7 @@ The Discord connector provides integration with Discord for bot messages and web
 
 ## Quick Start
 
-```yaml
+```conductor
 connectors:
   discord:
     from: connectors/discord
@@ -38,7 +38,7 @@ Configure bot permissions at [discord.com/developers/applications](https://disco
 
 Send a message to a channel.
 
-```yaml
+```conductor
 - id: notify
   type: connector
   connector: discord.send_message
@@ -62,7 +62,7 @@ Send a message to a channel.
 
 Edit an existing message sent by the bot.
 
-```yaml
+```conductor
 - id: update_status
   type: connector
   connector: discord.edit_message
@@ -86,7 +86,7 @@ Edit an existing message sent by the bot.
 
 Delete a message.
 
-```yaml
+```conductor
 - id: remove_temp_message
   type: connector
   connector: discord.delete_message
@@ -107,7 +107,7 @@ Delete a message.
 
 Add an emoji reaction to a message.
 
-```yaml
+```conductor
 - id: acknowledge
   type: connector
   connector: discord.add_reaction
@@ -130,7 +130,7 @@ Add an emoji reaction to a message.
 
 Send a rich embedded message.
 
-```yaml
+```conductor
 - id: send_alert
   type: connector
   connector: discord.send_embed
@@ -172,7 +172,7 @@ Send a rich embedded message.
 
 Create a thread in a channel.
 
-```yaml
+```conductor
 - id: discussion_thread
   type: connector
   connector: discord.create_thread
@@ -200,7 +200,7 @@ Create a thread in a channel.
 
 List all channels in a guild (server).
 
-```yaml
+```conductor
 - id: get_channels
   type: connector
   connector: discord.list_channels
@@ -219,7 +219,7 @@ List all channels in a guild (server).
 
 Get details about a specific channel.
 
-```yaml
+```conductor
 - id: channel_info
   type: connector
   connector: discord.get_channel
@@ -240,7 +240,7 @@ Get details about a specific channel.
 
 List members in a guild.
 
-```yaml
+```conductor
 - id: get_guild_members
   type: connector
   connector: discord.list_members
@@ -262,7 +262,7 @@ List members in a guild.
 
 Get information about a specific guild member.
 
-```yaml
+```conductor
 - id: member_info
   type: connector
   connector: discord.get_member
@@ -285,7 +285,7 @@ Get information about a specific guild member.
 
 Create a webhook for a channel.
 
-```yaml
+```conductor
 - id: setup_webhook
   type: connector
   connector: discord.create_webhook
@@ -307,7 +307,7 @@ Create a webhook for a channel.
 
 Send a message via webhook.
 
-```yaml
+```conductor
 - id: webhook_notify
   type: connector
   connector: discord.send_webhook
@@ -335,7 +335,7 @@ Send a message via webhook.
 
 ### Deployment Notification
 
-```yaml
+```conductor
 steps:
   - id: send_notification
     type: connector
@@ -368,7 +368,7 @@ steps:
 
 ### Alert with Thread Discussion
 
-```yaml
+```conductor
 steps:
   - id: post_alert
     type: connector

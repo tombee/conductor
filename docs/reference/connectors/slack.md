@@ -4,7 +4,7 @@ The Slack connector provides integration with the Slack API for posting messages
 
 ## Quick Start
 
-```yaml
+```conductor
 connectors:
   slack:
     from: connectors/slack
@@ -33,7 +33,7 @@ export SLACK_BOT_TOKEN=xoxb-your-token-here
 
 Post a message to a channel.
 
-```yaml
+```conductor
 - id: notify_team
   type: connector
   connector: slack.post_message
@@ -59,7 +59,7 @@ Post a message to a channel.
 
 Update an existing message.
 
-```yaml
+```conductor
 - id: update_status
   type: connector
   connector: slack.update_message
@@ -84,7 +84,7 @@ Update an existing message.
 
 Delete a message.
 
-```yaml
+```conductor
 - id: remove_message
   type: connector
   connector: slack.delete_message
@@ -105,7 +105,7 @@ Delete a message.
 
 Add an emoji reaction to a message.
 
-```yaml
+```conductor
 - id: acknowledge
   type: connector
   connector: slack.add_reaction
@@ -130,7 +130,7 @@ Add an emoji reaction to a message.
 
 Upload a file to channels.
 
-```yaml
+```conductor
 - id: share_report
   type: connector
   connector: slack.upload_file
@@ -160,7 +160,7 @@ Upload a file to channels.
 
 List all channels in the workspace.
 
-```yaml
+```conductor
 - id: get_all_channels
   type: connector
   connector: slack.list_channels
@@ -182,7 +182,7 @@ List all channels in the workspace.
 
 Create a new channel.
 
-```yaml
+```conductor
 - id: new_project_channel
   type: connector
   connector: slack.create_channel
@@ -203,7 +203,7 @@ Create a new channel.
 
 Invite users to a channel.
 
-```yaml
+```conductor
 - id: add_team_members
   type: connector
   connector: slack.invite_to_channel
@@ -226,7 +226,7 @@ Invite users to a channel.
 
 List all users in the workspace.
 
-```yaml
+```conductor
 - id: get_team
   type: connector
   connector: slack.list_users
@@ -245,7 +245,7 @@ List all users in the workspace.
 
 Get information about a specific user.
 
-```yaml
+```conductor
 - id: get_user_info
   type: connector
   connector: slack.get_user
@@ -262,7 +262,7 @@ Get information about a specific user.
 
 ## Example: Alert Bot
 
-```yaml
+```conductor
 steps:
   - id: analyze_issue
     type: llm

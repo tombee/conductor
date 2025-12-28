@@ -4,7 +4,7 @@ The Jenkins connector provides integration with Jenkins CI/CD.
 
 ## Quick Start
 
-```yaml
+```conductor
 connectors:
   jenkins:
     from: connectors/jenkins
@@ -32,7 +32,7 @@ export JENKINS_API_TOKEN=your-token
 
 Trigger a new build for a job.
 
-```yaml
+```conductor
 - id: start_build
   type: connector
   connector: jenkins.trigger_build
@@ -56,7 +56,7 @@ Note: Returns immediately with queue item. Use `get_queue_item` to track build s
 
 Get details about a specific build.
 
-```yaml
+```conductor
 - id: fetch_build
   type: connector
   connector: jenkins.get_build
@@ -82,7 +82,7 @@ Build result values:
 
 Get the console output for a build.
 
-```yaml
+```conductor
 - id: fetch_logs
   type: connector
   connector: jenkins.get_build_log
@@ -105,7 +105,7 @@ Use `start` parameter to fetch logs incrementally for running builds.
 
 Cancel a running build.
 
-```yaml
+```conductor
 - id: stop_build
   type: connector
   connector: jenkins.cancel_build
@@ -124,7 +124,7 @@ Cancel a running build.
 
 Get test results for a build.
 
-```yaml
+```conductor
 - id: fetch_tests
   type: connector
   connector: jenkins.get_test_report
@@ -147,7 +147,7 @@ Note: Only available if job publishes test results (e.g., JUnit plugin).
 
 Get information about a job.
 
-```yaml
+```conductor
 - id: job_info
   type: connector
   connector: jenkins.get_job
@@ -164,7 +164,7 @@ Get information about a job.
 
 List all jobs on the Jenkins instance.
 
-```yaml
+```conductor
 - id: get_all_jobs
   type: connector
   connector: jenkins.list_jobs
@@ -192,7 +192,7 @@ Job color indicates status:
 
 Get information about a queued build item.
 
-```yaml
+```conductor
 - id: check_queue
   type: connector
   connector: jenkins.get_queue_item
@@ -213,7 +213,7 @@ The `executable` field appears once the build starts and contains the build numb
 
 List all Jenkins nodes (agents).
 
-```yaml
+```conductor
 - id: get_agents
   type: connector
   connector: jenkins.list_nodes
@@ -227,7 +227,7 @@ List all Jenkins nodes (agents).
 
 Get details about a specific node.
 
-```yaml
+```conductor
 - id: node_info
   type: connector
   connector: jenkins.get_node
@@ -244,7 +244,7 @@ Get details about a specific node.
 
 ### Trigger Build and Wait for Completion
 
-```yaml
+```conductor
 steps:
   - id: start_build
     type: connector
@@ -285,7 +285,7 @@ steps:
 
 ### Monitor Build Health
 
-```yaml
+```conductor
 steps:
   - id: get_all_jobs
     type: connector
@@ -320,7 +320,7 @@ steps:
 
 ### Automated Build Retry
 
-```yaml
+```conductor
 steps:
   - id: get_build
     type: connector

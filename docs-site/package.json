@@ -4,9 +4,10 @@
   "version": "0.0.1",
   "scripts": {
     "convert": "node scripts/convert-docs.mjs",
+    "build:grammar": "node scripts/generate-grammar.mjs",
     "dev": "npm run convert && astro dev",
     "start": "npm run convert && astro dev",
-    "build": "npm run convert && astro build",
+    "build": "npm run build:grammar && npm run convert && astro build",
     "preview": "astro preview",
     "astro": "astro"
   },

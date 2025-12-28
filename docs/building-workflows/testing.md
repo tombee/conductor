@@ -31,7 +31,7 @@ conductor run workflow.yaml --output json | jq '.steps.analyze'
 
 Create test workflows for complex logic:
 
-```yaml
+```conductor
 # tests/test-code-review.yaml
 name: test-code-review
 steps:
@@ -55,7 +55,7 @@ steps:
 
 Run tests in your pipeline:
 
-```yaml
+```conductor
 # .github/workflows/test.yml
 name: Test Workflows
 on: [push, pull_request]

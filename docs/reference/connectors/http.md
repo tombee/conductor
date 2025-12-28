@@ -30,7 +30,7 @@ Make an HTTP GET request.
 
 **Example:**
 
-```yaml
+```conductor
 # Simple GET request
 - http.get: "https://api.github.com/repos/owner/repo"
 
@@ -44,7 +44,7 @@ Make an HTTP GET request.
 
 **Response:**
 
-```yaml
+```conductor
 response:
   success: true
   status_code: 200
@@ -70,7 +70,7 @@ Make an HTTP POST request with a body.
 
 **Example:**
 
-```yaml
+```conductor
 # POST JSON data
 - http.post:
     url: "https://api.example.com/items"
@@ -90,7 +90,7 @@ Make an HTTP POST request with a body.
 
 **Response:**
 
-```yaml
+```conductor
 response:
   success: true
   status_code: 201
@@ -116,7 +116,7 @@ Make an HTTP PUT request.
 
 **Example:**
 
-```yaml
+```conductor
 - http.put:
     url: "https://api.example.com/items/123"
     headers:
@@ -139,7 +139,7 @@ Make an HTTP DELETE request.
 
 **Example:**
 
-```yaml
+```conductor
 - http.delete:
     url: "https://api.example.com/items/123"
     headers:
@@ -162,7 +162,7 @@ Make an HTTP PATCH request.
 
 **Example:**
 
-```yaml
+```conductor
 - http.patch:
     url: "https://api.example.com/items/123"
     headers:
@@ -187,7 +187,7 @@ Make an HTTP request with any method.
 
 **Example:**
 
-```yaml
+```conductor
 - http.request:
     method: HEAD
     url: "https://api.example.com/status"
@@ -205,7 +205,7 @@ Make an HTTP request with any method.
 
 All HTTP operations return:
 
-```yaml
+```conductor
 response:
   success: true              # true if 2xx status code
   status_code: 200           # HTTP status code
@@ -228,7 +228,7 @@ response:
 
 ### Accessing Response Data
 
-```yaml
+```conductor
 steps:
   - id: fetch_data
     http.get: "https://api.example.com/data"
@@ -267,7 +267,7 @@ steps:
 
 ### GitHub API Integration
 
-```yaml
+```conductor
 name: github-issue-analyzer
 description: "Fetch and analyze GitHub issues"
 
@@ -324,7 +324,7 @@ outputs:
 
 ### REST API CRUD Operations
 
-```yaml
+```conductor
 name: api-crud-workflow
 description: "Create, read, update, delete operations on REST API"
 
@@ -389,7 +389,7 @@ outputs:
 
 ### Polling with Retry
 
-```yaml
+```conductor
 name: poll-api-until-ready
 description: "Poll API endpoint until resource is ready"
 
@@ -434,7 +434,7 @@ steps:
 
 ### Webhook Response
 
-```yaml
+```conductor
 name: process-webhook
 description: "Process incoming webhook and send response"
 
@@ -473,7 +473,7 @@ By default, the HTTP connector **blocks requests to private IP ranges** to preve
 - Link-local: `169.254.0.0/16`, `fe80::/10`
 - Multicast: `224.0.0.0/4`, `ff00::/8`
 
-```yaml
+```conductor
 # BLOCKED by default
 - http.get: "http://127.0.0.1:8080/admin"
 - http.get: "http://192.168.1.1/secrets"
@@ -486,7 +486,7 @@ By default, the HTTP connector **blocks requests to private IP ranges** to preve
 
 **Disable SSRF Protection (Not Recommended):**
 
-```yaml
+```conductor
 # config.yaml (runtime configuration)
 builtin_tools:
   http:
@@ -509,7 +509,7 @@ This prevents an attacker from:
 
 **DNS Cache Configuration:**
 
-```yaml
+```conductor
 # config.yaml
 builtin_tools:
   http:
@@ -520,7 +520,7 @@ builtin_tools:
 
 Restrict which hosts can be accessed:
 
-```yaml
+```conductor
 # config.yaml
 builtin_tools:
   http:
@@ -533,7 +533,7 @@ builtin_tools:
 
 **With Subdomain Matching:**
 
-```yaml
+```conductor
 builtin_tools:
   http:
     allowed_hosts:
@@ -545,14 +545,14 @@ builtin_tools:
 
 Require HTTPS for all requests:
 
-```yaml
+```conductor
 # config.yaml
 builtin_tools:
   http:
     require_https: true  # Block http:// URLs
 ```
 
-```yaml
+```conductor
 # BLOCKED when require_https: true
 - http.get: "http://example.com/data"
 
@@ -570,7 +570,7 @@ The HTTP connector limits and validates redirects:
 
 **Enable Strict Redirect Validation:**
 
-```yaml
+```conductor
 # config.yaml
 builtin_tools:
   http:
@@ -589,7 +589,7 @@ This prevents:
 
 ### Bearer Token
 
-```yaml
+```conductor
 - http.get:
     url: "https://api.example.com/data"
     headers:
@@ -598,7 +598,7 @@ This prevents:
 
 ### API Key
 
-```yaml
+```conductor
 - http.get:
     url: "https://api.example.com/data"
     headers:
@@ -607,7 +607,7 @@ This prevents:
 
 ### Basic Auth
 
-```yaml
+```conductor
 # Encode username:password in base64
 - http.get:
     url: "https://api.example.com/data"
@@ -617,7 +617,7 @@ This prevents:
 
 ### OAuth 2.0
 
-```yaml
+```conductor
 # Step 1: Get access token
 - id: get_token
   http.post:
@@ -649,7 +649,7 @@ This prevents:
 
 ### Network Errors
 
-```yaml
+```conductor
 - id: try_request
   http.get: "https://api.example.com/data"
   on_error:
@@ -672,7 +672,7 @@ This prevents:
 
 ### HTTP Error Status Codes
 
-```yaml
+```conductor
 - id: fetch_data
   http.get: "https://api.example.com/items/123"
 
@@ -695,7 +695,7 @@ This prevents:
 
 Default timeout: **30 seconds**
 
-```yaml
+```conductor
 # Increase timeout for slow APIs
 - http.get:
     url: "https://slow-api.example.com/large-dataset"
@@ -704,7 +704,7 @@ Default timeout: **30 seconds**
 
 **Timeout Response:**
 
-```yaml
+```conductor
 response:
   success: false
   status_code: 0
@@ -718,7 +718,7 @@ response:
 
 HTTP connector behavior can be customized via runtime configuration:
 
-```yaml
+```conductor
 # config.yaml (daemon/runtime config)
 builtin_tools:
   http:
@@ -751,7 +751,7 @@ builtin_tools:
 
 ### 1. Always Use HTTPS for Sensitive Data
 
-```yaml
+```conductor
 # GOOD - Encrypted
 - http.get:
     url: "https://api.example.com/secrets"
@@ -767,7 +767,7 @@ builtin_tools:
 
 ### 2. Store Credentials in Environment Variables
 
-```yaml
+```conductor
 # GOOD - Credential from environment
 - http.get:
     url: "https://api.example.com/data"
@@ -783,7 +783,7 @@ builtin_tools:
 
 ### 3. Handle Errors Gracefully
 
-```yaml
+```conductor
 # Check success before using response
 - id: fetch
   http.get: "https://api.example.com/data"
@@ -798,7 +798,7 @@ builtin_tools:
 
 ### 4. Set Appropriate Timeouts
 
-```yaml
+```conductor
 # Quick health checks
 - http.get: "https://api.example.com/health"
   timeout: 5
@@ -810,7 +810,7 @@ builtin_tools:
 
 ### 5. Use Retry for Transient Failures
 
-```yaml
+```conductor
 - http.get: "https://api.example.com/data"
   retry:
     max_attempts: 3
@@ -820,7 +820,7 @@ builtin_tools:
 
 ### 6. Validate Response Content
 
-```yaml
+```conductor
 - id: fetch_config
   http.get: "https://api.example.com/config"
 

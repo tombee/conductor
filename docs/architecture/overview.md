@@ -188,7 +188,7 @@ Registry and execution framework for workflow tools.
 
 Cron-based workflow scheduling.
 
-```yaml
+```conductor
 triggers:
   - type: schedule
     cron: "0 9 * * 1-5"  # 9am weekdays

@@ -4,7 +4,7 @@ The Jira connector provides integration with Jira Cloud and Jira Server for issu
 
 ## Quick Start
 
-```yaml
+```conductor
 connectors:
   jira:
     from: connectors/jira
@@ -32,7 +32,7 @@ export JIRA_API_TOKEN=your-api-token
 
 Create a new issue in a project.
 
-```yaml
+```conductor
 - id: create_bug
   type: connector
   connector: jira.create_issue
@@ -68,7 +68,7 @@ Create a new issue in a project.
 
 Update an existing issue.
 
-```yaml
+```conductor
 - id: update_priority
   type: connector
   connector: jira.update_issue
@@ -95,7 +95,7 @@ Update an existing issue.
 
 Transition an issue to a different status.
 
-```yaml
+```conductor
 - id: close_issue
   type: connector
   connector: jira.transition_issue
@@ -121,7 +121,7 @@ Note: Use `get_transitions` to see available transitions for an issue.
 
 Get details of a specific issue.
 
-```yaml
+```conductor
 - id: fetch_issue
   type: connector
   connector: jira.get_issue
@@ -141,7 +141,7 @@ Get details of a specific issue.
 
 Search for issues using JQL (Jira Query Language).
 
-```yaml
+```conductor
 - id: find_open_bugs
   type: connector
   connector: jira.search_issues
@@ -168,7 +168,7 @@ Common JQL examples:
 
 Assign an issue to a user.
 
-```yaml
+```conductor
 - id: assign_to_dev
   type: connector
   connector: jira.assign_issue
@@ -187,7 +187,7 @@ Assign an issue to a user.
 
 Add a comment to an issue.
 
-```yaml
+```conductor
 - id: post_update
   type: connector
   connector: jira.add_comment
@@ -210,7 +210,7 @@ Add a comment to an issue.
 
 Attach a file to an issue.
 
-```yaml
+```conductor
 - id: attach_logs
   type: connector
   connector: jira.add_attachment
@@ -233,7 +233,7 @@ Attach a file to an issue.
 
 List all projects accessible to the user.
 
-```yaml
+```conductor
 - id: get_projects
   type: connector
   connector: jira.list_projects
@@ -253,7 +253,7 @@ List all projects accessible to the user.
 
 Get available transitions for an issue.
 
-```yaml
+```conductor
 - id: check_transitions
   type: connector
   connector: jira.get_transitions
@@ -272,7 +272,7 @@ Use this to discover valid transition names/IDs before calling `transition_issue
 
 Create a link between two issues.
 
-```yaml
+```conductor
 - id: link_blocker
   type: connector
   connector: jira.link_issues
@@ -301,7 +301,7 @@ Common link types:
 
 ### Automated Bug Triage
 
-```yaml
+```conductor
 steps:
   - id: search_untriaged
     type: connector
@@ -333,7 +333,7 @@ steps:
 
 ### Issue Creation from Monitoring
 
-```yaml
+```conductor
 steps:
   - id: analyze_alert
     type: llm

@@ -32,7 +32,7 @@ Profiles enable:
 ### Workflow Definition
 The reusable execution logic: steps, prompts, flow control, and abstract references to external services.
 
-```yaml
+```conductor
 # workflow.yaml - Portable, shareable
 name: deploy-service
 version: "1.0"
@@ -55,7 +55,7 @@ steps:
 ### Execution Profile
 The runtime bindings: credentials, MCP server configurations, secrets, provider settings.
 
-```yaml
+```conductor
 # conductord.yaml - Contains credentials
 workspaces:
   default:
@@ -78,7 +78,7 @@ workspaces:
 
 Profiles are defined in `conductord.yaml`:
 
-```yaml
+```conductor
 workspaces:
   # Default workspace for single-user setups
   default:
@@ -121,7 +121,7 @@ workspaces:
 
 Profiles support multiple secret providers:
 
-```yaml
+```conductor
 # Environment variable (default)
 token: ${GITHUB_TOKEN}
 
@@ -140,7 +140,7 @@ token: file:/etc/conductor/secrets/github-token
 
 File references require explicit configuration in the daemon config:
 
-```yaml
+```conductor
 secret_providers:
   file:
     enabled: true  # Disabled by default
@@ -250,7 +250,7 @@ grep -r "ghp_\|sk-ant-\|xoxb-" workflows/
 
 Add a named profile to `conductord.yaml`:
 
-```yaml
+```conductor
 workspaces:
   default:
     profiles:
@@ -280,7 +280,7 @@ Verify credentials resolve correctly.
 
 Update workflow to use abstract references:
 
-```yaml
+```conductor
 # Before
 connectors:
   github:
@@ -361,7 +361,7 @@ conductor run workflow.yaml --daemon --profile prod
 
 ### Multi-Environment Deployment
 
-```yaml
+```conductor
 # conductord.yaml
 workspaces:
   default:
@@ -413,7 +413,7 @@ conductor run deploy.yaml -d -p prod -i version=1.2.3
 
 ### Team Isolation
 
-```yaml
+```conductor
 # conductord.yaml
 workspaces:
   frontend:
@@ -447,7 +447,7 @@ conductor run backend-workflow.yaml -d -w backend
 
 ### Optional Services
 
-```yaml
+```conductor
 # workflow.yaml
 requires:
   connectors:
@@ -456,7 +456,7 @@ requires:
       optional: true  # Won't fail if not bound
 ```
 
-```yaml
+```conductor
 # conductord.yaml
 workspaces:
   default:
@@ -490,7 +490,7 @@ Error: profile not found: frontend/prod
 
 **Solution:** Check `conductord.yaml` has the workspace and profile defined:
 
-```yaml
+```conductor
 workspaces:
   frontend:
     profiles:
@@ -505,7 +505,7 @@ Error: binding resolution failed for profile default/prod: required binding not 
 
 **Solution:** Add the required binding to the profile:
 
-```yaml
+```conductor
 profiles:
   prod:
     bindings:
@@ -535,7 +535,7 @@ Warning: Profile 'default/prod' contains plaintext credential patterns
 
 **Solution:** Use secret references instead of literal values:
 
-```yaml
+```conductor
 # Bad
 token: ghp_abc123def456
 
@@ -548,7 +548,7 @@ token: file:/etc/conductor/secrets/github-token
 
 ### Profile Schema
 
-```yaml
+```conductor
 workspace_name:
   profiles:
     profile_name:
@@ -567,7 +567,7 @@ workspace_name:
 
 ### Secret Provider Configuration
 
-```yaml
+```conductor
 secret_providers:
   file:
     enabled: bool (default: false)

@@ -41,7 +41,7 @@ Extract and parse JSON from text, handling markdown code blocks.
 
 **Examples:**
 
-```yaml
+```conductor
 # Parse JSON from LLM response
 - id: parse_response
   type: connector
@@ -82,7 +82,7 @@ Parse XML to JSON-like structure with XXE prevention.
 
 **Examples:**
 
-```yaml
+```conductor
 # Parse XML API response
 - id: parse_xml
   transform.parse_xml:
@@ -117,7 +117,7 @@ Extract nested fields using jq expressions.
 
 **Examples:**
 
-```yaml
+```conductor
 # Extract nested field
 - id: get_title
   transform.extract:
@@ -160,7 +160,7 @@ Pass-through array for `foreach` iteration in parallel steps.
 
 **Usage with foreach:**
 
-```yaml
+```conductor
 # Split array for parallel processing
 - id: split_issues
   transform.split: '{{.steps.analyze.issues}}'
@@ -200,7 +200,7 @@ Filter array elements using jq predicate expression.
 
 **Examples:**
 
-```yaml
+```conductor
 # Filter by boolean field
 - id: active_users
   transform.filter:
@@ -230,7 +230,7 @@ Transform array elements using jq expression.
 
 **Examples:**
 
-```yaml
+```conductor
 # Extract field values
 - id: names
   transform.map:
@@ -259,7 +259,7 @@ Flatten nested arrays.
 
 **Examples:**
 
-```yaml
+```conductor
 # Flatten one level
 - id: flattened
   transform.flatten: '{{.steps.nested_arrays}}'
@@ -278,7 +278,7 @@ Sort array by value or expression.
 
 **Examples:**
 
-```yaml
+```conductor
 # Sort numbers/strings directly
 - id: sorted
   transform.sort: '{{.steps.items}}'
@@ -311,7 +311,7 @@ Group array by key expression.
 
 **Examples:**
 
-```yaml
+```conductor
 # Group by category
 - id: by_category
   transform.group:
@@ -344,7 +344,7 @@ Merge multiple objects.
 
 **Examples:**
 
-```yaml
+```conductor
 # Merge two objects (shallow)
 - id: merged
   transform.merge:
@@ -380,7 +380,7 @@ Concatenate multiple arrays.
 
 **Examples:**
 
-```yaml
+```conductor
 # Concatenate two arrays
 - id: combined
   transform.concat:

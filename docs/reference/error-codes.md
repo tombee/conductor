@@ -580,7 +580,7 @@ action=read, profile=restricted, reason=path not in allowed list
 
 **Example security profile:**
 
-```yaml
+```conductor
 security:
   profiles:
     custom:

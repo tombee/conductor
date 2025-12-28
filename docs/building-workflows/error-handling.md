@@ -6,7 +6,7 @@ Build resilient workflows that handle failures gracefully.
 
 Control what happens when a step fails:
 
-```yaml
+```conductor
 steps:
   - id: risky_operation
     type: llm
@@ -27,7 +27,7 @@ steps:
 
 Retry transient failures automatically:
 
-```yaml
+```conductor
 steps:
   - id: api_call
     http.get:
@@ -49,7 +49,7 @@ steps:
 
 Provide an alternative when a step fails:
 
-```yaml
+```conductor
 steps:
   - id: primary_llm
     type: llm
@@ -69,7 +69,7 @@ steps:
 
 Continue execution even if a step fails:
 
-```yaml
+```conductor
 steps:
   - id: optional_notification
     slack.post_message:
@@ -87,7 +87,7 @@ steps:
 
 Different strategies based on error type:
 
-```yaml
+```conductor
 steps:
   - id: llm_call
     type: llm
@@ -110,7 +110,7 @@ steps:
 
 Access error information in subsequent steps:
 
-```yaml
+```conductor
 steps:
   - id: risky_step
     type: llm
@@ -140,7 +140,7 @@ steps:
 
 Prevent steps from hanging:
 
-```yaml
+```conductor
 steps:
   - id: long_running
     type: llm
@@ -161,7 +161,7 @@ steps:
 
 Catch validation errors before execution:
 
-```yaml
+```conductor
 inputs:
   - name: email
     type: string
@@ -200,7 +200,7 @@ Conductor validates inputs before running the workflow, providing immediate feed
 ## Best Practices
 
 **1. Retry transient failures:**
-```yaml
+```conductor
 # Good: Retry API calls that might fail temporarily
 on_error:
   strategy: retry
@@ -208,7 +208,7 @@ on_error:
 ```
 
 **2. Use fallbacks for critical paths:**
-```yaml
+```conductor
 # Good: Provide backup for critical steps
 on_error:
   strategy: fallback
@@ -216,7 +216,7 @@ on_error:
 ```
 
 **3. Fail fast for validation:**
-```yaml
+```conductor
 # Good: Validate inputs immediately
 inputs:
   - name: file_path
@@ -226,7 +226,7 @@ inputs:
 ```
 
 **4. Ignore optional steps:**
-```yaml
+```conductor
 # Good: Don't fail workflow for optional notifications
 - id: notify_slack
   on_error:
@@ -234,7 +234,7 @@ inputs:
 ```
 
 **5. Set reasonable timeouts:**
-```yaml
+```conductor
 # Good: Prevent infinite hangs
 timeout: 5m
 on_error:
@@ -246,7 +246,7 @@ on_error:
 **Workflow keeps retrying endlessly:**
 
 Check `max_attempts` is set:
-```yaml
+```conductor
 on_error:
   strategy: retry
   max_attempts: 3  # Add this
@@ -255,7 +255,7 @@ on_error:
 **Errors are silently ignored:**
 
 Verify `on_error` is intentional:
-```yaml
+```conductor
 on_error:
   strategy: ignore  # Remove if you want failures to stop workflow
 ```
@@ -263,7 +263,7 @@ on_error:
 **Fallback step never runs:**
 
 Ensure fallback step ID matches:
-```yaml
+```conductor
 on_error:
   strategy: fallback
   fallback_step: backup_step  # Must match a step ID

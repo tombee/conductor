@@ -23,7 +23,7 @@ Define agent workflows in YAML. Get observability, security, cost controls, and 
 
 Write a song generator in 20 lines of YAML:
 
-```yaml
+```conductor
 # song.yaml
 name: write-song
 inputs:
@@ -83,7 +83,7 @@ conductor run examples/code-review
 
 Send workflow results to Slack channels. Build bots that respond to messages or schedule reports.
 
-```yaml
+```conductor
 steps:
   - id: analyze
     type: llm

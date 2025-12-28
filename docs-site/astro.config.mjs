@@ -1,6 +1,11 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import tailwind from '@astrojs/tailwind';
+import { readFileSync } from 'fs';
+
+const conductorGrammar = JSON.parse(
+  readFileSync('./grammars/conductor.tmLanguage.json', 'utf-8')
+);
 
 export default defineConfig({
   site: 'https://tombee.github.io',
@@ -20,6 +25,11 @@ export default defineConfig({
         baseUrl: 'https://github.com/tombee/conductor/edit/main/docs/',
       },
       customCss: ['./src/styles/custom.css'],
+      expressiveCode: {
+        shiki: {
+          langs: [conductorGrammar],
+        },
+      },
       sidebar: [
         { label: 'Home', slug: 'index' },
         {

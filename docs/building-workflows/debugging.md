@@ -50,7 +50,7 @@ cat result.json | jq '.steps | to_entries[] | select(.value.status == "failed")'
 
 Add temporary debug steps to inspect state:
 
-```yaml
+```conductor
 steps:
   - id: fetch_data
     http.get: "https://api.example.com/users/{{.inputs.user_id}}"
@@ -70,7 +70,7 @@ steps:
 
 Only run debug steps when needed:
 
-```yaml
+```conductor
   - id: debug_output
     condition: 'inputs.debug == true'
     file.write:
@@ -108,7 +108,7 @@ conductor run workflow.yaml --input debug=true
 
 **Fix:** Increase timeout or add retry logic:
 
-```yaml
+```conductor
   - id: api_call
     http.get: "https://slow-api.example.com"
     timeout: 60
