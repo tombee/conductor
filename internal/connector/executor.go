@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tombee/conductor/internal/connector/transport"
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
@@ -45,7 +46,6 @@ type httpExecutor struct {
 	operation     *workflow.OperationDefinition
 	operationName string
 	rateLimiter   *RateLimiter
-	client        *http.Client
 }
 
 // newHTTPExecutor creates a new HTTP executor for an operation.
@@ -56,16 +56,6 @@ func newHTTPExecutor(connector *httpConnector, operationName string) (*httpExecu
 			Type:    ErrorTypeValidation,
 			Message: fmt.Sprintf("operation %q not found in connector %q", operationName, connector.name),
 		}
-	}
-
-	// Create HTTP client with timeout
-	timeout := time.Duration(op.Timeout) * time.Second
-	if timeout == 0 {
-		timeout = time.Duration(connector.config.DefaultTimeout) * time.Second
-	}
-
-	client := &http.Client{
-		Timeout: timeout,
 	}
 
 	// Create rate limiter if configured
@@ -83,8 +73,221 @@ func newHTTPExecutor(connector *httpConnector, operationName string) (*httpExecu
 		operation:     &op,
 		operationName: operationName,
 		rateLimiter:   rateLimiter,
-		client:        client,
 	}, nil
+}
+
+// buildTransportRequest creates a transport.Request from operation inputs.
+func (e *httpExecutor) buildTransportRequest(ctx context.Context, inputs map[string]interface{}) (*transport.Request, error) {
+	// Build the request URL
+	requestURL, err := e.buildURL(inputs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate URL for SSRF protection
+	if err := ValidateURL(requestURL, e.connector.config.AllowedHosts, e.connector.config.BlockedHosts); err != nil {
+		return nil, err
+	}
+
+	// Build request body
+	var bodyBytes []byte
+	if e.requiresBody() {
+		bodyReader, err := e.buildBody(inputs)
+		if err != nil {
+			return nil, err
+		}
+		bodyBytes, err = io.ReadAll(bodyReader)
+		if err != nil {
+			return nil, &Error{
+				Type:    ErrorTypeValidation,
+				Message: fmt.Sprintf("failed to read request body: %v", err),
+			}
+		}
+	}
+
+	// Build headers map
+	headers := make(map[string]string)
+
+	// Apply connector-level headers
+	for key, value := range e.connector.def.Headers {
+		if isSensitiveHeader(key) {
+			return nil, &Error{
+				Type:    ErrorTypeValidation,
+				Message: fmt.Sprintf("cannot override protected header %q", key),
+			}
+		}
+		expandedValue, err := expandEnvVar(value)
+		if err != nil {
+			return nil, &Error{
+				Type:    ErrorTypeValidation,
+				Message: fmt.Sprintf("connector header %q expansion failed: %v", key, err),
+			}
+		}
+		if err := sanitizeHeaderValue(key, expandedValue); err != nil {
+			return nil, &Error{
+				Type:    ErrorTypeValidation,
+				Message: fmt.Sprintf("connector header validation failed: %v", err),
+			}
+		}
+		headers[key] = expandedValue
+	}
+
+	// Apply operation-level headers (override connector headers)
+	for key, value := range e.operation.Headers {
+		if isSensitiveHeader(key) {
+			return nil, &Error{
+				Type:    ErrorTypeValidation,
+				Message: fmt.Sprintf("cannot override protected header %q", key),
+			}
+		}
+		expandedValue, err := expandEnvVar(value)
+		if err != nil {
+			return nil, &Error{
+				Type:    ErrorTypeValidation,
+				Message: fmt.Sprintf("operation header %q expansion failed: %v", key, err),
+			}
+		}
+		if err := sanitizeHeaderValue(key, expandedValue); err != nil {
+			return nil, &Error{
+				Type:    ErrorTypeValidation,
+				Message: fmt.Sprintf("operation header validation failed: %v", err),
+			}
+		}
+		headers[key] = expandedValue
+	}
+
+	// Apply authentication headers if auth is not handled by transport.
+	// This maintains backward compatibility with connectors that use plain auth values.
+	// When auth uses ${ENV_VAR} syntax, it's handled by the transport layer.
+	if e.connector.def.Auth != nil && !usesEnvVarSyntax(e.connector.def.Auth) {
+		// Create a temporary HTTP request to apply auth headers
+		tempReq, err := http.NewRequest(e.operation.Method, requestURL, nil)
+		if err != nil {
+			return nil, &Error{
+				Type:    ErrorTypeValidation,
+				Message: fmt.Sprintf("failed to create auth request: %v", err),
+			}
+		}
+
+		if err := ApplyAuth(tempReq, e.connector.def.Auth); err != nil {
+			return nil, &Error{
+				Type:    ErrorTypeAuth,
+				Message: fmt.Sprintf("authentication failed: %v", err),
+			}
+		}
+
+		// Copy auth headers to our headers map
+		for key, values := range tempReq.Header {
+			if len(values) > 0 {
+				headers[key] = values[0]
+			}
+		}
+	}
+
+	// Set Content-Type for JSON if body is present and not already set
+	if e.requiresBody() && headers["Content-Type"] == "" {
+		headers["Content-Type"] = "application/json"
+	}
+
+	return &transport.Request{
+		Method:  e.operation.Method,
+		URL:     requestURL,
+		Headers: headers,
+		Body:    bodyBytes,
+	}, nil
+}
+
+// convertTransportResponse converts a transport.Response to a connector Result.
+func (e *httpExecutor) convertTransportResponse(resp *transport.Response) (*Result, error) {
+	// Parse response body as JSON
+	var responseData interface{}
+	if len(resp.Body) > 0 {
+		if err := json.Unmarshal(resp.Body, &responseData); err != nil {
+			// Not JSON, return as string
+			responseData = string(resp.Body)
+		}
+	}
+
+	// Apply response transform if specified
+	transformedData := responseData
+	if e.operation.ResponseTransform != "" {
+		var err error
+		transformedData, err = TransformResponse(e.operation.ResponseTransform, responseData)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Extract request ID from response metadata or headers
+	requestID := ""
+	if resp.Metadata != nil {
+		if id, ok := resp.Metadata[transport.MetadataRequestID].(string); ok {
+			requestID = id
+		}
+	}
+	if requestID == "" && resp.Headers != nil {
+		if ids := resp.Headers["X-Request-Id"]; len(ids) > 0 {
+			requestID = ids[0]
+		} else if ids := resp.Headers["X-Github-Request-Id"]; len(ids) > 0 {
+			requestID = ids[0]
+		}
+	}
+
+	return &Result{
+		Response:    transformedData,
+		RawResponse: responseData,
+		StatusCode:  resp.StatusCode,
+		Headers:     resp.Headers,
+		Metadata: map[string]interface{}{
+			"request_id": requestID,
+			"method":     e.operation.Method,
+		},
+	}, nil
+}
+
+// convertTransportError converts a transport error to a connector Error.
+func (e *httpExecutor) convertTransportError(err error) error {
+	// Check if it's already a transport error
+	if transportErr, ok := err.(*transport.TransportError); ok {
+		// Convert transport error type to connector error type
+		var errType ErrorType
+		switch transportErr.Type {
+		case transport.ErrorTypeAuth:
+			errType = ErrorTypeAuth
+		case transport.ErrorTypeRateLimit:
+			errType = ErrorTypeRateLimit
+		case transport.ErrorTypeServer:
+			errType = ErrorTypeServer
+		case transport.ErrorTypeTimeout:
+			errType = ErrorTypeTimeout
+		case transport.ErrorTypeConnection:
+			errType = ErrorTypeConnection
+		case transport.ErrorTypeClient:
+			// Map client errors based on status code
+			if transportErr.StatusCode == 404 {
+				errType = ErrorTypeNotFound
+			} else {
+				errType = ErrorTypeValidation
+			}
+		case transport.ErrorTypeInvalidReq:
+			errType = ErrorTypeValidation
+		case transport.ErrorTypeCancelled:
+			errType = ErrorTypeTimeout
+		default:
+			errType = ErrorTypeConnection
+		}
+
+		return &Error{
+			Type:       errType,
+			Message:    transportErr.Message,
+			StatusCode: transportErr.StatusCode,
+			RequestID:  transportErr.RequestID,
+			Cause:      transportErr.Cause,
+		}
+	}
+
+	// Not a transport error, wrap as connection error
+	return NewConnectionError(err)
 }
 
 // Execute runs the HTTP operation with the given inputs.
@@ -113,105 +316,44 @@ func (e *httpExecutor) Execute(ctx context.Context, inputs map[string]interface{
 		}
 	}()
 
-	// Build the request URL
-	requestURL, err := e.buildURL(inputs)
+	// Build transport request from inputs
+	transportReq, err := e.buildTransportRequest(ctx, inputs)
 	if err != nil {
 		return nil, err
 	}
 
-	// Validate URL for SSRF protection
-	if err := ValidateURL(requestURL, e.connector.config.AllowedHosts, e.connector.config.BlockedHosts); err != nil {
-		return nil, err
-	}
-
-	// Build request body
-	var bodyReader io.Reader
-	if e.requiresBody() {
-		bodyReader, err = e.buildBody(inputs)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// Create HTTP request
-	req, err := http.NewRequestWithContext(ctx, e.operation.Method, requestURL, bodyReader)
+	// Execute request through transport
+	transportResp, err := e.connector.transport.Execute(ctx, transportReq)
 	if err != nil {
-		return nil, NewConnectionError(err)
-	}
-
-	// Apply headers
-	if err := e.applyHeaders(req, inputs); err != nil {
-		return nil, &Error{
-			Type:    ErrorTypeValidation,
-			Message: fmt.Sprintf("header processing failed: %v", err),
-		}
-	}
-
-	// Apply authentication
-	if err := ApplyAuth(req, e.connector.def.Auth); err != nil {
-		return nil, &Error{
-			Type:    ErrorTypeAuth,
-			Message: fmt.Sprintf("authentication failed: %v", err),
-		}
-	}
-
-	// Execute request
-	resp, err := e.client.Do(req)
-	if err != nil {
-		return nil, NewConnectionError(err)
-	}
-	defer resp.Body.Close()
-
-	// Read response body
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, &Error{
-			Type:    ErrorTypeConnection,
-			Message: fmt.Sprintf("failed to read response: %v", err),
-		}
+		return nil, e.convertTransportError(err)
 	}
 
 	// Capture status code for metrics
-	statusCode = resp.StatusCode
+	statusCode = transportResp.StatusCode
 
 	// Check for HTTP errors
-	if resp.StatusCode >= 400 {
-		requestID := resp.Header.Get("X-Request-Id")
-		if requestID == "" {
-			requestID = resp.Header.Get("X-GitHub-Request-Id")
+	if transportResp.StatusCode >= 400 {
+		requestID := ""
+		if transportResp.Headers != nil {
+			if ids := transportResp.Headers["X-Request-Id"]; len(ids) > 0 {
+				requestID = ids[0]
+			} else if ids := transportResp.Headers["X-Github-Request-Id"]; len(ids) > 0 {
+				requestID = ids[0]
+			}
 		}
-		return nil, ErrorFromHTTPStatus(resp.StatusCode, resp.Status, string(bodyBytes), requestID)
+		return nil, ErrorFromHTTPStatus(transportResp.StatusCode, http.StatusText(transportResp.StatusCode), string(transportResp.Body), requestID)
 	}
 
-	// Parse response body as JSON
-	var responseData interface{}
-	if len(bodyBytes) > 0 {
-		if err := json.Unmarshal(bodyBytes, &responseData); err != nil {
-			// Not JSON, return as string
-			responseData = string(bodyBytes)
-		}
+	// Convert transport response to connector result
+	result, err := e.convertTransportResponse(transportResp)
+	if err != nil {
+		return nil, err
 	}
 
-	// Apply response transform if specified
-	transformedData := responseData
-	if e.operation.ResponseTransform != "" {
-		transformedData, err = TransformResponse(e.operation.ResponseTransform, responseData)
-		if err != nil {
-			return nil, err
-		}
-	}
+	// Add URL to metadata
+	result.Metadata["url"] = transportReq.URL
 
-	return &Result{
-		Response:    transformedData,
-		RawResponse: responseData,
-		StatusCode:  resp.StatusCode,
-		Headers:     resp.Header,
-		Metadata: map[string]interface{}{
-			"request_id": resp.Header.Get("X-Request-Id"),
-			"method":     e.operation.Method,
-			"url":        requestURL,
-		},
-	}, nil
+	return result, nil
 }
 
 // buildURL constructs the request URL from base URL, path template, and inputs.
