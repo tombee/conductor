@@ -166,7 +166,198 @@ Validate before expensive operations:
     prompt: "Full code review: {{.inputs.code}}"
 ```
 
+## Iteration with Foreach
+
+Process each item in an array with `foreach`. Each iteration has access to the current item, index, and total count.
+
+### Basic Iteration
+
+```conductor
+steps:
+  - id: get_issues
+    github.list_issues:
+      repo: "{{.inputs.repo}}"
+      state: open
+
+  - id: process_issues
+    type: parallel
+    foreach: '{{.steps.get_issues.result}}'
+    steps:
+      - id: analyze
+        type: llm
+        model: fast
+        prompt: |
+          Analyze issue #{{.item.number}}: {{.item.title}}
+          Body: {{.item.body}}
+```
+
+### Context Variables
+
+Inside a foreach block, you have access to:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `{{.item}}` | Current array element | `{{.item.title}}` |
+| `{{.index}}` | Zero-based index | `0`, `1`, `2`, ... |
+| `{{.total}}` | Total number of elements | `5` |
+
+```conductor
+  - id: review_files
+    type: parallel
+    foreach: '{{.steps.get_files.result}}'
+    steps:
+      - id: review
+        type: llm
+        prompt: |
+          Reviewing file {{.index | add 1}} of {{.total}}: {{.item.path}}
+
+          Content:
+          {{.item.content}}
+```
+
+### Controlling Concurrency
+
+Limit parallel iterations with `max_concurrency`:
+
+```conductor
+  - id: process_all
+    type: parallel
+    foreach: '{{.steps.items.result}}'
+    max_concurrency: 3  # Process 3 items at a time
+    steps:
+      - id: process
+        type: llm
+        prompt: "Process: {{.item}}"
+```
+
+Default: `3` concurrent iterations. Use lower values for rate-limited APIs or memory-intensive operations.
+
+### Accessing Nested Data
+
+Access nested fields within array elements:
+
+```conductor
+  - id: process_users
+    type: parallel
+    foreach: '{{.steps.get_users.result}}'
+    steps:
+      - id: greet
+        type: llm
+        prompt: |
+          Create a personalized message for {{.item.profile.name}}
+          who works at {{.item.profile.company.name}}
+          in the {{.item.profile.company.department}} department.
+```
+
+### Collecting Results
+
+Foreach results are available as an array, indexed by iteration:
+
+```conductor
+  - id: analyze_all
+    type: parallel
+    foreach: '{{.steps.items.result}}'
+    steps:
+      - id: analyze
+        type: llm
+        prompt: "Analyze: {{.item}}"
+
+  - id: summarize
+    type: llm
+    prompt: |
+      Summarize these analyses:
+      {{range $i, $result := .steps.analyze_all.results}}
+      - Item {{$i}}: {{$result.analyze.response}}
+      {{end}}
+```
+
+### Error Handling
+
+By default, if any iteration fails, the entire foreach fails. Control this with error strategies:
+
+```conductor
+  - id: process_all
+    type: parallel
+    foreach: '{{.steps.items.result}}'
+    error_strategy: ignore  # Continue even if some iterations fail
+    steps:
+      - id: process
+        type: llm
+        prompt: "Process: {{.item}}"
+```
+
+**Error strategies:**
+
+| Strategy | Behavior |
+|----------|----------|
+| `fail` (default) | Stop immediately on first failure |
+| `ignore` | Continue processing, collect partial results |
+
+### Edge Cases
+
+**Empty arrays:**
+```conductor
+  - id: process
+    type: parallel
+    foreach: '{{.steps.items.result}}'  # Empty array = 0 iterations
+    steps:
+      - id: step
+        type: llm
+        prompt: "..."
+# Completes immediately with empty results
+```
+
+**Null items:**
+```conductor
+  # If .items contains [1, null, 3]:
+  - id: process
+    type: parallel
+    foreach: '{{.steps.items.result}}'
+    steps:
+      - id: step
+        type: llm
+        prompt: "Value: {{.item}}"  # .item may be null
+```
+
+**Result ordering:**
+
+Results maintain original array order (by index), not completion order. Even if item 3 finishes before item 1, results are returned in index order.
+
+### Performance Considerations
+
+!!! tip "Memory usage with large arrays"
+    For arrays with >1000 items, consider:
+
+    - Batching items first with `transform.split`
+    - Using lower `max_concurrency`
+    - Processing in chunks across multiple workflow runs
+
+!!! note "Timeouts"
+    Foreach respects step-level timeouts. The timeout applies to the entire foreach operation, not per iteration. For long-running iterations, set an appropriate timeout at the parallel step level.
+
+### Using with Transform
+
+Prepare arrays for foreach with transform operations:
+
+```conductor
+  # Split a string into lines
+  - id: split_lines
+    transform.extract:
+      data: '{{.steps.read_file.content}}'
+      expr: 'split("\n") | map(select(length > 0))'
+
+  # Process each line
+  - id: process_lines
+    type: parallel
+    foreach: '{{.steps.split_lines.result}}'
+    steps:
+      - id: analyze
+        type: llm
+        prompt: "Analyze line: {{.item}}"
+```
+
 ## See Also
 
 - [Workflows and Steps](../learn/concepts/workflows-steps.md) - Step fundamentals
 - [Error Handling](error-handling.md) - Retries and fallbacks
+- [Transform Action](../reference/actions/transform.md) - Prepare data for iteration

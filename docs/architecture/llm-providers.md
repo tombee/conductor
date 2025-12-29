@@ -233,6 +233,8 @@ if detected, _ := provider.Detect(); detected {
 
 Model tiers provide **provider-independent** workflow definitions. Instead of hardcoding specific models, workflows specify tiers based on task requirements.
 
+For detailed guidance on choosing tiers and task-specific examples, see [Model Tiers Guide](../guides/model-tiers.md).
+
 ### Tier Definitions
 
 | Tier | Use Case | Characteristics | Example Tasks |
@@ -857,6 +859,8 @@ func main() {
 
 ## See Also
 
+- [Model Tiers Guide](../guides/model-tiers.md) - Tier selection guidance and examples
+- [Cost Tracking](../production/cost-tracking.md) - Monitor token usage and costs
 - [Execution Flow](execution-flow.md) - How workflows execute LLM steps
 - [Embedding Guide](../extending/embedding.md) - Using providers in Go applications
 - [Configuration Reference](../reference/configuration.md) - Provider configuration options
