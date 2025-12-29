@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tombee/conductor/internal/connector/file"
-	connhttp "github.com/tombee/conductor/internal/connector/http"
-	"github.com/tombee/conductor/internal/connector/shell"
-	"github.com/tombee/conductor/internal/connector/transform"
-	"github.com/tombee/conductor/internal/connector/utility"
+	"github.com/tombee/conductor/internal/action/file"
+	"github.com/tombee/conductor/internal/action/http"
+	"github.com/tombee/conductor/internal/action/shell"
+	"github.com/tombee/conductor/internal/action/transform"
+	"github.com/tombee/conductor/internal/action/utility"
 	"github.com/tombee/conductor/pkg/security"
 	"github.com/tombee/conductor/pkg/workflow"
 )
@@ -16,7 +16,7 @@ import (
 func init() {
 	// Register the action registry factory with the workflow package.
 	// This enables WithWorkflowDir() to automatically initialize builtin actions.
-	workflow.SetDefaultActionRegistryFactory(func(workflowDir string) (workflow.ConnectorRegistry, error) {
+	workflow.SetDefaultActionRegistryFactory(func(workflowDir string) (workflow.OperationRegistry, error) {
 		config := &BuiltinConfig{
 			WorkflowDir: workflowDir,
 		}
@@ -79,7 +79,7 @@ type BuiltinConnector struct {
 	shellConnector     *shell.ShellConnector
 	transformConnector *transform.TransformConnector
 	utilityConnector   *utility.UtilityConnector
-	httpConnector      *connhttp.HTTPConnector
+	httpConnector      *http.HTTPConnector
 }
 
 // NewBuiltin creates a builtin connector by name.
@@ -153,11 +153,11 @@ func NewBuiltin(name string, config *BuiltinConfig) (Connector, error) {
 		}, nil
 
 	case "http":
-		httpConfig := &connhttp.Config{
+		httpConfig := &http.Config{
 			DNSMonitor:     config.DNSMonitor,
 			SecurityConfig: config.SecurityConfig,
 		}
-		hc, err := connhttp.New(httpConfig)
+		hc, err := http.New(httpConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create http connector: %w", err)
 		}

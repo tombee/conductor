@@ -55,27 +55,37 @@ steps:
 
 ## Legacy Terminology
 
-The term **"connector"** was previously used for both actions and service integrations. Going forward:
+The term **"connector"** was previously used for both actions and service integrations. As of late 2025, the codebase has been fully migrated to use consistent terminology:
 
 - Use **"action"** for local, built-in operations
-- Use **"service integration"** for external API integrations
-- The `internal/connector/` package name is retained for code compatibility
+- Use **"service integration"** (or just "integration") for external API integrations
+- The term "connector" should not appear in new code or documentation
 
 ## Code Structure
 
-Despite the terminology update, the code organization remains:
+The code is organized to reflect the conceptual separation:
 
 ```
-internal/connector/           # Runtime execution framework
-├── builtin/                  # Service integrations (GitHub, Slack, etc.)
-│   ├── github/
-│   ├── slack/
-│   └── ...
-├── file/                     # File action
-├── shell/                    # Shell action
-├── utility/                  # Utility action
-└── transform/                # Transform utilities
+internal/
+├── operation/                # Shared framework (executor, registry, errors, metrics)
+├── action/                   # Local actions
+│   ├── file/
+│   ├── shell/
+│   ├── http/
+│   ├── utility/
+│   └── transform/
+└── integration/              # External service integrations
+    ├── github/
+    ├── slack/
+    ├── jira/
+    ├── discord/
+    ├── jenkins/
+    ├── cloudwatch/
+    ├── datadog/
+    ├── elasticsearch/
+    ├── loki/
+    └── splunk/
 ```
 
 ---
-*Last updated: 2025-12-28*
+*Last updated: 2025-12-29*

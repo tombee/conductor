@@ -15,7 +15,7 @@ func TestConcurrentFactorySet(t *testing.T) {
 	callCount := 0
 	var mu sync.Mutex
 
-	mockFactory := func(workflowDir string) (ConnectorRegistry, error) {
+	mockFactory := func(workflowDir string) (OperationRegistry, error) {
 		mu.Lock()
 		callCount++
 		mu.Unlock()
@@ -48,11 +48,11 @@ func TestConcurrentWithWorkflowDir(t *testing.T) {
 	factoryCalls := 0
 	var factoryMu sync.Mutex
 
-	testFactory := func(workflowDir string) (ConnectorRegistry, error) {
+	testFactory := func(workflowDir string) (OperationRegistry, error) {
 		factoryMu.Lock()
 		factoryCalls++
 		factoryMu.Unlock()
-		return &mockConnectorRegistry{}, nil
+		return &mockOperationRegistry{}, nil
 	}
 
 	// Set the factory (only first call will succeed due to sync.Once)
@@ -85,8 +85,8 @@ func TestStressConcurrentWorkflowExecution(t *testing.T) {
 	}
 
 	// Set up a factory if not already set
-	testFactory := func(workflowDir string) (ConnectorRegistry, error) {
-		return &mockConnectorRegistry{}, nil
+	testFactory := func(workflowDir string) (OperationRegistry, error) {
+		return &mockOperationRegistry{}, nil
 	}
 	SetDefaultActionRegistryFactory(testFactory)
 

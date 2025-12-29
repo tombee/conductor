@@ -184,8 +184,8 @@ func NewHTTPTransport(config *HTTPTransportConfig) (*HTTPTransport, error) {
 	// Create HTTP client using shared httpclient package for logging and correlation ID support
 	cfg := httpclient.DefaultConfig()
 	cfg.Timeout = timeout
-	cfg.UserAgent = "conductor-connector-http/1.0"
-	// Note: Retry logic is handled by the connector's Execute() method in transport/retry.go
+	cfg.UserAgent = "conductor-http/1.0"
+	// Note: Retry logic is handled by the operation's Execute() method in transport/retry.go
 	// which has sophisticated Retry-After header handling, so we disable retries here
 	cfg.RetryAttempts = 0
 

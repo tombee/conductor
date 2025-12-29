@@ -14,9 +14,9 @@ Define agent workflows in YAML. Get observability, security, cost controls, and 
 - **Production-ready** — Observability, cost tracking, and security are built into the platform.
 - **Flexible deployment** — Run the same workflow from the CLI, as an API, on a schedule, or triggered by webhooks.
 - **Ops-friendly controls** — Security profiles, cost limits, secret management, and container sandboxing give teams the governance they need.
-- **Declarative connectors** — Connect to GitHub, Slack, Jira, and more with configuration, not code.
+- **Declarative integrations** — Connect to GitHub, Slack, Jira, and more with configuration, not code.
 - **Any LLM provider** — Use Anthropic, OpenAI, Ollama, or others. Swap providers without changing workflow logic.
-- **Deterministic by default** — Connectors and tools handle API calls, file operations, and integrations. LLMs focus on reasoning and summarization—keeping workflows fast and costs low.
+- **Deterministic by default** — Actions and integrations handle API calls, file operations, and service connections. LLMs focus on reasoning and summarization—keeping workflows fast and costs low.
 - **MCP support** — When LLMs need to call tools, add MCP servers. Conductor manages their lifecycle alongside your workflows.
 
 ## Example

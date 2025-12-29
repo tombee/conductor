@@ -119,7 +119,7 @@ See [Error Handling](building-workflows/error-handling.md) for comprehensive str
 
 ### Can I use environment variables in workflows?
 
-Yes, through workflow inputs with default values from environment variables, or by using the shell connector:
+Yes, through workflow inputs with default values from environment variables, or by using the shell action:
 
 ```conductor
 # Method 1: Environment variable as input default
@@ -292,7 +292,7 @@ See [Error Handling: Recovery Strategies](building-workflows/error-handling.md#r
 
 ## Advanced Topics
 
-### Can I create custom connectors?
+### Can I create custom integrations?
 
 Yes! Conductor supports custom tools written in Go:
 
@@ -332,7 +332,7 @@ See [Testing Workflows](building-workflows/testing.md) for test strategies.
 
 ### Can workflows call other workflows?
 
-Yes, use the workflow connector:
+Yes, use the workflow integration:
 
 ```conductor
 steps:

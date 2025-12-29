@@ -121,7 +121,7 @@ A workflow is a YAML file with:
 Each step does one thing:
 - **LLM steps**: Send prompts to AI models (`type: llm`)
 - **Tool steps**: Run shell commands, read files, make HTTP requests
-- **Connector steps**: Interact with external services (GitHub, Slack, etc.)
+- **Integration steps**: Interact with external services (GitHub, Slack, etc.)
 
 ```conductor
 steps:
@@ -206,7 +206,7 @@ Run multiple steps concurrently:
 
 - **Automate repetitive AI tasks**: Code review, documentation, issue triage
 - **Chain multiple steps**: Each step uses outputs from previous steps
-- **Connect to services**: GitHub, Slack, Jira, Discord connectors
+- **Connect to services**: GitHub, Slack, Jira, Discord integrations
 - **Run anywhere**: CLI, scheduled (cron), webhooks, or HTTP API
 
 **Good fit:**

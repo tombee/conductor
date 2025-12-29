@@ -19,15 +19,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tombee/conductor/internal/connector"
 	"github.com/tombee/conductor/internal/mcp"
+	"github.com/tombee/conductor/internal/operation"
 	pkgerrors "github.com/tombee/conductor/pkg/errors"
 )
 
 func TestPrintUserVisibleSuggestion_ConnectorError(t *testing.T) {
-	// Test that connector.Error implements UserVisibleError correctly
-	connErr := &connector.Error{
-		Type:        connector.ErrorTypeAuth,
+	// Test that operation.Error implements UserVisibleError correctly
+	connErr := &operation.Error{
+		Type:        operation.ErrorTypeAuth,
 		Message:     "authentication failed",
 		SuggestText: "Check your API credentials",
 	}
@@ -35,7 +35,7 @@ func TestPrintUserVisibleSuggestion_ConnectorError(t *testing.T) {
 	// Verify it implements the interface
 	var userErr pkgerrors.UserVisibleError = connErr
 	if !userErr.IsUserVisible() {
-		t.Error("expected connector.Error to be user visible")
+		t.Error("expected operation.Error to be user visible")
 	}
 
 	if userErr.UserMessage() != "authentication failed" {
@@ -72,8 +72,8 @@ func TestPrintUserVisibleSuggestion_MCPError(t *testing.T) {
 
 func TestPrintUserVisibleSuggestion_WrappedError(t *testing.T) {
 	// Test that suggestions work when errors are wrapped
-	innerErr := &connector.Error{
-		Type:        connector.ErrorTypeTimeout,
+	innerErr := &operation.Error{
+		Type:        operation.ErrorTypeTimeout,
 		Message:     "request timed out",
 		SuggestText: "Increase timeout configuration",
 	}
@@ -83,9 +83,9 @@ func TestPrintUserVisibleSuggestion_WrappedError(t *testing.T) {
 	// The printUserVisibleSuggestion function should walk the error chain
 	// and find the UserVisibleError. We can't directly test the function
 	// since it outputs to stderr, but we can verify the error chain works.
-	var connErr *connector.Error
+	var connErr *operation.Error
 	if !errors.As(wrappedErr, &connErr) {
-		t.Fatal("expected to unwrap connector.Error from wrapped error")
+		t.Fatal("expected to unwrap operation.Error from wrapped error")
 	}
 
 	if connErr.Suggestion() != "Increase timeout configuration" {
@@ -95,8 +95,8 @@ func TestPrintUserVisibleSuggestion_WrappedError(t *testing.T) {
 
 func TestPrintUserVisibleSuggestion_NoSuggestion(t *testing.T) {
 	// Test error with empty suggestion
-	connErr := &connector.Error{
-		Type:        connector.ErrorTypeServer,
+	connErr := &operation.Error{
+		Type:        operation.ErrorTypeServer,
 		Message:     "internal server error",
 		SuggestText: "", // Empty suggestion
 	}
@@ -133,8 +133,8 @@ func TestExitError_Unwrap(t *testing.T) {
 
 func TestExitError_WithUserVisibleCause(t *testing.T) {
 	// Test ExitError wrapping a UserVisibleError
-	connErr := &connector.Error{
-		Type:        connector.ErrorTypeNotFound,
+	connErr := &operation.Error{
+		Type:        operation.ErrorTypeNotFound,
 		Message:     "resource not found",
 		SuggestText: "Verify the resource ID",
 	}

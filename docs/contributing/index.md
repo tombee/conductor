@@ -9,7 +9,7 @@ Extend Conductor and contribute to the project.
 This section covers how to extend Conductor's capabilities and contribute to the project:
 
 - **Development setup** for contributors
-- **Building custom tools** and connectors
+- **Building custom tools** and integrations
 - **Embedding Conductor** in your applications
 - **Architecture** and design decisions
 
@@ -31,13 +31,13 @@ Learn how to:
 ## Extending Conductor
 
 ### [Custom Tools](custom-tools.md)
-Build custom tools and connectors to extend Conductor's capabilities.
+Build custom tools and integrations to extend Conductor's capabilities.
 
 Topics covered:
 - Creating custom step types
-- Implementing connectors for new services
+- Implementing integrations for new services
 - Tool API and interfaces
-- Best practices for tool development
+- Best practices for integration development
 
 ### [Embedding Conductor](embedding.md)
 Integrate Conductor into your Go applications.
@@ -59,7 +59,7 @@ Key topics:
 - Component architecture
 - Execution flow
 - LLM provider abstraction
-- Connector framework
+- Integration framework
 
 ---
 
@@ -75,7 +75,7 @@ Key topics:
 ### Building Extensions
 
 1. **Review architecture:** Understand the [component model](../architecture/)
-2. **Follow examples:** Study [existing connectors](../reference/connectors/)
+2. **Follow examples:** Study [existing integrations](../reference/integrations/)
 3. **Implement your tool:** Use the [custom tools guide](custom-tools.md)
 4. **Test thoroughly:** Write tests for your extension
 

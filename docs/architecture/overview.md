@@ -46,7 +46,7 @@ conductor/
 │   │   ├── webhook/     # Webhook routing
 │   │   └── backend/     # Persistence, checkpointing
 │   ├── cli/             # CLI commands
-│   ├── connector/       # Integration connectors
+│   ├── operation/       # Service integrations
 │   └── mcp/             # MCP server integration
 └── examples/            # Example workflows
 ```

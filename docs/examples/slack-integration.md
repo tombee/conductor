@@ -199,7 +199,7 @@ The workflow consists of three sequential steps that transform raw event data in
     Return the message exactly as-is.
 ```
 
-**What it does**: In this example, this is a placeholder step. In production, you would replace this with an actual Slack connector that posts via the Slack API.
+**What it does**: In this example, this is a placeholder step. In production, you would replace this with an actual Slack action that posts via the Slack API.
 
 **Production implementation**: Replace with a shell command using `curl` or the Slack CLI:
 

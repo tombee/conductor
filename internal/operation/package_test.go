@@ -3,8 +3,8 @@ package operation_test
 import (
 	"testing"
 
-	// Import builtin package to trigger init() registration
-	_ "github.com/tombee/conductor/internal/connector/builtin"
+	// Import integration package to trigger init() registration
+	_ "github.com/tombee/conductor/internal/integration"
 	"github.com/tombee/conductor/internal/operation"
 	"github.com/tombee/conductor/pkg/workflow"
 )

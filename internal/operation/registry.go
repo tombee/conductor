@@ -134,18 +134,18 @@ func NewBuiltinRegistry(config *BuiltinConfig) (*Registry, error) {
 	return registry, nil
 }
 
-// AsWorkflowRegistry returns a wrapper that implements workflow.ConnectorRegistry.
-func (r *Registry) AsWorkflowRegistry() workflow.ConnectorRegistry {
+// AsWorkflowRegistry returns a wrapper that implements workflow.OperationRegistry.
+func (r *Registry) AsWorkflowRegistry() workflow.OperationRegistry {
 	return &workflowRegistryAdapter{r}
 }
 
-// workflowRegistryAdapter wraps Registry to implement workflow.ConnectorRegistry.
+// workflowRegistryAdapter wraps Registry to implement workflow.OperationRegistry.
 type workflowRegistryAdapter struct {
 	registry *Registry
 }
 
-// Execute implements workflow.ConnectorRegistry.
-func (a *workflowRegistryAdapter) Execute(ctx context.Context, reference string, inputs map[string]interface{}) (workflow.ConnectorResult, error) {
+// Execute implements workflow.OperationRegistry.
+func (a *workflowRegistryAdapter) Execute(ctx context.Context, reference string, inputs map[string]interface{}) (workflow.OperationResult, error) {
 	result, err := a.registry.Execute(ctx, reference, inputs)
 	if err != nil {
 		return nil, err

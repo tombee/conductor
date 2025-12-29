@@ -75,7 +75,7 @@
     },
     "connectors": {
       "type": "object",
-      "description": "Declarative connector definitions for external integrations (GitHub, Slack, etc). Builtin connectors (file, shell, http, transform) work without configuration.",
+      "description": "Declarative definitions for service integrations (GitHub, Slack, etc). Builtin actions (file, shell, http, transform) work without configuration.",
       "additionalProperties": {
         "$ref": "#/$defs/connector"
       }
@@ -272,7 +272,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Step identifier within this workflow. Auto-generated for shorthand steps using format {connector}_{operation}_{N}. Used to reference step outputs via {{.steps.step_id.response}}.",
+          "description": "Step identifier within this workflow. Auto-generated for shorthand steps using format {action_or_integration}_{operation}_{N}. Used to reference step outputs via {{.steps.step_id.response}}.",
           "pattern": "^[a-z0-9_]+$",
           "examples": ["fetch_pr", "analyze_code", "file_read_1", "github_create_issue_1"]
         },
@@ -283,7 +283,7 @@
         "type": {
           "type": "string",
           "enum": ["llm", "parallel", "condition", "connector"],
-          "description": "Step type: 'llm' for LLM calls, 'parallel' for concurrent execution, 'condition' for branching. 'connector' is auto-detected from shorthand syntax (connector.operation:) and rarely specified explicitly."
+          "description": "Step type: 'llm' for LLM calls, 'parallel' for concurrent execution, 'condition' for branching. 'connector' type (kept for backward compatibility) is auto-detected from shorthand syntax (action.operation: or integration.operation:) and rarely specified explicitly."
         },
         "agent": {
           "type": "string",
@@ -291,13 +291,13 @@
         },
         "connector": {
           "type": "string",
-          "description": "Connector name for connector steps (e.g., 'github', 'slack', 'file', 'shell'). Auto-extracted from shorthand syntax.",
+          "description": "Action or integration name (e.g., 'github', 'slack', 'file', 'shell'). Auto-extracted from shorthand syntax. Field name kept for backward compatibility.",
           "pattern": "^[a-z][a-z0-9_]*$",
           "examples": ["github", "slack", "file", "shell", "http", "transform"]
         },
         "operation": {
           "type": "string",
-          "description": "Operation to execute on the connector (e.g., 'create_issue', 'read', 'run'). Auto-extracted from shorthand syntax.",
+          "description": "Operation to execute on the action or integration (e.g., 'create_issue', 'read', 'run'). Auto-extracted from shorthand syntax.",
           "pattern": "^[a-z][a-z0-9_]*$",
           "examples": ["create_issue", "read", "write", "run", "get", "post"]
         },
@@ -447,7 +447,7 @@
       ],
       "patternProperties": {
         "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$": {
-          "description": "Connector shorthand syntax: connector.operation. Value becomes the inputs for the operation. Examples: file.read, github.create_issue, shell.run",
+          "description": "Action/integration shorthand syntax: name.operation. Value becomes the inputs for the operation. Examples: file.read, github.create_issue, shell.run",
           "oneOf": [
             {"type": "string"},
             {"type": "object"},
@@ -601,7 +601,7 @@
         "type": {
           "type": "string",
           "enum": ["http", "script"],
-          "description": "Function implementation type: 'http' for HTTP API endpoints, 'script' for shell scripts. These are LLM-callable functions, different from workflow connectors."
+          "description": "Function implementation type: 'http' for HTTP API endpoints, 'script' for shell scripts. These are LLM-callable functions, different from workflow actions and integrations."
         },
         "description": {
           "type": "string",
@@ -692,16 +692,16 @@
     "connector": {
       "type": "object",
       "required": ["from"],
-      "description": "Declarative connector definition for external integrations. Connectors expose operations that can be called from workflow steps using shorthand syntax.",
+      "description": "Declarative definition for external service integrations. Integrations expose operations that can be called from workflow steps using shorthand syntax. Field name kept for backward compatibility.",
       "properties": {
         "from": {
           "type": "string",
-          "description": "Connector package source. Can be a local path (connectors/github) or future package reference.",
+          "description": "Integration package source. Can be a local path (connectors/github) or future package reference.",
           "examples": ["connectors/github", "connectors/slack", "connectors/jira"]
         },
         "auth": {
           "type": "object",
-          "description": "Authentication configuration for the connector. Use environment variables (${VAR}) or secret references ($secret:name) - never hardcode credentials.",
+          "description": "Authentication configuration for the integration. Use environment variables (${VAR}) or secret references ($secret:name) - never hardcode credentials.",
           "properties": {
             "token": {
               "type": "string",
@@ -727,7 +727,7 @@
         },
         "config": {
           "type": "object",
-          "description": "Connector-specific configuration options beyond authentication.",
+          "description": "Integration-specific configuration options beyond authentication.",
           "additionalProperties": true
         }
       }

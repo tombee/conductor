@@ -12,9 +12,9 @@ Define agent workflows in YAML. Get observability, security, cost controls, and 
 - **Production-ready** — Observability, cost tracking, and security are built into the platform.
 - **Flexible deployment** — Run the same workflow from the CLI, as an API, on a schedule, or triggered by webhooks.
 - **Ops-friendly controls** — Security profiles, cost limits, secret management, and container sandboxing give teams the governance they need.
-- **Declarative connectors** — Connect to GitHub, Slack, Jira, and more with configuration, not code.
+- **Service Integrations** — Connect to GitHub, Slack, Jira, and more with configuration, not code.
 - **Any LLM provider** — Use Anthropic, OpenAI, Ollama, or others. Swap providers without changing workflow logic.
-- **Deterministic by default** — Connectors and tools handle API calls, file operations, and integrations. LLMs focus on reasoning and summarization—keeping workflows fast and costs low.
+- **Deterministic by default** — Actions and tools handle API calls, file operations, and integrations. LLMs focus on reasoning and summarization—keeping workflows fast and costs low.
 - **MCP support** — When LLMs need to call tools, add MCP servers. Conductor manages their lifecycle alongside your workflows.
 
 ---
@@ -95,7 +95,7 @@ steps:
       text: "{{.steps.analyze.response}}"
 ```
 
-**Key features:** Connector shorthand syntax, webhook support, message formatting
+**Key features:** Action/integration shorthand syntax, webhook support, message formatting
 
 ---
 
@@ -104,7 +104,7 @@ steps:
 1. **Define steps** — Each step runs in order. Reference outputs from previous steps.
 2. **Template syntax** — Use `{{.inputs.name}}` for inputs, `{{.steps.id.response}}` for outputs.
 3. **LLM steps** — Set `type: llm` to call your configured provider (Claude, GPT, Gemini, etc.).
-4. **Tool steps** — Use built-in tools (`file`, `http`, `shell`) or connectors (`github`, `slack`, `jira`).
+4. **Tool steps** — Use built-in tools (`file`, `http`, `shell`) or integrations (`github`, `slack`, `jira`).
 5. **Parallel steps** — Set `type: parallel` to run multiple steps concurrently.
 
 [Learn More →](learn/concepts/workflows-steps.md){ .md-button .md-button--primary }
@@ -185,12 +185,12 @@ Conductor prompts you for inputs. In seconds, you'll get a complete song with ge
 
 ### Operations
 
-- [File](reference/connectors/file.md), [Shell](reference/connectors/shell.md), [HTTP](reference/connectors/http.md), [Transform](reference/connectors/transform.md)
+- [File](reference/actions/file.md), [Shell](reference/actions/shell.md), [HTTP](reference/actions/http.md), [Transform](reference/actions/transform.md)
 
 ### Service Integrations
 
-- [GitHub](reference/connectors/github.md), [Slack](reference/connectors/slack.md), [Discord](reference/connectors/discord.md), [Jira](reference/connectors/jira.md), [Jenkins](reference/connectors/jenkins.md)
-- [Custom Connectors](reference/connectors/custom.md) — Build your own
+- [GitHub](reference/integrations/github.md), [Slack](reference/integrations/slack.md), [Discord](reference/integrations/discord.md), [Jira](reference/integrations/jira.md), [Jenkins](reference/integrations/jenkins.md)
+- [Custom Integrations](reference/integrations/custom.md) — Build your own
 
 ---
 

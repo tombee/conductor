@@ -1,7 +1,7 @@
-// Package transport provides protocol-level abstractions for connector execution.
+// Package transport provides protocol-level abstractions for operation execution.
 //
 // The transport layer separates protocol concerns (HTTP, AWS SigV4, OAuth2) from
-// connector-level concerns (operation definition, input validation, response transformation).
+// operation-level concerns (operation definition, input validation, response transformation).
 // All transports implement the Transport interface, providing unified authentication,
 // request signing, error parsing, retry logic, and rate limiting.
 package transport

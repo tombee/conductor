@@ -12,8 +12,8 @@ This guide is for developers who want to extend Conductor with custom tools. If 
 
 **Before creating custom tools:**
 
-- Have worked with Conductor's built-in connectors (file, shell, http)
-- Read [Connectors Reference](../reference/connectors/index.md)
+- Have worked with Conductor's built-in actions (file, shell, http)
+- Read [Actions and Integrations Reference](../reference/integrations/index.md)
 :::
 
 
@@ -32,7 +32,7 @@ Tools in Conductor are discrete functions that can be:
 
 Create custom tools when you need to:
 
-- Integrate with internal APIs not covered by connectors
+- Integrate with internal APIs not covered by built-in integrations
 - Implement reusable logic across workflows
 - Execute complex operations with structured inputs/outputs
 - Provide LLM agents with custom capabilities
@@ -826,6 +826,6 @@ func (t *FileValidatorTool) Execute(ctx context.Context, inputs map[string]inter
 
 ## See Also
 
-- [Connectors Reference](../reference/connectors/index.md)
+- [Actions and Integrations Reference](../reference/integrations/index.md)
 - [Workflow Schema Reference](../reference/workflow-schema.md)
 - [Testing](../guides/testing.md)

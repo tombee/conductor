@@ -94,7 +94,7 @@ The workflow consists of four main steps:
 
 **What it does**: Gathers context about the changes being reviewed. Gets the current branch name, the full diff against the base branch, and commit messages. This information provides context for the AI reviewers.
 
-**Why it's structured this way**: Each piece of information is fetched separately for clarity and debugging. The `shell.run` connector executes git commands directly in the repository.
+**Why it's structured this way**: Each piece of information is fetched separately for clarity and debugging. The `shell.run` action executes git commands directly in the repository.
 
 ### 2. Parallel Persona Reviews (Step 4)
 
@@ -160,7 +160,7 @@ The workflow consists of four main steps:
     content: "{{.steps.generate_report.response}}"
 ```
 
-**What it does**: Saves the final report to a markdown file. Uses the `file.write` connector with a templated path from inputs.
+**What it does**: Saves the final report to a markdown file. Uses the `file.write` action with a templated path from inputs.
 
 **Output format**: The report includes severity ratings (CRITICAL/HIGH/MEDIUM/LOW), specific file:line references, and recommended fixes for each finding.
 

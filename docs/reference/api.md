@@ -442,7 +442,7 @@ llmStep := workflow.Step{
     Model:  "balanced",
 }
 
-// Builtin connector step (file operations)
+// Builtin action step (file operations)
 builtinStep := workflow.Step{
     ID:               "read_file",
     Type:             workflow.StepTypeBuiltin,

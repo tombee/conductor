@@ -116,8 +116,6 @@ func main() {
 	rootCmd.AddCommand(management.NewEventsCommand())
 	rootCmd.AddCommand(management.NewTracesCommand())
 	rootCmd.AddCommand(management.NewCacheCommand())
-	rootCmd.AddCommand(management.NewConnectorCommand())
-	rootCmd.AddCommand(management.NewConnectorsCommand())
 	rootCmd.AddCommand(endpoint.NewCommand())
 
 	// Configuration and security

@@ -70,8 +70,8 @@ type Executor struct {
 	// llmProvider provides access to LLM for llm steps
 	llmProvider LLMProvider
 
-	// connectorRegistry provides access to connectors for connector steps
-	connectorRegistry ConnectorRegistry
+	// operationRegistry provides access to operations for action and integration steps
+	operationRegistry OperationRegistry
 
 	// exprEval evaluates condition expressions
 	exprEval *expression.Evaluator
@@ -119,20 +119,20 @@ type LLMProvider interface {
 	Complete(ctx context.Context, prompt string, options map[string]interface{}) (string, error)
 }
 
-// ConnectorRegistry defines the interface for connector lookup and execution.
-type ConnectorRegistry interface {
-	// Execute runs a connector operation.
-	// The reference should be in format "connector_name.operation_name".
+// OperationRegistry defines the interface for operation lookup and execution.
+type OperationRegistry interface {
+	// Execute runs an operation (action or integration).
+	// The reference should be in format "name.operation".
 	//
 	// Contract: Implementations MUST follow Go conventions:
 	//   - On success: return (result, nil) where result is non-nil
 	//   - On error: return (nil, error) where error is non-nil
 	//   - Returning (nil, nil) is a contract violation and will be treated as an error
-	Execute(ctx context.Context, reference string, inputs map[string]interface{}) (ConnectorResult, error)
+	Execute(ctx context.Context, reference string, inputs map[string]interface{}) (OperationResult, error)
 }
 
-// ConnectorResult represents the output of a connector operation.
-type ConnectorResult interface {
+// OperationResult represents the output of an operation.
+type OperationResult interface {
 	// GetResponse returns the transformed response data
 	GetResponse() interface{}
 
@@ -163,9 +163,9 @@ func (e *Executor) WithLogger(logger *slog.Logger) *Executor {
 	return e
 }
 
-// WithConnectorRegistry sets the connector registry for the executor.
-func (e *Executor) WithConnectorRegistry(registry ConnectorRegistry) *Executor {
-	e.connectorRegistry = registry
+// WithOperationRegistry sets the operation registry for the executor.
+func (e *Executor) WithOperationRegistry(registry OperationRegistry) *Executor {
+	e.operationRegistry = registry
 	return e
 }
 
@@ -178,19 +178,19 @@ func (e *Executor) WithParallelConcurrency(max int) *Executor {
 	return e
 }
 
-// ActionRegistryFactory is a function that creates a ConnectorRegistry from a workflow directory.
-// This allows the executor to be independent of the internal/connector package.
-type ActionRegistryFactory func(workflowDir string) (ConnectorRegistry, error)
+// ActionRegistryFactory is a function that creates an OperationRegistry from a workflow directory.
+// This allows the executor to be independent of the internal/operation package.
+type ActionRegistryFactory func(workflowDir string) (OperationRegistry, error)
 
 var (
-	// defaultActionRegistryFactory is set by the connector package during init.
+	// defaultActionRegistryFactory is set by the operation package during init.
 	defaultActionRegistryFactory ActionRegistryFactory
 	// factoryOnce ensures the factory is set exactly once for thread-safe initialization.
 	factoryOnce sync.Once
 )
 
 // SetDefaultActionRegistryFactory sets the factory used by WithWorkflowDir.
-// This is called by the connector package during initialization.
+// This is called by the operation package during initialization.
 // The factory can only be set once; subsequent calls are ignored.
 func SetDefaultActionRegistryFactory(factory ActionRegistryFactory) {
 	factoryOnce.Do(func() {
@@ -212,7 +212,7 @@ func (e *Executor) WithWorkflowDir(workflowDir string) *Executor {
 		return e
 	}
 
-	e.connectorRegistry = registry
+	e.operationRegistry = registry
 	return e
 }
 
@@ -387,15 +387,15 @@ func (e *Executor) executeWithRetry(ctx context.Context, step *StepDefinition, w
 	return lastOutput, fmt.Errorf("step failed after %d attempts: %w", retry.MaxAttempts, lastErr)
 }
 
-// executeConnector executes a connector step by invoking a connector operation.
-// The step.Connector field should be in format "connector_name.operation_name".
-// Inputs are passed through to connector registry without type assertions.
+// executeConnector executes a connector step by invoking an operation.
+// The step.Connector field should be in format "name.operation".
+// Inputs are passed through to operation registry without type assertions.
 func (e *Executor) executeConnector(ctx context.Context, step *StepDefinition, inputs map[string]interface{}) (map[string]interface{}, error) {
-	// Check if connector registry is configured
-	if e.connectorRegistry == nil {
+	// Check if operation registry is configured
+	if e.operationRegistry == nil {
 		return nil, &errors.ConfigError{
-			Key:    "connector_registry",
-			Reason: "connector registry not configured for workflow executor",
+			Key:    "operation_registry",
+			Reason: "operation registry not configured for workflow executor",
 		}
 	}
 
@@ -404,46 +404,46 @@ func (e *Executor) executeConnector(ctx context.Context, step *StepDefinition, i
 		return nil, &errors.ValidationError{
 			Field:      "connector",
 			Message:    "connector field is required for connector step",
-			Suggestion: "specify connector in format 'connector_name.operation_name'",
+			Suggestion: "specify connector in format 'name.operation'",
 		}
 	}
 
-	// Log connector execution start with structured logging
-	e.logger.Debug("executing connector operation",
+	// Log operation execution start with structured logging
+	e.logger.Debug("executing operation",
 		"step_id", step.ID,
 		"connector", step.Connector,
 		"inputs", maskSensitiveInputs(inputs),
 	)
 
-	// Execute the connector operation
-	result, err := e.connectorRegistry.Execute(ctx, step.Connector, inputs)
+	// Execute the operation
+	result, err := e.operationRegistry.Execute(ctx, step.Connector, inputs)
 	if err != nil {
-		e.logger.Error("connector execution failed",
+		e.logger.Error("operation execution failed",
 			"step_id", step.ID,
-			"connector", step.Connector,
+			"operation", step.Connector,
 			"error", err,
 		)
-		return nil, fmt.Errorf("connector execution failed: %w", err)
+		return nil, fmt.Errorf("operation execution failed: %w", err)
 	}
 
 	// Check for nil result (contract violation: Execute returned nil without error)
 	if result == nil {
-		e.logger.Error("connector returned nil result without error",
+		e.logger.Error("operation returned nil result without error",
 			"step_id", step.ID,
-			"connector", step.Connector,
+			"operation", step.Connector,
 		)
-		return nil, fmt.Errorf("connector %q returned nil result without error", step.Connector)
+		return nil, fmt.Errorf("operation %q returned nil result without error", step.Connector)
 	}
 
 	// Log successful execution with metadata
-	e.logger.Debug("connector operation completed",
+	e.logger.Debug("operation completed",
 		"step_id", step.ID,
-		"connector", step.Connector,
+		"operation", step.Connector,
 		"status_code", result.GetStatusCode(),
 		"metadata", result.GetMetadata(),
 	)
 
-	// Map connector result to step output format
+	// Map operation result to step output format
 	// The response is the primary output, but we also include metadata for debugging
 	output := map[string]interface{}{
 		"response": result.GetResponse(),
@@ -454,7 +454,7 @@ func (e *Executor) executeConnector(ctx context.Context, step *StepDefinition, i
 		output["metadata"] = metadata
 	}
 
-	// Include status code for HTTP connectors
+	// Include status code for HTTP operations
 	if statusCode := result.GetStatusCode(); statusCode > 0 {
 		output["status_code"] = statusCode
 	}
