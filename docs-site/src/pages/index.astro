@@ -72,24 +72,24 @@ const codeExamples = [
   {
     id: 'security-review',
     title: 'Security Review',
-    description: 'Trigger on PR, review for security issues, post comments—all in one workflow.',
+    description: 'Review PRs for security issues. Run via CLI, GitHub webhook, or CI pipeline.',
     code: `name: security-review
 description: Review PRs for security issues
 
-trigger:
-  webhook:
-    source: github
-    secret: \${GITHUB_WEBHOOK_SECRET}
-    events:
-      - pull_request.opened
-      - pull_request.synchronize
+inputs:
+  - name: owner
+    type: string
+  - name: repo
+    type: string
+  - name: pr_number
+    type: number
 
 steps:
   - id: get_diff
     github.get_pull_request_diff:
-      owner: "{{.payload.repository.owner.login}}"
-      repo: "{{.payload.repository.name}}"
-      number: "{{.payload.pull_request.number}}"
+      owner: "{{.inputs.owner}}"
+      repo: "{{.inputs.repo}}"
+      number: "{{.inputs.pr_number}}"
 
   - id: review
     type: llm
@@ -152,32 +152,33 @@ steps:
   {
     id: 'incident-response',
     title: 'Incident Response',
-    description: 'Receive alerts via webhook, gather context in parallel, post triage to Slack.',
+    description: 'Triage alerts and suggest remediation. Trigger via webhook from PagerDuty or Datadog.',
     code: `name: incident-response
 description: Triage alerts and suggest remediation
 
-trigger:
-  webhook:
-    path: /alerts
-    secret: \${WEBHOOK_SECRET}
+inputs:
+  - name: service
+    type: string
+  - name: message
+    type: string
 
 steps:
   - id: triage
     type: parallel
     steps:
       - id: logs
-        shell.run: kubectl logs -l app={{.payload.service}} --tail=50
+        shell.run: kubectl logs -l app={{.inputs.service}} --tail=50
 
       - id: changes
         github.list_commits:
-          repo: "{{.payload.service}}"
+          repo: "{{.inputs.service}}"
           since: "24h"
 
   - id: analyze
     type: llm
     model: balanced
     prompt: |
-      Alert for {{.payload.service}}: {{.payload.message}}
+      Alert for {{.inputs.service}}: {{.inputs.message}}
 
       Recent logs:
       {{.steps.triage.logs.stdout}}
@@ -190,19 +191,14 @@ steps:
   - id: notify
     slack.post_message:
       channel: "#incidents"
-      text: "🚨 *{{.payload.service}}*\\n{{.steps.analyze.response}}"`,
+      text: "🚨 *{{.inputs.service}}*\\n{{.steps.analyze.response}}"`,
   },
   {
     id: 'oncall-handoff',
     title: 'On-Call Handoff',
-    description: 'Scheduled shift handoff that aggregates incidents, deploys, and issues.',
+    description: 'Generate shift handoff summary. Schedule at 9am/9pm or run manually.',
     code: `name: oncall-handoff
 description: Generate shift handoff summary
-
-trigger:
-  schedule:
-    cron: "0 9,21 * * *"
-    timezone: "America/New_York"
 
 steps:
   - id: gather
@@ -585,10 +581,10 @@ steps:
 
     // Example tabs
     const exampleDescriptions = [
-      'Trigger on PR, review for security issues, post comments—all in one workflow.',
+      'Review PRs for security issues. Run via CLI, GitHub webhook, or CI pipeline.',
       'Run terraform plan, then analyze changes in parallel for risk and network impact.',
-      'Receive alerts via webhook, gather context in parallel, post triage to Slack.',
-      'Scheduled shift handoff that aggregates incidents, deploys, and issues.',
+      'Triage alerts and suggest remediation. Trigger via webhook from PagerDuty or Datadog.',
+      'Generate shift handoff summary. Schedule at 9am/9pm or run manually.',
     ];
     const tabs = document.querySelectorAll('[role="tab"]');
     const panels = document.querySelectorAll('[role="tabpanel"]');
