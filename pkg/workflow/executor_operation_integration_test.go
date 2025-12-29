@@ -5,12 +5,12 @@ import (
 	"testing"
 )
 
-// TestConnectorStepIntegration tests the full integration of connector steps in a workflow.
-func TestConnectorStepIntegration(t *testing.T) {
-	// Create a mock connector registry
+// TestIntegrationStepIntegration tests the full integration of integration steps in a workflow.
+func TestIntegrationStepIntegration(t *testing.T) {
+	// Create a mock operation registry
 	mockRegistry := &mockOperationRegistry{
 		executeFunc: func(ctx context.Context, reference string, inputs map[string]interface{}) (OperationResult, error) {
-			// Simulate different connector behaviors based on reference
+			// Simulate different integration behaviors based on reference
 			switch reference {
 			case "github.get_repo":
 				return &mockOperationResult{
@@ -39,11 +39,11 @@ func TestConnectorStepIntegration(t *testing.T) {
 		},
 	}
 
-	// Create executor with connector registry
+	// Create executor with operation registry
 	executor := NewExecutor(nil, nil).WithOperationRegistry(mockRegistry)
 
-	// Test 1: Execute a simple connector step
-	t.Run("simple connector step", func(t *testing.T) {
+	// Test 1: Execute a simple integration step
+	t.Run("simple integration step", func(t *testing.T) {
 		step := &StepDefinition{
 			ID:        "get_repo",
 			Type:      StepTypeIntegration,
@@ -86,8 +86,8 @@ func TestConnectorStepIntegration(t *testing.T) {
 		}
 	})
 
-	// Test 2: Execute connector step with error handling
-	t.Run("connector step error handling", func(t *testing.T) {
+	// Test 2: Execute integration step with error handling
+	t.Run("integration step error handling", func(t *testing.T) {
 		step := &StepDefinition{
 			ID:        "unknown_op",
 			Type:      StepTypeIntegration,
@@ -110,15 +110,15 @@ func TestConnectorStepIntegration(t *testing.T) {
 		}
 	})
 
-	// Test 3: Execute connector step with retry on failure
-	t.Run("connector step with retry", func(t *testing.T) {
+	// Test 3: Execute integration step with retry on failure
+	t.Run("integration step with retry", func(t *testing.T) {
 		attemptCount := 0
 		retryRegistry := &mockOperationRegistry{
 			executeFunc: func(ctx context.Context, reference string, inputs map[string]interface{}) (OperationResult, error) {
 				attemptCount++
 				if attemptCount < 2 {
 					// Fail first attempt
-					return nil, &mockConnectorError{message: "temporary failure"}
+					return nil, &mockOperationError{message: "temporary failure"}
 				}
 				// Succeed on second attempt
 				return &mockOperationResult{
@@ -159,17 +159,17 @@ func TestConnectorStepIntegration(t *testing.T) {
 	})
 }
 
-// mockConnectorError implements error for testing.
-type mockConnectorError struct {
+// mockOperationError implements error for testing.
+type mockOperationError struct {
 	message string
 }
 
-func (e *mockConnectorError) Error() string {
+func (e *mockOperationError) Error() string {
 	return e.message
 }
 
-// TestConnectorStep_OutputAvailableToNextStep tests that connector outputs can be used in subsequent steps.
-func TestConnectorStep_OutputAvailableToNextStep(t *testing.T) {
+// TestIntegrationStep_OutputAvailableToNextStep tests that integration outputs can be used in subsequent steps.
+func TestIntegrationStep_OutputAvailableToNextStep(t *testing.T) {
 	mockRegistry := &mockOperationRegistry{
 		executeFunc: func(ctx context.Context, reference string, inputs map[string]interface{}) (OperationResult, error) {
 			switch reference {
@@ -196,7 +196,7 @@ func TestConnectorStep_OutputAvailableToNextStep(t *testing.T) {
 					statusCode: 200,
 				}, nil
 			default:
-				return nil, &mockConnectorError{message: "unknown operation"}
+				return nil, &mockOperationError{message: "unknown operation"}
 			}
 		},
 	}
@@ -251,16 +251,16 @@ func TestConnectorStep_OutputAvailableToNextStep(t *testing.T) {
 	}
 }
 
-// TestConnectorStep_ErrorFlowsToOnError tests that connector errors are properly reported.
-func TestConnectorStep_ErrorFlowsToOnError(t *testing.T) {
+// TestIntegrationStep_ErrorFlowsToOnError tests that integration errors are properly reported.
+func TestIntegrationStep_ErrorFlowsToOnError(t *testing.T) {
 	mockRegistry := &mockOperationRegistry{
 		executeFunc: func(ctx context.Context, reference string, inputs map[string]interface{}) (OperationResult, error) {
 			switch reference {
 			case "github.create_issue":
 				// Simulate an auth error
-				return nil, &mockConnectorError{message: "401 Unauthorized"}
+				return nil, &mockOperationError{message: "401 Unauthorized"}
 			default:
-				return nil, &mockConnectorError{message: "unknown operation"}
+				return nil, &mockOperationError{message: "unknown operation"}
 			}
 		},
 	}
@@ -285,7 +285,7 @@ func TestConnectorStep_ErrorFlowsToOnError(t *testing.T) {
 
 	// The step should fail
 	if err == nil {
-		t.Fatal("expected error from failed connector step")
+		t.Fatal("expected error from failed integration step")
 	}
 
 	// Verify error was captured
@@ -298,13 +298,13 @@ func TestConnectorStep_ErrorFlowsToOnError(t *testing.T) {
 	}
 }
 
-// TestConnectorStep_WithResponseTransform tests that complex response structures are handled correctly.
-// Note: Response transformation is defined at the operation level in the connector package,
+// TestIntegrationStep_WithResponseTransform tests that complex response structures are handled correctly.
+// Note: Response transformation is defined at the operation level in the operation package,
 // not at the step level. This test verifies that complex nested responses are properly returned.
-func TestConnectorStep_WithResponseTransform(t *testing.T) {
+func TestIntegrationStep_WithResponseTransform(t *testing.T) {
 	mockRegistry := &mockOperationRegistry{
 		executeFunc: func(ctx context.Context, reference string, inputs map[string]interface{}) (OperationResult, error) {
-			// Simulate a connector that has already applied response_transform
+			// Simulate an integration that has already applied response_transform
 			// The transform would extract items from a nested structure
 			return &mockOperationResult{
 				response: []interface{}{
@@ -332,7 +332,7 @@ func TestConnectorStep_WithResponseTransform(t *testing.T) {
 
 	executor := NewExecutor(nil, nil).WithOperationRegistry(mockRegistry)
 
-	// Execute connector that returns transformed response
+	// Execute integration that returns transformed response
 	step := &StepDefinition{
 		ID:        "get_items",
 		Type:      StepTypeIntegration,
@@ -364,8 +364,8 @@ func TestConnectorStep_WithResponseTransform(t *testing.T) {
 	}
 }
 
-// TestConnectorStep_InParallelExecution tests that connector steps work correctly in parallel execution.
-func TestConnectorStep_InParallelExecution(t *testing.T) {
+// TestIntegrationStep_InParallelExecution tests that integration steps work correctly in parallel execution.
+func TestIntegrationStep_InParallelExecution(t *testing.T) {
 	executionOrder := make(chan string, 3)
 
 	mockRegistry := &mockOperationRegistry{
@@ -396,7 +396,7 @@ func TestConnectorStep_InParallelExecution(t *testing.T) {
 					statusCode: 200,
 				}, nil
 			default:
-				return nil, &mockConnectorError{message: "unknown operation"}
+				return nil, &mockOperationError{message: "unknown operation"}
 			}
 		},
 	}
@@ -445,7 +445,7 @@ func TestConnectorStep_InParallelExecution(t *testing.T) {
 		t.Errorf("expected 3 successful executions, got %d", successCount)
 	}
 
-	// Verify all connectors were called
+	// Verify all integrations were called
 	close(executionOrder)
 	calls := make(map[string]bool)
 	for call := range executionOrder {
@@ -455,7 +455,7 @@ func TestConnectorStep_InParallelExecution(t *testing.T) {
 	expectedCalls := []string{"github", "slack", "jira"}
 	for _, expected := range expectedCalls {
 		if !calls[expected] {
-			t.Errorf("expected %s connector to be called", expected)
+			t.Errorf("expected %s integration to be called", expected)
 		}
 	}
 }

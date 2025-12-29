@@ -41,19 +41,19 @@ func TestNewSlackIntegration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			connector, err := NewSlackIntegration(tt.config)
+			integration, err := NewSlackIntegration(tt.config)
 			if (err != nil) != tt.wantError {
 				t.Errorf("NewSlackIntegration() error = %v, wantError %v", err, tt.wantError)
 				return
 			}
 
 			if !tt.wantError {
-				if connector.Name() != "slack" {
-					t.Errorf("Expected connector name 'slack', got '%s'", connector.Name())
+				if operation.Name() != "slack" {
+					t.Errorf("Expected integration name 'slack', got '%s'", operation.Name())
 				}
 
 				// Verify base URL is set correctly
-				sc := connector.(*SlackIntegration)
+				sc := integration.(*SlackIntegration)
 				if sc.BaseProvider == nil {
 					t.Fatal("BaseProvider is nil")
 				}
@@ -75,12 +75,12 @@ func TestSlackIntegration_Operations(t *testing.T) {
 		Token:     "test-token",
 	}
 
-	connector, err := NewSlackIntegration(config)
+	integration, err := NewSlackIntegration(config)
 	if err != nil {
-		t.Fatalf("Failed to create Slack connector: %v", err)
+		t.Fatalf("Failed to create integration: %v", err)
 	}
 
-	sc := connector.(*SlackIntegration)
+	sc := integration.(*SlackIntegration)
 	operations := sc.Operations()
 
 	// Verify we have all 10 operations
@@ -183,13 +183,13 @@ func TestSlackIntegration_PostMessage(t *testing.T) {
 		Token:     "test-token",
 	}
 
-	connector, err := NewSlackIntegration(config)
+	integration, err := NewSlackIntegration(config)
 	if err != nil {
-		t.Fatalf("Failed to create Slack connector: %v", err)
+		t.Fatalf("Failed to create integration: %v", err)
 	}
 
 	// Execute post_message operation
-	result, err := connector.Execute(context.Background(), "post_message", map[string]interface{}{
+	result, err := integration.Execute(context.Background(), "post_message", map[string]interface{}{
 		"channel": "C123456",
 		"text":    "Hello, Slack!",
 	})
@@ -255,13 +255,13 @@ func TestSlackIntegration_UpdateMessage(t *testing.T) {
 		Token:     "test-token",
 	}
 
-	connector, err := NewSlackIntegration(config)
+	integration, err := NewSlackIntegration(config)
 	if err != nil {
-		t.Fatalf("Failed to create Slack connector: %v", err)
+		t.Fatalf("Failed to create integration: %v", err)
 	}
 
 	// Execute update_message operation
-	result, err := connector.Execute(context.Background(), "update_message", map[string]interface{}{
+	result, err := integration.Execute(context.Background(), "update_message", map[string]interface{}{
 		"channel": "C123456",
 		"ts":      "1234567890.123456",
 		"text":    "Updated text",
@@ -336,13 +336,13 @@ func TestSlackIntegration_ListChannels(t *testing.T) {
 		Token:     "test-token",
 	}
 
-	connector, err := NewSlackIntegration(config)
+	integration, err := NewSlackIntegration(config)
 	if err != nil {
-		t.Fatalf("Failed to create Slack connector: %v", err)
+		t.Fatalf("Failed to create integration: %v", err)
 	}
 
 	// Execute list_channels operation
-	result, err := connector.Execute(context.Background(), "list_channels", map[string]interface{}{})
+	result, err := integration.Execute(context.Background(), "list_channels", map[string]interface{}{})
 
 	if err != nil {
 		t.Fatalf("Failed to list channels: %v", err)
@@ -447,13 +447,13 @@ func TestSlackIntegration_ErrorHandling_OkFalse(t *testing.T) {
 				Token:     "test-token",
 			}
 
-			connector, err := NewSlackIntegration(config)
+			integration, err := NewSlackIntegration(config)
 			if err != nil {
-				t.Fatalf("Failed to create Slack connector: %v", err)
+				t.Fatalf("Failed to create integration: %v", err)
 			}
 
 			// Execute operation
-			_, err = connector.Execute(context.Background(), "post_message", map[string]interface{}{
+			_, err = integration.Execute(context.Background(), "post_message", map[string]interface{}{
 				"channel": "C123456",
 				"text":    "Hello",
 			})
@@ -536,13 +536,13 @@ func TestSlackIntegration_ErrorHandling_HTTPErrors(t *testing.T) {
 				Token:     "test-token",
 			}
 
-			connector, err := NewSlackIntegration(config)
+			integration, err := NewSlackIntegration(config)
 			if err != nil {
-				t.Fatalf("Failed to create Slack connector: %v", err)
+				t.Fatalf("Failed to create integration: %v", err)
 			}
 
 			// Execute operation
-			_, err = connector.Execute(context.Background(), "post_message", map[string]interface{}{
+			_, err = integration.Execute(context.Background(), "post_message", map[string]interface{}{
 				"channel": "C123456",
 				"text":    "Hello",
 			})
@@ -553,7 +553,7 @@ func TestSlackIntegration_ErrorHandling_HTTPErrors(t *testing.T) {
 
 			if err != nil {
 				// HTTP errors are caught by the transport layer and returned as TransportError
-				// This is expected behavior and matches the Jenkins connector pattern
+				// This is expected behavior and matches the Jenkins integration pattern
 				transportErr, ok := err.(*transport.TransportError)
 				if !ok {
 					t.Errorf("Expected error to be *transport.TransportError, got %T", err)
@@ -578,13 +578,13 @@ func TestSlackIntegration_UnknownOperation(t *testing.T) {
 		Token:     "test-token",
 	}
 
-	connector, err := NewSlackIntegration(config)
+	integration, err := NewSlackIntegration(config)
 	if err != nil {
-		t.Fatalf("Failed to create Slack connector: %v", err)
+		t.Fatalf("Failed to create integration: %v", err)
 	}
 
 	// Execute unknown operation
-	_, err = connector.Execute(context.Background(), "unknown_operation", map[string]interface{}{})
+	_, err = integration.Execute(context.Background(), "unknown_operation", map[string]interface{}{})
 	if err == nil {
 		t.Error("Expected error for unknown operation, got nil")
 	}
@@ -608,9 +608,9 @@ func TestSlackIntegration_MissingRequiredParameters(t *testing.T) {
 		Token:     "test-token",
 	}
 
-	connector, err := NewSlackIntegration(config)
+	integration, err := NewSlackIntegration(config)
 	if err != nil {
-		t.Fatalf("Failed to create Slack connector: %v", err)
+		t.Fatalf("Failed to create integration: %v", err)
 	}
 
 	tests := []struct {
@@ -642,7 +642,7 @@ func TestSlackIntegration_MissingRequiredParameters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := connector.Execute(context.Background(), tt.operation, tt.inputs)
+			_, err := integration.Execute(context.Background(), tt.operation, tt.inputs)
 			if err == nil {
 				t.Error("Expected error for missing required parameters, got nil")
 			}

@@ -47,7 +47,7 @@ func (m *mockOperationResult) GetMetadata() map[string]interface{} {
 	return m.metadata
 }
 
-func TestExecuteConnector(t *testing.T) {
+func TestExecuteIntegration(t *testing.T) {
 	tests := []struct {
 		name           string
 		step           *StepDefinition
@@ -57,7 +57,7 @@ func TestExecuteConnector(t *testing.T) {
 		expectError    bool
 	}{
 		{
-			name: "successful connector execution",
+			name: "successful integration execution",
 			step: &StepDefinition{
 				ID:        "test_step",
 				Type:      StepTypeIntegration,
@@ -99,7 +99,7 @@ func TestExecuteConnector(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "connector step with missing connector field",
+			name: "integration step with missing integration field",
 			step: &StepDefinition{
 				ID:        "test_step",
 				Type:      StepTypeIntegration,
@@ -110,7 +110,7 @@ func TestExecuteConnector(t *testing.T) {
 			expectError:  true,
 		},
 		{
-			name: "connector step without registry",
+			name: "integration step without registry",
 			step: &StepDefinition{
 				ID:        "test_step",
 				Type:      StepTypeIntegration,
@@ -121,11 +121,11 @@ func TestExecuteConnector(t *testing.T) {
 			expectError:  true,
 		},
 		{
-			name: "connector returns nil result without error (contract violation)",
+			name: "integration returns nil result without error (contract violation)",
 			step: &StepDefinition{
 				ID:        "test_step",
 				Type:      StepTypeIntegration,
-				Integration: "broken.connector",
+				Integration: "broken.integration",
 			},
 			inputs: map[string]interface{}{},
 			mockRegistry: &mockOperationRegistry{
@@ -146,7 +146,7 @@ func TestExecuteConnector(t *testing.T) {
 				executor = executor.WithOperationRegistry(tt.mockRegistry)
 			}
 
-			// Execute connector step
+			// Execute integration step
 			output, err := executor.executeIntegration(context.Background(), tt.step, tt.inputs)
 
 			// Check error expectation

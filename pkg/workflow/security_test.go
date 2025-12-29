@@ -558,7 +558,7 @@ func TestCheckMissingAuth(t *testing.T) {
 		wantType     string
 	}{
 		{
-			name: "external connector without auth",
+			name: "external integration without auth",
 			def: &Definition{
 				Integrations: map[string]IntegrationDefinition{
 					"github": {
@@ -571,7 +571,7 @@ func TestCheckMissingAuth(t *testing.T) {
 			wantType:     "missing_auth",
 		},
 		{
-			name: "external connector with auth",
+			name: "external integration with auth",
 			def: &Definition{
 				Integrations: map[string]IntegrationDefinition{
 					"github": {
@@ -585,7 +585,7 @@ func TestCheckMissingAuth(t *testing.T) {
 			wantWarnings: 0,
 		},
 		{
-			name: "builtin connector without auth is okay",
+			name: "builtin action without auth is okay",
 			def: &Definition{
 				Integrations: map[string]IntegrationDefinition{
 					"file": {
@@ -596,7 +596,7 @@ func TestCheckMissingAuth(t *testing.T) {
 			wantWarnings: 0,
 		},
 		{
-			name: "multiple connectors, one missing auth",
+			name: "multiple integrations, one missing auth",
 			def: &Definition{
 				Integrations: map[string]IntegrationDefinition{
 					"github": {

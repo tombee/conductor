@@ -10,17 +10,17 @@ import (
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
-// TestObservabilityConnectorCreation tests that observability connectors can be created
+// TestObservabilityIntegrationCreation tests that observability integrations can be created
 // with proper configuration.
-func TestObservabilityConnectorCreation(t *testing.T) {
+func TestObservabilityIntegrationCreation(t *testing.T) {
 	tests := []struct {
 		name          string
-		connectorName string
+		integrationName string
 		operations    map[string]workflow.OperationDefinition
 	}{
 		{
-			name:          "datadog connector",
-			connectorName: "datadog",
+			name:          "datadog integration",
+			integrationName: "datadog",
 			operations: map[string]workflow.OperationDefinition{
 				"log": {
 					Method: "POST",
@@ -29,8 +29,8 @@ func TestObservabilityConnectorCreation(t *testing.T) {
 			},
 		},
 		{
-			name:          "splunk connector",
-			connectorName: "splunk",
+			name:          "splunk integration",
+			integrationName: "splunk",
 			operations: map[string]workflow.OperationDefinition{
 				"log": {
 					Method: "POST",
@@ -39,8 +39,8 @@ func TestObservabilityConnectorCreation(t *testing.T) {
 			},
 		},
 		{
-			name:          "loki connector",
-			connectorName: "loki",
+			name:          "loki integration",
+			integrationName: "loki",
 			operations: map[string]workflow.OperationDefinition{
 				"push": {
 					Method: "POST",
@@ -49,8 +49,8 @@ func TestObservabilityConnectorCreation(t *testing.T) {
 			},
 		},
 		{
-			name:          "elasticsearch connector",
-			connectorName: "elasticsearch",
+			name:          "elasticsearch integration",
+			integrationName: "elasticsearch",
 			operations: map[string]workflow.OperationDefinition{
 				"index": {
 					Method: "POST",
@@ -63,7 +63,7 @@ func TestObservabilityConnectorCreation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			def := &workflow.IntegrationDefinition{
-				Name:       tt.connectorName,
+				Name:       tt.integrationName,
 				BaseURL:    "https://example.com",
 				Operations: tt.operations,
 			}
@@ -73,7 +73,7 @@ func TestObservabilityConnectorCreation(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.NotNil(t, conn)
-			assert.Equal(t, tt.connectorName, conn.Name())
+			assert.Equal(t, tt.integrationName, conn.Name())
 		})
 	}
 }
@@ -201,14 +201,14 @@ func TestElasticsearchIndexValidation(t *testing.T) {
 func TestDefaultFieldInjectionIntegration(t *testing.T) {
 	tests := []struct {
 		name          string
-		connectorName string
+		integrationName string
 		operation     string
 		inputs        map[string]interface{}
 		expectFields  []string
 	}{
 		{
 			name:          "datadog adds timestamp and hostname",
-			connectorName: "datadog",
+			integrationName: "datadog",
 			operation:     "log",
 			inputs: map[string]interface{}{
 				"message": "Test log",
@@ -217,7 +217,7 @@ func TestDefaultFieldInjectionIntegration(t *testing.T) {
 		},
 		{
 			name:          "loki adds timestamp",
-			connectorName: "loki",
+			integrationName: "loki",
 			operation:     "push",
 			inputs: map[string]interface{}{
 				"line": "Test log",
@@ -226,7 +226,7 @@ func TestDefaultFieldInjectionIntegration(t *testing.T) {
 		},
 		{
 			name:          "cloudwatch adds timestamp",
-			connectorName: "cloudwatch",
+			integrationName: "cloudwatch",
 			operation:     "log",
 			inputs: map[string]interface{}{
 				"message": "Test log",
@@ -245,7 +245,7 @@ func TestDefaultFieldInjectionIntegration(t *testing.T) {
 
 			// Inject defaults
 			injector := operation.NewDefaultFieldInjector()
-			injector.InjectDefaults(inputsCopy, tt.connectorName)
+			injector.InjectDefaults(inputsCopy, tt.integrationName)
 
 			// Verify expected fields were added
 			for _, field := range tt.expectFields {

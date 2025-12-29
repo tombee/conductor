@@ -167,7 +167,7 @@ func TestResolver_ResolveIntegrationRequirements(t *testing.T) {
 			if tt.wantBinding {
 				binding, exists := resolved.IntegrationBindings["github"]
 				if !exists {
-					t.Error("expected github connector binding but got none")
+					t.Error("expected github integration binding but got none")
 					return
 				}
 
@@ -393,10 +393,10 @@ func TestResolver_BackwardCompatibility(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Verify connector was resolved
+	// Verify integration was resolved
 	githubBinding, exists := resolved.IntegrationBindings["github"]
 	if !exists {
-		t.Error("expected github connector binding")
+		t.Error("expected github integration binding")
 	}
 	if githubBinding.Source != SourceInline {
 		t.Errorf("expected source %q but got %q", SourceInline, githubBinding.Source)

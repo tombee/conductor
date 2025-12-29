@@ -245,7 +245,7 @@ func TestValidator_ValidateElasticsearchIndex(t *testing.T) {
 func TestValidator_ValidateIntegrationInputs(t *testing.T) {
 	v := NewValidator()
 
-	t.Run("loki connector with invalid labels", func(t *testing.T) {
+	t.Run("loki integration with invalid labels", func(t *testing.T) {
 		inputs := map[string]interface{}{
 			"line": "test log",
 			"labels": map[string]interface{}{
@@ -257,7 +257,7 @@ func TestValidator_ValidateIntegrationInputs(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("elasticsearch connector with invalid index", func(t *testing.T) {
+	t.Run("elasticsearch integration with invalid index", func(t *testing.T) {
 		inputs := map[string]interface{}{
 			"index": "MyIndex", // Invalid: uppercase
 			"document": map[string]interface{}{
@@ -281,12 +281,12 @@ func TestValidator_ValidateIntegrationInputs(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("unknown connector", func(t *testing.T) {
+	t.Run("unknown integration", func(t *testing.T) {
 		inputs := map[string]interface{}{
 			"any": "value",
 		}
 
 		err := v.ValidateIntegrationInputs("unknown", "op", inputs)
-		assert.NoError(t, err) // No validation for unknown connectors
+		assert.NoError(t, err) // No validation for unknown integrations
 	})
 }

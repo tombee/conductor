@@ -24,17 +24,17 @@ func TestNewDiscordIntegration(t *testing.T) {
 		Token:     "test-token",
 	}
 
-	connector, err := NewDiscordIntegration(config)
+	integration, err := NewDiscordIntegration(config)
 	if err != nil {
-		t.Fatalf("Failed to create Discord connector: %v", err)
+		t.Fatalf("Failed to create integration: %v", err)
 	}
 
-	if connector.Name() != "discord" {
-		t.Errorf("Expected connector name 'discord', got '%s'", connector.Name())
+	if operation.Name() != "discord" {
+		t.Errorf("Expected integration name 'discord', got '%s'", operation.Name())
 	}
 
 	// Verify default base URL is set
-	dc := connector.(*DiscordIntegration)
+	dc := integration.(*DiscordIntegration)
 	if dc.baseURL != "https://discord.com/api/v10" {
 		t.Errorf("Expected default base URL 'https://discord.com/api/v10', got '%s'", dc.baseURL)
 	}
@@ -54,12 +54,12 @@ func TestDiscordIntegrationOperations(t *testing.T) {
 		Token:     "test-token",
 	}
 
-	connector, err := NewDiscordIntegration(config)
+	integration, err := NewDiscordIntegration(config)
 	if err != nil {
-		t.Fatalf("Failed to create Discord connector: %v", err)
+		t.Fatalf("Failed to create integration: %v", err)
 	}
 
-	dc := connector.(*DiscordIntegration)
+	dc := integration.(*DiscordIntegration)
 	operations := dc.Operations()
 
 	// Verify we have all 12 operations
@@ -133,13 +133,13 @@ func TestSendMessage(t *testing.T) {
 		Token:     "test-token",
 	}
 
-	connector, err := NewDiscordIntegration(config)
+	integration, err := NewDiscordIntegration(config)
 	if err != nil {
-		t.Fatalf("Failed to create Discord connector: %v", err)
+		t.Fatalf("Failed to create integration: %v", err)
 	}
 
 	// Execute send_message operation
-	result, err := connector.Execute(context.Background(), "send_message", map[string]interface{}{
+	result, err := integration.Execute(context.Background(), "send_message", map[string]interface{}{
 		"channel_id": "123456",
 		"content":    "Hello, Discord!",
 	})
@@ -177,13 +177,13 @@ func TestUnknownOperation(t *testing.T) {
 		Token:     "test-token",
 	}
 
-	connector, err := NewDiscordIntegration(config)
+	integration, err := NewDiscordIntegration(config)
 	if err != nil {
-		t.Fatalf("Failed to create Discord connector: %v", err)
+		t.Fatalf("Failed to create integration: %v", err)
 	}
 
 	// Execute unknown operation
-	_, err = connector.Execute(context.Background(), "unknown_operation", map[string]interface{}{})
+	_, err = integration.Execute(context.Background(), "unknown_operation", map[string]interface{}{})
 	if err == nil {
 		t.Error("Expected error for unknown operation, got nil")
 	}

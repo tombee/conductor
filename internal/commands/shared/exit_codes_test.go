@@ -24,7 +24,7 @@ import (
 	pkgerrors "github.com/tombee/conductor/pkg/errors"
 )
 
-func TestPrintUserVisibleSuggestion_ConnectorError(t *testing.T) {
+func TestPrintUserVisibleSuggestion_OperationError(t *testing.T) {
 	// Test that operation.Error implements UserVisibleError correctly
 	connErr := &operation.Error{
 		Type:        operation.ErrorTypeAuth,

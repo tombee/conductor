@@ -10,7 +10,7 @@ import (
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
-func TestHTTPConnector_Execute(t *testing.T) {
+func TestHTTPIntegration_Execute(t *testing.T) {
 	// Create a test HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify request
@@ -35,7 +35,7 @@ func TestHTTPConnector_Execute(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Create connector definition
+	// Create operation definition
 	def := &workflow.IntegrationDefinition{
 		Name:    "test",
 		BaseURL: server.URL,
@@ -61,16 +61,16 @@ func TestHTTPConnector_Execute(t *testing.T) {
 		},
 	}
 
-	// Create connector (allow localhost for testing)
+	// Create operation (allow localhost for testing)
 	config := DefaultConfig()
 	config.AllowedHosts = []string{"127.0.0.1", "localhost"}
-	connector, err := New(def, config)
+	op, err := New(def, config)
 	if err != nil {
 		t.Fatalf("failed to create provider: %v", err)
 	}
 
 	// Execute operation
-	result, err := connector.Execute(context.Background(), "create_issue", map[string]interface{}{
+	result, err := op.Execute(context.Background(), "create_issue", map[string]interface{}{
 		"owner": "test-org",
 		"repo":  "test-repo",
 		"title": "Test Issue",
@@ -101,7 +101,7 @@ func TestHTTPConnector_Execute(t *testing.T) {
 	}
 }
 
-func TestHTTPConnector_AuthTypes(t *testing.T) {
+func TestHTTPIntegration_AuthTypes(t *testing.T) {
 	tests := []struct {
 		name     string
 		auth     *workflow.AuthDefinition
@@ -144,7 +144,7 @@ func TestHTTPConnector_AuthTypes(t *testing.T) {
 			}))
 			defer server.Close()
 
-			// Create connector
+			// Create operation
 			def := &workflow.IntegrationDefinition{
 				Name:    "test",
 				BaseURL: server.URL,
@@ -159,13 +159,13 @@ func TestHTTPConnector_AuthTypes(t *testing.T) {
 
 			config := DefaultConfig()
 			config.AllowedHosts = []string{"127.0.0.1", "localhost"}
-			connector, err := New(def, config)
+			op, err := New(def, config)
 			if err != nil {
 				t.Fatalf("failed to create provider: %v", err)
 			}
 
 			// Execute
-			_, err = connector.Execute(context.Background(), "test", map[string]interface{}{})
+			_, err = op.Execute(context.Background(), "test", map[string]interface{}{})
 			if err != nil {
 				t.Fatalf("execution failed: %v", err)
 			}
@@ -178,7 +178,7 @@ func TestHTTPConnector_AuthTypes(t *testing.T) {
 	}
 }
 
-func TestHTTPConnector_PathParameters(t *testing.T) {
+func TestHTTPIntegration_PathParameters(t *testing.T) {
 	// Create test server
 	var gotPath string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -188,7 +188,7 @@ func TestHTTPConnector_PathParameters(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Create connector
+	// Create operation
 	def := &workflow.IntegrationDefinition{
 		Name:    "test",
 		BaseURL: server.URL,
@@ -202,13 +202,13 @@ func TestHTTPConnector_PathParameters(t *testing.T) {
 
 	config := DefaultConfig()
 	config.AllowedHosts = []string{"127.0.0.1", "localhost"}
-	connector, err := New(def, config)
+	op, err := New(def, config)
 	if err != nil {
 		t.Fatalf("failed to create provider: %v", err)
 	}
 
 	// Execute with path parameters
-	_, err = connector.Execute(context.Background(), "test", map[string]interface{}{
+	_, err = op.Execute(context.Background(), "test", map[string]interface{}{
 		"owner":  "test-org",
 		"repo":   "test-repo",
 		"number": 42,
@@ -225,7 +225,7 @@ func TestHTTPConnector_PathParameters(t *testing.T) {
 	}
 }
 
-func TestHTTPConnector_ErrorHandling(t *testing.T) {
+func TestHTTPIntegration_ErrorHandling(t *testing.T) {
 	tests := []struct {
 		name           string
 		statusCode     int
@@ -267,7 +267,7 @@ func TestHTTPConnector_ErrorHandling(t *testing.T) {
 			}))
 			defer server.Close()
 
-			// Create connector
+			// Create operation
 			def := &workflow.IntegrationDefinition{
 				Name:    "test",
 				BaseURL: server.URL,
@@ -281,13 +281,13 @@ func TestHTTPConnector_ErrorHandling(t *testing.T) {
 
 			config := DefaultConfig()
 			config.AllowedHosts = []string{"127.0.0.1", "localhost"}
-			connector, err := New(def, config)
+			op, err := New(def, config)
 			if err != nil {
 				t.Fatalf("failed to create provider: %v", err)
 			}
 
 			// Execute (should fail)
-			_, err = connector.Execute(context.Background(), "test", map[string]interface{}{})
+			_, err = op.Execute(context.Background(), "test", map[string]interface{}{})
 
 			// Verify error
 			if err == nil {
@@ -311,7 +311,7 @@ func TestHTTPConnector_ErrorHandling(t *testing.T) {
 }
 
 func TestRegistry(t *testing.T) {
-	// Create workflow definition with connectors
+	// Create workflow definition with operations
 	def := &workflow.Definition{
 		Name: "test-workflow",
 		Integrations: map[string]workflow.IntegrationDefinition{
@@ -347,56 +347,56 @@ func TestRegistry(t *testing.T) {
 	// Create registry
 	registry := NewRegistry(DefaultConfig())
 
-	// Load connectors
+	// Load operations
 	err := registry.LoadFromDefinition(def)
 	if err != nil {
-		t.Fatalf("failed to load connectors: %v", err)
+		t.Fatalf("failed to load operations: %v", err)
 	}
 
 	// Test List
 	names := registry.List()
 	if len(names) != 2 {
-		t.Errorf("expected 2 connectors, got %d", len(names))
+		t.Errorf("expected 2 operations, got %d", len(names))
 	}
 
 	// Test Get
-	connector, err := registry.Get("github")
+	op, err := registry.Get("github")
 	if err != nil {
 		t.Fatalf("failed to get provider: %v", err)
 	}
 
-	if connector.Name() != "github" {
-		t.Errorf("expected name 'github', got %s", connector.Name())
+	if op.Name() != "github" {
+		t.Errorf("expected name 'github', got %s", op.Name())
 	}
 
 	// Test Get non-existent
 	_, err = registry.Get("nonexistent")
 	if err == nil {
-		t.Error("expected error for non-existent connector")
+		t.Error("expected error for non-existent operation")
 	}
 }
 
 func TestParseReference(t *testing.T) {
 	tests := []struct {
-		name          string
-		reference     string
-		wantConnector string
-		wantOperation string
-		wantError     bool
+		name            string
+		reference       string
+		wantIntegration string
+		wantOperation   string
+		wantError       bool
 	}{
 		{
-			name:          "valid reference",
-			reference:     "github.create_issue",
-			wantConnector: "github",
-			wantOperation: "create_issue",
-			wantError:     false,
+			name:            "valid reference",
+			reference:       "github.create_issue",
+			wantIntegration: "github",
+			wantOperation:   "create_issue",
+			wantError:       false,
 		},
 		{
-			name:          "valid reference with underscores",
-			reference:     "my_connector.my_operation",
-			wantConnector: "my_connector",
-			wantOperation: "my_operation",
-			wantError:     false,
+			name:            "valid reference with underscores",
+			reference:       "my_integration.my_operation",
+			wantIntegration: "my_integration",
+			wantOperation:   "my_operation",
+			wantError:       false,
 		},
 		{
 			name:      "missing dot",
@@ -404,7 +404,7 @@ func TestParseReference(t *testing.T) {
 			wantError: true,
 		},
 		{
-			name:      "empty connector",
+			name:      "empty operation",
 			reference: ".create_issue",
 			wantError: true,
 		},
@@ -417,7 +417,7 @@ func TestParseReference(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			connector, operation, err := parseReference(tt.reference)
+			opName, operation, err := parseReference(tt.reference)
 
 			if tt.wantError {
 				if err == nil {
@@ -430,8 +430,8 @@ func TestParseReference(t *testing.T) {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			if connector != tt.wantConnector {
-				t.Errorf("expected connector %q, got %q", tt.wantConnector, connector)
+			if opName != tt.wantIntegration {
+				t.Errorf("expected integration %q, got %q", tt.wantIntegration, opName)
 			}
 
 			if operation != tt.wantOperation {
@@ -451,28 +451,28 @@ func TestNewBuiltinRegistry(t *testing.T) {
 		t.Fatalf("NewBuiltinRegistry failed: %v", err)
 	}
 
-	// Verify all builtin connectors are registered
+	// Verify all builtin operations are registered
 	names := registry.List()
 	expected := []string{"file", "shell", "transform", "utility", "http"}
 
 	if len(names) != len(expected) {
-		t.Errorf("expected %d connectors, got %d", len(expected), len(names))
+		t.Errorf("expected %d operations, got %d", len(expected), len(names))
 	}
 
 	// Check each builtin exists
 	for _, name := range expected {
-		connector, err := registry.Get(name)
+		op, err := registry.Get(name)
 		if err != nil {
-			t.Errorf("expected connector %q to exist: %v", name, err)
+			t.Errorf("expected operation %q to exist: %v", name, err)
 			continue
 		}
-		if connector.Name() != name {
-			t.Errorf("expected connector name %q, got %q", name, connector.Name())
+		if op.Name() != name {
+			t.Errorf("expected operation name %q, got %q", name, op.Name())
 		}
 	}
 }
 
-func TestBuiltinConnector_ShellExecution(t *testing.T) {
+func TestBuiltinAction_ShellExecution(t *testing.T) {
 	// Use a directory that actually exists
 	config := &BuiltinConfig{
 		WorkflowDir: "/tmp",
@@ -506,7 +506,7 @@ func TestBuiltinConnector_ShellExecution(t *testing.T) {
 	}
 }
 
-func TestBuiltinConnector_FileExecution(t *testing.T) {
+func TestBuiltinAction_FileExecution(t *testing.T) {
 	config := &BuiltinConfig{
 		WorkflowDir:   "/tmp",
 		AllowAbsolute: true, // Allow absolute paths for this test
@@ -541,7 +541,7 @@ func TestRegistryAsWorkflowRegistry(t *testing.T) {
 		t.Fatalf("NewBuiltinRegistry failed: %v", err)
 	}
 
-	// Get the workflow.ConnectorRegistry interface
+	// Get the workflow.OperationRegistry interface
 	workflowRegistry := registry.AsWorkflowRegistry()
 
 	// Execute through the interface
@@ -552,7 +552,7 @@ func TestRegistryAsWorkflowRegistry(t *testing.T) {
 		t.Fatalf("execution through interface failed: %v", err)
 	}
 
-	// Verify result implements ConnectorResult interface
+	// Verify result implements OperationResult interface
 	response := result.GetResponse()
 	if response == nil {
 		t.Error("expected non-nil response")

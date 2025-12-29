@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// newTestConnector creates a connector with deterministic random for testing.
-func newTestConnector(seed int64) *UtilityAction {
+// newTestAction creates an action with deterministic random for testing.
+func newTestAction(seed int64) *UtilityAction {
 	cfg := &Config{
 		RandomSeed:          &seed,
 		MaxArraySize:        100,
@@ -18,7 +18,7 @@ func newTestConnector(seed int64) *UtilityAction {
 }
 
 func TestRandomInt(t *testing.T) {
-	uc := newTestConnector(42)
+	action := newTestAction(42)
 	ctx := context.Background()
 
 	t.Run("basic range", func(t *testing.T) {
@@ -92,7 +92,7 @@ func TestRandomInt(t *testing.T) {
 }
 
 func TestRandomChoose(t *testing.T) {
-	uc := newTestConnector(42)
+	action := newTestAction(42)
 	ctx := context.Background()
 
 	t.Run("basic selection", func(t *testing.T) {
@@ -153,7 +153,7 @@ func TestRandomChoose(t *testing.T) {
 }
 
 func TestRandomWeighted(t *testing.T) {
-	uc := newTestConnector(42)
+	action := newTestAction(42)
 	ctx := context.Background()
 
 	t.Run("basic weighted selection", func(t *testing.T) {
@@ -224,7 +224,7 @@ func TestRandomWeighted(t *testing.T) {
 }
 
 func TestRandomSample(t *testing.T) {
-	uc := newTestConnector(42)
+	action := newTestAction(42)
 	ctx := context.Background()
 
 	t.Run("sample subset", func(t *testing.T) {
@@ -293,7 +293,7 @@ func TestRandomSample(t *testing.T) {
 }
 
 func TestRandomShuffle(t *testing.T) {
-	uc := newTestConnector(42)
+	action := newTestAction(42)
 	ctx := context.Background()
 
 	t.Run("shuffle array", func(t *testing.T) {
@@ -352,9 +352,9 @@ func TestRandomShuffle(t *testing.T) {
 }
 
 func TestDeterministicRandomness(t *testing.T) {
-	// Two connectors with same seed should produce same results
-	uc1 := newTestConnector(12345)
-	uc2 := newTestConnector(12345)
+	// Two actions with same seed should produce same results
+	uc1 := newTestAction(12345)
+	uc2 := newTestAction(12345)
 	ctx := context.Background()
 
 	inputs := map[string]interface{}{

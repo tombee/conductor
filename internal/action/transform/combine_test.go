@@ -9,7 +9,7 @@ import (
 func TestMerge_ShallowStrategy(t *testing.T) {
 	c, err := New(nil)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	tests := []struct {
@@ -89,7 +89,7 @@ func TestMerge_ShallowStrategy(t *testing.T) {
 func TestMerge_DeepStrategy(t *testing.T) {
 	c, err := New(nil)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	tests := []struct {
@@ -195,7 +195,7 @@ func TestMerge_DeepStrategy(t *testing.T) {
 func TestMerge_Arrays(t *testing.T) {
 	c, err := New(nil)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	tests := []struct {
@@ -244,7 +244,7 @@ func TestMerge_Arrays(t *testing.T) {
 func TestMerge_Errors(t *testing.T) {
 	c, err := New(nil)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	tests := []struct {
@@ -303,7 +303,7 @@ func TestMerge_Errors(t *testing.T) {
 func TestConcat(t *testing.T) {
 	c, err := New(nil)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	tests := []struct {
@@ -387,7 +387,7 @@ func TestConcat(t *testing.T) {
 func TestConcat_Errors(t *testing.T) {
 	c, err := New(nil)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	tests := []struct {
@@ -436,7 +436,7 @@ func TestConcat_Errors(t *testing.T) {
 func TestFlatten(t *testing.T) {
 	c, err := New(nil)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	tests := []struct {
@@ -531,7 +531,7 @@ func TestFlatten(t *testing.T) {
 func TestFlatten_Errors(t *testing.T) {
 	c, err := New(nil)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	tests := []struct {

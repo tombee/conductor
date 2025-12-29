@@ -9,14 +9,14 @@ import (
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
-func TestNewPackageConnector(t *testing.T) {
+func TestNewPackageIntegration(t *testing.T) {
 	tests := []struct {
 		name    string
 		def     *workflow.IntegrationDefinition
 		wantErr bool
 	}{
 		{
-			name: "github connector with auth",
+			name: "github integration with auth",
 			def: &workflow.IntegrationDefinition{
 				Name: "github",
 				From: "integrations/github",
@@ -30,7 +30,7 @@ func TestNewPackageConnector(t *testing.T) {
 		{
 			name: "github enterprise with custom base_url",
 			def: &workflow.IntegrationDefinition{
-				Name:    "github", // Note: builtin connectors use their own name
+				Name:    "github", // Note: builtin integrations use their own name
 				From:    "integrations/github",
 				BaseURL: "https://github.mycompany.com/api/v3",
 				Auth: &workflow.AuthDefinition{
@@ -41,7 +41,7 @@ func TestNewPackageConnector(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "slack connector",
+			name: "slack integration",
 			def: &workflow.IntegrationDefinition{
 				Name: "slack",
 				From: "integrations/slack",
@@ -53,7 +53,7 @@ func TestNewPackageConnector(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "jira connector",
+			name: "jira integration",
 			def: &workflow.IntegrationDefinition{
 				Name:    "jira",
 				From:    "integrations/jira",
@@ -67,7 +67,7 @@ func TestNewPackageConnector(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "discord connector",
+			name: "discord integration",
 			def: &workflow.IntegrationDefinition{
 				Name: "discord",
 				From: "integrations/discord",
@@ -79,7 +79,7 @@ func TestNewPackageConnector(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "jenkins connector",
+			name: "jenkins integration",
 			def: &workflow.IntegrationDefinition{
 				Name:    "jenkins",
 				From:    "integrations/jenkins",
@@ -93,7 +93,7 @@ func TestNewPackageConnector(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "nonexistent connector",
+			name: "nonexistent integration",
 			def: &workflow.IntegrationDefinition{
 				Name: "invalid",
 				From: "integrations/invalid",
@@ -106,9 +106,9 @@ func TestNewPackageConnector(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			conn, err := operation.New(tt.def, config)
+			op, err := operation.New(tt.def, config)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("connector.New() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("operation.New() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
@@ -116,13 +116,13 @@ func TestNewPackageConnector(t *testing.T) {
 				return
 			}
 
-			if conn == nil {
-				t.Error("connector.New() returned nil connector")
+			if op == nil {
+				t.Error("operation.New() returned nil operation")
 				return
 			}
 
-			if conn.Name() != tt.def.Name {
-				t.Errorf("connector.Name() = %v, want %v", conn.Name(), tt.def.Name)
+			if op.Name() != tt.def.Name {
+				t.Errorf("operation.Name() = %v, want %v", op.Name(), tt.def.Name)
 			}
 		})
 	}

@@ -12,7 +12,7 @@ func TestNew(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if uc == nil {
-			t.Fatal("expected connector, got nil")
+			t.Fatal("expected action, got nil")
 		}
 		if uc.Name() != "utility" {
 			t.Errorf("expected name 'utility', got %q", uc.Name())
@@ -32,7 +32,7 @@ func TestNew(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if uc == nil {
-			t.Fatal("expected connector, got nil")
+			t.Fatal("expected action, got nil")
 		}
 	})
 }

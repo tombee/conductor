@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestFileConnector_RenderTemplate_AllowedFunctions(t *testing.T) {
+func TestFileAction_RenderTemplate_AllowedFunctions(t *testing.T) {
 	tempDir := t.TempDir()
 
 	tests := []struct {
@@ -89,9 +89,9 @@ func TestFileConnector_RenderTemplate_AllowedFunctions(t *testing.T) {
 		WorkflowDir: tempDir,
 		OutputDir:   tempDir,
 	}
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	for _, tt := range tests {
@@ -106,7 +106,7 @@ func TestFileConnector_RenderTemplate_AllowedFunctions(t *testing.T) {
 			outputFile := filepath.Join(tempDir, "output.txt")
 
 			// Execute render operation
-			_, err := connector.Execute(context.Background(), "render", map[string]interface{}{
+			_, err := action.Execute(context.Background(), "render", map[string]interface{}{
 				"template": "./template.tmpl",
 				"output":   "./output.txt",
 				"data":     tt.data,
@@ -134,7 +134,7 @@ func TestFileConnector_RenderTemplate_AllowedFunctions(t *testing.T) {
 	}
 }
 
-func TestFileConnector_RenderTemplate_BlockedFunctions(t *testing.T) {
+func TestFileAction_RenderTemplate_BlockedFunctions(t *testing.T) {
 	tempDir := t.TempDir()
 
 	tests := []struct {
@@ -159,9 +159,9 @@ func TestFileConnector_RenderTemplate_BlockedFunctions(t *testing.T) {
 		WorkflowDir: tempDir,
 		OutputDir:   tempDir,
 	}
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	for _, tt := range tests {
@@ -176,7 +176,7 @@ func TestFileConnector_RenderTemplate_BlockedFunctions(t *testing.T) {
 			outputFile := filepath.Join(tempDir, "output.txt")
 
 			// Execute render operation - should fail
-			_, err := connector.Execute(context.Background(), "render", map[string]interface{}{
+			_, err := action.Execute(context.Background(), "render", map[string]interface{}{
 				"template": "./blocked.tmpl",
 				"output":   "./output.txt",
 				"data":     map[string]interface{}{},
@@ -203,7 +203,7 @@ func TestFileConnector_RenderTemplate_BlockedFunctions(t *testing.T) {
 	}
 }
 
-func TestFileConnector_RenderTemplate_WithWorkflowData(t *testing.T) {
+func TestFileAction_RenderTemplate_WithWorkflowData(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Create a template that uses workflow-style data
@@ -223,9 +223,9 @@ Items:
 		WorkflowDir: tempDir,
 		OutputDir:   tempDir,
 	}
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	// Simulate workflow data
@@ -238,7 +238,7 @@ Items:
 	outputFile := filepath.Join(tempDir, "report.md")
 
 	// Execute render
-	result, err := connector.Execute(context.Background(), "render", map[string]interface{}{
+	result, err := action.Execute(context.Background(), "render", map[string]interface{}{
 		"template": "./report.tmpl",
 		"output":   "./report.md",
 		"data":     data,

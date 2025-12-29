@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func TestFileConnector_ReadText(t *testing.T) {
+func TestFileAction_ReadText(t *testing.T) {
 	// Create temp directory for test files
 	tempDir := t.TempDir()
 
@@ -22,17 +22,17 @@ func TestFileConnector_ReadText(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
-	// Create connector
+	// Create action
 	config := &Config{
 		WorkflowDir: tempDir,
 	}
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	// Test read_text operation
-	result, err := connector.Execute(context.Background(), "read_text", map[string]interface{}{
+	result, err := action.Execute(context.Background(), "read_text", map[string]interface{}{
 		"path": "./test.txt",
 	})
 
@@ -45,7 +45,7 @@ func TestFileConnector_ReadText(t *testing.T) {
 	}
 }
 
-func TestFileConnector_ReadJSON(t *testing.T) {
+func TestFileAction_ReadJSON(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Create test JSON file
@@ -58,13 +58,13 @@ func TestFileConnector_ReadJSON(t *testing.T) {
 	config := &Config{
 		WorkflowDir: tempDir,
 	}
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	// Test read_json operation
-	result, err := connector.Execute(context.Background(), "read_json", map[string]interface{}{
+	result, err := action.Execute(context.Background(), "read_json", map[string]interface{}{
 		"path": "./test.json",
 	})
 
@@ -83,7 +83,7 @@ func TestFileConnector_ReadJSON(t *testing.T) {
 	}
 }
 
-func TestFileConnector_ReadJSON_WithExtraction(t *testing.T) {
+func TestFileAction_ReadJSON_WithExtraction(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Create test JSON file
@@ -96,13 +96,13 @@ func TestFileConnector_ReadJSON_WithExtraction(t *testing.T) {
 	config := &Config{
 		WorkflowDir: tempDir,
 	}
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	// Test read_json with extraction
-	result, err := connector.Execute(context.Background(), "read_json", map[string]interface{}{
+	result, err := action.Execute(context.Background(), "read_json", map[string]interface{}{
 		"path":    "./config.json",
 		"extract": "$.database.host",
 	})
@@ -116,7 +116,7 @@ func TestFileConnector_ReadJSON_WithExtraction(t *testing.T) {
 	}
 }
 
-func TestFileConnector_ReadYAML(t *testing.T) {
+func TestFileAction_ReadYAML(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Create test YAML file
@@ -131,13 +131,13 @@ age: 30
 	config := &Config{
 		WorkflowDir: tempDir,
 	}
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	// Test read_yaml operation
-	result, err := connector.Execute(context.Background(), "read_yaml", map[string]interface{}{
+	result, err := action.Execute(context.Background(), "read_yaml", map[string]interface{}{
 		"path": "./test.yaml",
 	})
 
@@ -156,7 +156,7 @@ age: 30
 	}
 }
 
-func TestFileConnector_ReadCSV(t *testing.T) {
+func TestFileAction_ReadCSV(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Create test CSV file
@@ -172,13 +172,13 @@ Jane,25,LA
 	config := &Config{
 		WorkflowDir: tempDir,
 	}
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	// Test read_csv operation
-	result, err := connector.Execute(context.Background(), "read_csv", map[string]interface{}{
+	result, err := action.Execute(context.Background(), "read_csv", map[string]interface{}{
 		"path": "./test.csv",
 	})
 
@@ -205,7 +205,7 @@ Jane,25,LA
 	}
 }
 
-func TestFileConnector_ReadLines(t *testing.T) {
+func TestFileAction_ReadLines(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Create test file with multiple lines
@@ -218,13 +218,13 @@ func TestFileConnector_ReadLines(t *testing.T) {
 	config := &Config{
 		WorkflowDir: tempDir,
 	}
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	// Test read_lines operation
-	result, err := connector.Execute(context.Background(), "read_lines", map[string]interface{}{
+	result, err := action.Execute(context.Background(), "read_lines", map[string]interface{}{
 		"path": "./test.txt",
 	})
 
@@ -247,7 +247,7 @@ func TestFileConnector_ReadLines(t *testing.T) {
 	}
 }
 
-func TestFileConnector_ReadAutoDetect(t *testing.T) {
+func TestFileAction_ReadAutoDetect(t *testing.T) {
 	tempDir := t.TempDir()
 
 	tests := []struct {
@@ -285,9 +285,9 @@ func TestFileConnector_ReadAutoDetect(t *testing.T) {
 	config := &Config{
 		WorkflowDir: tempDir,
 	}
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	for _, tt := range tests {
@@ -299,7 +299,7 @@ func TestFileConnector_ReadAutoDetect(t *testing.T) {
 			}
 
 			// Test read operation (auto-detect)
-			result, err := connector.Execute(context.Background(), "read", map[string]interface{}{
+			result, err := action.Execute(context.Background(), "read", map[string]interface{}{
 				"path": "./" + tt.filename,
 			})
 
@@ -326,19 +326,19 @@ func TestFileConnector_ReadAutoDetect(t *testing.T) {
 	}
 }
 
-func TestFileConnector_FileNotFound(t *testing.T) {
+func TestFileAction_FileNotFound(t *testing.T) {
 	tempDir := t.TempDir()
 
 	config := &Config{
 		WorkflowDir: tempDir,
 	}
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	// Test read_text with non-existent file
-	_, err = connector.Execute(context.Background(), "read_text", map[string]interface{}{
+	_, err = action.Execute(context.Background(), "read_text", map[string]interface{}{
 		"path": "./nonexistent.txt",
 	})
 
@@ -356,7 +356,7 @@ func TestFileConnector_FileNotFound(t *testing.T) {
 	}
 }
 
-func TestFileConnector_BOMStripping(t *testing.T) {
+func TestFileAction_BOMStripping(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Create test file with UTF-8 BOM
@@ -369,13 +369,13 @@ func TestFileConnector_BOMStripping(t *testing.T) {
 	config := &Config{
 		WorkflowDir: tempDir,
 	}
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	// Test read_text strips BOM
-	result, err := connector.Execute(context.Background(), "read_text", map[string]interface{}{
+	result, err := action.Execute(context.Background(), "read_text", map[string]interface{}{
 		"path": "./bom.txt",
 	})
 
@@ -388,15 +388,15 @@ func TestFileConnector_BOMStripping(t *testing.T) {
 	}
 }
 
-func TestFileConnector_UnknownOperation(t *testing.T) {
+func TestFileAction_UnknownOperation(t *testing.T) {
 	config := &Config{}
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	// Test unknown operation
-	_, err = connector.Execute(context.Background(), "invalid_op", map[string]interface{}{})
+	_, err = action.Execute(context.Background(), "invalid_op", map[string]interface{}{})
 
 	if err == nil {
 		t.Fatal("Expected error for unknown operation, got nil")
@@ -414,7 +414,7 @@ func TestFileConnector_UnknownOperation(t *testing.T) {
 
 // Phase 2 tests: Write operations
 
-func TestFileConnector_WriteText(t *testing.T) {
+func TestFileAction_WriteText(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	config := &Config{
@@ -423,9 +423,9 @@ func TestFileConnector_WriteText(t *testing.T) {
 		TempDir:     tmpDir,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	testPath := "./test.txt"
@@ -436,7 +436,7 @@ func TestFileConnector_WriteText(t *testing.T) {
 		"content": testContent,
 	}
 
-	result, err := connector.Execute(context.Background(), "write_text", inputs)
+	result, err := action.Execute(context.Background(), "write_text", inputs)
 	if err != nil {
 		t.Fatalf("write_text failed: %v", err)
 	}
@@ -457,7 +457,7 @@ func TestFileConnector_WriteText(t *testing.T) {
 	}
 }
 
-func TestFileConnector_WriteJSON(t *testing.T) {
+func TestFileAction_WriteJSON(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	config := &Config{
@@ -466,9 +466,9 @@ func TestFileConnector_WriteJSON(t *testing.T) {
 		TempDir:     tmpDir,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	testPath := "./test.json"
@@ -482,7 +482,7 @@ func TestFileConnector_WriteJSON(t *testing.T) {
 		"content": testData,
 	}
 
-	result, err := connector.Execute(context.Background(), "write_json", inputs)
+	result, err := action.Execute(context.Background(), "write_json", inputs)
 	if err != nil {
 		t.Fatalf("write_json failed: %v", err)
 	}
@@ -508,7 +508,7 @@ func TestFileConnector_WriteJSON(t *testing.T) {
 	}
 }
 
-func TestFileConnector_WriteYAML(t *testing.T) {
+func TestFileAction_WriteYAML(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	config := &Config{
@@ -517,9 +517,9 @@ func TestFileConnector_WriteYAML(t *testing.T) {
 		TempDir:     tmpDir,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	testPath := "./test.yaml"
@@ -533,7 +533,7 @@ func TestFileConnector_WriteYAML(t *testing.T) {
 		"content": testData,
 	}
 
-	result, err := connector.Execute(context.Background(), "write_yaml", inputs)
+	result, err := action.Execute(context.Background(), "write_yaml", inputs)
 	if err != nil {
 		t.Fatalf("write_yaml failed: %v", err)
 	}
@@ -559,7 +559,7 @@ func TestFileConnector_WriteYAML(t *testing.T) {
 	}
 }
 
-func TestFileConnector_WriteAutoFormat(t *testing.T) {
+func TestFileAction_WriteAutoFormat(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	config := &Config{
@@ -568,9 +568,9 @@ func TestFileConnector_WriteAutoFormat(t *testing.T) {
 		TempDir:     tmpDir,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	testData := map[string]interface{}{
@@ -601,7 +601,7 @@ func TestFileConnector_WriteAutoFormat(t *testing.T) {
 				inputs["content"] = testData
 			}
 
-			_, err := connector.Execute(context.Background(), "write", inputs)
+			_, err := action.Execute(context.Background(), "write", inputs)
 			if err != nil {
 				t.Fatalf("write failed: %v", err)
 			}
@@ -615,7 +615,7 @@ func TestFileConnector_WriteAutoFormat(t *testing.T) {
 	}
 }
 
-func TestFileConnector_Append(t *testing.T) {
+func TestFileAction_Append(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	config := &Config{
@@ -624,9 +624,9 @@ func TestFileConnector_Append(t *testing.T) {
 		TempDir:     tmpDir,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	testPath := "./test.txt"
@@ -636,7 +636,7 @@ func TestFileConnector_Append(t *testing.T) {
 		"path":    testPath,
 		"content": "Line 1\n",
 	}
-	_, err = connector.Execute(context.Background(), "write_text", inputs)
+	_, err = action.Execute(context.Background(), "write_text", inputs)
 	if err != nil {
 		t.Fatalf("write_text failed: %v", err)
 	}
@@ -646,7 +646,7 @@ func TestFileConnector_Append(t *testing.T) {
 		"path":    testPath,
 		"content": "Line 2\n",
 	}
-	_, err = connector.Execute(context.Background(), "append", inputs)
+	_, err = action.Execute(context.Background(), "append", inputs)
 	if err != nil {
 		t.Fatalf("append failed: %v", err)
 	}
@@ -664,7 +664,7 @@ func TestFileConnector_Append(t *testing.T) {
 	}
 }
 
-func TestFileConnector_Render(t *testing.T) {
+func TestFileAction_Render(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	config := &Config{
@@ -673,9 +673,9 @@ func TestFileConnector_Render(t *testing.T) {
 		TempDir:     tmpDir,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	// Create template file
@@ -695,7 +695,7 @@ func TestFileConnector_Render(t *testing.T) {
 		},
 	}
 
-	result, err := connector.Execute(context.Background(), "render", inputs)
+	result, err := action.Execute(context.Background(), "render", inputs)
 	if err != nil {
 		t.Fatalf("render failed: %v", err)
 	}
@@ -717,7 +717,7 @@ func TestFileConnector_Render(t *testing.T) {
 	}
 }
 
-func TestFileConnector_AtomicWrite(t *testing.T) {
+func TestFileAction_AtomicWrite(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	config := &Config{
@@ -726,9 +726,9 @@ func TestFileConnector_AtomicWrite(t *testing.T) {
 		TempDir:     tmpDir,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	testPath := "./test.txt"
@@ -739,7 +739,7 @@ func TestFileConnector_AtomicWrite(t *testing.T) {
 		"content": testContent,
 	}
 
-	_, err = connector.Execute(context.Background(), "write_text", inputs)
+	_, err = action.Execute(context.Background(), "write_text", inputs)
 	if err != nil {
 		t.Fatalf("write_text failed: %v", err)
 	}
@@ -757,7 +757,7 @@ func TestFileConnector_AtomicWrite(t *testing.T) {
 	}
 }
 
-func TestFileConnector_WriteMissingContent(t *testing.T) {
+func TestFileAction_WriteMissingContent(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	config := &Config{
@@ -766,9 +766,9 @@ func TestFileConnector_WriteMissingContent(t *testing.T) {
 		TempDir:     tmpDir,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	inputs := map[string]interface{}{
@@ -776,7 +776,7 @@ func TestFileConnector_WriteMissingContent(t *testing.T) {
 		// Missing content parameter
 	}
 
-	_, err = connector.Execute(context.Background(), "write_text", inputs)
+	_, err = action.Execute(context.Background(), "write_text", inputs)
 	if err == nil {
 		t.Fatal("Expected error for missing content")
 	}
@@ -791,7 +791,7 @@ func TestFileConnector_WriteMissingContent(t *testing.T) {
 	}
 }
 
-func TestFileConnector_List(t *testing.T) {
+func TestFileAction_List(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	config := &Config{
@@ -800,9 +800,9 @@ func TestFileConnector_List(t *testing.T) {
 		TempDir:     tmpDir,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	// Create test files and directories
@@ -812,7 +812,7 @@ func TestFileConnector_List(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, "subdir", "file3.txt"), []byte("nested"), 0644)
 
 	t.Run("List all files in directory", func(t *testing.T) {
-		result, err := connector.Execute(context.Background(), "list", map[string]interface{}{
+		result, err := action.Execute(context.Background(), "list", map[string]interface{}{
 			"path": ".",
 		})
 		if err != nil {
@@ -831,7 +831,7 @@ func TestFileConnector_List(t *testing.T) {
 	})
 
 	t.Run("List with glob pattern", func(t *testing.T) {
-		result, err := connector.Execute(context.Background(), "list", map[string]interface{}{
+		result, err := action.Execute(context.Background(), "list", map[string]interface{}{
 			"path":    ".",
 			"pattern": "*.txt",
 		})
@@ -851,7 +851,7 @@ func TestFileConnector_List(t *testing.T) {
 	})
 
 	t.Run("List recursively", func(t *testing.T) {
-		result, err := connector.Execute(context.Background(), "list", map[string]interface{}{
+		result, err := action.Execute(context.Background(), "list", map[string]interface{}{
 			"path":      ".",
 			"recursive": true,
 		})
@@ -871,7 +871,7 @@ func TestFileConnector_List(t *testing.T) {
 	})
 
 	t.Run("Filter by type - files only", func(t *testing.T) {
-		result, err := connector.Execute(context.Background(), "list", map[string]interface{}{
+		result, err := action.Execute(context.Background(), "list", map[string]interface{}{
 			"path": ".",
 			"type": "files",
 		})
@@ -891,7 +891,7 @@ func TestFileConnector_List(t *testing.T) {
 	})
 
 	t.Run("Filter by type - dirs only", func(t *testing.T) {
-		result, err := connector.Execute(context.Background(), "list", map[string]interface{}{
+		result, err := action.Execute(context.Background(), "list", map[string]interface{}{
 			"path": ".",
 			"type": "dirs",
 		})
@@ -911,7 +911,7 @@ func TestFileConnector_List(t *testing.T) {
 	})
 }
 
-func TestFileConnector_Exists(t *testing.T) {
+func TestFileAction_Exists(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	config := &Config{
@@ -920,9 +920,9 @@ func TestFileConnector_Exists(t *testing.T) {
 		TempDir:     tmpDir,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	// Create test file
@@ -930,7 +930,7 @@ func TestFileConnector_Exists(t *testing.T) {
 	os.WriteFile(testFile, []byte("test"), 0644)
 
 	t.Run("File exists", func(t *testing.T) {
-		result, err := connector.Execute(context.Background(), "exists", map[string]interface{}{
+		result, err := action.Execute(context.Background(), "exists", map[string]interface{}{
 			"path": "./test.txt",
 		})
 		if err != nil {
@@ -948,7 +948,7 @@ func TestFileConnector_Exists(t *testing.T) {
 	})
 
 	t.Run("File does not exist", func(t *testing.T) {
-		result, err := connector.Execute(context.Background(), "exists", map[string]interface{}{
+		result, err := action.Execute(context.Background(), "exists", map[string]interface{}{
 			"path": "./nonexistent.txt",
 		})
 		if err != nil {
@@ -966,7 +966,7 @@ func TestFileConnector_Exists(t *testing.T) {
 	})
 }
 
-func TestFileConnector_Stat(t *testing.T) {
+func TestFileAction_Stat(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	config := &Config{
@@ -975,9 +975,9 @@ func TestFileConnector_Stat(t *testing.T) {
 		TempDir:     tmpDir,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	// Create test file
@@ -985,7 +985,7 @@ func TestFileConnector_Stat(t *testing.T) {
 	testContent := "test content"
 	os.WriteFile(testFile, []byte(testContent), 0644)
 
-	result, err := connector.Execute(context.Background(), "stat", map[string]interface{}{
+	result, err := action.Execute(context.Background(), "stat", map[string]interface{}{
 		"path": "./test.txt",
 	})
 	if err != nil {
@@ -1011,7 +1011,7 @@ func TestFileConnector_Stat(t *testing.T) {
 	}
 }
 
-func TestFileConnector_Mkdir(t *testing.T) {
+func TestFileAction_Mkdir(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	config := &Config{
@@ -1020,13 +1020,13 @@ func TestFileConnector_Mkdir(t *testing.T) {
 		TempDir:     tmpDir,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	t.Run("Create directory with parents", func(t *testing.T) {
-		result, err := connector.Execute(context.Background(), "mkdir", map[string]interface{}{
+		result, err := action.Execute(context.Background(), "mkdir", map[string]interface{}{
 			"path":    "./parent/child",
 			"parents": true,
 		})
@@ -1051,7 +1051,7 @@ func TestFileConnector_Mkdir(t *testing.T) {
 	})
 
 	t.Run("Directory already exists", func(t *testing.T) {
-		_, err := connector.Execute(context.Background(), "mkdir", map[string]interface{}{
+		_, err := action.Execute(context.Background(), "mkdir", map[string]interface{}{
 			"path": "./existing",
 		})
 		if err != nil {
@@ -1059,7 +1059,7 @@ func TestFileConnector_Mkdir(t *testing.T) {
 		}
 
 		// Try creating again
-		result, err := connector.Execute(context.Background(), "mkdir", map[string]interface{}{
+		result, err := action.Execute(context.Background(), "mkdir", map[string]interface{}{
 			"path": "./existing",
 		})
 		if err != nil {
@@ -1076,7 +1076,7 @@ func TestFileConnector_Mkdir(t *testing.T) {
 	})
 }
 
-func TestFileConnector_Copy(t *testing.T) {
+func TestFileAction_Copy(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	config := &Config{
@@ -1085,9 +1085,9 @@ func TestFileConnector_Copy(t *testing.T) {
 		TempDir:     tmpDir,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	t.Run("Copy file", func(t *testing.T) {
@@ -1096,7 +1096,7 @@ func TestFileConnector_Copy(t *testing.T) {
 		testContent := "copy test"
 		os.WriteFile(sourceFile, []byte(testContent), 0644)
 
-		result, err := connector.Execute(context.Background(), "copy", map[string]interface{}{
+		result, err := action.Execute(context.Background(), "copy", map[string]interface{}{
 			"source": "./source.txt",
 			"dest":   "./dest.txt",
 		})
@@ -1128,7 +1128,7 @@ func TestFileConnector_Copy(t *testing.T) {
 		os.Mkdir(filepath.Join(sourceDir, "subdir"), 0755)
 		os.WriteFile(filepath.Join(sourceDir, "subdir", "file2.txt"), []byte("file2"), 0644)
 
-		_, err := connector.Execute(context.Background(), "copy", map[string]interface{}{
+		_, err := action.Execute(context.Background(), "copy", map[string]interface{}{
 			"source":    "./sourcedir",
 			"dest":      "./destdir",
 			"recursive": true,
@@ -1151,7 +1151,7 @@ func TestFileConnector_Copy(t *testing.T) {
 		sourceDir := filepath.Join(tmpDir, "sourcedir2")
 		os.Mkdir(sourceDir, 0755)
 
-		_, err := connector.Execute(context.Background(), "copy", map[string]interface{}{
+		_, err := action.Execute(context.Background(), "copy", map[string]interface{}{
 			"source": "./sourcedir2",
 			"dest":   "./destdir2",
 		})
@@ -1169,7 +1169,7 @@ func TestFileConnector_Copy(t *testing.T) {
 	})
 }
 
-func TestFileConnector_Move(t *testing.T) {
+func TestFileAction_Move(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	config := &Config{
@@ -1178,9 +1178,9 @@ func TestFileConnector_Move(t *testing.T) {
 		TempDir:     tmpDir,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	t.Run("Move file", func(t *testing.T) {
@@ -1189,7 +1189,7 @@ func TestFileConnector_Move(t *testing.T) {
 		testContent := "move test"
 		os.WriteFile(sourceFile, []byte(testContent), 0644)
 
-		_, err := connector.Execute(context.Background(), "move", map[string]interface{}{
+		_, err := action.Execute(context.Background(), "move", map[string]interface{}{
 			"source": "./move_source.txt",
 			"dest":   "./move_dest.txt",
 		})
@@ -1214,7 +1214,7 @@ func TestFileConnector_Move(t *testing.T) {
 	})
 }
 
-func TestFileConnector_Delete(t *testing.T) {
+func TestFileAction_Delete(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	config := &Config{
@@ -1223,9 +1223,9 @@ func TestFileConnector_Delete(t *testing.T) {
 		TempDir:     tmpDir,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	t.Run("Delete file", func(t *testing.T) {
@@ -1233,7 +1233,7 @@ func TestFileConnector_Delete(t *testing.T) {
 		testFile := filepath.Join(tmpDir, "delete_test.txt")
 		os.WriteFile(testFile, []byte("delete me"), 0644)
 
-		result, err := connector.Execute(context.Background(), "delete", map[string]interface{}{
+		result, err := action.Execute(context.Background(), "delete", map[string]interface{}{
 			"path": "./delete_test.txt",
 		})
 		if err != nil {
@@ -1257,7 +1257,7 @@ func TestFileConnector_Delete(t *testing.T) {
 		os.Mkdir(testDir, 0755)
 		os.WriteFile(filepath.Join(testDir, "file.txt"), []byte("test"), 0644)
 
-		result, err := connector.Execute(context.Background(), "delete", map[string]interface{}{
+		result, err := action.Execute(context.Background(), "delete", map[string]interface{}{
 			"path":      "./delete_dir",
 			"recursive": true,
 		})
@@ -1281,7 +1281,7 @@ func TestFileConnector_Delete(t *testing.T) {
 		testDir := filepath.Join(tmpDir, "delete_dir2")
 		os.Mkdir(testDir, 0755)
 
-		_, err := connector.Execute(context.Background(), "delete", map[string]interface{}{
+		_, err := action.Execute(context.Background(), "delete", map[string]interface{}{
 			"path": "./delete_dir2",
 		})
 		if err == nil {
@@ -1298,7 +1298,7 @@ func TestFileConnector_Delete(t *testing.T) {
 	})
 
 	t.Run("Delete non-existent file", func(t *testing.T) {
-		result, err := connector.Execute(context.Background(), "delete", map[string]interface{}{
+		result, err := action.Execute(context.Background(), "delete", map[string]interface{}{
 			"path": "./nonexistent.txt",
 		})
 		if err != nil {
@@ -1312,7 +1312,7 @@ func TestFileConnector_Delete(t *testing.T) {
 	})
 }
 
-func TestFileConnector_List_GlobPatterns(t *testing.T) {
+func TestFileAction_List_GlobPatterns(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	config := &Config{
@@ -1321,9 +1321,9 @@ func TestFileConnector_List_GlobPatterns(t *testing.T) {
 		TempDir:     tmpDir,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	// Create test directory structure
@@ -1356,7 +1356,7 @@ func TestFileConnector_List_GlobPatterns(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, "subdir2", "deep", "deep.go"), []byte("package deep"), 0644)
 
 	t.Run("Recursive doublestar pattern **/*.go", func(t *testing.T) {
-		result, err := connector.Execute(context.Background(), "list", map[string]interface{}{
+		result, err := action.Execute(context.Background(), "list", map[string]interface{}{
 			"path":      ".",
 			"pattern":   "**/*.go",
 			"recursive": true,
@@ -1402,7 +1402,7 @@ func TestFileConnector_List_GlobPatterns(t *testing.T) {
 	})
 
 	t.Run("Single char wildcard file?.txt", func(t *testing.T) {
-		result, err := connector.Execute(context.Background(), "list", map[string]interface{}{
+		result, err := action.Execute(context.Background(), "list", map[string]interface{}{
 			"path":    ".",
 			"pattern": "file?.txt",
 		})
@@ -1436,7 +1436,7 @@ func TestFileConnector_List_GlobPatterns(t *testing.T) {
 	})
 
 	t.Run("Character class file[12].txt", func(t *testing.T) {
-		result, err := connector.Execute(context.Background(), "list", map[string]interface{}{
+		result, err := action.Execute(context.Background(), "list", map[string]interface{}{
 			"path":    ".",
 			"pattern": "file[12].txt",
 		})
@@ -1467,7 +1467,7 @@ func TestFileConnector_List_GlobPatterns(t *testing.T) {
 	})
 
 	t.Run("Extension wildcard *.go in root only", func(t *testing.T) {
-		result, err := connector.Execute(context.Background(), "list", map[string]interface{}{
+		result, err := action.Execute(context.Background(), "list", map[string]interface{}{
 			"path":    ".",
 			"pattern": "*.go",
 		})
@@ -1488,7 +1488,7 @@ func TestFileConnector_List_GlobPatterns(t *testing.T) {
 	})
 
 	t.Run("Nested directory pattern subdir1/*.go", func(t *testing.T) {
-		result, err := connector.Execute(context.Background(), "list", map[string]interface{}{
+		result, err := action.Execute(context.Background(), "list", map[string]interface{}{
 			"path":    ".",
 			"pattern": "subdir1/*.go",
 		})

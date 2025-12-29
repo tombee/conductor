@@ -6,10 +6,10 @@ import (
 	"testing"
 )
 
-func TestTransformConnector_ParseXML(t *testing.T) {
-	connector, err := New(nil)
+func TestTransformAction_ParseXML(t *testing.T) {
+	action, err := New(nil)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	tests := []struct {
@@ -209,7 +209,7 @@ func TestTransformConnector_ParseXML(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := connector.Execute(context.Background(), "parse_xml", tt.inputs)
+			result, err := action.Execute(context.Background(), "parse_xml", tt.inputs)
 
 			if tt.expectErr {
 				if err == nil {
@@ -237,19 +237,19 @@ func TestTransformConnector_ParseXML(t *testing.T) {
 	}
 }
 
-func TestTransformConnector_ParseXML_SizeLimit(t *testing.T) {
+func TestTransformAction_ParseXML_SizeLimit(t *testing.T) {
 	config := DefaultConfig()
 	config.MaxInputSize = 100 // Small limit for testing
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	// Create XML larger than limit
 	largeXML := "<root>" + strings.Repeat("<item>data</item>", 50) + "</root>"
 
-	result, err := connector.Execute(context.Background(), "parse_xml", map[string]interface{}{
+	result, err := action.Execute(context.Background(), "parse_xml", map[string]interface{}{
 		"data": largeXML,
 	})
 
@@ -271,10 +271,10 @@ func TestTransformConnector_ParseXML_SizeLimit(t *testing.T) {
 	}
 }
 
-func TestTransformConnector_ParseXML_SecurityAuditLogging(t *testing.T) {
-	connector, err := New(nil)
+func TestTransformAction_ParseXML_SecurityAuditLogging(t *testing.T) {
+	action, err := New(nil)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	tests := []struct {
@@ -296,7 +296,7 @@ func TestTransformConnector_ParseXML_SecurityAuditLogging(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, _ := connector.Execute(context.Background(), "parse_xml", map[string]interface{}{
+			result, _ := action.Execute(context.Background(), "parse_xml", map[string]interface{}{
 				"data": tt.xml,
 			})
 
@@ -314,10 +314,10 @@ func TestTransformConnector_ParseXML_SecurityAuditLogging(t *testing.T) {
 	}
 }
 
-func TestTransformConnector_ParseXML_MalformedXML(t *testing.T) {
-	connector, err := New(nil)
+func TestTransformAction_ParseXML_MalformedXML(t *testing.T) {
+	action, err := New(nil)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	tests := []struct {
@@ -340,7 +340,7 @@ func TestTransformConnector_ParseXML_MalformedXML(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := connector.Execute(context.Background(), "parse_xml", map[string]interface{}{
+			result, err := action.Execute(context.Background(), "parse_xml", map[string]interface{}{
 				"data": tt.xml,
 			})
 

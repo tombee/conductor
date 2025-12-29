@@ -12,7 +12,7 @@ func TestIntegrationDefinitionValidate(t *testing.T) {
 		errMsg    string
 	}{
 		{
-			name: "valid inline connector",
+			name: "valid inline integration",
 			integration: IntegrationDefinition{
 				Name:    "github",
 				BaseURL: "https://api.github.com",
@@ -29,10 +29,10 @@ func TestIntegrationDefinitionValidate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "valid package connector",
+			name: "valid package integration",
 			integration: IntegrationDefinition{
 				Name: "github",
-				From: "connectors/github",
+				From: "integrations/github",
 				Auth: &AuthDefinition{
 					Token: "${GITHUB_TOKEN}",
 				},
@@ -62,7 +62,7 @@ func TestIntegrationDefinitionValidate(t *testing.T) {
 			name: "both from and inline definition",
 			integration: IntegrationDefinition{
 				Name:    "test",
-				From:    "connectors/test",
+				From:    "integrations/test",
 				BaseURL: "https://api.test.com",
 				Operations: map[string]OperationDefinition{
 					"test": {Method: "GET", Path: "/test"},
@@ -421,7 +421,7 @@ func TestRateLimitConfigValidate(t *testing.T) {
 	}
 }
 
-func TestConnectorStepValidation(t *testing.T) {
+func TestIntegrationStepValidation(t *testing.T) {
 	tests := []struct {
 		name       string
 		definition string
@@ -429,7 +429,7 @@ func TestConnectorStepValidation(t *testing.T) {
 		errMsg     string
 	}{
 		{
-			name: "valid connector step with inline connector",
+			name: "valid integration step with inline integration",
 			definition: `
 name: test-workflow
 version: "1.0"
@@ -456,14 +456,14 @@ steps:
 			wantErr: false,
 		},
 		{
-			name: "valid connector step with package connector",
+			name: "valid integration step with package integration",
 			definition: `
 name: test-workflow
 version: "1.0"
 
 integrations:
   github:
-    from: connectors/github
+    from: integrations/github
     auth:
       token: ${GITHUB_TOKEN}
 
@@ -478,14 +478,14 @@ steps:
 			wantErr: false,
 		},
 		{
-			name: "connector step missing connector field",
+			name: "integration step missing integration field",
 			definition: `
 name: test-workflow
 version: "1.0"
 
 integrations:
   github:
-    from: connectors/github
+    from: integrations/github
     auth:
       token: ${GITHUB_TOKEN}
 
@@ -499,14 +499,14 @@ steps:
 			errMsg:  "integration step requires either 'integration' field or 'action'+'operation' fields",
 		},
 		{
-			name: "connector step invalid format",
+			name: "integration step invalid format",
 			definition: `
 name: test-workflow
 version: "1.0"
 
 integrations:
   github:
-    from: connectors/github
+    from: integrations/github
     auth:
       token: ${GITHUB_TOKEN}
 
@@ -521,14 +521,14 @@ steps:
 			errMsg:  "integration must be in format 'integration_name.operation_name'",
 		},
 		{
-			name: "connector step undefined integration",
+			name: "integration step undefined integration",
 			definition: `
 name: test-workflow
 version: "1.0"
 
 integrations:
   github:
-    from: connectors/github
+    from: integrations/github
     auth:
       token: ${GITHUB_TOKEN}
 
@@ -543,7 +543,7 @@ steps:
 			errMsg:  "references undefined integration: slack",
 		},
 		{
-			name: "connector step undefined operation in inline connector",
+			name: "integration step undefined operation in inline integration",
 			definition: `
 name: test-workflow
 version: "1.0"

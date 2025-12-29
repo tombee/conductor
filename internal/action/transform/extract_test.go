@@ -240,7 +240,7 @@ func TestExtract(t *testing.T) {
 }
 
 func TestExtract_SizeLimit(t *testing.T) {
-	// Create connector with small limits for testing
+	// Create action with small limits for testing
 	conn, err := New(&Config{
 		MaxInputSize:  100, // Very small for testing
 		MaxOutputSize: 100,

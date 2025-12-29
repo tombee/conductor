@@ -238,7 +238,7 @@ func TestError_ErrorMethod(t *testing.T) {
 				Type:    ErrorTypeValidation,
 				Message: "invalid input",
 			},
-			wantContain: "ConnectorError: invalid input",
+			wantContain: "OperationError: invalid input",
 		},
 		{
 			name: "error with status code",

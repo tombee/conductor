@@ -90,16 +90,16 @@ func TestNewJiraIntegration(t *testing.T) {
 					t.Errorf("unexpected error: %v", err)
 				}
 				if conn == nil {
-					t.Error("expected connector but got nil")
+					t.Error("expected integration but got nil")
 				}
 
-				// Verify the connector implements the interface
+				// Verify the integration implements the interface
 				if jc, ok := conn.(*JiraIntegration); ok {
 					if jc.Name() != "jira" {
 						t.Errorf("expected name 'jira', got %s", jc.Name())
 					}
 				} else {
-					t.Error("connector is not a JiraIntegration")
+					t.Error("integration is not a JiraIntegration")
 				}
 			}
 		})
@@ -118,12 +118,12 @@ func TestJiraIntegrationOperations(t *testing.T) {
 
 	conn, err := NewJiraIntegration(config)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	jc, ok := conn.(*JiraIntegration)
 	if !ok {
-		t.Fatal("connector is not a JiraIntegration")
+		t.Fatal("integration is not a JiraIntegration")
 	}
 
 	operations := jc.Operations()
@@ -182,7 +182,7 @@ func TestJiraIntegrationGetIssue(t *testing.T) {
 
 	conn, err := NewJiraIntegration(config)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	inputs := map[string]interface{}{
@@ -224,7 +224,7 @@ func TestJiraIntegrationUnknownOperation(t *testing.T) {
 
 	conn, err := NewJiraIntegration(config)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	_, err = conn.Execute(context.Background(), "unknown_operation", map[string]interface{}{})

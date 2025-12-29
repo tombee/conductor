@@ -9,15 +9,15 @@ func TestDefaultFieldInjector_InjectDefaults(t *testing.T) {
 	injector := NewDefaultFieldInjector()
 
 	tests := []struct {
-		name          string
-		connectorName string
-		inputs        map[string]interface{}
-		wantFields    map[string]bool // Fields that should exist after injection
-		wantNotFields map[string]bool // Fields that should NOT be overridden
+		name            string
+		integrationName string
+		inputs          map[string]interface{}
+		wantFields      map[string]bool // Fields that should exist after injection
+		wantNotFields   map[string]bool // Fields that should NOT be overridden
 	}{
 		{
-			name:          "datadog log with no defaults",
-			connectorName: "datadog",
+			name:            "datadog log with no defaults",
+			integrationName: "datadog",
 			inputs: map[string]interface{}{
 				"message": "test log",
 			},
@@ -27,8 +27,8 @@ func TestDefaultFieldInjector_InjectDefaults(t *testing.T) {
 			},
 		},
 		{
-			name:          "datadog log with existing timestamp",
-			connectorName: "datadog",
+			name:            "datadog log with existing timestamp",
+			integrationName: "datadog",
 			inputs: map[string]interface{}{
 				"message":   "test log",
 				"timestamp": int64(1234567890),
@@ -38,8 +38,8 @@ func TestDefaultFieldInjector_InjectDefaults(t *testing.T) {
 			},
 		},
 		{
-			name:          "splunk event with no defaults",
-			connectorName: "splunk",
+			name:            "splunk event with no defaults",
+			integrationName: "splunk",
 			inputs: map[string]interface{}{
 				"event": "test event",
 			},
@@ -49,8 +49,8 @@ func TestDefaultFieldInjector_InjectDefaults(t *testing.T) {
 			},
 		},
 		{
-			name:          "cloudwatch log with no defaults",
-			connectorName: "cloudwatch",
+			name:            "cloudwatch log with no defaults",
+			integrationName: "cloudwatch",
 			inputs: map[string]interface{}{
 				"message": "test log",
 			},
@@ -59,8 +59,8 @@ func TestDefaultFieldInjector_InjectDefaults(t *testing.T) {
 			},
 		},
 		{
-			name:          "loki push with no defaults",
-			connectorName: "loki",
+			name:            "loki push with no defaults",
+			integrationName: "loki",
 			inputs: map[string]interface{}{
 				"line": "test log",
 			},
@@ -69,8 +69,8 @@ func TestDefaultFieldInjector_InjectDefaults(t *testing.T) {
 			},
 		},
 		{
-			name:          "elasticsearch index with document",
-			connectorName: "elasticsearch",
+			name:            "elasticsearch index with document",
+			integrationName: "elasticsearch",
 			inputs: map[string]interface{}{
 				"document": map[string]interface{}{
 					"message": "test doc",
@@ -81,8 +81,8 @@ func TestDefaultFieldInjector_InjectDefaults(t *testing.T) {
 			},
 		},
 		{
-			name:          "non-observability connector should not inject",
-			connectorName: "slack",
+			name:            "non-observability integration should not inject",
+			integrationName: "slack",
 			inputs: map[string]interface{}{
 				"message": "test",
 			},
@@ -102,12 +102,12 @@ func TestDefaultFieldInjector_InjectDefaults(t *testing.T) {
 			}
 
 			// Inject defaults
-			injector.InjectDefaults(inputsCopy, tt.connectorName)
+			injector.InjectDefaults(inputsCopy, tt.integrationName)
 
 			// Check wanted fields exist
 			for field := range tt.wantFields {
 				// For elasticsearch, check inside document
-				if tt.connectorName == "elasticsearch" && field == "@timestamp" {
+				if tt.integrationName == "elasticsearch" && field == "@timestamp" {
 					doc, ok := inputsCopy["document"].(map[string]interface{})
 					if !ok {
 						t.Errorf("document field is not a map")
@@ -206,11 +206,11 @@ func TestDefaultFieldInjector_LokiNanoseconds(t *testing.T) {
 	}
 }
 
-func TestIsObservabilityConnector(t *testing.T) {
+func TestIsObservabilityIntegration(t *testing.T) {
 	tests := []struct {
-		name     string
-		connector string
-		want     bool
+		name        string
+		integration string
+		want        bool
 	}{
 		{"datadog is observability", "datadog", true},
 		{"splunk is observability", "splunk", true},
@@ -224,8 +224,8 @@ func TestIsObservabilityConnector(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := isObservabilityIntegration(tt.connector); got != tt.want {
-				t.Errorf("isObservabilityIntegration(%q) = %v, want %v", tt.connector, got, tt.want)
+			if got := isObservabilityIntegration(tt.integration); got != tt.want {
+				t.Errorf("isObservabilityIntegration(%q) = %v, want %v", tt.integration, got, tt.want)
 			}
 		})
 	}

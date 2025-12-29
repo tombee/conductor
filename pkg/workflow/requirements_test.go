@@ -25,7 +25,7 @@ func TestRequirementsDefinition_Validate(t *testing.T) {
 		wantError bool
 	}{
 		{
-			name: "valid with connectors and MCP servers",
+			name: "valid with integrations and MCP servers",
 			requires: RequirementsDefinition{
 				Integrations: []IntegrationRequirement{
 					{Name: "github", Capabilities: []string{"issues", "pull_requests"}},
@@ -38,7 +38,7 @@ func TestRequirementsDefinition_Validate(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name: "empty connector name",
+			name: "empty integration name",
 			requires: RequirementsDefinition{
 				Integrations: []IntegrationRequirement{
 					{Name: ""},
@@ -47,7 +47,7 @@ func TestRequirementsDefinition_Validate(t *testing.T) {
 			wantError: true,
 		},
 		{
-			name: "duplicate connector names",
+			name: "duplicate integration names",
 			requires: RequirementsDefinition{
 				Integrations: []IntegrationRequirement{
 					{Name: "github"},
@@ -121,7 +121,7 @@ steps:
 	}
 
 	if def.Requires.Integrations[0].Name != "github" {
-		t.Errorf("Expected connector name 'github', got %q", def.Requires.Integrations[0].Name)
+		t.Errorf("Expected integration name 'github', got %q", def.Requires.Integrations[0].Name)
 	}
 
 	if len(def.Requires.Integrations[0].Capabilities) != 2 {
@@ -129,7 +129,7 @@ steps:
 	}
 
 	if !def.Requires.Integrations[1].Optional {
-		t.Error("Second connector should be optional")
+		t.Error("Second integration should be optional")
 	}
 
 	if len(def.Requires.MCPServers) != 1 {

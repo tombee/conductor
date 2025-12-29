@@ -30,7 +30,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 		wantPatterns []string
 	}{
 		{
-			name: "GitHub token in connector",
+			name: "GitHub token in integration",
 			profile: profile.Profile{
 				Name: "test",
 				Bindings: profile.Bindings{
@@ -47,7 +47,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 			wantPatterns: []string{"GitHub Token"},
 		},
 		{
-			name: "Anthropic API key in connector",
+			name: "Anthropic API key in integration",
 			profile: profile.Profile{
 				Name: "test",
 				Bindings: profile.Bindings{

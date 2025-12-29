@@ -9,7 +9,7 @@ import (
 func TestSort(t *testing.T) {
 	c, err := New(nil)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	tests := []struct {
@@ -100,7 +100,7 @@ func TestSort(t *testing.T) {
 func TestSort_Errors(t *testing.T) {
 	c, err := New(nil)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	tests := []struct {
@@ -160,13 +160,13 @@ func TestSort_Errors(t *testing.T) {
 }
 
 func TestSort_MaxItems(t *testing.T) {
-	// Create connector with small max items limit
+	// Create action with small max items limit
 	config := DefaultConfig()
 	config.MaxArrayItems = 5
 
 	c, err := New(config)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	inputs := map[string]interface{}{
@@ -187,7 +187,7 @@ func TestSort_MaxItems(t *testing.T) {
 func TestGroup(t *testing.T) {
 	c, err := New(nil)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	tests := []struct {
@@ -284,7 +284,7 @@ func TestGroup(t *testing.T) {
 func TestGroup_Errors(t *testing.T) {
 	c, err := New(nil)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	tests := []struct {
@@ -352,13 +352,13 @@ func TestGroup_Errors(t *testing.T) {
 }
 
 func TestGroup_MaxItems(t *testing.T) {
-	// Create connector with small max items limit
+	// Create action with small max items limit
 	config := DefaultConfig()
 	config.MaxArrayItems = 5
 
 	c, err := New(config)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	inputs := map[string]interface{}{

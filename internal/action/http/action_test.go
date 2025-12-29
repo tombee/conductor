@@ -48,21 +48,21 @@ func TestNew(t *testing.T) {
 				return
 			}
 			if !tt.wantErr && conn == nil {
-				t.Error("New() returned nil connector")
+				t.Error("New() returned nil operation")
 			}
 			if !tt.wantErr {
 				if conn.config.Timeout == 0 {
-					t.Error("connector timeout not set")
+					t.Error("integration timeout not set")
 				}
 				if conn.config.MaxResponseSize == 0 {
-					t.Error("connector max response size not set")
+					t.Error("integration max response size not set")
 				}
 			}
 		})
 	}
 }
 
-func TestHTTPConnector_Get(t *testing.T) {
+func TestHTTPAction_Get(t *testing.T) {
 	// Create test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
@@ -75,7 +75,7 @@ func TestHTTPConnector_Get(t *testing.T) {
 
 	conn, err := New(nil)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	result, err := conn.Execute(context.Background(), "get", map[string]interface{}{
@@ -109,7 +109,7 @@ func TestHTTPConnector_Get(t *testing.T) {
 	}
 }
 
-func TestHTTPConnector_Post(t *testing.T) {
+func TestHTTPAction_Post(t *testing.T) {
 	// Create test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
@@ -132,7 +132,7 @@ func TestHTTPConnector_Post(t *testing.T) {
 
 	conn, err := New(nil)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	result, err := conn.Execute(context.Background(), "post", map[string]interface{}{
@@ -154,10 +154,10 @@ func TestHTTPConnector_Post(t *testing.T) {
 	}
 }
 
-func TestHTTPConnector_InvalidURL(t *testing.T) {
+func TestHTTPAction_InvalidURL(t *testing.T) {
 	conn, err := New(nil)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	tests := []struct {
@@ -186,7 +186,7 @@ func TestHTTPConnector_InvalidURL(t *testing.T) {
 	}
 }
 
-func TestHTTPConnector_Timeout(t *testing.T) {
+func TestHTTPAction_Timeout(t *testing.T) {
 	// Create slow server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(2 * time.Second)
@@ -198,7 +198,7 @@ func TestHTTPConnector_Timeout(t *testing.T) {
 		Timeout: 100 * time.Millisecond,
 	})
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	_, err = conn.Execute(context.Background(), "get", map[string]interface{}{
@@ -221,7 +221,7 @@ func TestHTTPConnector_Timeout(t *testing.T) {
 	}
 }
 
-func TestHTTPConnector_ResponseSizeLimit(t *testing.T) {
+func TestHTTPAction_ResponseSizeLimit(t *testing.T) {
 	// Create server that returns large response
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Write 1MB of data
@@ -235,7 +235,7 @@ func TestHTTPConnector_ResponseSizeLimit(t *testing.T) {
 		MaxResponseSize: 512 * 1024, // 512KB limit
 	})
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	_, err = conn.Execute(context.Background(), "get", map[string]interface{}{
@@ -255,7 +255,7 @@ func TestHTTPConnector_ResponseSizeLimit(t *testing.T) {
 	}
 }
 
-func TestHTTPConnector_SecurityBlocking(t *testing.T) {
+func TestHTTPAction_SecurityBlocking(t *testing.T) {
 	// Test private IP blocking
 	secConfig := security.DefaultHTTPSecurityConfig()
 	secConfig.DenyPrivateIPs = true
@@ -264,7 +264,7 @@ func TestHTTPConnector_SecurityBlocking(t *testing.T) {
 		SecurityConfig: secConfig,
 	})
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	privateIPs := []string{
@@ -292,7 +292,7 @@ func TestHTTPConnector_SecurityBlocking(t *testing.T) {
 	}
 }
 
-func TestHTTPConnector_ParseJSON(t *testing.T) {
+func TestHTTPAction_ParseJSON(t *testing.T) {
 	// Create test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -303,7 +303,7 @@ func TestHTTPConnector_ParseJSON(t *testing.T) {
 
 	conn, err := New(nil)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	result, err := conn.Execute(context.Background(), "get", map[string]interface{}{
@@ -335,7 +335,7 @@ func TestHTTPConnector_ParseJSON(t *testing.T) {
 	}
 }
 
-func TestHTTPConnector_AllOperations(t *testing.T) {
+func TestHTTPAction_AllOperations(t *testing.T) {
 	operations := []string{"get", "post", "put", "patch", "delete"}
 
 	for _, op := range operations {
@@ -352,7 +352,7 @@ func TestHTTPConnector_AllOperations(t *testing.T) {
 
 			conn, err := New(nil)
 			if err != nil {
-				t.Fatalf("Failed to create connector: %v", err)
+				t.Fatalf("Failed to create action: %v", err)
 			}
 
 			inputs := map[string]interface{}{
@@ -376,7 +376,7 @@ func TestHTTPConnector_AllOperations(t *testing.T) {
 	}
 }
 
-func TestHTTPConnector_RequestOperation(t *testing.T) {
+func TestHTTPAction_RequestOperation(t *testing.T) {
 	methods := []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
 
 	for _, method := range methods {
@@ -392,7 +392,7 @@ func TestHTTPConnector_RequestOperation(t *testing.T) {
 
 			conn, err := New(nil)
 			if err != nil {
-				t.Fatalf("Failed to create connector: %v", err)
+				t.Fatalf("Failed to create action: %v", err)
 			}
 
 			result, err := conn.Execute(context.Background(), "request", map[string]interface{}{
@@ -411,7 +411,7 @@ func TestHTTPConnector_RequestOperation(t *testing.T) {
 	}
 }
 
-func TestHTTPConnector_DNSMonitor(t *testing.T) {
+func TestHTTPAction_DNSMonitor(t *testing.T) {
 	dnsConfig := security.DefaultDNSSecurityConfig()
 	dnsConfig.ExfiltrationLimits.MaxSubdomainDepth = 3
 
@@ -421,7 +421,7 @@ func TestHTTPConnector_DNSMonitor(t *testing.T) {
 		DNSMonitor: monitor,
 	})
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	// This should fail due to subdomain depth (a.b.c.d.example.com = 5 labels > 3 limit)
@@ -442,7 +442,7 @@ func TestHTTPConnector_DNSMonitor(t *testing.T) {
 	}
 }
 
-func TestHTTPConnector_ForbiddenHeaders(t *testing.T) {
+func TestHTTPAction_ForbiddenHeaders(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -450,7 +450,7 @@ func TestHTTPConnector_ForbiddenHeaders(t *testing.T) {
 
 	conn, err := New(nil)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	forbiddenHeaders := []string{"Host", "Connection", "Transfer-Encoding"}
@@ -475,7 +475,7 @@ func TestHTTPConnector_ForbiddenHeaders(t *testing.T) {
 	}
 }
 
-func TestHTTPConnector_CustomHeaders(t *testing.T) {
+func TestHTTPAction_CustomHeaders(t *testing.T) {
 	receivedHeaders := make(map[string]string)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -487,7 +487,7 @@ func TestHTTPConnector_CustomHeaders(t *testing.T) {
 
 	conn, err := New(nil)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	_, err = conn.Execute(context.Background(), "get", map[string]interface{}{
@@ -511,7 +511,7 @@ func TestHTTPConnector_CustomHeaders(t *testing.T) {
 	}
 }
 
-func TestHTTPConnector_ErrorResponse(t *testing.T) {
+func TestHTTPAction_ErrorResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Not found"))
@@ -520,7 +520,7 @@ func TestHTTPConnector_ErrorResponse(t *testing.T) {
 
 	conn, err := New(nil)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	result, err := conn.Execute(context.Background(), "get", map[string]interface{}{

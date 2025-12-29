@@ -50,10 +50,10 @@ func TestNewGitHubIntegration(t *testing.T) {
 
 			if !tt.wantError {
 				if conn.Name() != "github" {
-					t.Errorf("Expected connector name 'github', got '%s'", conn.Name())
+					t.Errorf("Expected integration name 'github', got '%s'", conn.Name())
 				}
 
-				// Verify the connector was created (baseURL is private, so we can't directly check it)
+				// Verify the integration was created (baseURL is private, so we can't directly check it)
 				// The fact that NewGitHubIntegration succeeded means it was set correctly
 			}
 		})

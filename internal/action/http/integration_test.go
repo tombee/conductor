@@ -9,8 +9,8 @@ import (
 	"github.com/tombee/conductor/pkg/security"
 )
 
-// TestHTTPConnector_Integration tests the HTTP connector in a realistic workflow scenario.
-func TestHTTPConnector_Integration(t *testing.T) {
+// TestHTTPIntegration_Integration tests the HTTP integration in a realistic workflow scenario.
+func TestHTTPAction_Integration(t *testing.T) {
 	// Create a realistic API server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -41,14 +41,14 @@ func TestHTTPConnector_Integration(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Create connector with realistic config
+	// Create action with realistic config
 	conn, err := New(&Config{
 		MaxResponseSize: 10 * 1024 * 1024, // 10MB
 		MaxRedirects:    10,
 		BlockPrivateIPs: false, // Allow localhost for testing
 	})
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	// Test 1: GET request with JSON parsing
@@ -184,8 +184,8 @@ func TestHTTPConnector_Integration(t *testing.T) {
 	})
 }
 
-// TestHTTPConnector_SecurityIntegration tests security features in realistic scenarios.
-func TestHTTPConnector_SecurityIntegration(t *testing.T) {
+// TestHTTPIntegration_SecurityIntegration tests security features in realistic scenarios.
+func TestHTTPAction_SecurityIntegration(t *testing.T) {
 	// Test 1: DNS monitor integration
 	t.Run("DNS monitor blocks excessive subdomain depth", func(t *testing.T) {
 		dnsConfig := security.DefaultDNSSecurityConfig()
@@ -196,7 +196,7 @@ func TestHTTPConnector_SecurityIntegration(t *testing.T) {
 			DNSMonitor: monitor,
 		})
 		if err != nil {
-			t.Fatalf("Failed to create connector: %v", err)
+			t.Fatalf("Failed to create action: %v", err)
 		}
 
 		// This should be blocked: a.b.c.d.example.com = 5 parts > 3 limit
@@ -223,7 +223,7 @@ func TestHTTPConnector_SecurityIntegration(t *testing.T) {
 			DNSMonitor: monitor,
 		})
 		if err != nil {
-			t.Fatalf("Failed to create connector: %v", err)
+			t.Fatalf("Failed to create action: %v", err)
 		}
 
 		dynamicDNSHosts := []string{
@@ -255,7 +255,7 @@ func TestHTTPConnector_SecurityIntegration(t *testing.T) {
 			RequireHTTPS: true,
 		})
 		if err != nil {
-			t.Fatalf("Failed to create connector: %v", err)
+			t.Fatalf("Failed to create action: %v", err)
 		}
 
 		_, err = conn.Execute(context.Background(), "get", map[string]interface{}{
@@ -282,7 +282,7 @@ func TestHTTPConnector_SecurityIntegration(t *testing.T) {
 			SecurityConfig: secConfig,
 		})
 		if err != nil {
-			t.Fatalf("Failed to create connector: %v", err)
+			t.Fatalf("Failed to create action: %v", err)
 		}
 
 		// Test allowed exact match
@@ -337,7 +337,7 @@ func TestHTTPConnector_SecurityIntegration(t *testing.T) {
 			MaxRedirects:   10,
 		})
 		if err != nil {
-			t.Fatalf("Failed to create connector: %v", err)
+			t.Fatalf("Failed to create action: %v", err)
 		}
 
 		_, err = conn.Execute(context.Background(), "get", map[string]interface{}{
@@ -351,8 +351,8 @@ func TestHTTPConnector_SecurityIntegration(t *testing.T) {
 	})
 }
 
-// TestHTTPConnector_WorkflowScenario tests a realistic workflow scenario.
-func TestHTTPConnector_WorkflowScenario(t *testing.T) {
+// TestHTTPIntegration_WorkflowScenario tests a realistic workflow scenario.
+func TestHTTPAction_WorkflowScenario(t *testing.T) {
 	// Simulate a workflow that:
 	// 1. Checks API health
 	// 2. Fetches user list
@@ -384,7 +384,7 @@ func TestHTTPConnector_WorkflowScenario(t *testing.T) {
 
 	conn, err := New(nil)
 	if err != nil {
-		t.Fatalf("Failed to create connector: %v", err)
+		t.Fatalf("Failed to create action: %v", err)
 	}
 
 	ctx := context.Background()

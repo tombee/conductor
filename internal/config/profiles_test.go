@@ -175,7 +175,7 @@ workspaces:
 			},
 		},
 		{
-			name: "profile with connector headers and base URL",
+			name: "profile with integration headers and base URL",
 			yaml: `
 workspaces:
   default:
@@ -197,11 +197,11 @@ workspaces:
 				require.NotNil(t, cfg.Workspaces)
 				ws := cfg.Workspaces["default"]
 				profile := ws.Profiles["custom"]
-				connector := profile.Bindings.Integrations["api"]
-				assert.Equal(t, "https://api.example.com", connector.BaseURL)
-				assert.Equal(t, "X-API-Key", connector.Auth.Header)
-				assert.Equal(t, "${API_KEY}", connector.Auth.Value)
-				assert.Equal(t, "custom-value", connector.Headers["X-Custom-Header"])
+				integration := profile.Bindings.Integrations["api"]
+				assert.Equal(t, "https://api.example.com", integration.BaseURL)
+				assert.Equal(t, "https://api.example.com", integration.Auth.Header)
+				assert.Equal(t, "https://api.example.com", integration.Auth.Value)
+				assert.Equal(t, "https://api.example.com", integration.Headers["X-Custom-Header"])
 			},
 		},
 	}

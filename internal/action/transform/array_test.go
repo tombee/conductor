@@ -6,9 +6,9 @@ import (
 )
 
 func TestSplit(t *testing.T) {
-	connector, err := New(nil)
+	action, err := New(nil)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	ctx := context.Background()
@@ -114,7 +114,7 @@ func TestSplit(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := connector.split(ctx, tt.inputs)
+			result, err := action.split(ctx, tt.inputs)
 
 			if tt.wantErr {
 				if err == nil {
@@ -145,9 +145,9 @@ func TestSplit(t *testing.T) {
 }
 
 func TestFilter(t *testing.T) {
-	connector, err := New(nil)
+	action, err := New(nil)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	ctx := context.Background()
@@ -342,7 +342,7 @@ func TestFilter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := connector.filter(ctx, tt.inputs)
+			result, err := action.filter(ctx, tt.inputs)
 
 			if tt.wantErr {
 				if err == nil {
@@ -373,9 +373,9 @@ func TestFilter(t *testing.T) {
 }
 
 func TestMap(t *testing.T) {
-	connector, err := New(nil)
+	action, err := New(nil)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create integration: %v", err)
 	}
 
 	ctx := context.Background()
@@ -579,7 +579,7 @@ func TestMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := connector.mapArray(ctx, tt.inputs)
+			result, err := action.mapArray(ctx, tt.inputs)
 
 			if tt.wantErr {
 				if err == nil {

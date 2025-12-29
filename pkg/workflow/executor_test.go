@@ -138,7 +138,7 @@ func TestNewExecutor(t *testing.T) {
 }
 
 // TestExecutor_ExecuteActionStep removed - type: tool is no longer supported
-// Use type: builtin with builtin_connector and builtin_operation instead
+// Use type: builtin with builtin_action and builtin_operation instead
 
 func TestExecutor_ExecuteLLMStep(t *testing.T) {
 	llm := &mockLLMProvider{
@@ -1015,7 +1015,7 @@ func TestExecutor_ToolStepWithoutRegistry(t *testing.T) {
 }
 
 // TestExecutor_ToolStepMissingToolName removed - type: tool is no longer supported
-// Missing builtin_connector/builtin_operation is caught at definition validation level
+// Missing builtin_action/builtin_operation is caught at definition validation level
 
 // TestExecutor_CompleteWorkflowIntegration tests a complete workflow
 // by parsing YAML and executing multiple steps with template variable passing.

@@ -156,7 +156,7 @@ func TestApplyHeaders_ValidationAndProtection(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name: "header injection in connector header",
+			name: "header injection in integration header",
 			connHeaders: map[string]string{
 				"X-Injected": "value\r\nX-Evil: true",
 			},

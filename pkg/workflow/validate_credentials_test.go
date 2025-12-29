@@ -42,7 +42,7 @@ func TestDetectEmbeddedCredentials(t *testing.T) {
 			wantWarn: false,
 		},
 		{
-			name: "GitHub token in connector",
+			name: "GitHub token in integration",
 			def: &Definition{
 				Name: "test",
 				Integrations: map[string]IntegrationDefinition{
@@ -58,7 +58,7 @@ func TestDetectEmbeddedCredentials(t *testing.T) {
 			contains: "GitHub Token",
 		},
 		{
-			name: "Anthropic API key in connector",
+			name: "Anthropic API key in integration",
 			def: &Definition{
 				Name: "test",
 				Integrations: map[string]IntegrationDefinition{
@@ -74,7 +74,7 @@ func TestDetectEmbeddedCredentials(t *testing.T) {
 			contains: "Anthropic API Key",
 		},
 		{
-			name: "AWS access key in connector",
+			name: "AWS access key in integration",
 			def: &Definition{
 				Name: "test",
 				Integrations: map[string]IntegrationDefinition{
@@ -178,7 +178,7 @@ func TestRequirementsDefinitionValidate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "missing connector name",
+			name: "missing integration name",
 			req: &RequirementsDefinition{
 				Integrations: []IntegrationRequirement{
 					{Name: ""},
@@ -187,7 +187,7 @@ func TestRequirementsDefinitionValidate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "duplicate connector",
+			name: "duplicate integration",
 			req: &RequirementsDefinition{
 				Integrations: []IntegrationRequirement{
 					{Name: "github"},

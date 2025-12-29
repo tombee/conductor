@@ -40,7 +40,7 @@ func TestNew(t *testing.T) {
 			}
 			if !tt.wantErr {
 				if conn == nil {
-					t.Error("New() returned nil connector")
+					t.Error("New() returned nil operation")
 				}
 				if conn.Name() != "transform" {
 					t.Errorf("Name() = %v, want transform", conn.Name())
@@ -50,7 +50,7 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func TestTransformConnector_Execute_UnknownOperation(t *testing.T) {
+func TestTransformAction_Execute_UnknownOperation(t *testing.T) {
 	conn, err := New(nil)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
@@ -70,7 +70,7 @@ func TestTransformConnector_Execute_UnknownOperation(t *testing.T) {
 	}
 }
 
-func TestTransformConnector_Execute_NotImplemented(t *testing.T) {
+func TestTransformAction_Execute_NotImplemented(t *testing.T) {
 	conn, err := New(nil)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)

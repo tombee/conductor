@@ -33,7 +33,7 @@ func TestObservability_Integration(t *testing.T) {
 		Logger:         quotaSlogger,
 	}
 
-	// Create connector with observability features
+	// Create action with observability features
 	config := &Config{
 		WorkflowDir: tmpDir,
 		OutputDir:   outDir,
@@ -41,14 +41,14 @@ func TestObservability_Integration(t *testing.T) {
 		QuotaConfig: quotaConfig,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Perform a write operation
 	ctx := context.Background()
-	result, err := connector.Execute(ctx, "write_text", map[string]interface{}{
+	result, err := action.Execute(ctx, "write_text", map[string]interface{}{
 		"path":    "$out/test.txt",
 		"content": "Hello, World!",
 	})
@@ -72,7 +72,7 @@ func TestObservability_Integration(t *testing.T) {
 
 	// Write more data to trigger quota warning
 	largeContent := strings.Repeat("x", 850) // Total will be ~863 bytes (> 80%)
-	_, err = connector.Execute(ctx, "write_text", map[string]interface{}{
+	_, err = action.Execute(ctx, "write_text", map[string]interface{}{
 		"path":    "$out/large.txt",
 		"content": largeContent,
 	})
@@ -89,7 +89,7 @@ func TestObservability_Integration(t *testing.T) {
 
 	// Try to exceed quota
 	tooLarge := strings.Repeat("y", 200) // Would exceed 95%
-	_, err = connector.Execute(ctx, "write_text", map[string]interface{}{
+	_, err = action.Execute(ctx, "write_text", map[string]interface{}{
 		"path":    "$out/toolarge.txt",
 		"content": tooLarge,
 	})
@@ -111,20 +111,20 @@ func TestObservability_WithoutAuditLogger(t *testing.T) {
 	// Create temp directory
 	tmpDir := t.TempDir()
 
-	// Create connector without audit logger (should use noop)
+	// Create action without audit logger (should use noop)
 	config := &Config{
 		WorkflowDir: tmpDir,
 		AuditLogger: nil, // Will default to NoopAuditLogger
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Should work fine without audit logging
 	ctx := context.Background()
-	_, err = connector.Execute(ctx, "write_text", map[string]interface{}{
+	_, err = action.Execute(ctx, "write_text", map[string]interface{}{
 		"path":    "test.txt",
 		"content": "Hello!",
 	})
@@ -138,13 +138,13 @@ func TestObservability_WithoutQuotaTracker(t *testing.T) {
 	// Create temp directory
 	tmpDir := t.TempDir()
 
-	// Create connector without quota tracker
+	// Create action without quota tracker
 	config := &Config{
 		WorkflowDir: tmpDir,
 		QuotaConfig: nil, // No quota tracking
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestObservability_WithoutQuotaTracker(t *testing.T) {
 	// Should work fine without quota tracking
 	ctx := context.Background()
 	largeContent := strings.Repeat("x", 100000) // Large content
-	_, err = connector.Execute(ctx, "write_text", map[string]interface{}{
+	_, err = action.Execute(ctx, "write_text", map[string]interface{}{
 		"path":    "test.txt",
 		"content": largeContent,
 	})
@@ -176,14 +176,14 @@ func TestObservability_ErrorMetrics(t *testing.T) {
 		AuditLogger: auditLogger,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Try to read a non-existent file
 	ctx := context.Background()
-	_, err = connector.Execute(ctx, "read_text", map[string]interface{}{
+	_, err = action.Execute(ctx, "read_text", map[string]interface{}{
 		"path": "missing.txt",
 	})
 
@@ -221,7 +221,7 @@ func TestObservability_AppendWithQuota(t *testing.T) {
 		QuotaConfig: quotaConfig,
 	}
 
-	connector, err := New(config)
+	action, err := New(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +229,7 @@ func TestObservability_AppendWithQuota(t *testing.T) {
 	ctx := context.Background()
 
 	// Write initial content
-	_, err = connector.Execute(ctx, "write_text", map[string]interface{}{
+	_, err = action.Execute(ctx, "write_text", map[string]interface{}{
 		"path":    "$out/test.txt",
 		"content": strings.Repeat("a", 50),
 	})
@@ -238,7 +238,7 @@ func TestObservability_AppendWithQuota(t *testing.T) {
 	}
 
 	// Append within quota
-	_, err = connector.Execute(ctx, "append", map[string]interface{}{
+	_, err = action.Execute(ctx, "append", map[string]interface{}{
 		"path":    "$out/test.txt",
 		"content": strings.Repeat("b", 30),
 	})
@@ -247,7 +247,7 @@ func TestObservability_AppendWithQuota(t *testing.T) {
 	}
 
 	// Try to append beyond quota
-	_, err = connector.Execute(ctx, "append", map[string]interface{}{
+	_, err = action.Execute(ctx, "append", map[string]interface{}{
 		"path":    "$out/test.txt",
 		"content": strings.Repeat("c", 50),
 	})
