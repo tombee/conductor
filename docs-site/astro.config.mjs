@@ -40,6 +40,16 @@ export default defineConfig({
           ],
         },
         {
+          label: 'Build with SDK',
+          items: [
+            { label: 'Overview', slug: 'build' },
+            { label: 'Quick Start', slug: 'build/quickstart' },
+            { label: 'Tutorials', slug: 'build/tutorials' },
+            { label: 'Recipes', slug: 'build/recipes' },
+            { label: 'Advanced', slug: 'build/advanced' },
+          ],
+        },
+        {
           label: 'Building Workflows',
           items: [
             { label: 'Patterns', slug: 'building-workflows/patterns' },
