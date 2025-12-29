@@ -55,7 +55,7 @@ func Run(opts RunOptions) error {
 	slog.SetDefault(logger)
 
 	// Load daemon configuration
-	cfg, err := config.LoadDaemon("")
+	cfg, err := config.LoadController("")
 	if err != nil {
 		logger.Error("Failed to load config", slog.Any("error", err))
 		return fmt.Errorf("failed to load config: %w", err)

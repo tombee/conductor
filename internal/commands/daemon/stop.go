@@ -76,7 +76,7 @@ type stopOptions struct {
 
 func runStop(ctx context.Context, opts stopOptions) error {
 	// Load daemon configuration
-	cfg, err := config.LoadDaemon("")
+	cfg, err := config.LoadController("")
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}

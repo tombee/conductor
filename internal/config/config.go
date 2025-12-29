@@ -109,7 +109,7 @@ type ControllerConfig struct {
 	ShutdownTimeout time.Duration `yaml:"shutdown_timeout,omitempty"`
 
 	// DrainTimeout is the maximum duration to wait for active workflows to complete during shutdown.
-	// When the daemon receives SIGTERM, it stops accepting new workflows and waits up to this
+	// When the controller receives SIGTERM, it stops accepting new workflows and waits up to this
 	// duration for existing workflows to complete before forcing shutdown.
 	// Environment: CONDUCTOR_DRAIN_TIMEOUT
 	// Default: 30s
@@ -118,13 +118,13 @@ type ControllerConfig struct {
 	// CheckpointsEnabled enables checkpoint saving for crash recovery.
 	CheckpointsEnabled bool `yaml:"checkpoints_enabled"`
 
-	// Webhooks configures webhook routes (daemon-specific).
+	// Webhooks configures webhook routes (controller-specific).
 	Webhooks WebhooksConfig `yaml:"webhooks,omitempty"`
 
-	// Schedules configures scheduled workflows (daemon-specific).
+	// Schedules configures scheduled workflows (controller-specific).
 	Schedules SchedulesConfig `yaml:"schedules,omitempty"`
 
-	// Endpoints configures named API endpoints (daemon-specific).
+	// Endpoints configures named API endpoints (controller-specific).
 	Endpoints EndpointsConfig `yaml:"endpoints,omitempty"`
 
 	// ControllerAuth configures controller authentication (different from CLI auth).
@@ -140,7 +140,7 @@ type ControllerConfig struct {
 	Observability ObservabilityConfig `yaml:"observability,omitempty"`
 }
 
-// ControllerListenConfig configures how the daemon listens for connections.
+// ControllerListenConfig configures how the controller listens for connections.
 type ControllerListenConfig struct {
 	// SocketPath is the Unix socket path (default).
 	SocketPath string `yaml:"socket_path,omitempty"`
@@ -177,7 +177,7 @@ type PublicAPIConfig struct {
 	TCP string `yaml:"tcp,omitempty"`
 }
 
-// ControllerLogConfig configures daemon logging (separate from CLI logging).
+// ControllerLogConfig configures controller logging (separate from CLI logging).
 type ControllerLogConfig struct {
 	// Level is the log level (debug, info, warn, error).
 	Level string `yaml:"level,omitempty"`
@@ -186,7 +186,7 @@ type ControllerLogConfig struct {
 	Format string `yaml:"format,omitempty"`
 }
 
-// ControllerAuthConfig configures daemon authentication (separate from CLI auth).
+// ControllerAuthConfig configures controller authentication (separate from CLI auth).
 type ControllerAuthConfig struct {
 	// Enabled controls whether authentication is required.
 	Enabled bool `yaml:"enabled"`
@@ -227,7 +227,7 @@ type DistributedConfig struct {
 	// Enabled activates distributed mode (requires Postgres backend).
 	Enabled bool `yaml:"enabled"`
 
-	// InstanceID uniquely identifies this daemon instance.
+	// InstanceID uniquely identifies this controller instance.
 	// If empty, a random ID is generated.
 	InstanceID string `yaml:"instance_id,omitempty"`
 
@@ -748,10 +748,10 @@ func LoadWithSecrets(configPath string) (*Config, []string, error) {
 	return cfg, warnings, nil
 }
 
-// LoadDaemon loads configuration for daemon mode.
+// LoadController loads configuration for controller mode.
 // This is functionally equivalent to Load but provides a clearer API
-// for daemon-specific configuration loading.
-func LoadDaemon(configPath string) (*Config, error) {
+// for controller-specific configuration loading.
+func LoadController(configPath string) (*Config, error) {
 	return Load(configPath)
 }
 
@@ -956,7 +956,7 @@ func (c *Config) loadFromEnv() {
 		c.Controller.APIKey = val
 	}
 
-	// Daemon configuration (daemon-specific)
+	// Daemon configuration (controller-specific)
 	if val := os.Getenv("CONDUCTOR_LISTEN_SOCKET"); val != "" {
 		c.Controller.Listen.SocketPath = val
 	}
@@ -1121,7 +1121,7 @@ func (c *Config) Validate() error {
 	// Validate public API configuration
 	if c.Controller.Listen.PublicAPI.Enabled {
 		if c.Controller.Listen.PublicAPI.TCP == "" {
-			errs = append(errs, "daemon.listen.public_api.tcp is required when public_api.enabled is true")
+			errs = append(errs, "controller.listen.public_api.tcp is required when public_api.enabled is true")
 		}
 	}
 
@@ -1131,28 +1131,28 @@ func (c *Config) Validate() error {
 		for i, ep := range c.Controller.Endpoints.Endpoints {
 			// Validate required fields
 			if ep.Name == "" {
-				errs = append(errs, fmt.Sprintf("daemon.endpoints.endpoints[%d]: name is required", i))
+				errs = append(errs, fmt.Sprintf("controller.endpoints.endpoints[%d]: name is required", i))
 			} else {
 				// Check for duplicate names
 				if endpointNames[ep.Name] {
-					errs = append(errs, fmt.Sprintf("daemon.endpoints.endpoints[%d]: duplicate endpoint name %q", i, ep.Name))
+					errs = append(errs, fmt.Sprintf("controller.endpoints.endpoints[%d]: duplicate endpoint name %q", i, ep.Name))
 				}
 				endpointNames[ep.Name] = true
 			}
 
 			if ep.Workflow == "" {
-				errs = append(errs, fmt.Sprintf("daemon.endpoints.endpoints[%d] (%s): workflow is required", i, ep.Name))
+				errs = append(errs, fmt.Sprintf("controller.endpoints.endpoints[%d] (%s): workflow is required", i, ep.Name))
 			}
 
 			// Validate timeout is non-negative
 			if ep.Timeout < 0 {
-				errs = append(errs, fmt.Sprintf("daemon.endpoints.endpoints[%d] (%s): timeout must be non-negative, got %v", i, ep.Name, ep.Timeout))
+				errs = append(errs, fmt.Sprintf("controller.endpoints.endpoints[%d] (%s): timeout must be non-negative, got %v", i, ep.Name, ep.Timeout))
 			}
 
 			// Validate rate limit format if specified
 			if ep.RateLimit != "" {
 				if err := validateRateLimitFormat(ep.RateLimit); err != nil {
-					errs = append(errs, fmt.Sprintf("daemon.endpoints.endpoints[%d] (%s): %v", i, ep.Name, err))
+					errs = append(errs, fmt.Sprintf("controller.endpoints.endpoints[%d] (%s): %v", i, ep.Name, err))
 				}
 			}
 		}
@@ -1162,20 +1162,20 @@ func (c *Config) Validate() error {
 	if c.Controller.Observability.Enabled {
 		ret := c.Controller.Observability.Storage.Retention
 		if ret.TraceDays <= 0 {
-			errs = append(errs, fmt.Sprintf("daemon.observability.storage.retention.trace_days must be positive, got %d", ret.TraceDays))
+			errs = append(errs, fmt.Sprintf("controller.observability.storage.retention.trace_days must be positive, got %d", ret.TraceDays))
 		}
 		if ret.EventDays <= 0 {
-			errs = append(errs, fmt.Sprintf("daemon.observability.storage.retention.event_days must be positive, got %d", ret.EventDays))
+			errs = append(errs, fmt.Sprintf("controller.observability.storage.retention.event_days must be positive, got %d", ret.EventDays))
 		}
 		if ret.AggregateDays <= 0 {
-			errs = append(errs, fmt.Sprintf("daemon.observability.storage.retention.aggregate_days must be positive, got %d", ret.AggregateDays))
+			errs = append(errs, fmt.Sprintf("controller.observability.storage.retention.aggregate_days must be positive, got %d", ret.AggregateDays))
 		}
 
 		// Validate sampling rate is in valid range [0.0, 1.0]
 		if c.Controller.Observability.Sampling.Enabled {
 			rate := c.Controller.Observability.Sampling.Rate
 			if rate < 0.0 || rate > 1.0 {
-				errs = append(errs, fmt.Sprintf("daemon.observability.sampling.rate must be between 0.0 and 1.0, got %f", rate))
+				errs = append(errs, fmt.Sprintf("controller.observability.sampling.rate must be between 0.0 and 1.0, got %f", rate))
 			}
 		}
 
@@ -1183,14 +1183,14 @@ func (c *Config) Validate() error {
 		if c.Controller.Observability.Audit.Enabled {
 			validDestinations := map[string]bool{"file": true, "stdout": true, "syslog": true}
 			if c.Controller.Observability.Audit.Destination == "" {
-				errs = append(errs, "daemon.observability.audit.destination is required when audit.enabled is true")
+				errs = append(errs, "controller.observability.audit.destination is required when audit.enabled is true")
 			} else if !validDestinations[c.Controller.Observability.Audit.Destination] {
-				errs = append(errs, fmt.Sprintf("daemon.observability.audit.destination must be one of [file, stdout, syslog], got %q", c.Controller.Observability.Audit.Destination))
+				errs = append(errs, fmt.Sprintf("controller.observability.audit.destination must be one of [file, stdout, syslog], got %q", c.Controller.Observability.Audit.Destination))
 			}
 
 			// Validate file_path is set when destination is file
 			if c.Controller.Observability.Audit.Destination == "file" && c.Controller.Observability.Audit.FilePath == "" {
-				errs = append(errs, "daemon.observability.audit.file_path is required when audit.destination is 'file'")
+				errs = append(errs, "controller.observability.audit.file_path is required when audit.destination is 'file'")
 			}
 		}
 	}
@@ -1270,7 +1270,7 @@ func defaultDataDir() string {
 	return filepath.Join(homeDir, ".conductor", "data")
 }
 
-// CheckpointDir returns the checkpoint directory path for the daemon.
+// CheckpointDir returns the checkpoint directory path for the controller.
 func (c *ControllerConfig) CheckpointDir() string {
 	if !c.CheckpointsEnabled {
 		return ""

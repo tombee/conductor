@@ -104,7 +104,7 @@ type startOptions struct {
 
 func runStart(ctx context.Context, opts startOptions) error {
 	// Load daemon configuration
-	cfg, err := config.LoadDaemon("")
+	cfg, err := config.LoadController("")
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}

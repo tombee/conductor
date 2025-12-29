@@ -170,7 +170,7 @@ func (p *OTelProvider) MetricsCollector() *MetricsCollector {
 }
 
 // OTelTracer returns the underlying OpenTelemetry tracer for workflow tracing.
-// This is used by the daemon runner to create workflow and step spans.
+// This is used by the controller runner to create workflow and step spans.
 func (p *OTelProvider) OTelTracer(name string) trace.Tracer {
 	return p.tp.Tracer(name)
 }
