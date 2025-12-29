@@ -122,7 +122,7 @@ func TestClientWithUnixSocket(t *testing.T) {
 	socketPath := filepath.Join(tmpDir, "test.sock")
 
 	// Create Unix socket listener
-	ln, err := net.Listen("unix", socketPath)
+	ln, err := net.Trigger("unix", socketPath)
 	if err != nil {
 		t.Fatalf("Failed to create Unix socket: %v", err)
 	}

@@ -16,7 +16,7 @@ func TestEventEmitterOn(t *testing.T) {
 			return nil
 		})
 
-		if count := emitter.ListenerCount(EventStateChanged); count != 1 {
+		if count := emitter.TriggererCount(EventStateChanged); count != 1 {
 			t.Errorf("ListenerCount = %d, want 1", count)
 		}
 	})
@@ -31,7 +31,7 @@ func TestEventEmitterOn(t *testing.T) {
 			return nil
 		})
 
-		if count := emitter.ListenerCount(EventStateChanged); count != 2 {
+		if count := emitter.TriggererCount(EventStateChanged); count != 2 {
 			t.Errorf("ListenerCount = %d, want 2", count)
 		}
 	})
@@ -46,10 +46,10 @@ func TestEventEmitterOn(t *testing.T) {
 			return nil
 		})
 
-		if count := emitter.ListenerCount(EventStateChanged); count != 1 {
+		if count := emitter.TriggererCount(EventStateChanged); count != 1 {
 			t.Errorf("ListenerCount(EventStateChanged) = %d, want 1", count)
 		}
-		if count := emitter.ListenerCount(EventStepCompleted); count != 1 {
+		if count := emitter.TriggererCount(EventStepCompleted); count != 1 {
 			t.Errorf("ListenerCount(EventStepCompleted) = %d, want 1", count)
 		}
 	})
@@ -65,7 +65,7 @@ func TestEventEmitterOff(t *testing.T) {
 
 		emitter.Off(EventStateChanged)
 
-		if count := emitter.ListenerCount(EventStateChanged); count != 0 {
+		if count := emitter.TriggererCount(EventStateChanged); count != 0 {
 			t.Errorf("ListenerCount = %d, want 0", count)
 		}
 	})
@@ -76,7 +76,7 @@ func TestEventEmitterOff(t *testing.T) {
 		// Should not panic
 		emitter.Off(EventStateChanged)
 
-		if count := emitter.ListenerCount(EventStateChanged); count != 0 {
+		if count := emitter.TriggererCount(EventStateChanged); count != 0 {
 			t.Errorf("ListenerCount = %d, want 0", count)
 		}
 	})
@@ -497,10 +497,10 @@ func TestEventEmitterRemoveAllListeners(t *testing.T) {
 
 		emitter.RemoveAllListeners()
 
-		if count := emitter.ListenerCount(EventStateChanged); count != 0 {
+		if count := emitter.TriggererCount(EventStateChanged); count != 0 {
 			t.Errorf("ListenerCount(EventStateChanged) = %d, want 0", count)
 		}
-		if count := emitter.ListenerCount(EventStepCompleted); count != 0 {
+		if count := emitter.TriggererCount(EventStepCompleted); count != 0 {
 			t.Errorf("ListenerCount(EventStepCompleted) = %d, want 0", count)
 		}
 	})
@@ -526,7 +526,7 @@ func TestEventEmitterConcurrency(t *testing.T) {
 
 		wg.Wait()
 
-		if count := emitter.ListenerCount(EventStateChanged); count != 10 {
+		if count := emitter.TriggererCount(EventStateChanged); count != 10 {
 			t.Errorf("ListenerCount = %d, want 10", count)
 		}
 	})

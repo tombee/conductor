@@ -96,14 +96,14 @@ func (h *StartHandler) handleStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify workflow has listen.api configured
-	if def.Listen == nil || def.Listen.API == nil {
+	if def.Trigger == nil || def.Trigger.API == nil {
 		// Return 404 to prevent enumeration of workflows without API access
 		writeError(w, http.StatusNotFound, "workflow not found or not available via API")
 		return
 	}
 
 	// Extract secret (expand environment variables if needed)
-	secret := def.Listen.API.Secret
+	secret := def.Trigger.API.Secret
 	if strings.HasPrefix(secret, "${") && strings.HasSuffix(secret, "}") {
 		envVar := strings.TrimSuffix(strings.TrimPrefix(secret, "${"), "}")
 		secret = os.Getenv(envVar)

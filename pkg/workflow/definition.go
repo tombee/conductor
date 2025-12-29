@@ -34,7 +34,7 @@ type Definition struct {
 
 	// Listen defines how this workflow can be invoked (webhooks, API, schedules)
 	// Replaces the deprecated Triggers field
-	Listen *ListenConfig `yaml:"listen,omitempty" json:"listen,omitempty"`
+	Trigger *TriggerConfig `yaml:"listen,omitempty" json:"listen,omitempty"`
 
 	// Inputs defines the expected input parameters for the workflow
 	Inputs []InputDefinition `yaml:"inputs" json:"inputs"`
@@ -72,19 +72,19 @@ type Definition struct {
 
 // ListenConfig defines how a workflow can be invoked.
 // This replaces the old TriggerDefinition structure.
-type ListenConfig struct {
+type TriggerConfig struct {
 	// Webhook configures webhook listeners
 	Webhook *WebhookTrigger `yaml:"webhook,omitempty" json:"webhook,omitempty"`
 
 	// API configures API endpoint listeners (Bearer token auth)
-	API *APIListenerConfig `yaml:"api,omitempty" json:"api,omitempty"`
+	API *APITriggerConfig `yaml:"api,omitempty" json:"api,omitempty"`
 
 	// Schedule configures scheduled execution
 	Schedule *ScheduleTrigger `yaml:"schedule,omitempty" json:"schedule,omitempty"`
 }
 
 // APIListenerConfig defines API endpoint authentication configuration.
-type APIListenerConfig struct {
+type APITriggerConfig struct {
 	// Secret is the Bearer token required to trigger this workflow via API.
 	// Callers must provide this as: Authorization: Bearer <secret>
 	// Should be a strong, cryptographically random value (recommended: >=32 bytes).
@@ -93,7 +93,7 @@ type APIListenerConfig struct {
 }
 
 // TriggerDefinition defines how a workflow can be triggered.
-// DEPRECATED: Use ListenConfig instead. This type is kept for backward compatibility
+// DEPRECATED: Use TriggerConfig instead. This type is kept for backward compatibility
 // during migration, but parsing will return an error if triggers: is used.
 type TriggerDefinition struct {
 	// Type is the trigger type (webhook, schedule, manual)

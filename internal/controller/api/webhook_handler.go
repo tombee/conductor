@@ -117,13 +117,13 @@ func (h *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify workflow has listen.webhook configured
-	if def.Listen == nil || def.Listen.Webhook == nil {
+	if def.Trigger == nil || def.Trigger.Webhook == nil {
 		// Return 404 to prevent enumeration of workflows without webhook listeners
 		writeError(w, http.StatusNotFound, "webhook not found or not available")
 		return
 	}
 
-	webhookConfig := def.Listen.Webhook
+	webhookConfig := def.Trigger.Webhook
 
 	// Expand secret from environment if needed
 	secret := webhookConfig.Secret

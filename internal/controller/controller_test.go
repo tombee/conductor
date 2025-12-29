@@ -34,7 +34,7 @@ func TestControllerStartStop(t *testing.T) {
 	socketPath := filepath.Join(tmpDir, "test.sock")
 
 	cfg := config.Default()
-	cfg.Controller.Listen.SocketPath = socketPath
+	cfg.Controller.Trigger.SocketPath = socketPath
 	cfg.Controller.ShutdownTimeout = 5 * time.Second
 
 	d, err := New(cfg, Options{
@@ -116,7 +116,7 @@ func TestControllerPIDFile(t *testing.T) {
 	pidFile := filepath.Join(tmpDir, "test.pid")
 
 	cfg := config.Default()
-	cfg.Controller.Listen.SocketPath = socketPath
+	cfg.Controller.Trigger.SocketPath = socketPath
 	cfg.Controller.PIDFile = pidFile
 	cfg.Controller.ShutdownTimeout = 5 * time.Second
 
@@ -163,7 +163,7 @@ func TestControllerVersionEndpoint(t *testing.T) {
 	socketPath := filepath.Join(tmpDir, "test.sock")
 
 	cfg := config.Default()
-	cfg.Controller.Listen.SocketPath = socketPath
+	cfg.Controller.Trigger.SocketPath = socketPath
 	cfg.Controller.ShutdownTimeout = 5 * time.Second
 
 	d, err := New(cfg, Options{

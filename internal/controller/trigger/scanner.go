@@ -126,32 +126,32 @@ func (s *Scanner) scanWorkflow(path string) ([]WorkflowTrigger, error) {
 	}
 
 	// Convert listen config to legacy trigger format for backward compatibility
-	if def.Listen == nil {
+	if def.Trigger == nil {
 		return nil, nil
 	}
 
 	triggers := make([]WorkflowTrigger, 0, 2)
 
 	// Convert webhook listener to trigger
-	if def.Listen.Webhook != nil {
+	if def.Trigger.Webhook != nil {
 		triggers = append(triggers, WorkflowTrigger{
 			WorkflowPath: path,
 			WorkflowName: def.Name,
 			Trigger: workflow.TriggerDefinition{
 				Type:    workflow.TriggerTypeWebhook,
-				Webhook: def.Listen.Webhook,
+				Webhook: def.Trigger.Webhook,
 			},
 		})
 	}
 
 	// Convert schedule listener to trigger
-	if def.Listen.Schedule != nil {
+	if def.Trigger.Schedule != nil {
 		triggers = append(triggers, WorkflowTrigger{
 			WorkflowPath: path,
 			WorkflowName: def.Name,
 			Trigger: workflow.TriggerDefinition{
 				Type:     workflow.TriggerTypeSchedule,
-				Schedule: def.Listen.Schedule,
+				Schedule: def.Trigger.Schedule,
 			},
 		})
 	}

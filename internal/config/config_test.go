@@ -540,16 +540,16 @@ func TestPublicAPIConfig(t *testing.T) {
 		{
 			name: "public API enabled with TCP address",
 			modify: func(c *Config) {
-				c.Controller.Listen.PublicAPI.Enabled = true
-				c.Controller.Listen.PublicAPI.TCP = ":9001"
+				c.Controller.Trigger.PublicAPI.Enabled = true
+				c.Controller.Trigger.PublicAPI.TCP = ":9001"
 			},
 			wantErr: false,
 		},
 		{
 			name: "public API enabled without TCP address",
 			modify: func(c *Config) {
-				c.Controller.Listen.PublicAPI.Enabled = true
-				c.Controller.Listen.PublicAPI.TCP = ""
+				c.Controller.Trigger.PublicAPI.Enabled = true
+				c.Controller.Trigger.PublicAPI.TCP = ""
 			},
 			wantErr: true,
 			errText: "daemon.listen.public_api.tcp is required when public_api.enabled is true",
@@ -557,8 +557,8 @@ func TestPublicAPIConfig(t *testing.T) {
 		{
 			name: "public API disabled with TCP address",
 			modify: func(c *Config) {
-				c.Controller.Listen.PublicAPI.Enabled = false
-				c.Controller.Listen.PublicAPI.TCP = ":9001"
+				c.Controller.Trigger.PublicAPI.Enabled = false
+				c.Controller.Trigger.PublicAPI.TCP = ":9001"
 			},
 			wantErr: false, // TCP can be set but ignored when disabled
 		},
@@ -601,11 +601,11 @@ func TestPublicAPIFromEnv(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !cfg.Controller.Listen.PublicAPI.Enabled {
+	if !cfg.Controller.Trigger.PublicAPI.Enabled {
 		t.Errorf("expected public API enabled, got disabled")
 	}
-	if cfg.Controller.Listen.PublicAPI.TCP != ":9001" {
-		t.Errorf("expected TCP :9001, got %q", cfg.Controller.Listen.PublicAPI.TCP)
+	if cfg.Controller.Trigger.PublicAPI.TCP != ":9001" {
+		t.Errorf("expected TCP :9001, got %q", cfg.Controller.Trigger.PublicAPI.TCP)
 	}
 }
 
@@ -638,10 +638,10 @@ daemon:
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !cfg.Controller.Listen.PublicAPI.Enabled {
+	if !cfg.Controller.Trigger.PublicAPI.Enabled {
 		t.Errorf("expected public API enabled, got disabled")
 	}
-	if cfg.Controller.Listen.PublicAPI.TCP != ":9001" {
-		t.Errorf("expected TCP :9001, got %q", cfg.Controller.Listen.PublicAPI.TCP)
+	if cfg.Controller.Trigger.PublicAPI.TCP != ":9001" {
+		t.Errorf("expected TCP :9001, got %q", cfg.Controller.Trigger.PublicAPI.TCP)
 	}
 }

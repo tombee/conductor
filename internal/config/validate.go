@@ -71,12 +71,12 @@ func ValidatePublicAPIRequirements(cfg *Config) error {
 		}
 
 		// Check if workflow has public API listeners
-		if def.Listen != nil {
-			if def.Listen.Webhook != nil {
+		if def.Trigger != nil {
+			if def.Trigger.Webhook != nil {
 				workflowsRequiringPublicAPI = append(workflowsRequiringPublicAPI,
 					fmt.Sprintf("%s (has listen.webhook)", def.Name))
 			}
-			if def.Listen.API != nil {
+			if def.Trigger.API != nil {
 				workflowsRequiringPublicAPI = append(workflowsRequiringPublicAPI,
 					fmt.Sprintf("%s (has listen.api)", def.Name))
 			}
