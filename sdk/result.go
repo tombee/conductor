@@ -63,5 +63,7 @@ type ToolExecution struct {
 	ToolName string
 	Inputs   map[string]any
 	Outputs  map[string]any
-	Error    error
+	Success  bool
+	Error    string
+	Duration time.Duration
 }
