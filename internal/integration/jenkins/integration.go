@@ -10,9 +10,9 @@ import (
 	"github.com/tombee/conductor/internal/operation/transport"
 )
 
-// JenkinsIntegration implements the Connector interface for Jenkins API.
+// JenkinsIntegration implements the Provider interface for Jenkins API.
 type JenkinsIntegration struct {
-	*api.BaseConnector
+	*api.BaseProvider
 	baseURL   string
 	username  string
 	token     string
@@ -20,12 +20,12 @@ type JenkinsIntegration struct {
 }
 
 // NewJenkinsIntegration creates a new Jenkins integration.
-func NewJenkinsIntegration(config *api.ConnectorConfig) (operation.Connector, error) {
+func NewJenkinsIntegration(config *api.ProviderConfig) (operation.Provider, error) {
 	if config.BaseURL == "" {
 		return nil, fmt.Errorf("jenkins integration requires base_url configuration")
 	}
 
-	base := api.NewBaseConnector("jenkins", config)
+	base := api.NewBaseProvider("jenkins", config)
 
 	// Jenkins auth can be either:
 	// 1. token only (for API token)
@@ -38,7 +38,7 @@ func NewJenkinsIntegration(config *api.ConnectorConfig) (operation.Connector, er
 	}
 
 	return &JenkinsIntegration{
-		BaseConnector: base,
+		BaseProvider: base,
 		baseURL:       config.BaseURL,
 		username:      username,
 		token:         config.Token,
@@ -135,7 +135,7 @@ func (c *JenkinsIntegration) OperationSchema(operation string) *api.OperationSch
 	return nil
 }
 
-// ExecuteRequest overrides BaseConnector to use Basic auth instead of Bearer.
+// ExecuteRequest overrides BaseProvider to use Basic auth instead of Bearer.
 func (c *JenkinsIntegration) ExecuteRequest(ctx context.Context, method, url string, headers map[string]string, body []byte) (*transport.Response, error) {
 	if headers == nil {
 		headers = make(map[string]string)

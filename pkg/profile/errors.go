@@ -108,7 +108,7 @@ type BindingError struct {
 	Workflow    string
 	Profile     string
 	Workspace   string
-	Requirement string // e.g., "connectors.github"
+	Requirement string // e.g., "integrations.github"
 	Message     string
 	Remediation string
 	Cause       error

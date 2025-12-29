@@ -11,7 +11,7 @@ import (
 const nanoidAlphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_"
 
 // idUUID generates a UUID v4.
-func (c *UtilityConnector) idUUID(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *UtilityAction) idUUID(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// Generate 16 random bytes
 	var uuid [16]byte
 	_, err := rand.Read(uuid[:])
@@ -48,7 +48,7 @@ func (c *UtilityConnector) idUUID(ctx context.Context, inputs map[string]interfa
 }
 
 // idNanoid generates a short URL-safe ID.
-func (c *UtilityConnector) idNanoid(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *UtilityAction) idNanoid(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// Get optional length parameter
 	length := c.config.DefaultNanoidLength
 	if _, ok := inputs["length"]; ok {
@@ -104,7 +104,7 @@ func (c *UtilityConnector) idNanoid(ctx context.Context, inputs map[string]inter
 }
 
 // idCustom generates an ID with custom length and alphabet.
-func (c *UtilityConnector) idCustom(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *UtilityAction) idCustom(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// Get required length parameter
 	length, err := getInt(inputs, "length")
 	if err != nil {

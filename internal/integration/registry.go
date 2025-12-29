@@ -20,7 +20,7 @@ import (
 // BuiltinRegistry holds all built-in API integration factories.
 // These integrations provide type-safe, Go-based implementations with
 // API-specific error handling and pagination support.
-var BuiltinRegistry = map[string]func(config *api.ConnectorConfig) (operation.Connector, error){
+var BuiltinRegistry = map[string]func(config *api.ProviderConfig) (operation.Provider, error){
 	"github":        github.NewGitHubIntegration,
 	"slack":         slack.NewSlackIntegration,
 	"jira":          jira.NewJiraIntegration,
@@ -36,9 +36,9 @@ var BuiltinRegistry = map[string]func(config *api.ConnectorConfig) (operation.Co
 func init() {
 	// Register all builtin API integrations with the parent operation package
 	for name := range BuiltinRegistry {
-		connName := name // capture for closure
-		operation.RegisterBuiltinAPI(name, func(connectorName string, baseURL string, authType string, authToken string) (operation.Connector, error) {
-			config := &api.ConnectorConfig{
+		intName := name // capture for closure
+		operation.RegisterBuiltinAPI(name, func(integrationName string, baseURL string, authType string, authToken string) (operation.Provider, error) {
+			config := &api.ProviderConfig{
 				BaseURL: baseURL,
 				Token:   authToken,
 			}
@@ -55,7 +55,7 @@ func init() {
 					config.Token = parts[1] // API token is the password part
 				}
 			}
-			return BuiltinRegistry[connName](config)
+			return BuiltinRegistry[intName](config)
 		})
 	}
 }

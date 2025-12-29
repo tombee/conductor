@@ -1,9 +1,9 @@
-// Package utility provides a builtin connector for utility functions (random, ID, math).
+// Package utility provides a builtin action for utility functions (random, ID, math).
 package utility
 
 import "fmt"
 
-// ErrorType represents the type of utility connector error.
+// ErrorType represents the type of utility action error.
 type ErrorType string
 
 const (
@@ -23,7 +23,7 @@ const (
 	ErrorTypeInternal ErrorType = "internal"
 )
 
-// OperationError represents an error from a utility connector operation.
+// OperationError represents an error from a utility action operation.
 type OperationError struct {
 	Operation  string
 	Message    string

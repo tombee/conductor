@@ -6,7 +6,7 @@ import (
 )
 
 // newTestConnector creates a connector with deterministic random for testing.
-func newTestConnector(seed int64) *UtilityConnector {
+func newTestConnector(seed int64) *UtilityAction {
 	cfg := &Config{
 		RandomSeed:          &seed,
 		MaxArraySize:        100,

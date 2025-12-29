@@ -34,7 +34,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 			profile: profile.Profile{
 				Name: "test",
 				Bindings: profile.Bindings{
-					Connectors: map[string]profile.ConnectorBinding{
+					Integrations: map[string]profile.IntegrationBinding{
 						"github": {
 							Auth: profile.AuthBinding{
 								Token: "ghp_FAKEtestTOKENnotREAL000000000000000000",
@@ -51,7 +51,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 			profile: profile.Profile{
 				Name: "test",
 				Bindings: profile.Bindings{
-					Connectors: map[string]profile.ConnectorBinding{
+					Integrations: map[string]profile.IntegrationBinding{
 						"api": {
 							Auth: profile.AuthBinding{
 								Token: "sk-ant-api03-FAKEtestKEYnotREAL000000000000000000000000000000000000000000000000000000000000000000000000",
@@ -68,7 +68,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 			profile: profile.Profile{
 				Name: "test",
 				Bindings: profile.Bindings{
-					Connectors: map[string]profile.ConnectorBinding{
+					Integrations: map[string]profile.IntegrationBinding{
 						"aws": {
 							Auth: profile.AuthBinding{
 								Username: "admin",
@@ -104,7 +104,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 			profile: profile.Profile{
 				Name: "test",
 				Bindings: profile.Bindings{
-					Connectors: map[string]profile.ConnectorBinding{
+					Integrations: map[string]profile.IntegrationBinding{
 						"github": {
 							Auth: profile.AuthBinding{
 								Token: "${GITHUB_TOKEN}",
@@ -120,7 +120,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 			profile: profile.Profile{
 				Name: "test",
 				Bindings: profile.Bindings{
-					Connectors: map[string]profile.ConnectorBinding{
+					Integrations: map[string]profile.IntegrationBinding{
 						"api": {
 							Auth: profile.AuthBinding{
 								Token: "env:API_TOKEN",
@@ -136,7 +136,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 			profile: profile.Profile{
 				Name: "test",
 				Bindings: profile.Bindings{
-					Connectors: map[string]profile.ConnectorBinding{
+					Integrations: map[string]profile.IntegrationBinding{
 						"api": {
 							Auth: profile.AuthBinding{
 								Token: "file:/etc/secrets/token",
@@ -230,15 +230,15 @@ func TestValidateAllowlistPattern(t *testing.T) {
 	}
 }
 
-func TestValidateConnectorBinding(t *testing.T) {
+func TestValidateIntegrationBinding(t *testing.T) {
 	tests := []struct {
 		name    string
-		binding profile.ConnectorBinding
+		binding profile.IntegrationBinding
 		wantErr bool
 	}{
 		{
 			name: "valid token auth",
-			binding: profile.ConnectorBinding{
+			binding: profile.IntegrationBinding{
 				Auth: profile.AuthBinding{
 					Token: "${TOKEN}",
 				},
@@ -247,7 +247,7 @@ func TestValidateConnectorBinding(t *testing.T) {
 		},
 		{
 			name: "valid basic auth",
-			binding: profile.ConnectorBinding{
+			binding: profile.IntegrationBinding{
 				Auth: profile.AuthBinding{
 					Username: "user",
 					Password: "${PASSWORD}",
@@ -257,7 +257,7 @@ func TestValidateConnectorBinding(t *testing.T) {
 		},
 		{
 			name: "valid header auth",
-			binding: profile.ConnectorBinding{
+			binding: profile.IntegrationBinding{
 				Auth: profile.AuthBinding{
 					Header: "X-API-Key",
 					Value:  "${API_KEY}",
@@ -267,7 +267,7 @@ func TestValidateConnectorBinding(t *testing.T) {
 		},
 		{
 			name: "invalid - username without password",
-			binding: profile.ConnectorBinding{
+			binding: profile.IntegrationBinding{
 				Auth: profile.AuthBinding{
 					Username: "user",
 				},
@@ -276,7 +276,7 @@ func TestValidateConnectorBinding(t *testing.T) {
 		},
 		{
 			name: "invalid - password without username",
-			binding: profile.ConnectorBinding{
+			binding: profile.IntegrationBinding{
 				Auth: profile.AuthBinding{
 					Password: "${PASSWORD}",
 				},
@@ -285,7 +285,7 @@ func TestValidateConnectorBinding(t *testing.T) {
 		},
 		{
 			name: "invalid - header without value",
-			binding: profile.ConnectorBinding{
+			binding: profile.IntegrationBinding{
 				Auth: profile.AuthBinding{
 					Header: "X-API-Key",
 				},
@@ -294,7 +294,7 @@ func TestValidateConnectorBinding(t *testing.T) {
 		},
 		{
 			name: "invalid - value without header",
-			binding: profile.ConnectorBinding{
+			binding: profile.IntegrationBinding{
 				Auth: profile.AuthBinding{
 					Value: "${API_KEY}",
 				},
@@ -303,7 +303,7 @@ func TestValidateConnectorBinding(t *testing.T) {
 		},
 		{
 			name: "invalid - mixed auth methods",
-			binding: profile.ConnectorBinding{
+			binding: profile.IntegrationBinding{
 				Auth: profile.AuthBinding{
 					Token:    "${TOKEN}",
 					Username: "user",
@@ -316,7 +316,7 @@ func TestValidateConnectorBinding(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateConnectorBinding("test.path", tt.binding)
+			err := validateIntegrationBinding("test.path", tt.binding)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -443,7 +443,7 @@ func TestValidateProfiles(t *testing.T) {
 						"test": {
 							Name: "test",
 							Bindings: profile.Bindings{
-								Connectors: map[string]profile.ConnectorBinding{
+								Integrations: map[string]profile.IntegrationBinding{
 									"github": {
 										Auth: profile.AuthBinding{
 											Token: "ghp_FAKEtestTOKENnotREAL000000000000000000",

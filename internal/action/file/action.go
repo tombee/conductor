@@ -1,15 +1,15 @@
 // Package file provides a builtin action for filesystem operations.
 //
 // The file action does NOT import the operation package to avoid import cycles.
-// The builtin registry bridges between file operations and the operation.Connector interface.
+// The builtin registry bridges between file operations and the operation.Provider interface.
 package file
 
 import (
 	"context"
 )
 
-// FileConnector implements the action interface for file operations.
-type FileConnector struct {
+// FileAction implements the action interface for file operations.
+type FileAction struct {
 	config       *Config
 	resolver     *PathResolver
 	auditLogger  AuditLogger
@@ -60,7 +60,7 @@ func DefaultConfig() *Config {
 }
 
 // New creates a new file action instance.
-func New(config *Config) (*FileConnector, error) {
+func New(config *Config) (*FileAction, error) {
 	if config == nil {
 		config = DefaultConfig()
 	}
@@ -103,7 +103,7 @@ func New(config *Config) (*FileConnector, error) {
 		}
 	}
 
-	return &FileConnector{
+	return &FileAction{
 		config:       config,
 		resolver:     resolver,
 		auditLogger:  auditLogger,
@@ -112,7 +112,7 @@ func New(config *Config) (*FileConnector, error) {
 }
 
 // Name returns the action identifier.
-func (c *FileConnector) Name() string {
+func (c *FileAction) Name() string {
 	return "file"
 }
 
@@ -125,7 +125,7 @@ type Result struct {
 // Note: ErrorType and OperationError are defined in errors.go
 
 // Execute runs a named file operation with the given inputs.
-func (c *FileConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*Result, error) {
 	// Extract path for observability (best effort)
 	path := ""
 	if p, ok := inputs["path"].(string); ok {

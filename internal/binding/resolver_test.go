@@ -23,7 +23,7 @@ import (
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
-func TestResolver_ResolveConnectorRequirements(t *testing.T) {
+func TestResolver_ResolveIntegrationRequirements(t *testing.T) {
 	tests := []struct {
 		name        string
 		profile     *profile.Profile
@@ -37,7 +37,7 @@ func TestResolver_ResolveConnectorRequirements(t *testing.T) {
 			profile: &profile.Profile{
 				Name: "test",
 				Bindings: profile.Bindings{
-					Connectors: map[string]profile.ConnectorBinding{
+					Integrations: map[string]profile.IntegrationBinding{
 						"github": {
 							Auth: profile.AuthBinding{
 								Token: "env:PROFILE_TOKEN",
@@ -49,11 +49,11 @@ func TestResolver_ResolveConnectorRequirements(t *testing.T) {
 			workflow: &workflow.Definition{
 				Name: "test-workflow",
 				Requires: &workflow.RequirementsDefinition{
-					Connectors: []workflow.ConnectorRequirement{
+					Integrations: []workflow.IntegrationRequirement{
 						{Name: "github"},
 					},
 				},
-				Connectors: map[string]workflow.ConnectorDefinition{
+				Integrations: map[string]workflow.IntegrationDefinition{
 					"github": {
 						Auth: &workflow.AuthDefinition{
 							Token: "env:INLINE_TOKEN",
@@ -73,11 +73,11 @@ func TestResolver_ResolveConnectorRequirements(t *testing.T) {
 			workflow: &workflow.Definition{
 				Name: "test-workflow",
 				Requires: &workflow.RequirementsDefinition{
-					Connectors: []workflow.ConnectorRequirement{
+					Integrations: []workflow.IntegrationRequirement{
 						{Name: "github"},
 					},
 				},
-				Connectors: map[string]workflow.ConnectorDefinition{
+				Integrations: map[string]workflow.IntegrationDefinition{
 					"github": {
 						Auth: &workflow.AuthDefinition{
 							Token: "env:INLINE_TOKEN",
@@ -97,7 +97,7 @@ func TestResolver_ResolveConnectorRequirements(t *testing.T) {
 			workflow: &workflow.Definition{
 				Name: "test-workflow",
 				Requires: &workflow.RequirementsDefinition{
-					Connectors: []workflow.ConnectorRequirement{
+					Integrations: []workflow.IntegrationRequirement{
 						{Name: "github"},
 					},
 				},
@@ -113,7 +113,7 @@ func TestResolver_ResolveConnectorRequirements(t *testing.T) {
 			workflow: &workflow.Definition{
 				Name: "test-workflow",
 				Requires: &workflow.RequirementsDefinition{
-					Connectors: []workflow.ConnectorRequirement{
+					Integrations: []workflow.IntegrationRequirement{
 						{Name: "github", Optional: true},
 					},
 				},
@@ -165,7 +165,7 @@ func TestResolver_ResolveConnectorRequirements(t *testing.T) {
 			}
 
 			if tt.wantBinding {
-				binding, exists := resolved.ConnectorBindings["github"]
+				binding, exists := resolved.IntegrationBindings["github"]
 				if !exists {
 					t.Error("expected github connector binding but got none")
 					return
@@ -180,7 +180,7 @@ func TestResolver_ResolveConnectorRequirements(t *testing.T) {
 					t.Error("expected resolved token but got empty string")
 				}
 			} else {
-				if _, exists := resolved.ConnectorBindings["github"]; exists {
+				if _, exists := resolved.IntegrationBindings["github"]; exists {
 					t.Error("expected no github binding but got one")
 				}
 			}
@@ -339,7 +339,7 @@ func TestResolver_BackwardCompatibility(t *testing.T) {
 	// Workflow with no requires section should use inline definitions
 	workflow := &workflow.Definition{
 		Name: "legacy-workflow",
-		Connectors: map[string]workflow.ConnectorDefinition{
+		Integrations: map[string]workflow.IntegrationDefinition{
 			"github": {
 				Auth: &workflow.AuthDefinition{
 					Token: "env:GITHUB_TOKEN",
@@ -394,7 +394,7 @@ func TestResolver_BackwardCompatibility(t *testing.T) {
 	}
 
 	// Verify connector was resolved
-	githubBinding, exists := resolved.ConnectorBindings["github"]
+	githubBinding, exists := resolved.IntegrationBindings["github"]
 	if !exists {
 		t.Error("expected github connector binding")
 	}

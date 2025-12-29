@@ -156,7 +156,7 @@ func (b *Bindings) Validate() error {
 	for name, binding := range b.Integrations {
 		if name == "" {
 			return &ValidationError{
-				Field:   "connectors",
+				Field:   "integrations",
 				Message: "integration name cannot be empty",
 			}
 		}

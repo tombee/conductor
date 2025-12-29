@@ -1,9 +1,9 @@
-// Package file provides a builtin connector for filesystem operations.
+// Package file provides a builtin action for filesystem operations.
 package file
 
 import "fmt"
 
-// ErrorType represents the type of file connector error.
+// ErrorType represents the type of file action error.
 type ErrorType string
 
 const (
@@ -44,7 +44,7 @@ const (
 	ErrorTypeNotImplemented ErrorType = "not_implemented"
 )
 
-// OperationError represents an error from a file connector operation.
+// OperationError represents an error from a file action operation.
 type OperationError struct {
 	Operation  string
 	Message    string
@@ -113,7 +113,7 @@ func (e *OperationError) Suggestion() string {
 	case ErrorTypeValidation:
 		return "Check input parameters against operation requirements"
 	case ErrorTypeConfiguration:
-		return "Review file connector configuration settings"
+		return "Review file action configuration settings"
 	case ErrorTypeNotImplemented:
 		return "This operation is not yet supported"
 	default:

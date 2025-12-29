@@ -14,7 +14,7 @@ import (
 )
 
 // operationWrapper wraps an operation with observability features
-func (c *FileConnector) operationWrapper(operation string, path string, fn func() (*Result, error)) (*Result, error) {
+func (c *FileAction) operationWrapper(operation string, path string, fn func() (*Result, error)) (*Result, error) {
 	start := time.Now()
 
 	// Execute the operation
@@ -113,7 +113,7 @@ func wrapError(operation string, message string, err error) error {
 }
 
 // read implements the file.read operation with auto-detection based on extension.
-func (c *FileConnector) read(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) read(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	path, err := getStringParam(inputs, "path", true)
 	if err != nil {
 		return nil, err
@@ -178,7 +178,7 @@ func (c *FileConnector) read(ctx context.Context, inputs map[string]interface{})
 }
 
 // readText implements the file.read_text operation.
-func (c *FileConnector) readText(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) readText(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	path, err := getStringParam(inputs, "path", true)
 	if err != nil {
 		return nil, err
@@ -230,7 +230,7 @@ func (c *FileConnector) readText(ctx context.Context, inputs map[string]interfac
 }
 
 // readJSON implements the file.read_json operation.
-func (c *FileConnector) readJSON(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) readJSON(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// First read as text
 	textResult, err := c.readText(ctx, inputs)
 	if err != nil {
@@ -273,7 +273,7 @@ func (c *FileConnector) readJSON(ctx context.Context, inputs map[string]interfac
 }
 
 // readYAML implements the file.read_yaml operation.
-func (c *FileConnector) readYAML(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) readYAML(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// First read as text
 	textResult, err := c.readText(ctx, inputs)
 	if err != nil {
@@ -301,7 +301,7 @@ func (c *FileConnector) readYAML(ctx context.Context, inputs map[string]interfac
 }
 
 // readCSV implements the file.read_csv operation.
-func (c *FileConnector) readCSV(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) readCSV(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// First read as text
 	textResult, err := c.readText(ctx, inputs)
 	if err != nil {
@@ -335,7 +335,7 @@ func (c *FileConnector) readCSV(ctx context.Context, inputs map[string]interface
 }
 
 // readLines implements the file.read_lines operation.
-func (c *FileConnector) readLines(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) readLines(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// First read as text
 	textResult, err := c.readText(ctx, inputs)
 	if err != nil {
@@ -359,7 +359,7 @@ func (c *FileConnector) readLines(ctx context.Context, inputs map[string]interfa
 }
 
 // write implements the file.write operation with auto-formatting based on extension.
-func (c *FileConnector) write(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) write(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	path, err := getStringParam(inputs, "path", true)
 	if err != nil {
 		return nil, err
@@ -436,7 +436,7 @@ func (c *FileConnector) write(ctx context.Context, inputs map[string]interface{}
 }
 
 // writeText implements the file.write_text operation.
-func (c *FileConnector) writeText(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) writeText(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	path, err := getStringParam(inputs, "path", true)
 	if err != nil {
 		return nil, err
@@ -484,7 +484,7 @@ func (c *FileConnector) writeText(ctx context.Context, inputs map[string]interfa
 }
 
 // writeJSON implements the file.write_json operation with pretty-printing.
-func (c *FileConnector) writeJSON(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) writeJSON(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	path, err := getStringParam(inputs, "path", true)
 	if err != nil {
 		return nil, err
@@ -531,7 +531,7 @@ func (c *FileConnector) writeJSON(ctx context.Context, inputs map[string]interfa
 }
 
 // writeYAML implements the file.write_yaml operation with proper YAML formatting.
-func (c *FileConnector) writeYAML(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) writeYAML(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	path, err := getStringParam(inputs, "path", true)
 	if err != nil {
 		return nil, err
@@ -578,7 +578,7 @@ func (c *FileConnector) writeYAML(ctx context.Context, inputs map[string]interfa
 }
 
 // append implements the file.append operation for appending to existing files.
-func (c *FileConnector) append(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) append(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	path, err := getStringParam(inputs, "path", true)
 	if err != nil {
 		return nil, err
@@ -673,7 +673,7 @@ func (c *FileConnector) append(ctx context.Context, inputs map[string]interface{
 }
 
 // render implements the file.render operation with restricted Go template execution.
-func (c *FileConnector) render(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) render(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	templatePath, err := getStringParam(inputs, "template", true)
 	if err != nil {
 		return nil, err
@@ -751,7 +751,7 @@ func (c *FileConnector) render(ctx context.Context, inputs map[string]interface{
 }
 
 // writeAtomic writes content to a file atomically using temp file + rename pattern.
-func (c *FileConnector) writeAtomic(path string, content []byte) error {
+func (c *FileAction) writeAtomic(path string, content []byte) error {
 	// Check file size limit
 	if c.config.MaxFileSize > 0 && int64(len(content)) > c.config.MaxFileSize {
 		return fmt.Errorf("content size (%d bytes) exceeds maximum allowed (%d bytes)",
@@ -829,7 +829,7 @@ func (c *FileConnector) writeAtomic(path string, content []byte) error {
 }
 
 // list implements the file.list operation with glob pattern support.
-func (c *FileConnector) list(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) list(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	path, err := getStringParam(inputs, "path", true)
 	if err != nil {
 		return nil, err
@@ -941,7 +941,7 @@ func (c *FileConnector) list(ctx context.Context, inputs map[string]interface{})
 }
 
 // exists implements the file.exists operation for checking file/directory existence.
-func (c *FileConnector) exists(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) exists(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	path, err := getStringParam(inputs, "path", true)
 	if err != nil {
 		return nil, err
@@ -966,7 +966,7 @@ func (c *FileConnector) exists(ctx context.Context, inputs map[string]interface{
 }
 
 // stat implements the file.stat operation for retrieving file metadata.
-func (c *FileConnector) stat(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) stat(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	path, err := getStringParam(inputs, "path", true)
 	if err != nil {
 		return nil, err
@@ -1006,7 +1006,7 @@ func (c *FileConnector) stat(ctx context.Context, inputs map[string]interface{})
 }
 
 // mkdir implements the file.mkdir operation with parent directory creation.
-func (c *FileConnector) mkdir(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) mkdir(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	path, err := getStringParam(inputs, "path", true)
 	if err != nil {
 		return nil, err
@@ -1079,7 +1079,7 @@ func (c *FileConnector) mkdir(ctx context.Context, inputs map[string]interface{}
 }
 
 // copy implements the file.copy operation for files and directories.
-func (c *FileConnector) copy(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) copy(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	source, err := getStringParam(inputs, "source", true)
 	if err != nil {
 		return nil, err
@@ -1174,7 +1174,7 @@ func (c *FileConnector) copy(ctx context.Context, inputs map[string]interface{})
 }
 
 // move implements the file.move operation for rename/move operations.
-func (c *FileConnector) move(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) move(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	source, err := getStringParam(inputs, "source", true)
 	if err != nil {
 		return nil, err
@@ -1286,7 +1286,7 @@ func (c *FileConnector) move(ctx context.Context, inputs map[string]interface{})
 }
 
 // delete implements the file.delete operation with safety checks.
-func (c *FileConnector) delete(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *FileAction) delete(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	path, err := getStringParam(inputs, "path", true)
 	if err != nil {
 		return nil, err

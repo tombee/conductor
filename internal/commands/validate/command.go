@@ -243,7 +243,7 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, workspace
 			ModelTiers       []string            `json:"model_tiers"`
 			Inputs           []string            `json:"inputs"`
 			Outputs          []string            `json:"outputs"`
-			Connectors       []string            `json:"connectors,omitempty"`
+			Integrations     []string            `json:"integrations,omitempty"`
 			SecurityWarnings []map[string]string `json:"security_warnings,omitempty"`
 		}
 
@@ -294,7 +294,7 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, workspace
 				ModelTiers:       extractModelTiers(def),
 				Inputs:           inputs,
 				Outputs:          outputs,
-				Connectors:       extractConnectorNames(def),
+				Integrations:     extractIntegrationNames(def),
 				SecurityWarnings: securityWarnings,
 			},
 			Profile:     profileData,
@@ -358,10 +358,10 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, workspace
 			cmd.Println("Note: Run with configured provider to validate model tier mappings")
 		}
 
-		// Show connectors used
-		connectors := extractConnectorNames(def)
-		if len(connectors) > 0 {
-			cmd.Printf("\nConnectors defined: %v\n", connectors)
+		// Show integrations used
+		integrations := extractIntegrationNames(def)
+		if len(integrations) > 0 {
+			cmd.Printf("\nIntegrations defined: %v\n", integrations)
 		}
 	}
 
@@ -391,8 +391,8 @@ func extractModelTiers(def *workflow.Definition) []string {
 	return result
 }
 
-// extractConnectorNames extracts the names of connectors defined in the workflow
-func extractConnectorNames(def *workflow.Definition) []string {
+// extractIntegrationNames extracts the names of integrations defined in the workflow
+func extractIntegrationNames(def *workflow.Definition) []string {
 	if def == nil || len(def.Integrations) == 0 {
 		return nil
 	}

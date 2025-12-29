@@ -66,7 +66,7 @@ workspaces:
         description: Development environment
         inherit_env: true
         bindings:
-          connectors:
+          integrations:
             github:
               auth:
                 token: ${GITHUB_DEV_TOKEN}
@@ -75,7 +75,7 @@ workspaces:
         description: Production environment
         inherit_env: false
         bindings:
-          connectors:
+          integrations:
             github:
               auth:
                 token: env:GITHUB_PROD_TOKEN
@@ -94,17 +94,17 @@ workspaces:
 				devProfile := ws.Profiles["dev"]
 				assert.Equal(t, "dev", devProfile.Name)
 				assert.True(t, devProfile.InheritEnv.Enabled)
-				require.NotNil(t, devProfile.Bindings.Connectors)
-				require.Contains(t, devProfile.Bindings.Connectors, "github")
-				assert.Equal(t, "${GITHUB_DEV_TOKEN}", devProfile.Bindings.Connectors["github"].Auth.Token)
+				require.NotNil(t, devProfile.Bindings.Integrations)
+				require.Contains(t, devProfile.Bindings.Integrations, "github")
+				assert.Equal(t, "${GITHUB_DEV_TOKEN}", devProfile.Bindings.Integrations["github"].Auth.Token)
 
 				// Check prod profile
 				prodProfile := ws.Profiles["prod"]
 				assert.Equal(t, "prod", prodProfile.Name)
 				assert.False(t, prodProfile.InheritEnv.Enabled)
-				require.NotNil(t, prodProfile.Bindings.Connectors)
-				require.Contains(t, prodProfile.Bindings.Connectors, "github")
-				assert.Equal(t, "env:GITHUB_PROD_TOKEN", prodProfile.Bindings.Connectors["github"].Auth.Token)
+				require.NotNil(t, prodProfile.Bindings.Integrations)
+				require.Contains(t, prodProfile.Bindings.Integrations, "github")
+				assert.Equal(t, "env:GITHUB_PROD_TOKEN", prodProfile.Bindings.Integrations["github"].Auth.Token)
 			},
 		},
 		{
@@ -122,7 +122,7 @@ workspaces:
             - CI
             - GITHUB_*
         bindings:
-          connectors:
+          integrations:
             github:
               auth:
                 token: ${GITHUB_TOKEN}
@@ -183,7 +183,7 @@ workspaces:
       custom:
         name: custom
         bindings:
-          connectors:
+          integrations:
             api:
               base_url: https://api.example.com
               auth:
@@ -197,7 +197,7 @@ workspaces:
 				require.NotNil(t, cfg.Workspaces)
 				ws := cfg.Workspaces["default"]
 				profile := ws.Profiles["custom"]
-				connector := profile.Bindings.Connectors["api"]
+				connector := profile.Bindings.Integrations["api"]
 				assert.Equal(t, "https://api.example.com", connector.BaseURL)
 				assert.Equal(t, "X-API-Key", connector.Auth.Header)
 				assert.Equal(t, "${API_KEY}", connector.Auth.Value)

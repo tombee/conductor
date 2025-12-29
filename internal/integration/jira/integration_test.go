@@ -30,12 +30,12 @@ func (m *mockTransport) SetRateLimiter(limiter transport.RateLimiter) {
 func TestNewJiraIntegration(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      *api.ConnectorConfig
+		config      *api.ProviderConfig
 		expectError bool
 	}{
 		{
 			name: "valid config",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				BaseURL: "https://test.atlassian.net",
 				Token:   "test-token",
 				AdditionalAuth: map[string]string{
@@ -47,7 +47,7 @@ func TestNewJiraIntegration(t *testing.T) {
 		},
 		{
 			name: "missing base URL",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Token: "test-token",
 				AdditionalAuth: map[string]string{
 					"email": "test@example.com",
@@ -58,7 +58,7 @@ func TestNewJiraIntegration(t *testing.T) {
 		},
 		{
 			name: "missing email",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				BaseURL: "https://test.atlassian.net",
 				Token:   "test-token",
 				Transport: &mockTransport{},
@@ -67,7 +67,7 @@ func TestNewJiraIntegration(t *testing.T) {
 		},
 		{
 			name: "missing token",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				BaseURL: "https://test.atlassian.net",
 				AdditionalAuth: map[string]string{
 					"email": "test@example.com",
@@ -107,7 +107,7 @@ func TestNewJiraIntegration(t *testing.T) {
 }
 
 func TestJiraIntegrationOperations(t *testing.T) {
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		BaseURL: "https://test.atlassian.net",
 		Token:   "test-token",
 		AdditionalAuth: map[string]string{
@@ -169,7 +169,7 @@ func TestJiraIntegrationGetIssue(t *testing.T) {
 		Metadata:   make(map[string]interface{}),
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		BaseURL: "https://test.atlassian.net",
 		Token:   "test-token",
 		AdditionalAuth: map[string]string{
@@ -213,7 +213,7 @@ func TestJiraIntegrationGetIssue(t *testing.T) {
 }
 
 func TestJiraIntegrationUnknownOperation(t *testing.T) {
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		BaseURL: "https://test.atlassian.net",
 		Token:   "test-token",
 		AdditionalAuth: map[string]string{

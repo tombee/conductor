@@ -36,7 +36,7 @@ func TestHTTPConnector_Execute(t *testing.T) {
 	defer server.Close()
 
 	// Create connector definition
-	def := &workflow.ConnectorDefinition{
+	def := &workflow.IntegrationDefinition{
 		Name:    "test",
 		BaseURL: server.URL,
 		Auth: &workflow.AuthDefinition{
@@ -66,7 +66,7 @@ func TestHTTPConnector_Execute(t *testing.T) {
 	config.AllowedHosts = []string{"127.0.0.1", "localhost"}
 	connector, err := New(def, config)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create provider: %v", err)
 	}
 
 	// Execute operation
@@ -145,7 +145,7 @@ func TestHTTPConnector_AuthTypes(t *testing.T) {
 			defer server.Close()
 
 			// Create connector
-			def := &workflow.ConnectorDefinition{
+			def := &workflow.IntegrationDefinition{
 				Name:    "test",
 				BaseURL: server.URL,
 				Auth:    tt.auth,
@@ -161,7 +161,7 @@ func TestHTTPConnector_AuthTypes(t *testing.T) {
 			config.AllowedHosts = []string{"127.0.0.1", "localhost"}
 			connector, err := New(def, config)
 			if err != nil {
-				t.Fatalf("failed to create connector: %v", err)
+				t.Fatalf("failed to create provider: %v", err)
 			}
 
 			// Execute
@@ -189,7 +189,7 @@ func TestHTTPConnector_PathParameters(t *testing.T) {
 	defer server.Close()
 
 	// Create connector
-	def := &workflow.ConnectorDefinition{
+	def := &workflow.IntegrationDefinition{
 		Name:    "test",
 		BaseURL: server.URL,
 		Operations: map[string]workflow.OperationDefinition{
@@ -204,7 +204,7 @@ func TestHTTPConnector_PathParameters(t *testing.T) {
 	config.AllowedHosts = []string{"127.0.0.1", "localhost"}
 	connector, err := New(def, config)
 	if err != nil {
-		t.Fatalf("failed to create connector: %v", err)
+		t.Fatalf("failed to create provider: %v", err)
 	}
 
 	// Execute with path parameters
@@ -268,7 +268,7 @@ func TestHTTPConnector_ErrorHandling(t *testing.T) {
 			defer server.Close()
 
 			// Create connector
-			def := &workflow.ConnectorDefinition{
+			def := &workflow.IntegrationDefinition{
 				Name:    "test",
 				BaseURL: server.URL,
 				Operations: map[string]workflow.OperationDefinition{
@@ -283,7 +283,7 @@ func TestHTTPConnector_ErrorHandling(t *testing.T) {
 			config.AllowedHosts = []string{"127.0.0.1", "localhost"}
 			connector, err := New(def, config)
 			if err != nil {
-				t.Fatalf("failed to create connector: %v", err)
+				t.Fatalf("failed to create provider: %v", err)
 			}
 
 			// Execute (should fail)
@@ -314,7 +314,7 @@ func TestRegistry(t *testing.T) {
 	// Create workflow definition with connectors
 	def := &workflow.Definition{
 		Name: "test-workflow",
-		Connectors: map[string]workflow.ConnectorDefinition{
+		Integrations: map[string]workflow.IntegrationDefinition{
 			"github": {
 				Name:    "github",
 				BaseURL: "https://api.github.com",
@@ -362,7 +362,7 @@ func TestRegistry(t *testing.T) {
 	// Test Get
 	connector, err := registry.Get("github")
 	if err != nil {
-		t.Fatalf("failed to get connector: %v", err)
+		t.Fatalf("failed to get provider: %v", err)
 	}
 
 	if connector.Name() != "github" {

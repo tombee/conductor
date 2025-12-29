@@ -11,17 +11,17 @@ import (
 	"github.com/tombee/conductor/internal/operation/transport"
 )
 
-// BaseConnector provides common functionality for API connectors.
-type BaseConnector struct {
+// BaseProvider provides common functionality for API integrations.
+type BaseProvider struct {
 	name      string
 	transport transport.Transport
 	baseURL   string
 	token     string
 }
 
-// NewBaseConnector creates a new base connector.
-func NewBaseConnector(name string, config *ConnectorConfig) *BaseConnector {
-	return &BaseConnector{
+// NewBaseProvider creates a new base provider.
+func NewBaseProvider(name string, config *ProviderConfig) *BaseProvider {
+	return &BaseProvider{
 		name:      name,
 		transport: config.Transport,
 		baseURL:   config.BaseURL,
@@ -29,14 +29,14 @@ func NewBaseConnector(name string, config *ConnectorConfig) *BaseConnector {
 	}
 }
 
-// Name returns the connector identifier.
-func (c *BaseConnector) Name() string {
+// Name returns the integration identifier.
+func (c *BaseProvider) Name() string {
 	return c.name
 }
 
 // BuildURL constructs a full URL from a path template and inputs.
 // Path templates use {param} syntax (e.g., "/repos/{owner}/{repo}/issues").
-func (c *BaseConnector) BuildURL(pathTemplate string, inputs map[string]interface{}) (string, error) {
+func (c *BaseProvider) BuildURL(pathTemplate string, inputs map[string]interface{}) (string, error) {
 	path := pathTemplate
 
 	// Replace path parameters
@@ -62,7 +62,7 @@ func (c *BaseConnector) BuildURL(pathTemplate string, inputs map[string]interfac
 
 // BuildQueryString constructs a query string from inputs.
 // Parameters in pathParams are excluded from the query string.
-func (c *BaseConnector) BuildQueryString(inputs map[string]interface{}, pathParams []string) string {
+func (c *BaseProvider) BuildQueryString(inputs map[string]interface{}, pathParams []string) string {
 	values := url.Values{}
 
 	pathParamSet := make(map[string]bool)
@@ -99,7 +99,7 @@ func (c *BaseConnector) BuildQueryString(inputs map[string]interface{}, pathPara
 
 // BuildRequestBody constructs a JSON request body from inputs.
 // Parameters in excludeParams are excluded from the body.
-func (c *BaseConnector) BuildRequestBody(inputs map[string]interface{}, excludeParams []string) ([]byte, error) {
+func (c *BaseProvider) BuildRequestBody(inputs map[string]interface{}, excludeParams []string) ([]byte, error) {
 	excludeSet := make(map[string]bool)
 	for _, param := range excludeParams {
 		excludeSet[param] = true
@@ -120,7 +120,7 @@ func (c *BaseConnector) BuildRequestBody(inputs map[string]interface{}, excludeP
 }
 
 // ExecuteRequest sends an HTTP request and returns the response.
-func (c *BaseConnector) ExecuteRequest(ctx context.Context, method, url string, headers map[string]string, body []byte) (*transport.Response, error) {
+func (c *BaseProvider) ExecuteRequest(ctx context.Context, method, url string, headers map[string]string, body []byte) (*transport.Response, error) {
 	// Add authentication header
 	if c.token != "" {
 		if headers == nil {
@@ -140,7 +140,7 @@ func (c *BaseConnector) ExecuteRequest(ctx context.Context, method, url string, 
 }
 
 // ParseJSONResponse parses a JSON response into a target struct.
-func (c *BaseConnector) ParseJSONResponse(resp *transport.Response, target interface{}) error {
+func (c *BaseProvider) ParseJSONResponse(resp *transport.Response, target interface{}) error {
 	if len(resp.Body) == 0 {
 		return nil
 	}
@@ -148,8 +148,8 @@ func (c *BaseConnector) ParseJSONResponse(resp *transport.Response, target inter
 	return json.Unmarshal(resp.Body, target)
 }
 
-// ToConnectorResult converts a transport response to an operation result.
-func (c *BaseConnector) ToConnectorResult(resp *transport.Response, response interface{}) *operation.Result {
+// ToResult converts a transport response to an operation result.
+func (c *BaseProvider) ToResult(resp *transport.Response, response interface{}) *operation.Result {
 	return &operation.Result{
 		Response:    response,
 		RawResponse: resp.Body,
@@ -160,7 +160,7 @@ func (c *BaseConnector) ToConnectorResult(resp *transport.Response, response int
 }
 
 // ValidateRequired checks that all required parameters are present in inputs.
-func (c *BaseConnector) ValidateRequired(inputs map[string]interface{}, required []string) error {
+func (c *BaseProvider) ValidateRequired(inputs map[string]interface{}, required []string) error {
 	for _, param := range required {
 		if _, ok := inputs[param]; !ok {
 			return fmt.Errorf("missing required parameter: %s", param)

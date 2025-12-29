@@ -47,7 +47,7 @@ func (c *JenkinsIntegration) listNodes(ctx context.Context, inputs map[string]in
 		result[i] = nodeInfo
 	}
 
-	return c.ToConnectorResult(resp, result), nil
+	return c.ToResult(resp, result), nil
 }
 
 // getNode gets details about a specific node.
@@ -115,5 +115,5 @@ func (c *JenkinsIntegration) getNode(ctx context.Context, inputs map[string]inte
 		result["architecture"] = node.MonitorData.Architecture.Value
 	}
 
-	return c.ToConnectorResult(resp, result), nil
+	return c.ToResult(resp, result), nil
 }

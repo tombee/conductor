@@ -172,7 +172,7 @@ func analyzeWorkflowRequirements(wf *workflow.Definition, workflowPath string) w
 	for i, step := range wf.Steps {
 		stepSource := fmt.Sprintf("step %d (%s)", i+1, step.ID)
 
-		// Analyze builtin connector if specified
+		// Analyze builtin integration if specified
 		if step.Action != "" {
 			analyzeTool(step.Action, step.Inputs, stepSource, workflowDir, &reqs)
 		}

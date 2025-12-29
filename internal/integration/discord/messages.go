@@ -44,7 +44,7 @@ func (c *DiscordIntegration) sendMessage(ctx context.Context, inputs map[string]
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"id":         message.ID,
 		"channel_id": message.ChannelID,
 		"content":    message.Content,
@@ -89,7 +89,7 @@ func (c *DiscordIntegration) editMessage(ctx context.Context, inputs map[string]
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"id":               message.ID,
 		"channel_id":       message.ChannelID,
 		"content":          message.Content,
@@ -122,7 +122,7 @@ func (c *DiscordIntegration) deleteMessage(ctx context.Context, inputs map[strin
 	}
 
 	// Return operation result (DELETE returns 204 No Content)
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"success": true,
 	}), nil
 }
@@ -160,7 +160,7 @@ func (c *DiscordIntegration) addReaction(ctx context.Context, inputs map[string]
 	}
 
 	// Return operation result (PUT returns 204 No Content)
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"success": true,
 	}), nil
 }
@@ -202,7 +202,7 @@ func (c *DiscordIntegration) createThread(ctx context.Context, inputs map[string
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"id":        thread.ID,
 		"name":      thread.Name,
 		"parent_id": thread.ParentID,
@@ -248,7 +248,7 @@ func (c *DiscordIntegration) sendEmbed(ctx context.Context, inputs map[string]in
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"id":         message.ID,
 		"channel_id": message.ChannelID,
 		"embeds":     message.Embeds,

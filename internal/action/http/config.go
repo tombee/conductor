@@ -6,7 +6,7 @@ import (
 	"github.com/tombee/conductor/pkg/security"
 )
 
-// Config holds configuration for the HTTP connector.
+// Config holds configuration for the HTTP action.
 type Config struct {
 	// Timeout is the default timeout for requests (default: 30s)
 	Timeout time.Duration

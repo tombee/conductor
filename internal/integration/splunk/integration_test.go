@@ -36,12 +36,12 @@ func (m *mockTransport) SetRateLimiter(limiter transport.RateLimiter) {
 func TestNewSplunkIntegration(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      *api.ConnectorConfig
+		config      *api.ProviderConfig
 		expectError bool
 	}{
 		{
 			name: "valid config",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Transport: &mockTransport{},
 				BaseURL:   "https://splunk.example.com:8088",
 				Token:     "test-hec-token",
@@ -50,7 +50,7 @@ func TestNewSplunkIntegration(t *testing.T) {
 		},
 		{
 			name: "missing transport",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				BaseURL: "https://splunk.example.com:8088",
 				Token:   "test-hec-token",
 			},
@@ -58,7 +58,7 @@ func TestNewSplunkIntegration(t *testing.T) {
 		},
 		{
 			name: "missing base URL",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Transport: &mockTransport{},
 				Token:     "test-hec-token",
 			},
@@ -66,7 +66,7 @@ func TestNewSplunkIntegration(t *testing.T) {
 		},
 		{
 			name: "missing HEC token",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Transport: &mockTransport{},
 				BaseURL:   "https://splunk.example.com:8088",
 			},
@@ -228,7 +228,7 @@ func TestSplunkIntegration_SendLog(t *testing.T) {
 			}
 
 			mock := &mockTransport{response: mockResp}
-			config := &api.ConnectorConfig{
+			config := &api.ProviderConfig{
 				Transport: mock,
 				BaseURL:   "https://splunk.example.com:8088",
 				Token:     "test-hec-token",
@@ -365,7 +365,7 @@ func TestSplunkIntegration_SendEvent(t *testing.T) {
 			}
 
 			mock := &mockTransport{response: mockResp}
-			config := &api.ConnectorConfig{
+			config := &api.ProviderConfig{
 				Transport: mock,
 				BaseURL:   "https://splunk.example.com:8088",
 				Token:     "test-hec-token",
@@ -401,7 +401,7 @@ func TestSplunkIntegration_SendEvent(t *testing.T) {
 
 func TestSplunkIntegration_Operations(t *testing.T) {
 	mock := &mockTransport{}
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: mock,
 		BaseURL:   "https://splunk.example.com:8088",
 		Token:     "test-hec-token",
@@ -439,7 +439,7 @@ func TestSplunkIntegration_Operations(t *testing.T) {
 
 func TestSplunkIntegration_UnknownOperation(t *testing.T) {
 	mock := &mockTransport{}
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: mock,
 		BaseURL:   "https://splunk.example.com:8088",
 		Token:     "test-hec-token",

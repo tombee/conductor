@@ -242,7 +242,7 @@ func TestValidator_ValidateElasticsearchIndex(t *testing.T) {
 	}
 }
 
-func TestValidator_ValidateConnectorInputs(t *testing.T) {
+func TestValidator_ValidateIntegrationInputs(t *testing.T) {
 	v := NewValidator()
 
 	t.Run("loki connector with invalid labels", func(t *testing.T) {
@@ -253,7 +253,7 @@ func TestValidator_ValidateConnectorInputs(t *testing.T) {
 			},
 		}
 
-		err := v.ValidateConnectorInputs("loki", "push", inputs)
+		err := v.ValidateIntegrationInputs("loki", "push", inputs)
 		assert.Error(t, err)
 	})
 
@@ -265,7 +265,7 @@ func TestValidator_ValidateConnectorInputs(t *testing.T) {
 			},
 		}
 
-		err := v.ValidateConnectorInputs("elasticsearch", "index", inputs)
+		err := v.ValidateIntegrationInputs("elasticsearch", "index", inputs)
 		assert.Error(t, err)
 	})
 
@@ -277,7 +277,7 @@ func TestValidator_ValidateConnectorInputs(t *testing.T) {
 			},
 		}
 
-		err := v.ValidateConnectorInputs("elasticsearch", "index", inputs)
+		err := v.ValidateIntegrationInputs("elasticsearch", "index", inputs)
 		assert.NoError(t, err)
 	})
 
@@ -286,7 +286,7 @@ func TestValidator_ValidateConnectorInputs(t *testing.T) {
 			"any": "value",
 		}
 
-		err := v.ValidateConnectorInputs("unknown", "op", inputs)
+		err := v.ValidateIntegrationInputs("unknown", "op", inputs)
 		assert.NoError(t, err) // No validation for unknown connectors
 	})
 }

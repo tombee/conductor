@@ -28,24 +28,24 @@ type Result struct {
 	Metadata map[string]interface{}
 }
 
-// ShellConnector implements the action interface for shell command execution.
-type ShellConnector struct {
+// ShellAction implements the action interface for shell command execution.
+type ShellAction struct {
 	config *Config
 }
 
 // New creates a new shell action instance.
-func New(config *Config) (*ShellConnector, error) {
+func New(config *Config) (*ShellAction, error) {
 	if config == nil {
 		config = &Config{}
 	}
 	if config.Timeout == 0 {
 		config.Timeout = 30 * time.Second
 	}
-	return &ShellConnector{config: config}, nil
+	return &ShellAction{config: config}, nil
 }
 
 // Execute runs a shell operation.
-func (c *ShellConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*Result, error) {
+func (c *ShellAction) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*Result, error) {
 	switch operation {
 	case "run":
 		return c.run(ctx, inputs)
@@ -55,7 +55,7 @@ func (c *ShellConnector) Execute(ctx context.Context, operation string, inputs m
 }
 
 // run executes a shell command.
-func (c *ShellConnector) run(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *ShellAction) run(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// Get command - can be string or []string
 	var cmd *exec.Cmd
 

@@ -11,12 +11,12 @@ import (
 func TestToHTTPTransportConfig(t *testing.T) {
 	tests := []struct {
 		name     string
-		def      *workflow.ConnectorDefinition
+		def      *workflow.IntegrationDefinition
 		wantAuth bool
 	}{
 		{
 			name: "with environment variable auth",
-			def: &workflow.ConnectorDefinition{
+			def: &workflow.IntegrationDefinition{
 				BaseURL: "https://api.example.com",
 				Auth: &workflow.AuthDefinition{
 					Type:  "bearer",
@@ -30,7 +30,7 @@ func TestToHTTPTransportConfig(t *testing.T) {
 		},
 		{
 			name: "with plain token (backward compat)",
-			def: &workflow.ConnectorDefinition{
+			def: &workflow.IntegrationDefinition{
 				BaseURL: "https://api.example.com",
 				Auth: &workflow.AuthDefinition{
 					Type:  "bearer",
@@ -41,7 +41,7 @@ func TestToHTTPTransportConfig(t *testing.T) {
 		},
 		{
 			name: "without auth",
-			def: &workflow.ConnectorDefinition{
+			def: &workflow.IntegrationDefinition{
 				BaseURL: "https://api.example.com",
 			},
 			wantAuth: false,
@@ -74,12 +74,12 @@ func TestToHTTPTransportConfig(t *testing.T) {
 func TestToAWSTransportConfig(t *testing.T) {
 	tests := []struct {
 		name    string
-		def     *workflow.ConnectorDefinition
+		def     *workflow.IntegrationDefinition
 		wantErr bool
 	}{
 		{
 			name: "valid AWS config",
-			def: &workflow.ConnectorDefinition{
+			def: &workflow.IntegrationDefinition{
 				BaseURL: "https://s3.amazonaws.com",
 				AWS: &workflow.AWSConfig{
 					Service: "s3",
@@ -90,7 +90,7 @@ func TestToAWSTransportConfig(t *testing.T) {
 		},
 		{
 			name: "missing AWS config",
-			def: &workflow.ConnectorDefinition{
+			def: &workflow.IntegrationDefinition{
 				BaseURL: "https://s3.amazonaws.com",
 			},
 			wantErr: true,
@@ -133,12 +133,12 @@ func TestToOAuth2TransportConfig(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		def     *workflow.ConnectorDefinition
+		def     *workflow.IntegrationDefinition
 		wantErr bool
 	}{
 		{
 			name: "valid OAuth2 config with explicit flow",
-			def: &workflow.ConnectorDefinition{
+			def: &workflow.IntegrationDefinition{
 				BaseURL: "https://api.example.com",
 				OAuth2: &workflow.OAuth2Config{
 					ClientID:     "${TEST_CLIENT_ID}",
@@ -152,7 +152,7 @@ func TestToOAuth2TransportConfig(t *testing.T) {
 		},
 		{
 			name: "valid OAuth2 config with default flow",
-			def: &workflow.ConnectorDefinition{
+			def: &workflow.IntegrationDefinition{
 				BaseURL: "https://api.example.com",
 				OAuth2: &workflow.OAuth2Config{
 					ClientID:     "${TEST_CLIENT_ID}",
@@ -164,7 +164,7 @@ func TestToOAuth2TransportConfig(t *testing.T) {
 		},
 		{
 			name: "missing OAuth2 config",
-			def: &workflow.ConnectorDefinition{
+			def: &workflow.IntegrationDefinition{
 				BaseURL: "https://api.example.com",
 			},
 			wantErr: true,

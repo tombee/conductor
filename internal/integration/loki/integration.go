@@ -10,7 +10,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// LokiIntegration implements the Connector interface for Grafana Loki.
+// LokiIntegration implements the Provider interface for Grafana Loki.
 // Supports log aggregation operations including single and batch log entries.
 type LokiIntegration struct {
 	name        string
@@ -20,7 +20,7 @@ type LokiIntegration struct {
 }
 
 // NewLokiIntegration creates a new Loki integration.
-func NewLokiIntegration(config *api.ConnectorConfig) (operation.Connector, error) {
+func NewLokiIntegration(config *api.ProviderConfig) (operation.Provider, error) {
 	if config.Transport == nil {
 		return nil, fmt.Errorf("transport is required for Loki integration")
 	}

@@ -78,7 +78,7 @@ func (c *JiraIntegration) createIssue(ctx context.Context, inputs map[string]int
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"id":   issue.ID,
 		"key":  issue.Key,
 		"self": issue.Self,
@@ -138,7 +138,7 @@ func (c *JiraIntegration) updateIssue(ctx context.Context, inputs map[string]int
 	}
 
 	// Jira returns 204 No Content on successful update
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"success": true,
 	}), nil
 }
@@ -208,7 +208,7 @@ func (c *JiraIntegration) getIssue(ctx context.Context, inputs map[string]interf
 		result["labels"] = issue.Fields.Labels
 	}
 
-	return c.ToConnectorResult(resp, result), nil
+	return c.ToResult(resp, result), nil
 }
 
 // transitionIssue changes the status of a Jira issue.
@@ -259,7 +259,7 @@ func (c *JiraIntegration) transitionIssue(ctx context.Context, inputs map[string
 	}
 
 	// Jira returns 204 No Content on successful transition
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"success": true,
 	}), nil
 }
@@ -307,7 +307,7 @@ func (c *JiraIntegration) getTransitions(ctx context.Context, inputs map[string]
 		}
 	}
 
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"transitions": result,
 	}), nil
 }
@@ -353,7 +353,7 @@ func (c *JiraIntegration) addComment(ctx context.Context, inputs map[string]inte
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"id":      comment.ID,
 		"self":    comment.Self,
 		"created": comment.Created,
@@ -395,7 +395,7 @@ func (c *JiraIntegration) assignIssue(ctx context.Context, inputs map[string]int
 	}
 
 	// Jira returns 204 No Content on successful assignment
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"success": true,
 	}), nil
 }
@@ -478,7 +478,7 @@ func (c *JiraIntegration) searchIssues(ctx context.Context, inputs map[string]in
 	}
 
 	// Return operation result with pagination info
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"issues":     issues,
 		"startAt":    searchResults.StartAt,
 		"maxResults": searchResults.MaxResults,
@@ -555,7 +555,7 @@ func (c *JiraIntegration) linkIssues(ctx context.Context, inputs map[string]inte
 	}
 
 	// Jira returns 201 Created on successful link creation
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"success": true,
 	}), nil
 }

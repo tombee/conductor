@@ -53,5 +53,5 @@ func (c *GitHubIntegration) createRelease(ctx context.Context, inputs map[string
 		"created_at": release.CreatedAt,
 	}
 
-	return c.ToConnectorResult(resp, result), nil
+	return c.ToResult(resp, result), nil
 }

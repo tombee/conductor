@@ -10,7 +10,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// ElasticsearchIntegration implements the Connector interface for Elasticsearch.
+// ElasticsearchIntegration implements the Provider interface for Elasticsearch.
 // Supports document indexing operations including single and bulk indexing.
 type ElasticsearchIntegration struct {
 	name        string
@@ -21,7 +21,7 @@ type ElasticsearchIntegration struct {
 }
 
 // NewElasticsearchIntegration creates a new Elasticsearch integration.
-func NewElasticsearchIntegration(config *api.ConnectorConfig) (operation.Connector, error) {
+func NewElasticsearchIntegration(config *api.ProviderConfig) (operation.Provider, error) {
 	if config.Transport == nil {
 		return nil, fmt.Errorf("transport is required for Elasticsearch integration")
 	}

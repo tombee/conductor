@@ -19,7 +19,7 @@ func TestNewDiscordIntegration(t *testing.T) {
 		t.Fatalf("Failed to create HTTP transport: %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: httpTransport,
 		Token:     "test-token",
 	}
@@ -49,7 +49,7 @@ func TestDiscordIntegrationOperations(t *testing.T) {
 		t.Fatalf("Failed to create HTTP transport: %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: httpTransport,
 		Token:     "test-token",
 	}
@@ -127,7 +127,7 @@ func TestSendMessage(t *testing.T) {
 		t.Fatalf("Failed to create HTTP transport: %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: httpTransport,
 		BaseURL:   server.URL,
 		Token:     "test-token",
@@ -172,7 +172,7 @@ func TestUnknownOperation(t *testing.T) {
 		t.Fatalf("Failed to create HTTP transport: %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: httpTransport,
 		Token:     "test-token",
 	}

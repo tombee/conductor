@@ -37,12 +37,12 @@ func (m *mockTransport) SetRateLimiter(limiter transport.RateLimiter) {
 func TestNewLokiIntegration(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      *api.ConnectorConfig
+		config      *api.ProviderConfig
 		expectError bool
 	}{
 		{
 			name: "valid config",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Transport: &mockTransport{},
 				BaseURL:   "https://loki.example.com:3100",
 			},
@@ -50,14 +50,14 @@ func TestNewLokiIntegration(t *testing.T) {
 		},
 		{
 			name: "missing transport",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				BaseURL: "https://loki.example.com:3100",
 			},
 			expectError: true,
 		},
 		{
 			name: "missing base URL",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Transport: &mockTransport{},
 			},
 			expectError: true,
@@ -179,7 +179,7 @@ func TestLokiIntegration_PushSingleLog(t *testing.T) {
 			}
 
 			mock := &mockTransport{response: mockResp}
-			config := &api.ConnectorConfig{
+			config := &api.ProviderConfig{
 				Transport: mock,
 				BaseURL:   "https://loki.example.com:3100",
 			}
@@ -342,7 +342,7 @@ func TestLokiIntegration_PushBatchLogs(t *testing.T) {
 			}
 
 			mock := &mockTransport{response: mockResp}
-			config := &api.ConnectorConfig{
+			config := &api.ProviderConfig{
 				Transport: mock,
 				BaseURL:   "https://loki.example.com:3100",
 			}
@@ -372,7 +372,7 @@ func TestLokiIntegration_PushBatchLogs(t *testing.T) {
 
 func TestLokiIntegration_Operations(t *testing.T) {
 	mock := &mockTransport{}
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: mock,
 		BaseURL:   "https://loki.example.com:3100",
 	}
@@ -400,7 +400,7 @@ func TestLokiIntegration_Operations(t *testing.T) {
 
 func TestLokiIntegration_UnknownOperation(t *testing.T) {
 	mock := &mockTransport{}
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: mock,
 		BaseURL:   "https://loki.example.com:3100",
 	}

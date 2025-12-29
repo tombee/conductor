@@ -53,7 +53,7 @@ func (c *GitHubIntegration) createPR(ctx context.Context, inputs map[string]inte
 	result["draft"] = false
 	// Note: The draft field would be in the full PR response in newer API versions
 
-	return c.ToConnectorResult(resp, result), nil
+	return c.ToResult(resp, result), nil
 }
 
 // mergePR merges a GitHub pull request.
@@ -97,7 +97,7 @@ func (c *GitHubIntegration) mergePR(ctx context.Context, inputs map[string]inter
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"merged":  mergeResult.Merged,
 		"sha":     mergeResult.SHA,
 		"message": mergeResult.Message,
@@ -153,5 +153,5 @@ func (c *GitHubIntegration) listPRs(ctx context.Context, inputs map[string]inter
 		}
 	}
 
-	return c.ToConnectorResult(resp, result), nil
+	return c.ToResult(resp, result), nil
 }

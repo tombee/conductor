@@ -11,7 +11,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// DatadogIntegration implements the Connector interface for Datadog API.
+// DatadogIntegration implements the Provider interface for Datadog API.
 // Supports logs, metrics, and events operations across multiple Datadog sites.
 type DatadogIntegration struct {
 	name      string
@@ -24,7 +24,7 @@ type DatadogIntegration struct {
 }
 
 // NewDatadogIntegration creates a new Datadog integration.
-func NewDatadogIntegration(config *api.ConnectorConfig) (operation.Connector, error) {
+func NewDatadogIntegration(config *api.ProviderConfig) (operation.Provider, error) {
 	if config.Transport == nil {
 		return nil, fmt.Errorf("transport is required for Datadog integration")
 	}

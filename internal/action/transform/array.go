@@ -9,7 +9,7 @@ import (
 )
 
 // split operation - pass through array for fan-out, error for non-arrays
-func (c *TransformConnector) split(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *TransformAction) split(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// Get data input
 	data, ok := inputs["data"]
 	if !ok {
@@ -50,7 +50,7 @@ func (c *TransformConnector) split(ctx context.Context, inputs map[string]interf
 }
 
 // filter operation - filter array elements using jq predicate expression
-func (c *TransformConnector) filter(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *TransformAction) filter(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// Get data input
 	data, ok := inputs["data"]
 	if !ok {
@@ -199,7 +199,7 @@ func (c *TransformConnector) filter(ctx context.Context, inputs map[string]inter
 }
 
 // mapArray operation - transform each array element using jq expression
-func (c *TransformConnector) mapArray(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *TransformAction) mapArray(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// Get data input
 	data, ok := inputs["data"]
 	if !ok {

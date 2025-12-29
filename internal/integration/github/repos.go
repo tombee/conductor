@@ -42,7 +42,7 @@ func (c *GitHubIntegration) getFile(ctx context.Context, inputs map[string]inter
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"name":         fileContent.Name,
 		"path":         fileContent.Path,
 		"sha":          fileContent.SHA,
@@ -106,5 +106,5 @@ func (c *GitHubIntegration) listRepos(ctx context.Context, inputs map[string]int
 		result[i] = item
 	}
 
-	return c.ToConnectorResult(resp, result), nil
+	return c.ToResult(resp, result), nil
 }

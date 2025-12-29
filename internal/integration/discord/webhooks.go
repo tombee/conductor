@@ -44,7 +44,7 @@ func (c *DiscordIntegration) createWebhook(ctx context.Context, inputs map[strin
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"id":         webhook.ID,
 		"name":       webhook.Name,
 		"channel_id": webhook.ChannelID,
@@ -99,7 +99,7 @@ func (c *DiscordIntegration) sendWebhook(ctx context.Context, inputs map[string]
 
 	// Webhook execute can return either a message or 204 No Content
 	if resp.StatusCode == 204 {
-		return c.ToConnectorResult(resp, map[string]interface{}{
+		return c.ToResult(resp, map[string]interface{}{
 			"success": true,
 		}), nil
 	}
@@ -111,7 +111,7 @@ func (c *DiscordIntegration) sendWebhook(ctx context.Context, inputs map[string]
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"id":         message.ID,
 		"channel_id": message.ChannelID,
 		"content":    message.Content,

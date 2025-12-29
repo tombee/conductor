@@ -35,7 +35,7 @@ func TestSubmitWithProfile(t *testing.T) {
 					"test-profile": {
 						Name: "test-profile",
 						Bindings: profile.Bindings{
-							Connectors: map[string]profile.ConnectorBinding{},
+							Integrations: map[string]profile.IntegrationBinding{},
 						},
 						InheritEnv: profile.InheritEnvConfig{
 							Enabled: false,
@@ -108,7 +108,7 @@ func TestSubmitWithDefaultProfile(t *testing.T) {
 					"default": {
 						Name: "default",
 						Bindings: profile.Bindings{
-							Connectors: map[string]profile.ConnectorBinding{},
+							Integrations: map[string]profile.IntegrationBinding{},
 						},
 						InheritEnv: profile.InheritEnvConfig{
 							Enabled: true,

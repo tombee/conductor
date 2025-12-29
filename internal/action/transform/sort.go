@@ -9,7 +9,7 @@ import (
 )
 
 // sort operation - sorts array elements, optionally by key expression.
-func (c *TransformConnector) sort(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *TransformAction) sort(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// Get data input
 	data, ok := inputs["data"]
 	if !ok {
@@ -173,7 +173,7 @@ func (c *TransformConnector) sort(ctx context.Context, inputs map[string]interfa
 }
 
 // group operation - groups array elements by key expression.
-func (c *TransformConnector) group(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *TransformAction) group(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// Get data input
 	data, ok := inputs["data"]
 	if !ok {

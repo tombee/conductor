@@ -139,7 +139,7 @@ type OperationResult interface {
 	// GetRawResponse returns the original response before transformation
 	GetRawResponse() interface{}
 
-	// GetStatusCode returns the HTTP status code (for HTTP connectors)
+	// GetStatusCode returns the HTTP status code (for HTTP integrations)
 	GetStatusCode() int
 
 	// GetMetadata returns execution metadata

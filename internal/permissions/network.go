@@ -61,7 +61,7 @@ func CheckNetwork(ctx context.Context, permCtx *PermissionContext, host string) 
 	// Check if host matches any allowed pattern
 	for _, pattern := range permCtx.Network.AllowedHosts {
 		if matchesHostPattern(hostname, pattern) {
-			// DNS pinning is performed at HTTP client level (see connector/security.go)
+			// DNS pinning is performed at HTTP client level (see integration/security.go)
 			// This check only validates against permission patterns
 			return nil
 		}

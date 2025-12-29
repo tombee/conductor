@@ -57,7 +57,7 @@ func (c *JenkinsIntegration) getQueueItem(ctx context.Context, inputs map[string
 		result["build_started"] = false
 	}
 
-	return c.ToConnectorResult(resp, result), nil
+	return c.ToResult(resp, result), nil
 }
 
 // cancelQueueItem cancels a queued build before it starts.
@@ -90,7 +90,7 @@ func (c *JenkinsIntegration) cancelQueueItem(ctx context.Context, inputs map[str
 		return nil, err
 	}
 
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"cancelled": true,
 	}), nil
 }

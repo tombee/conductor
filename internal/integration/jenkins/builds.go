@@ -43,7 +43,7 @@ func (c *JenkinsIntegration) triggerBuild(ctx context.Context, inputs map[string
 		queueItemURL = location[0]
 	}
 
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"queue_item_url": queueItemURL,
 		"triggered":      true,
 	}), nil
@@ -100,7 +100,7 @@ func (c *JenkinsIntegration) triggerBuildWithParameters(ctx context.Context, inp
 		queueItemURL = location[0]
 	}
 
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"queue_item_url": queueItemURL,
 		"triggered":      true,
 	}), nil
@@ -145,7 +145,7 @@ func (c *JenkinsIntegration) getBuild(ctx context.Context, inputs map[string]int
 		"duration": build.Duration,
 	}
 
-	return c.ToConnectorResult(resp, result), nil
+	return c.ToResult(resp, result), nil
 }
 
 // getBuildLog gets the console output for a build.
@@ -176,7 +176,7 @@ func (c *JenkinsIntegration) getBuildLog(ctx context.Context, inputs map[string]
 	}
 
 	// Return log as string
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"log": string(resp.Body),
 	}), nil
 }
@@ -211,7 +211,7 @@ func (c *JenkinsIntegration) cancelBuild(ctx context.Context, inputs map[string]
 		return nil, err
 	}
 
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"cancelled": true,
 	}), nil
 }
@@ -280,7 +280,7 @@ func (c *JenkinsIntegration) getBuildInfo(ctx context.Context, inputs map[string
 	}
 
 	if build == nil {
-		return c.ToConnectorResult(resp, map[string]interface{}{
+		return c.ToResult(resp, map[string]interface{}{
 			"exists": false,
 		}), nil
 	}
@@ -295,7 +295,7 @@ func (c *JenkinsIntegration) getBuildInfo(ctx context.Context, inputs map[string
 		"duration": build.Duration,
 	}
 
-	return c.ToConnectorResult(resp, result), nil
+	return c.ToResult(resp, result), nil
 }
 
 // getTestReport gets test results for a build.
@@ -319,7 +319,7 @@ func (c *JenkinsIntegration) getTestReport(ctx context.Context, inputs map[strin
 
 	// Parse error if any - 404 means no test report exists
 	if resp.StatusCode == 404 {
-		return c.ToConnectorResult(resp, map[string]interface{}{
+		return c.ToResult(resp, map[string]interface{}{
 			"exists": false,
 		}), nil
 	}
@@ -344,7 +344,7 @@ func (c *JenkinsIntegration) getTestReport(ctx context.Context, inputs map[strin
 		"empty":      testReport.Empty,
 	}
 
-	return c.ToConnectorResult(resp, result), nil
+	return c.ToResult(resp, result), nil
 }
 
 // addCrumb fetches and adds a CRUMB token to headers if CSRF protection is enabled.

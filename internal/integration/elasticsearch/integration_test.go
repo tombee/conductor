@@ -37,12 +37,12 @@ func (m *mockTransport) SetRateLimiter(limiter transport.RateLimiter) {
 func TestNewElasticsearchIntegration(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      *api.ConnectorConfig
+		config      *api.ProviderConfig
 		expectError bool
 	}{
 		{
 			name: "valid config",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Transport: &mockTransport{},
 				BaseURL:   "https://elasticsearch.example.com:9200",
 				Token:     "test-api-key",
@@ -51,7 +51,7 @@ func TestNewElasticsearchIntegration(t *testing.T) {
 		},
 		{
 			name: "missing transport",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				BaseURL: "https://elasticsearch.example.com:9200",
 				Token:   "test-api-key",
 			},
@@ -59,7 +59,7 @@ func TestNewElasticsearchIntegration(t *testing.T) {
 		},
 		{
 			name: "missing base URL",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Transport: &mockTransport{},
 				Token:     "test-api-key",
 			},
@@ -67,7 +67,7 @@ func TestNewElasticsearchIntegration(t *testing.T) {
 		},
 		{
 			name: "no API key (valid for unsecured cluster)",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Transport: &mockTransport{},
 				BaseURL:   "https://elasticsearch.example.com:9200",
 			},
@@ -218,7 +218,7 @@ func TestElasticsearchIntegration_IndexDocument(t *testing.T) {
 			}
 
 			mock := &mockTransport{response: mockResp}
-			config := &api.ConnectorConfig{
+			config := &api.ProviderConfig{
 				Transport: mock,
 				BaseURL:   "https://elasticsearch.example.com:9200",
 				Token:     "test-api-key",
@@ -386,7 +386,7 @@ func TestElasticsearchIntegration_BulkIndex(t *testing.T) {
 			}
 
 			mock := &mockTransport{response: mockResp}
-			config := &api.ConnectorConfig{
+			config := &api.ProviderConfig{
 				Transport: mock,
 				BaseURL:   "https://elasticsearch.example.com:9200",
 				Token:     "test-api-key",
@@ -430,7 +430,7 @@ func TestElasticsearchIntegration_BulkIndex(t *testing.T) {
 
 func TestElasticsearchIntegration_Operations(t *testing.T) {
 	mock := &mockTransport{}
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: mock,
 		BaseURL:   "https://elasticsearch.example.com:9200",
 	}
@@ -467,7 +467,7 @@ func TestElasticsearchIntegration_Operations(t *testing.T) {
 
 func TestElasticsearchIntegration_UnknownOperation(t *testing.T) {
 	mock := &mockTransport{}
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: mock,
 		BaseURL:   "https://elasticsearch.example.com:9200",
 	}

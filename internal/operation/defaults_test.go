@@ -224,8 +224,8 @@ func TestIsObservabilityConnector(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := isObservabilityConnector(tt.connector); got != tt.want {
-				t.Errorf("isObservabilityConnector(%q) = %v, want %v", tt.connector, got, tt.want)
+			if got := isObservabilityIntegration(tt.connector); got != tt.want {
+				t.Errorf("isObservabilityIntegration(%q) = %v, want %v", tt.connector, got, tt.want)
 			}
 		})
 	}

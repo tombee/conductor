@@ -1,9 +1,9 @@
-// Package transform provides a builtin connector for data transformation operations.
+// Package transform provides a builtin action for data transformation operations.
 package transform
 
 import "fmt"
 
-// ErrorType represents the type of transform connector error.
+// ErrorType represents the type of transform action error.
 type ErrorType string
 
 const (
@@ -29,7 +29,7 @@ const (
 	ErrorTypeInternal ErrorType = "internal"
 )
 
-// OperationError represents an error from a transform connector operation.
+// OperationError represents an error from a transform action operation.
 type OperationError struct {
 	Operation  string
 	Message    string

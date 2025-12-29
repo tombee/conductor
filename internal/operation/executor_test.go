@@ -217,8 +217,8 @@ func TestApplyHeaders_ValidationAndProtection(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a minimal executor for testing
 			executor := &httpExecutor{
-				connector: &httpConnector{
-					def: &workflow.ConnectorDefinition{
+				integration: &httpProvider{
+					def: &workflow.IntegrationDefinition{
 						Headers: tt.connHeaders,
 					},
 				},

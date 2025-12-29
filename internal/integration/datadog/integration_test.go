@@ -36,13 +36,13 @@ func (m *mockTransport) SetRateLimiter(limiter transport.RateLimiter) {
 func TestNewDatadogIntegration(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  *api.ConnectorConfig
+		config  *api.ProviderConfig
 		wantErr bool
 		errMsg  string
 	}{
 		{
 			name: "valid config with default site",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Transport: &mockTransport{},
 				Token:     "test-api-key",
 			},
@@ -50,7 +50,7 @@ func TestNewDatadogIntegration(t *testing.T) {
 		},
 		{
 			name: "valid config with custom site",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Transport: &mockTransport{},
 				Token:     "test-api-key",
 				AdditionalAuth: map[string]string{
@@ -61,7 +61,7 @@ func TestNewDatadogIntegration(t *testing.T) {
 		},
 		{
 			name: "missing transport",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Token: "test-api-key",
 			},
 			wantErr: true,
@@ -69,7 +69,7 @@ func TestNewDatadogIntegration(t *testing.T) {
 		},
 		{
 			name: "missing API key",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Transport: &mockTransport{},
 			},
 			wantErr: true,
@@ -77,7 +77,7 @@ func TestNewDatadogIntegration(t *testing.T) {
 		},
 		{
 			name: "invalid site",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Transport: &mockTransport{},
 				Token:     "test-api-key",
 				AdditionalAuth: map[string]string{
@@ -206,7 +206,7 @@ func TestDatadogIntegration_SendLog(t *testing.T) {
 				},
 			}
 
-			integration, err := NewDatadogIntegration(&api.ConnectorConfig{
+			integration, err := NewDatadogIntegration(&api.ProviderConfig{
 				Transport: mock,
 				Token:     "test-key",
 			})
@@ -346,7 +346,7 @@ func TestDatadogIntegration_SendMetric(t *testing.T) {
 				},
 			}
 
-			integration, err := NewDatadogIntegration(&api.ConnectorConfig{
+			integration, err := NewDatadogIntegration(&api.ProviderConfig{
 				Transport: mock,
 				Token:     "test-key",
 			})
@@ -471,7 +471,7 @@ func TestDatadogIntegration_SendEvent(t *testing.T) {
 				},
 			}
 
-			integration, err := NewDatadogIntegration(&api.ConnectorConfig{
+			integration, err := NewDatadogIntegration(&api.ProviderConfig{
 				Transport: mock,
 				Token:     "test-key",
 			})
@@ -508,7 +508,7 @@ func TestDatadogIntegration_SendEvent(t *testing.T) {
 }
 
 func TestDatadogIntegration_Operations(t *testing.T) {
-	integration, err := NewDatadogIntegration(&api.ConnectorConfig{
+	integration, err := NewDatadogIntegration(&api.ProviderConfig{
 		Transport: &mockTransport{},
 		Token:     "test-key",
 	})
@@ -541,7 +541,7 @@ func TestDatadogIntegration_Operations(t *testing.T) {
 }
 
 func TestDatadogIntegration_UnknownOperation(t *testing.T) {
-	integration, err := NewDatadogIntegration(&api.ConnectorConfig{
+	integration, err := NewDatadogIntegration(&api.ProviderConfig{
 		Transport: &mockTransport{},
 		Token:     "test-key",
 	})

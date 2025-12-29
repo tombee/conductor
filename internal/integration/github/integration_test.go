@@ -15,13 +15,13 @@ import (
 func TestNewGitHubIntegration(t *testing.T) {
 	tests := []struct {
 		name       string
-		config     *api.ConnectorConfig
+		config     *api.ProviderConfig
 		wantError  bool
 		wantBaseURL string
 	}{
 		{
 			name: "valid config with custom base URL",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				BaseURL:   "https://github.example.com/api/v3",
 				Token:     "test-token",
 				Transport: &transport.HTTPTransport{},
@@ -31,7 +31,7 @@ func TestNewGitHubIntegration(t *testing.T) {
 		},
 		{
 			name: "valid config with default base URL",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Token:     "test-token",
 				Transport: &transport.HTTPTransport{},
 			},
@@ -68,7 +68,7 @@ func TestGitHubIntegration_Operations(t *testing.T) {
 		t.Fatalf("NewHTTPTransport() error = %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Token:     "test-token",
 		Transport: httpTransport,
 	}
@@ -169,7 +169,7 @@ func TestGitHubIntegration_CreateIssue(t *testing.T) {
 		t.Fatalf("NewHTTPTransport() error = %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		BaseURL:   server.URL,
 		Token:     "test-token",
 		Transport: httpTransport,
@@ -251,7 +251,7 @@ func TestGitHubIntegration_ListIssues(t *testing.T) {
 		t.Fatalf("NewHTTPTransport() error = %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		BaseURL:   server.URL,
 		Token:     "test-token",
 		Transport: httpTransport,
@@ -346,7 +346,7 @@ func TestGitHubIntegration_CreatePR(t *testing.T) {
 		t.Fatalf("NewHTTPTransport() error = %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		BaseURL:   server.URL,
 		Token:     "test-token",
 		Transport: httpTransport,
@@ -416,7 +416,7 @@ func TestGitHubIntegration_ExecutePaginated(t *testing.T) {
 		t.Fatalf("NewHTTPTransport() error = %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		BaseURL:   server.URL,
 		Token:     "test-token",
 		Transport: httpTransport,
@@ -483,7 +483,7 @@ func TestGitHubIntegration_ExecutePaginatedWithoutPagination(t *testing.T) {
 		t.Fatalf("NewHTTPTransport() error = %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		BaseURL:   server.URL,
 		Token:     "test-token",
 		Transport: httpTransport,
@@ -540,7 +540,7 @@ func TestGitHubIntegration_ErrorHandling_Validation(t *testing.T) {
 		t.Fatalf("NewHTTPTransport() error = %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		BaseURL:   server.URL,
 		Token:     "test-token",
 		Transport: httpTransport,
@@ -588,7 +588,7 @@ func TestGitHubIntegration_ErrorHandling_RateLimit(t *testing.T) {
 		t.Fatalf("NewHTTPTransport() error = %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		BaseURL:   server.URL,
 		Token:     "test-token",
 		Transport: httpTransport,
@@ -630,7 +630,7 @@ func TestGitHubIntegration_ErrorHandling_Auth(t *testing.T) {
 		t.Fatalf("NewHTTPTransport() error = %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		BaseURL:   server.URL,
 		Token:     "bad-token",
 		Transport: httpTransport,
@@ -664,7 +664,7 @@ func TestGitHubIntegration_UnknownOperation(t *testing.T) {
 		t.Fatalf("NewHTTPTransport() error = %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Token:     "test-token",
 		Transport: httpTransport,
 	}
@@ -693,7 +693,7 @@ func TestGitHubIntegration_UnsupportedPaginatedOperation(t *testing.T) {
 		t.Fatalf("NewHTTPTransport() error = %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Token:     "test-token",
 		Transport: httpTransport,
 	}

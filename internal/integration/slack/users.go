@@ -60,7 +60,7 @@ func (c *SlackIntegration) listUsers(ctx context.Context, inputs map[string]inte
 		result["next_cursor"] = listResp.ResponseMetadata.NextCursor
 	}
 
-	return c.ToConnectorResult(resp, result), nil
+	return c.ToResult(resp, result), nil
 }
 
 // getUser gets information about a specific user.
@@ -114,5 +114,5 @@ func (c *SlackIntegration) getUser(ctx context.Context, inputs map[string]interf
 		result["display_name"] = userResp.User.Profile.DisplayName
 	}
 
-	return c.ToConnectorResult(resp, result), nil
+	return c.ToResult(resp, result), nil
 }

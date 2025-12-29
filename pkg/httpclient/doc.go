@@ -64,7 +64,7 @@
 // This package is designed to be used throughout the conductor codebase:
 //   - LLM provider HTTP clients
 //   - Built-in HTTP tool (with additional SSRF protections)
-//   - Connector HTTP transport
+//   - Provider HTTP transport
 //   - Webhook clients
 //   - MCP HTTP transport
 package httpclient

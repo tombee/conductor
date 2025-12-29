@@ -47,5 +47,5 @@ func (c *JiraIntegration) listProjects(ctx context.Context, inputs map[string]in
 		}
 	}
 
-	return c.ToConnectorResult(resp, result), nil
+	return c.ToResult(resp, result), nil
 }

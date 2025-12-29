@@ -72,18 +72,18 @@ func IsBuiltin(name string) bool {
 	return builtinNames[name]
 }
 
-// BuiltinConnector wraps a builtin action to implement the Connector interface.
-type BuiltinConnector struct {
+// BuiltinProvider wraps a builtin action to implement the Provider interface.
+type BuiltinProvider struct {
 	name            string
-	fileAction      *file.FileConnector
-	shellAction     *shell.ShellConnector
-	transformAction *transform.TransformConnector
-	utilityAction   *utility.UtilityConnector
-	httpAction      *http.HTTPConnector
+	fileAction      *file.FileAction
+	shellAction     *shell.ShellAction
+	transformAction *transform.TransformAction
+	utilityAction   *utility.UtilityAction
+	httpAction      *http.HTTPAction
 }
 
 // NewBuiltin creates a builtin action by name.
-func NewBuiltin(name string, config *BuiltinConfig) (Connector, error) {
+func NewBuiltin(name string, config *BuiltinConfig) (Provider, error) {
 	if !IsBuiltin(name) {
 		return nil, fmt.Errorf("unknown builtin action: %s", name)
 	}
@@ -111,7 +111,7 @@ func NewBuiltin(name string, config *BuiltinConfig) (Connector, error) {
 			return nil, fmt.Errorf("failed to create file action: %w", err)
 		}
 
-		return &BuiltinConnector{
+		return &BuiltinProvider{
 			name:       "file",
 			fileAction: fc,
 		}, nil
@@ -125,7 +125,7 @@ func NewBuiltin(name string, config *BuiltinConfig) (Connector, error) {
 			return nil, fmt.Errorf("failed to create shell action: %w", err)
 		}
 
-		return &BuiltinConnector{
+		return &BuiltinProvider{
 			name:        "shell",
 			shellAction: sc,
 		}, nil
@@ -136,7 +136,7 @@ func NewBuiltin(name string, config *BuiltinConfig) (Connector, error) {
 			return nil, fmt.Errorf("failed to create transform action: %w", err)
 		}
 
-		return &BuiltinConnector{
+		return &BuiltinProvider{
 			name:            "transform",
 			transformAction: tc,
 		}, nil
@@ -147,7 +147,7 @@ func NewBuiltin(name string, config *BuiltinConfig) (Connector, error) {
 			return nil, fmt.Errorf("failed to create utility action: %w", err)
 		}
 
-		return &BuiltinConnector{
+		return &BuiltinProvider{
 			name:          "utility",
 			utilityAction: uc,
 		}, nil
@@ -162,7 +162,7 @@ func NewBuiltin(name string, config *BuiltinConfig) (Connector, error) {
 			return nil, fmt.Errorf("failed to create http action: %w", err)
 		}
 
-		return &BuiltinConnector{
+		return &BuiltinProvider{
 			name:       "http",
 			httpAction: hc,
 		}, nil
@@ -173,12 +173,12 @@ func NewBuiltin(name string, config *BuiltinConfig) (Connector, error) {
 }
 
 // Name returns the action identifier.
-func (c *BuiltinConnector) Name() string {
+func (c *BuiltinProvider) Name() string {
 	return c.name
 }
 
 // Execute runs a named operation with the given inputs.
-func (c *BuiltinConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*Result, error) {
+func (c *BuiltinProvider) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*Result, error) {
 	switch c.name {
 	case "file":
 		result, err := c.fileAction.Execute(ctx, operation, inputs)

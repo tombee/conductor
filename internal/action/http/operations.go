@@ -9,7 +9,7 @@ import (
 )
 
 // get performs an HTTP GET request.
-func (c *HTTPConnector) get(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *HTTPAction) get(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	url, ok := inputs["url"].(string)
 	if !ok || url == "" {
 		return nil, fmt.Errorf("url is required")
@@ -24,7 +24,7 @@ func (c *HTTPConnector) get(ctx context.Context, inputs map[string]interface{}) 
 }
 
 // post performs an HTTP POST request with optional body.
-func (c *HTTPConnector) post(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *HTTPAction) post(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	url, ok := inputs["url"].(string)
 	if !ok || url == "" {
 		return nil, fmt.Errorf("url is required")
@@ -50,7 +50,7 @@ func (c *HTTPConnector) post(ctx context.Context, inputs map[string]interface{})
 }
 
 // put performs an HTTP PUT request with optional body.
-func (c *HTTPConnector) put(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *HTTPAction) put(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	url, ok := inputs["url"].(string)
 	if !ok || url == "" {
 		return nil, fmt.Errorf("url is required")
@@ -76,7 +76,7 @@ func (c *HTTPConnector) put(ctx context.Context, inputs map[string]interface{}) 
 }
 
 // patch performs an HTTP PATCH request with optional body.
-func (c *HTTPConnector) patch(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *HTTPAction) patch(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	url, ok := inputs["url"].(string)
 	if !ok || url == "" {
 		return nil, fmt.Errorf("url is required")
@@ -102,7 +102,7 @@ func (c *HTTPConnector) patch(ctx context.Context, inputs map[string]interface{}
 }
 
 // delete performs an HTTP DELETE request.
-func (c *HTTPConnector) delete(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *HTTPAction) delete(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	url, ok := inputs["url"].(string)
 	if !ok || url == "" {
 		return nil, fmt.Errorf("url is required")
@@ -117,7 +117,7 @@ func (c *HTTPConnector) delete(ctx context.Context, inputs map[string]interface{
 }
 
 // request performs an HTTP request with a configurable method.
-func (c *HTTPConnector) request(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *HTTPAction) request(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	url, ok := inputs["url"].(string)
 	if !ok || url == "" {
 		return nil, fmt.Errorf("url is required")

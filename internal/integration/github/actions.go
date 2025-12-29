@@ -60,7 +60,7 @@ func (c *GitHubIntegration) getWorkflowRuns(ctx context.Context, inputs map[stri
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"total_count":   runsResp.TotalCount,
 		"workflow_runs": workflowRuns,
 	}), nil

@@ -12,8 +12,8 @@ import (
 	"context"
 )
 
-// UtilityConnector implements the action interface for utility operations.
-type UtilityConnector struct {
+// UtilityAction implements the action interface for utility operations.
+type UtilityAction struct {
 	config       *Config
 	randomSource RandomSource
 }
@@ -45,7 +45,7 @@ func DefaultConfig() *Config {
 }
 
 // New creates a new utility action instance.
-func New(config *Config) (*UtilityConnector, error) {
+func New(config *Config) (*UtilityAction, error) {
 	if config == nil {
 		config = DefaultConfig()
 	}
@@ -69,14 +69,14 @@ func New(config *Config) (*UtilityConnector, error) {
 		randomSource = NewCryptoRandomSource()
 	}
 
-	return &UtilityConnector{
+	return &UtilityAction{
 		config:       config,
 		randomSource: randomSource,
 	}, nil
 }
 
 // Name returns the action identifier.
-func (c *UtilityConnector) Name() string {
+func (c *UtilityAction) Name() string {
 	return "utility"
 }
 
@@ -87,7 +87,7 @@ type Result struct {
 }
 
 // Execute runs a named utility operation with the given inputs.
-func (c *UtilityConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*Result, error) {
+func (c *UtilityAction) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*Result, error) {
 	switch operation {
 	// Random operations
 	case "random_int":
@@ -130,7 +130,7 @@ func (c *UtilityConnector) Execute(ctx context.Context, operation string, inputs
 }
 
 // Operations returns the list of supported operations.
-func (c *UtilityConnector) Operations() []string {
+func (c *UtilityAction) Operations() []string {
 	return []string{
 		"random_int", "random_choose", "random_weighted", "random_sample", "random_shuffle",
 		"id_uuid", "id_nanoid", "id_custom",

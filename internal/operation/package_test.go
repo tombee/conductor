@@ -12,14 +12,14 @@ import (
 func TestNewPackageConnector(t *testing.T) {
 	tests := []struct {
 		name    string
-		def     *workflow.ConnectorDefinition
+		def     *workflow.IntegrationDefinition
 		wantErr bool
 	}{
 		{
 			name: "github connector with auth",
-			def: &workflow.ConnectorDefinition{
+			def: &workflow.IntegrationDefinition{
 				Name: "github",
-				From: "connectors/github",
+				From: "integrations/github",
 				Auth: &workflow.AuthDefinition{
 					Type:  "bearer",
 					Token: "ghp_test123",
@@ -29,9 +29,9 @@ func TestNewPackageConnector(t *testing.T) {
 		},
 		{
 			name: "github enterprise with custom base_url",
-			def: &workflow.ConnectorDefinition{
+			def: &workflow.IntegrationDefinition{
 				Name:    "github", // Note: builtin connectors use their own name
-				From:    "connectors/github",
+				From:    "integrations/github",
 				BaseURL: "https://github.mycompany.com/api/v3",
 				Auth: &workflow.AuthDefinition{
 					Type:  "bearer",
@@ -42,9 +42,9 @@ func TestNewPackageConnector(t *testing.T) {
 		},
 		{
 			name: "slack connector",
-			def: &workflow.ConnectorDefinition{
+			def: &workflow.IntegrationDefinition{
 				Name: "slack",
-				From: "connectors/slack",
+				From: "integrations/slack",
 				Auth: &workflow.AuthDefinition{
 					Type:  "bearer",
 					Token: "xoxb-test123",
@@ -54,9 +54,9 @@ func TestNewPackageConnector(t *testing.T) {
 		},
 		{
 			name: "jira connector",
-			def: &workflow.ConnectorDefinition{
+			def: &workflow.IntegrationDefinition{
 				Name:    "jira",
-				From:    "connectors/jira",
+				From:    "integrations/jira",
 				BaseURL: "https://mycompany.atlassian.net",
 				Auth: &workflow.AuthDefinition{
 					Type:     "basic",
@@ -68,9 +68,9 @@ func TestNewPackageConnector(t *testing.T) {
 		},
 		{
 			name: "discord connector",
-			def: &workflow.ConnectorDefinition{
+			def: &workflow.IntegrationDefinition{
 				Name: "discord",
-				From: "connectors/discord",
+				From: "integrations/discord",
 				Auth: &workflow.AuthDefinition{
 					Type:  "bearer",
 					Token: "Bot MjM4NDk0NzU2NTIxMjY",
@@ -80,9 +80,9 @@ func TestNewPackageConnector(t *testing.T) {
 		},
 		{
 			name: "jenkins connector",
-			def: &workflow.ConnectorDefinition{
+			def: &workflow.IntegrationDefinition{
 				Name:    "jenkins",
-				From:    "connectors/jenkins",
+				From:    "integrations/jenkins",
 				BaseURL: "https://jenkins.example.com",
 				Auth: &workflow.AuthDefinition{
 					Type:     "basic",
@@ -94,9 +94,9 @@ func TestNewPackageConnector(t *testing.T) {
 		},
 		{
 			name: "nonexistent connector",
-			def: &workflow.ConnectorDefinition{
+			def: &workflow.IntegrationDefinition{
 				Name: "invalid",
-				From: "connectors/invalid",
+				From: "integrations/invalid",
 			},
 			wantErr: true,
 		},

@@ -11,7 +11,7 @@ import (
 // Registry manages a collection of operation providers for a workflow.
 type Registry struct {
 	mu         sync.RWMutex
-	providers  map[string]Connector
+	providers  map[string]Provider
 	config     *Config
 }
 
@@ -27,7 +27,7 @@ func NewRegistry(config *Config) *Registry {
 	}
 
 	return &Registry{
-		providers: make(map[string]Connector),
+		providers: make(map[string]Provider),
 		config:    config,
 	}
 }
@@ -38,7 +38,7 @@ func (r *Registry) LoadFromDefinition(def *workflow.Definition) error {
 	defer r.mu.Unlock()
 
 	// Clear existing providers
-	r.providers = make(map[string]Connector)
+	r.providers = make(map[string]Provider)
 
 	// Load each integration definition
 	for name, integrationDef := range def.Integrations {
@@ -58,7 +58,7 @@ func (r *Registry) LoadFromDefinition(def *workflow.Definition) error {
 }
 
 // Get retrieves an operation provider by name.
-func (r *Registry) Get(name string) (Connector, error) {
+func (r *Registry) Get(name string) (Provider, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -107,7 +107,7 @@ func (r *Registry) List() []string {
 }
 
 // Register adds an operation provider to the registry.
-func (r *Registry) Register(name string, provider Connector) {
+func (r *Registry) Register(name string, provider Provider) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.providers[name] = provider

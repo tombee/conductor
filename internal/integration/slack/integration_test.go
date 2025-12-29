@@ -14,13 +14,13 @@ import (
 func TestNewSlackIntegration(t *testing.T) {
 	tests := []struct {
 		name       string
-		config     *api.ConnectorConfig
+		config     *api.ProviderConfig
 		wantError  bool
 		wantBaseURL string
 	}{
 		{
 			name: "valid config with custom base URL",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				BaseURL:   "https://custom.slack.com/api",
 				Token:     "test-token",
 				Transport: &transport.HTTPTransport{},
@@ -30,7 +30,7 @@ func TestNewSlackIntegration(t *testing.T) {
 		},
 		{
 			name: "valid config with default base URL",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Token:     "test-token",
 				Transport: &transport.HTTPTransport{},
 			},
@@ -54,8 +54,8 @@ func TestNewSlackIntegration(t *testing.T) {
 
 				// Verify base URL is set correctly
 				sc := connector.(*SlackIntegration)
-				if sc.BaseConnector == nil {
-					t.Fatal("BaseConnector is nil")
+				if sc.BaseProvider == nil {
+					t.Fatal("BaseProvider is nil")
 				}
 			}
 		})
@@ -70,7 +70,7 @@ func TestSlackIntegration_Operations(t *testing.T) {
 		t.Fatalf("Failed to create HTTP transport: %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: httpTransport,
 		Token:     "test-token",
 	}
@@ -177,7 +177,7 @@ func TestSlackIntegration_PostMessage(t *testing.T) {
 		t.Fatalf("Failed to create HTTP transport: %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: httpTransport,
 		BaseURL:   server.URL,
 		Token:     "test-token",
@@ -249,7 +249,7 @@ func TestSlackIntegration_UpdateMessage(t *testing.T) {
 		t.Fatalf("Failed to create HTTP transport: %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: httpTransport,
 		BaseURL:   server.URL,
 		Token:     "test-token",
@@ -330,7 +330,7 @@ func TestSlackIntegration_ListChannels(t *testing.T) {
 		t.Fatalf("Failed to create HTTP transport: %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: httpTransport,
 		BaseURL:   server.URL,
 		Token:     "test-token",
@@ -441,7 +441,7 @@ func TestSlackIntegration_ErrorHandling_OkFalse(t *testing.T) {
 				t.Fatalf("Failed to create HTTP transport: %v", err)
 			}
 
-			config := &api.ConnectorConfig{
+			config := &api.ProviderConfig{
 				Transport: httpTransport,
 				BaseURL:   server.URL,
 				Token:     "test-token",
@@ -530,7 +530,7 @@ func TestSlackIntegration_ErrorHandling_HTTPErrors(t *testing.T) {
 				t.Fatalf("Failed to create HTTP transport: %v", err)
 			}
 
-			config := &api.ConnectorConfig{
+			config := &api.ProviderConfig{
 				Transport: httpTransport,
 				BaseURL:   server.URL,
 				Token:     "test-token",
@@ -573,7 +573,7 @@ func TestSlackIntegration_UnknownOperation(t *testing.T) {
 		t.Fatalf("Failed to create HTTP transport: %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: httpTransport,
 		Token:     "test-token",
 	}
@@ -603,7 +603,7 @@ func TestSlackIntegration_MissingRequiredParameters(t *testing.T) {
 		t.Fatalf("Failed to create HTTP transport: %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: httpTransport,
 		Token:     "test-token",
 	}

@@ -9,24 +9,24 @@ import (
 	"github.com/tombee/conductor/internal/operation/transport"
 )
 
-// DiscordIntegration implements the Connector interface for Discord API.
+// DiscordIntegration implements the Provider interface for Discord API.
 type DiscordIntegration struct {
-	*api.BaseConnector
+	*api.BaseProvider
 	token     string
 	transport transport.Transport
 	baseURL   string
 }
 
 // NewDiscordIntegration creates a new Discord integration.
-func NewDiscordIntegration(config *api.ConnectorConfig) (operation.Connector, error) {
+func NewDiscordIntegration(config *api.ProviderConfig) (operation.Provider, error) {
 	if config.BaseURL == "" {
 		config.BaseURL = "https://discord.com/api/v10"
 	}
 
-	base := api.NewBaseConnector("discord", config)
+	base := api.NewBaseProvider("discord", config)
 
 	return &DiscordIntegration{
-		BaseConnector: base,
+		BaseProvider: base,
 		token:         config.Token,
 		transport:     config.Transport,
 		baseURL:       config.BaseURL,

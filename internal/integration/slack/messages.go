@@ -43,7 +43,7 @@ func (c *SlackIntegration) postMessage(ctx context.Context, inputs map[string]in
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"channel":   msgResp.Channel,
 		"timestamp": msgResp.Timestamp,
 		"ok":        msgResp.OK,
@@ -87,7 +87,7 @@ func (c *SlackIntegration) updateMessage(ctx context.Context, inputs map[string]
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"channel":   updateResp.Channel,
 		"timestamp": updateResp.Timestamp,
 		"text":      updateResp.Text,
@@ -132,7 +132,7 @@ func (c *SlackIntegration) deleteMessage(ctx context.Context, inputs map[string]
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"channel":   deleteResp.Channel,
 		"timestamp": deleteResp.Timestamp,
 		"ok":        deleteResp.OK,
@@ -176,7 +176,7 @@ func (c *SlackIntegration) addReaction(ctx context.Context, inputs map[string]in
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"ok": reactionResp.OK,
 	}), nil
 }

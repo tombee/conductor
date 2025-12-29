@@ -7,7 +7,7 @@ import (
 )
 
 // mathClamp constrains a value to a range [min, max].
-func (c *UtilityConnector) mathClamp(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *UtilityAction) mathClamp(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	value, err := getFloat64(inputs, "value")
 	if err != nil {
 		return nil, &OperationError{
@@ -81,7 +81,7 @@ func (c *UtilityConnector) mathClamp(ctx context.Context, inputs map[string]inte
 }
 
 // mathRound rounds a value to the specified number of decimal places.
-func (c *UtilityConnector) mathRound(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *UtilityAction) mathRound(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	value, err := getFloat64(inputs, "value")
 	if err != nil {
 		return nil, &OperationError{
@@ -160,7 +160,7 @@ func (c *UtilityConnector) mathRound(ctx context.Context, inputs map[string]inte
 }
 
 // mathMin returns the minimum of the provided values.
-func (c *UtilityConnector) mathMin(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *UtilityAction) mathMin(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	values, err := getNumberArray(inputs, "values")
 	if err != nil {
 		return nil, &OperationError{
@@ -215,7 +215,7 @@ func (c *UtilityConnector) mathMin(ctx context.Context, inputs map[string]interf
 }
 
 // mathMax returns the maximum of the provided values.
-func (c *UtilityConnector) mathMax(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *UtilityAction) mathMax(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	values, err := getNumberArray(inputs, "values")
 	if err != nil {
 		return nil, &OperationError{

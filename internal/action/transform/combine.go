@@ -8,7 +8,7 @@ import (
 // merge operation - combines multiple objects or arrays.
 // For objects: shallow merge by default (rightmost wins), deep merge with strategy=deep.
 // For arrays: concatenation.
-func (c *TransformConnector) merge(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *TransformAction) merge(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// Get sources - can be single data param or array of sources
 	var sources []interface{}
 
@@ -110,7 +110,7 @@ func (c *TransformConnector) merge(ctx context.Context, inputs map[string]interf
 }
 
 // mergeObjectsShallow performs shallow merge where rightmost wins for conflicts.
-func (c *TransformConnector) mergeObjectsShallow(sources []interface{}) (map[string]interface{}, error) {
+func (c *TransformAction) mergeObjectsShallow(sources []interface{}) (map[string]interface{}, error) {
 	result := make(map[string]interface{})
 
 	for i, source := range sources {
@@ -135,7 +135,7 @@ func (c *TransformConnector) mergeObjectsShallow(sources []interface{}) (map[str
 
 // mergeObjectsDeep performs deep recursive merge.
 // Objects are merged recursively, arrays are concatenated.
-func (c *TransformConnector) mergeObjectsDeep(sources []interface{}) (map[string]interface{}, error) {
+func (c *TransformAction) mergeObjectsDeep(sources []interface{}) (map[string]interface{}, error) {
 	result := make(map[string]interface{})
 
 	for i, source := range sources {
@@ -156,7 +156,7 @@ func (c *TransformConnector) mergeObjectsDeep(sources []interface{}) (map[string
 }
 
 // deepMergeObjects recursively merges two objects.
-func (c *TransformConnector) deepMergeObjects(dst, src map[string]interface{}) map[string]interface{} {
+func (c *TransformAction) deepMergeObjects(dst, src map[string]interface{}) map[string]interface{} {
 	for key, srcValue := range src {
 		if dstValue, exists := dst[key]; exists {
 			// Both values exist - check if we can merge recursively
@@ -188,7 +188,7 @@ func (c *TransformConnector) deepMergeObjects(dst, src map[string]interface{}) m
 }
 
 // concatenateArrays merges multiple arrays into one.
-func (c *TransformConnector) concatenateArrays(sources []interface{}) ([]interface{}, error) {
+func (c *TransformAction) concatenateArrays(sources []interface{}) ([]interface{}, error) {
 	var result []interface{}
 
 	for i, source := range sources {
@@ -219,7 +219,7 @@ func (c *TransformConnector) concatenateArrays(sources []interface{}) ([]interfa
 }
 
 // concat operation - concatenates multiple arrays.
-func (c *TransformConnector) concat(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *TransformAction) concat(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// Get sources - can be single data param or array of sources
 	var sources []interface{}
 
@@ -302,7 +302,7 @@ func (c *TransformConnector) concat(ctx context.Context, inputs map[string]inter
 }
 
 // flatten operation - flattens nested arrays by one level (default) or recursively.
-func (c *TransformConnector) flatten(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *TransformAction) flatten(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// Get data input
 	data, ok := inputs["data"]
 	if !ok {
@@ -378,7 +378,7 @@ func (c *TransformConnector) flatten(ctx context.Context, inputs map[string]inte
 }
 
 // flattenArray recursively flattens an array to the specified depth.
-func (c *TransformConnector) flattenArray(arr []interface{}, depth int) []interface{} {
+func (c *TransformAction) flattenArray(arr []interface{}, depth int) []interface{} {
 	if depth <= 0 {
 		return arr
 	}

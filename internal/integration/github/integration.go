@@ -8,22 +8,22 @@ import (
 	"github.com/tombee/conductor/internal/operation/api"
 )
 
-// GitHubIntegration implements the Connector interface for GitHub API.
+// GitHubIntegration implements the Provider interface for GitHub API.
 type GitHubIntegration struct {
-	*api.BaseConnector
+	*api.BaseProvider
 }
 
 // NewGitHubIntegration creates a new GitHub integration.
-func NewGitHubIntegration(config *api.ConnectorConfig) (operation.Connector, error) {
+func NewGitHubIntegration(config *api.ProviderConfig) (operation.Provider, error) {
 	// Set default base URL if not provided
 	if config.BaseURL == "" {
 		config.BaseURL = "https://api.github.com"
 	}
 
-	base := api.NewBaseConnector("github", config)
+	base := api.NewBaseProvider("github", config)
 
 	return &GitHubIntegration{
-		BaseConnector: base,
+		BaseProvider: base,
 	}, nil
 }
 

@@ -18,7 +18,7 @@ func toHTTPTransportConfig(def *workflow.IntegrationDefinition) *transport.HTTPT
 	}
 
 	// Only include auth if it uses environment variable syntax (NFR7 requirement).
-	// If auth uses plain values, it will be applied by the connector layer (backward compatibility).
+	// If auth uses plain values, it will be applied by the integration layer (backward compatibility).
 	if def.Auth != nil && usesEnvVarSyntax(def.Auth) {
 		config.Auth = toAuthConfig(def.Auth)
 	}

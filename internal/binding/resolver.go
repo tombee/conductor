@@ -80,15 +80,15 @@ type ResolutionContext struct {
 
 // ResolvedBinding represents a successfully resolved binding.
 type ResolvedBinding struct {
-	// ConnectorBindings maps integration names to resolved configurations
-	ConnectorBindings map[string]ResolvedConnectorBinding
+	// IntegrationBindings maps integration names to resolved configurations
+	IntegrationBindings map[string]ResolvedIntegrationBinding
 
 	// MCPServerBindings maps MCP server names to resolved configurations
 	MCPServerBindings map[string]ResolvedMCPServerBinding
 }
 
-// ResolvedConnectorBinding contains resolved integration configuration.
-type ResolvedConnectorBinding struct {
+// ResolvedIntegrationBinding contains resolved integration configuration.
+type ResolvedIntegrationBinding struct {
 	// Auth contains resolved authentication credentials (secrets resolved to values)
 	Auth ResolvedAuthBinding
 
@@ -174,8 +174,8 @@ func (r *Resolver) Resolve(ctx context.Context, resCtx *ResolutionContext) (*Res
 	}
 
 	resolved := &ResolvedBinding{
-		ConnectorBindings: make(map[string]ResolvedConnectorBinding),
-		MCPServerBindings: make(map[string]ResolvedMCPServerBinding),
+		IntegrationBindings: make(map[string]ResolvedIntegrationBinding),
+		MCPServerBindings:   make(map[string]ResolvedMCPServerBinding),
 	}
 
 	// If workflow has no requirements, check for inline definitions
@@ -185,7 +185,7 @@ func (r *Resolver) Resolve(ctx context.Context, resCtx *ResolutionContext) (*Res
 	}
 
 	// Resolve integration requirements
-	if err := r.resolveConnectorRequirements(ctx, resCtx, resolved); err != nil {
+	if err := r.resolveIntegrationRequirements(ctx, resCtx, resolved); err != nil {
 		return nil, err
 	}
 
@@ -197,14 +197,14 @@ func (r *Resolver) Resolve(ctx context.Context, resCtx *ResolutionContext) (*Res
 	return resolved, nil
 }
 
-// resolveConnectorRequirements resolves all integration requirements.
-func (r *Resolver) resolveConnectorRequirements(ctx context.Context, resCtx *ResolutionContext, resolved *ResolvedBinding) error {
+// resolveIntegrationRequirements resolves all integration requirements.
+func (r *Resolver) resolveIntegrationRequirements(ctx context.Context, resCtx *ResolutionContext, resolved *ResolvedBinding) error {
 	if resCtx.Workflow.Requires == nil || resCtx.Workflow.Requires.Integrations == nil {
 		return nil
 	}
 
 	for _, req := range resCtx.Workflow.Requires.Integrations {
-		binding, source, err := r.resolveConnectorBinding(ctx, resCtx, req.Name)
+		binding, source, err := r.resolveIntegrationBinding(ctx, resCtx, req.Name)
 		if err != nil {
 			if req.Optional {
 				// Optional integration missing - skip with warning
@@ -213,27 +213,27 @@ func (r *Resolver) resolveConnectorRequirements(ctx context.Context, resCtx *Res
 			}
 			return profile.NewBindingError(
 				profile.ErrorCategoryNotFound,
-				fmt.Sprintf("connectors.%s", req.Name),
+				fmt.Sprintf("integrations.%s", req.Name),
 				resCtx.Profile.Name,
 				fmt.Sprintf("workflow requires integration %q but no binding found", req.Name),
 			)
 		}
 
 		// Resolve secrets in the binding
-		resolvedBinding, err := r.resolveConnectorSecrets(ctx, resCtx, binding)
+		resolvedBinding, err := r.resolveIntegrationSecrets(ctx, resCtx, binding)
 		if err != nil {
 			return fmt.Errorf("failed to resolve secrets for integration %q: %w", req.Name, err)
 		}
 
 		resolvedBinding.Source = source
-		resolved.ConnectorBindings[req.Name] = *resolvedBinding
+		resolved.IntegrationBindings[req.Name] = *resolvedBinding
 	}
 
 	return nil
 }
 
-// resolveConnectorBinding finds the integration binding following resolution order.
-func (r *Resolver) resolveConnectorBinding(ctx context.Context, resCtx *ResolutionContext, name string) (*profile.IntegrationBinding, BindingSource, error) {
+// resolveIntegrationBinding finds the integration binding following resolution order.
+func (r *Resolver) resolveIntegrationBinding(ctx context.Context, resCtx *ResolutionContext, name string) (*profile.IntegrationBinding, BindingSource, error) {
 	// 1. Check profile binding (highest priority)
 	if resCtx.Profile != nil && resCtx.Profile.Bindings.Integrations != nil {
 		if binding, exists := resCtx.Profile.Bindings.Integrations[name]; exists {
@@ -243,19 +243,19 @@ func (r *Resolver) resolveConnectorBinding(ctx context.Context, resCtx *Resoluti
 
 	// 2. Check inline workflow definition (backward compatibility)
 	if resCtx.Workflow.Integrations != nil {
-		if connDef, exists := resCtx.Workflow.Integrations[name]; exists {
-			// Convert IntegrationDefinition to ConnectorBinding
+		if intDef, exists := resCtx.Workflow.Integrations[name]; exists {
+			// Convert IntegrationDefinition to IntegrationBinding
 			binding := &profile.IntegrationBinding{
-				BaseURL: connDef.BaseURL,
-				Headers: connDef.Headers,
+				BaseURL: intDef.BaseURL,
+				Headers: intDef.Headers,
 			}
-			if connDef.Auth != nil {
+			if intDef.Auth != nil {
 				binding.Auth = profile.AuthBinding{
-					Token:    connDef.Auth.Token,
-					Username: connDef.Auth.Username,
-					Password: connDef.Auth.Password,
-					Header:   connDef.Auth.Header,
-					Value:    connDef.Auth.Value,
+					Token:    intDef.Auth.Token,
+					Username: intDef.Auth.Username,
+					Password: intDef.Auth.Password,
+					Header:   intDef.Auth.Header,
+					Value:    intDef.Auth.Value,
 				}
 			}
 			return binding, SourceInline, nil
@@ -263,18 +263,18 @@ func (r *Resolver) resolveConnectorBinding(ctx context.Context, resCtx *Resoluti
 	}
 
 	// 3. Environment variable access (if inherit_env enabled)
-	// For connectors, environment-based auth is handled through secret resolution
+	// For integrations, environment-based auth is handled through secret resolution
 	// No direct environment binding for integration configuration
 
-	// 4. No default value support for connectors
+	// 4. No default value support for integrations
 
 	// 5. Not found
 	return nil, "", fmt.Errorf("integration %q not found", name)
 }
 
-// resolveConnectorSecrets resolves all secret references in an integration binding.
-func (r *Resolver) resolveConnectorSecrets(ctx context.Context, resCtx *ResolutionContext, binding *profile.IntegrationBinding) (*ResolvedConnectorBinding, error) {
-	resolved := &ResolvedConnectorBinding{
+// resolveIntegrationSecrets resolves all secret references in an integration binding.
+func (r *Resolver) resolveIntegrationSecrets(ctx context.Context, resCtx *ResolutionContext, binding *profile.IntegrationBinding) (*ResolvedIntegrationBinding, error) {
+	resolved := &ResolvedIntegrationBinding{
 		BaseURL: binding.BaseURL,
 		Headers: binding.Headers,
 	}
@@ -421,29 +421,29 @@ func (r *Resolver) resolveMCPServerSecrets(ctx context.Context, resCtx *Resoluti
 
 // resolveInlineBindings handles workflows without requires section (backward compatibility).
 func (r *Resolver) resolveInlineBindings(ctx context.Context, resCtx *ResolutionContext, resolved *ResolvedBinding) (*ResolvedBinding, error) {
-	// Process inline connectors
-	for name, connDef := range resCtx.Workflow.Integrations {
+	// Process inline integrations
+	for name, intDef := range resCtx.Workflow.Integrations {
 		binding := &profile.IntegrationBinding{
-			BaseURL: connDef.BaseURL,
-			Headers: connDef.Headers,
+			BaseURL: intDef.BaseURL,
+			Headers: intDef.Headers,
 		}
-		if connDef.Auth != nil {
+		if intDef.Auth != nil {
 			binding.Auth = profile.AuthBinding{
-				Token:    connDef.Auth.Token,
-				Username: connDef.Auth.Username,
-				Password: connDef.Auth.Password,
-				Header:   connDef.Auth.Header,
-				Value:    connDef.Auth.Value,
+				Token:    intDef.Auth.Token,
+				Username: intDef.Auth.Username,
+				Password: intDef.Auth.Password,
+				Header:   intDef.Auth.Header,
+				Value:    intDef.Auth.Value,
 			}
 		}
 
-		resolvedBinding, err := r.resolveConnectorSecrets(ctx, resCtx, binding)
+		resolvedBinding, err := r.resolveIntegrationSecrets(ctx, resCtx, binding)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve inline integration %q: %w", name, err)
 		}
 
 		resolvedBinding.Source = SourceInline
-		resolved.ConnectorBindings[name] = *resolvedBinding
+		resolved.IntegrationBindings[name] = *resolvedBinding
 	}
 
 	// Process inline MCP servers

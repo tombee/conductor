@@ -57,7 +57,7 @@ func (c *SlackIntegration) listChannels(ctx context.Context, inputs map[string]i
 		result["next_cursor"] = listResp.ResponseMetadata.NextCursor
 	}
 
-	return c.ToConnectorResult(resp, result), nil
+	return c.ToResult(resp, result), nil
 }
 
 // createChannel creates a new Slack channel.
@@ -97,7 +97,7 @@ func (c *SlackIntegration) createChannel(ctx context.Context, inputs map[string]
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"channel_id":  createResp.Channel.ID,
 		"channel_name": createResp.Channel.Name,
 		"is_private":  createResp.Channel.IsPrivate,
@@ -142,7 +142,7 @@ func (c *SlackIntegration) inviteToChannel(ctx context.Context, inputs map[strin
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"channel_id": inviteResp.Channel.ID,
 		"ok":         inviteResp.OK,
 	}), nil

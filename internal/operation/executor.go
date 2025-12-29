@@ -71,14 +71,14 @@ func parseRetryAfter(value string) int {
 
 // httpExecutor handles HTTP request execution for integration operations.
 type httpExecutor struct {
-	integration   *httpConnector
+	integration   *httpProvider
 	operation     *workflow.OperationDefinition
 	operationName string
 	rateLimiter   *RateLimiter
 }
 
 // newHTTPExecutor creates a new HTTP executor for an operation.
-func newHTTPExecutor(integration *httpConnector, operationName string) (*httpExecutor, error) {
+func newHTTPExecutor(integration *httpProvider, operationName string) (*httpExecutor, error) {
 	op, exists := integration.def.Operations[operationName]
 	if !exists {
 		return nil, &Error{

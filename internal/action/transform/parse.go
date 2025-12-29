@@ -15,7 +15,7 @@ var sensitivePatterns = []string{
 
 // parseJSON implements the parse_json operation.
 // Extracts and parses JSON from text, handling markdown code blocks.
-func (c *TransformConnector) parseJSON(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *TransformAction) parseJSON(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// Extract data input
 	data, ok := inputs["data"]
 	if !ok {

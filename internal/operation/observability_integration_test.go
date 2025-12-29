@@ -62,7 +62,7 @@ func TestObservabilityConnectorCreation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			def := &workflow.ConnectorDefinition{
+			def := &workflow.IntegrationDefinition{
 				Name:       tt.connectorName,
 				BaseURL:    "https://example.com",
 				Operations: tt.operations,
@@ -80,7 +80,7 @@ func TestObservabilityConnectorCreation(t *testing.T) {
 
 // TestLokiLabelValidation tests Loki label validation integration.
 func TestLokiLabelValidation(t *testing.T) {
-	def := &workflow.ConnectorDefinition{
+	def := &workflow.IntegrationDefinition{
 		Name:    "loki",
 		BaseURL: "https://loki.example.com",
 		Operations: map[string]workflow.OperationDefinition{
@@ -136,7 +136,7 @@ func TestLokiLabelValidation(t *testing.T) {
 
 // TestElasticsearchIndexValidation tests Elasticsearch index validation integration.
 func TestElasticsearchIndexValidation(t *testing.T) {
-	def := &workflow.ConnectorDefinition{
+	def := &workflow.IntegrationDefinition{
 		Name:    "elasticsearch",
 		BaseURL: "https://elasticsearch.example.com",
 		Operations: map[string]workflow.OperationDefinition{

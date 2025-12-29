@@ -15,14 +15,14 @@ type Result struct {
 	Metadata map[string]interface{}
 }
 
-// HTTPConnector executes HTTP requests with security controls.
-type HTTPConnector struct {
+// HTTPAction executes HTTP requests with security controls.
+type HTTPAction struct {
 	config     *Config
 	httpClient *http.Client
 }
 
-// New creates a new HTTP connector.
-func New(config *Config) (*HTTPConnector, error) {
+// New creates a new HTTP action.
+func New(config *Config) (*HTTPAction, error) {
 	if config == nil {
 		config = DefaultConfig()
 	}
@@ -63,14 +63,14 @@ func New(config *Config) (*HTTPConnector, error) {
 		client.Transport = transport
 	}
 
-	return &HTTPConnector{
+	return &HTTPAction{
 		config:     config,
 		httpClient: client,
 	}, nil
 }
 
 // Execute runs an HTTP operation.
-func (c *HTTPConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*Result, error) {
+func (c *HTTPAction) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*Result, error) {
 	switch operation {
 	case "get":
 		return c.get(ctx, inputs)
@@ -90,7 +90,7 @@ func (c *HTTPConnector) Execute(ctx context.Context, operation string, inputs ma
 }
 
 // validateAndPrepareRequest performs security validation and creates the request.
-func (c *HTTPConnector) validateAndPrepareRequest(ctx context.Context, method, url string, body io.Reader, inputs map[string]interface{}) (*http.Request, error) {
+func (c *HTTPAction) validateAndPrepareRequest(ctx context.Context, method, url string, body io.Reader, inputs map[string]interface{}) (*http.Request, error) {
 	// Validate URL scheme
 	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
 		return nil, &InvalidURLError{
@@ -196,7 +196,7 @@ func (c *HTTPConnector) validateAndPrepareRequest(ctx context.Context, method, u
 }
 
 // executeRequest performs the HTTP request and returns a structured response.
-func (c *HTTPConnector) executeRequest(req *http.Request, inputs map[string]interface{}) (*Result, error) {
+func (c *HTTPAction) executeRequest(req *http.Request, inputs map[string]interface{}) (*Result, error) {
 	startTime := time.Now()
 
 	// Execute request

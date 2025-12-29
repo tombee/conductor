@@ -167,7 +167,7 @@ func detectPlaintextCredentials(def *Definition, result *SecurityValidationResul
 							Message:  fmt.Sprintf("Plaintext %s detected in auth.%s", cp.description, fieldName),
 							Suggestion: fmt.Sprintf(
 								"Use environment variables or secrets instead:\n"+
-									"  connectors:\n"+
+									"  integrations:\n"+
 									"    %s:\n"+
 									"      auth:\n"+
 									"        %s: ${%s}  # Environment variable\n"+

@@ -10,16 +10,16 @@ import (
 	"github.com/tombee/conductor/internal/operation/transport"
 )
 
-// JiraIntegration implements the Connector interface for Jira API.
+// JiraIntegration implements the Provider interface for Jira API.
 type JiraIntegration struct {
-	*api.BaseConnector
+	*api.BaseProvider
 	email     string
 	apiToken  string
 	transport transport.Transport
 }
 
 // NewJiraIntegration creates a new Jira integration.
-func NewJiraIntegration(config *api.ConnectorConfig) (operation.Connector, error) {
+func NewJiraIntegration(config *api.ProviderConfig) (operation.Provider, error) {
 	if config.BaseURL == "" {
 		return nil, fmt.Errorf("jira integration requires base_url configuration (e.g., https://your-domain.atlassian.net)")
 	}
@@ -44,10 +44,10 @@ func NewJiraIntegration(config *api.ConnectorConfig) (operation.Connector, error
 	}
 	config.BaseURL = baseURL + "/rest/api/3"
 
-	base := api.NewBaseConnector("jira", config)
+	base := api.NewBaseProvider("jira", config)
 
 	return &JiraIntegration{
-		BaseConnector: base,
+		BaseProvider: base,
 		email:         email,
 		apiToken:      config.Token,
 		transport:     config.Transport,
@@ -143,7 +143,7 @@ func (c *JiraIntegration) defaultHeaders() map[string]string {
 	}
 }
 
-// ExecuteRequest overrides BaseConnector's method to use Basic authentication.
+// ExecuteRequest overrides BaseProvider's method to use Basic authentication.
 func (c *JiraIntegration) ExecuteRequest(ctx context.Context, method, url string, headers map[string]string, body []byte) (*transport.Response, error) {
 	// Add Basic authentication header
 	if c.email != "" && c.apiToken != "" {

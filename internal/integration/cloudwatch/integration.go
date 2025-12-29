@@ -10,7 +10,7 @@ import (
 	"github.com/tombee/conductor/internal/operation/transport"
 )
 
-// CloudWatchIntegration implements the Connector interface for AWS CloudWatch.
+// CloudWatchIntegration implements the Provider interface for AWS CloudWatch.
 // Supports both CloudWatch Logs and CloudWatch Metrics operations.
 type CloudWatchIntegration struct {
 	name      string
@@ -27,7 +27,7 @@ type CloudWatchIntegration struct {
 }
 
 // NewCloudWatchIntegration creates a new CloudWatch integration.
-func NewCloudWatchIntegration(config *api.ConnectorConfig) (operation.Connector, error) {
+func NewCloudWatchIntegration(config *api.ProviderConfig) (operation.Provider, error) {
 	if config.Transport == nil {
 		return nil, fmt.Errorf("transport is required for CloudWatch integration")
 	}

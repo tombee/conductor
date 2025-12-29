@@ -14,7 +14,7 @@ import (
 type TransportRegistry = transport.Registry
 
 // builtinAPIFactory is a function type for creating builtin API integrations.
-type builtinAPIFactory func(integrationName string, baseURL string, authType string, authToken string) (Connector, error)
+type builtinAPIFactory func(integrationName string, baseURL string, authType string, authToken string) (Provider, error)
 
 // builtinAPIFactories holds registered builtin API integration factories.
 var builtinAPIFactories = make(map[string]builtinAPIFactory)
@@ -31,8 +31,8 @@ func isBuiltinAPI(name string) bool {
 	return ok
 }
 
-// newBuiltinAPIConnector creates a builtin API integration.
-func newBuiltinAPIConnector(name string, baseURL string, authType string, authToken string) (Connector, error) {
+// newBuiltinAPIProvider creates a builtin API integration.
+func newBuiltinAPIProvider(name string, baseURL string, authType string, authToken string) (Provider, error) {
 	factory, ok := builtinAPIFactories[name]
 	if !ok {
 		return nil, &Error{
@@ -43,9 +43,9 @@ func newBuiltinAPIConnector(name string, baseURL string, authType string, authTo
 	return factory(name, baseURL, authType, authToken)
 }
 
-// Connector represents a configured operation provider (integration or action).
+// Provider represents a configured operation provider (integration or action).
 // Each provider can execute multiple named operations.
-type Connector interface {
+type Provider interface {
 	// Name returns the provider identifier
 	Name() string
 
@@ -53,11 +53,11 @@ type Connector interface {
 	Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*Result, error)
 }
 
-// PaginatedConnector extends Connector to support paginated operations.
+// PaginatedProvider extends Provider to support paginated operations.
 // Integrations that support pagination (GitHub, Slack, Jira, Discord) implement
 // this interface to stream results through a channel.
-type PaginatedConnector interface {
-	Connector
+type PaginatedProvider interface {
+	Provider
 
 	// ExecutePaginated returns a channel of results for paginated operations.
 	// The channel is closed when all results have been sent or an error occurs.
@@ -164,7 +164,7 @@ func DefaultConfig() *Config {
 }
 
 // New creates an operation provider from a workflow definition.
-func New(def *workflow.IntegrationDefinition, config *Config) (Connector, error) {
+func New(def *workflow.IntegrationDefinition, config *Config) (Provider, error) {
 	// Initialize transport registry if not provided
 	if config.TransportRegistry == nil {
 		config.TransportRegistry = NewDefaultTransportRegistry()
@@ -172,15 +172,15 @@ func New(def *workflow.IntegrationDefinition, config *Config) (Connector, error)
 
 	// For package-based integrations (from: integrations/github)
 	if def.From != "" {
-		return newPackageConnector(def, config)
+		return newPackageProvider(def, config)
 	}
 
 	// For inline HTTP integrations (base_url + operations)
-	return newHTTPConnector(def, config)
+	return newHTTPProvider(def, config)
 }
 
-// newPackageConnector creates an integration from a package reference.
-func newPackageConnector(def *workflow.IntegrationDefinition, config *Config) (Connector, error) {
+// newPackageProvider creates an integration from a package reference.
+func newPackageProvider(def *workflow.IntegrationDefinition, config *Config) (Provider, error) {
 	// Extract integration name from "integrations/<name>"
 	if strings.HasPrefix(def.From, "integrations/") {
 		parts := strings.Split(def.From, "/")
@@ -212,7 +212,7 @@ func newPackageConnector(def *workflow.IntegrationDefinition, config *Config) (C
 					}
 				}
 
-				return newBuiltinAPIConnector(integrationName, def.BaseURL, authType, authToken)
+				return newBuiltinAPIProvider(integrationName, def.BaseURL, authType, authToken)
 			}
 		}
 	}
@@ -227,11 +227,11 @@ func newPackageConnector(def *workflow.IntegrationDefinition, config *Config) (C
 	merged := mergePackageWithOverrides(pkg, def)
 
 	// Create HTTP integration from merged definition
-	return newHTTPConnector(merged, config)
+	return newHTTPProvider(merged, config)
 }
 
-// newHTTPConnector creates an inline HTTP integration.
-func newHTTPConnector(def *workflow.IntegrationDefinition, config *Config) (Connector, error) {
+// newHTTPProvider creates an inline HTTP integration.
+func newHTTPProvider(def *workflow.IntegrationDefinition, config *Config) (Provider, error) {
 	// Initialize metrics collector if enabled
 	var metricsCollector *MetricsCollector
 	if config.EnableMetrics {
@@ -307,7 +307,7 @@ func newHTTPConnector(def *workflow.IntegrationDefinition, config *Config) (Conn
 		}
 	}
 
-	return &httpConnector{
+	return &httpProvider{
 		name:             def.Name,
 		def:              def,
 		config:           config,
@@ -316,8 +316,8 @@ func newHTTPConnector(def *workflow.IntegrationDefinition, config *Config) (Conn
 	}, nil
 }
 
-// httpConnector implements Connector for inline HTTP definitions.
-type httpConnector struct {
+// httpProvider implements Provider for inline HTTP definitions.
+type httpProvider struct {
 	name             string
 	def              *workflow.IntegrationDefinition
 	config           *Config
@@ -326,12 +326,12 @@ type httpConnector struct {
 }
 
 // Name returns the integration identifier.
-func (c *httpConnector) Name() string {
+func (c *httpProvider) Name() string {
 	return c.name
 }
 
 // Execute runs a named operation.
-func (c *httpConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*Result, error) {
+func (c *httpProvider) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*Result, error) {
 	// Create executor for this operation
 	executor, err := newHTTPExecutor(c, operation)
 	if err != nil {
@@ -343,6 +343,6 @@ func (c *httpConnector) Execute(ctx context.Context, operation string, inputs ma
 }
 
 // GetMetricsCollector returns the metrics collector for this integration.
-func (c *httpConnector) GetMetricsCollector() *MetricsCollector {
+func (c *httpProvider) GetMetricsCollector() *MetricsCollector {
 	return c.metricsCollector
 }

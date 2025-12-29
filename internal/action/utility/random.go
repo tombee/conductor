@@ -6,7 +6,7 @@ import (
 )
 
 // randomInt generates a random integer in the range [min, max] (inclusive).
-func (c *UtilityConnector) randomInt(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *UtilityAction) randomInt(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	min, err := getInt64(inputs, "min")
 	if err != nil {
 		return nil, &OperationError{
@@ -54,7 +54,7 @@ func (c *UtilityConnector) randomInt(ctx context.Context, inputs map[string]inte
 }
 
 // randomChoose selects one item randomly from an array.
-func (c *UtilityConnector) randomChoose(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *UtilityAction) randomChoose(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	items, err := getArray(inputs, "items")
 	if err != nil {
 		return nil, &OperationError{
@@ -97,7 +97,7 @@ func (c *UtilityConnector) randomChoose(ctx context.Context, inputs map[string]i
 }
 
 // randomWeighted selects one item based on weighted probabilities.
-func (c *UtilityConnector) randomWeighted(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *UtilityAction) randomWeighted(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	items, err := getArray(inputs, "items")
 	if err != nil {
 		return nil, &OperationError{
@@ -224,7 +224,7 @@ func (c *UtilityConnector) randomWeighted(ctx context.Context, inputs map[string
 }
 
 // randomSample selects N items without replacement.
-func (c *UtilityConnector) randomSample(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *UtilityAction) randomSample(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	items, err := getArray(inputs, "items")
 	if err != nil {
 		return nil, &OperationError{
@@ -303,7 +303,7 @@ func (c *UtilityConnector) randomSample(ctx context.Context, inputs map[string]i
 }
 
 // randomShuffle randomly reorders an array.
-func (c *UtilityConnector) randomShuffle(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *UtilityAction) randomShuffle(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	items, err := getArray(inputs, "items")
 	if err != nil {
 		return nil, &OperationError{

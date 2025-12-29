@@ -39,20 +39,20 @@ func (m *mockTransport) SetRateLimiter(limiter transport.RateLimiter) {
 func TestNewCloudWatchIntegration(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  *api.ConnectorConfig
+		config  *api.ProviderConfig
 		wantErr bool
 		errMsg  string
 	}{
 		{
 			name: "success with aws_sigv4 transport",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Transport: &mockTransport{name: "aws_sigv4"},
 			},
 			wantErr: false,
 		},
 		{
 			name: "missing transport",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Transport: nil,
 			},
 			wantErr: true,
@@ -60,7 +60,7 @@ func TestNewCloudWatchIntegration(t *testing.T) {
 		},
 		{
 			name: "wrong transport type",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Transport: &mockTransport{name: "http"},
 			},
 			wantErr: true,
@@ -86,7 +86,7 @@ func TestNewCloudWatchIntegration(t *testing.T) {
 
 func TestCloudWatchIntegration_Operations(t *testing.T) {
 	mock := &mockTransport{name: "aws_sigv4"}
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: mock,
 	}
 
@@ -106,7 +106,7 @@ func TestCloudWatchIntegration_Operations(t *testing.T) {
 
 func TestCloudWatchIntegration_Execute_InvalidOperation(t *testing.T) {
 	mock := &mockTransport{name: "aws_sigv4"}
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: mock,
 	}
 
@@ -121,7 +121,7 @@ func TestCloudWatchIntegration_Execute_InvalidOperation(t *testing.T) {
 
 func TestCloudWatchIntegration_SequenceTokenCache(t *testing.T) {
 	mock := &mockTransport{name: "aws_sigv4"}
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: mock,
 	}
 
@@ -149,7 +149,7 @@ func TestCloudWatchIntegration_SequenceTokenCache(t *testing.T) {
 
 func TestBuildMetricDatum(t *testing.T) {
 	mock := &mockTransport{name: "aws_sigv4"}
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: mock,
 	}
 
@@ -232,7 +232,7 @@ func TestBuildMetricDatum(t *testing.T) {
 
 func TestExtractSequenceTokenFromError(t *testing.T) {
 	mock := &mockTransport{name: "aws_sigv4"}
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		Transport: mock,
 	}
 

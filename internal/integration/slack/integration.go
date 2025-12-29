@@ -8,21 +8,21 @@ import (
 	"github.com/tombee/conductor/internal/operation/api"
 )
 
-// SlackIntegration implements the Connector interface for Slack API.
+// SlackIntegration implements the Provider interface for Slack API.
 type SlackIntegration struct {
-	*api.BaseConnector
+	*api.BaseProvider
 }
 
 // NewSlackIntegration creates a new Slack integration.
-func NewSlackIntegration(config *api.ConnectorConfig) (operation.Connector, error) {
+func NewSlackIntegration(config *api.ProviderConfig) (operation.Provider, error) {
 	if config.BaseURL == "" {
 		config.BaseURL = "https://slack.com/api"
 	}
 
-	base := api.NewBaseConnector("slack", config)
+	base := api.NewBaseProvider("slack", config)
 
 	return &SlackIntegration{
-		BaseConnector: base,
+		BaseProvider: base,
 	}, nil
 }
 

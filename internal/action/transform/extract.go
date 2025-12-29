@@ -11,7 +11,7 @@ import (
 )
 
 // extract implements the extract operation using jq expressions.
-func (c *TransformConnector) extract(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *TransformAction) extract(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// Extract data parameter
 	data, ok := inputs["data"]
 	if !ok {
@@ -118,7 +118,7 @@ func (c *TransformConnector) extract(ctx context.Context, inputs map[string]inte
 }
 
 // validateInputSize checks if the data size is within limits.
-func (c *TransformConnector) validateInputSize(data interface{}) error {
+func (c *TransformAction) validateInputSize(data interface{}) error {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("failed to marshal data: %w", err)
@@ -133,7 +133,7 @@ func (c *TransformConnector) validateInputSize(data interface{}) error {
 }
 
 // validateOutputSize checks if the result size is within limits.
-func (c *TransformConnector) validateOutputSize(result interface{}) error {
+func (c *TransformAction) validateOutputSize(result interface{}) error {
 	jsonData, err := json.Marshal(result)
 	if err != nil {
 		return fmt.Errorf("failed to marshal result: %w", err)

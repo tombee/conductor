@@ -1,7 +1,7 @@
 // Package transform provides a builtin action for data transformation operations.
 //
 // The transform action does NOT import the operation package to avoid import cycles.
-// The builtin registry bridges between transform operations and the operation.Connector interface.
+// The builtin registry bridges between transform operations and the operation.Provider interface.
 package transform
 
 import (
@@ -10,8 +10,8 @@ import (
 	"strings"
 )
 
-// TransformConnector implements the action interface for transform operations.
-type TransformConnector struct {
+// TransformAction implements the action interface for transform operations.
+type TransformAction struct {
 	config *Config
 }
 
@@ -45,7 +45,7 @@ func DefaultConfig() *Config {
 }
 
 // New creates a new transform action instance.
-func New(config *Config) (*TransformConnector, error) {
+func New(config *Config) (*TransformAction, error) {
 	if config == nil {
 		config = DefaultConfig()
 	}
@@ -67,13 +67,13 @@ func New(config *Config) (*TransformConnector, error) {
 		config.ExpressionTimeout = 1000000000 // 1 second
 	}
 
-	return &TransformConnector{
+	return &TransformAction{
 		config: config,
 	}, nil
 }
 
 // Name returns the action identifier.
-func (c *TransformConnector) Name() string {
+func (c *TransformAction) Name() string {
 	return "transform"
 }
 
@@ -84,7 +84,7 @@ type Result struct {
 }
 
 // Execute runs a named transform operation with the given inputs.
-func (c *TransformConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*Result, error) {
+func (c *TransformAction) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*Result, error) {
 	switch operation {
 	case "parse_json":
 		return c.parseJSON(ctx, inputs)
@@ -122,7 +122,7 @@ func (c *TransformConnector) Execute(ctx context.Context, operation string, inpu
 
 // parseXML implements the parse_xml operation.
 // Parses XML with XXE prevention and security audit logging.
-func (c *TransformConnector) parseXML(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
+func (c *TransformAction) parseXML(ctx context.Context, inputs map[string]interface{}) (*Result, error) {
 	// Extract data input
 	data, ok := inputs["data"]
 	if !ok {

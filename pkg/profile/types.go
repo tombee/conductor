@@ -44,7 +44,7 @@ type Profile struct {
 	InheritEnv InheritEnvConfig `yaml:"inherit_env,omitempty" json:"inherit_env,omitempty"`
 
 	// Bindings maps workflow requirements to concrete values
-	// Structure: bindings.connectors.<name>.auth.token = ${SECRET}
+	// Structure: bindings.integrations.<name>.auth.token = ${SECRET}
 	//           bindings.mcp_servers.<name>.env = {...}
 	Bindings Bindings `yaml:"bindings,omitempty" json:"bindings,omitempty"`
 }
@@ -87,7 +87,7 @@ type Bindings struct {
 	// Integrations maps integration names to their configuration
 	// Key: integration name from workflow requires section
 	// Value: integration binding with auth and other settings
-	Integrations map[string]IntegrationBinding `yaml:"connectors,omitempty" json:"connectors,omitempty"`
+	Integrations map[string]IntegrationBinding `yaml:"integrations,omitempty" json:"integrations,omitempty"`
 
 	// MCPServers maps MCP server names to their configuration
 	// Key: MCP server name from workflow requires section

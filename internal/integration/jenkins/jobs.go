@@ -60,7 +60,7 @@ func (c *JenkinsIntegration) getJob(ctx context.Context, inputs map[string]inter
 		result["last_failed_build_number"] = job.LastFailedBuild.Number
 	}
 
-	return c.ToConnectorResult(resp, result), nil
+	return c.ToResult(resp, result), nil
 }
 
 // listJobs lists jobs in a folder (or root).
@@ -115,5 +115,5 @@ func (c *JenkinsIntegration) listJobs(ctx context.Context, inputs map[string]int
 		}
 	}
 
-	return c.ToConnectorResult(resp, result), nil
+	return c.ToResult(resp, result), nil
 }

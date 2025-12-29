@@ -10,7 +10,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// SplunkIntegration implements the Connector interface for Splunk HTTP Event Collector (HEC).
+// SplunkIntegration implements the Provider interface for Splunk HTTP Event Collector (HEC).
 // Supports log and structured event operations.
 type SplunkIntegration struct {
 	name        string
@@ -21,7 +21,7 @@ type SplunkIntegration struct {
 }
 
 // NewSplunkIntegration creates a new Splunk HEC integration.
-func NewSplunkIntegration(config *api.ConnectorConfig) (operation.Connector, error) {
+func NewSplunkIntegration(config *api.ProviderConfig) (operation.Provider, error) {
 	if config.Transport == nil {
 		return nil, fmt.Errorf("transport is required for Splunk integration")
 	}

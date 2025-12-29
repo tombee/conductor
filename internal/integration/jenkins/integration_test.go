@@ -14,12 +14,12 @@ import (
 func TestNewJenkinsIntegration(t *testing.T) {
 	tests := []struct {
 		name      string
-		config    *api.ConnectorConfig
+		config    *api.ProviderConfig
 		wantError bool
 	}{
 		{
 			name: "valid config",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				BaseURL:   "https://jenkins.example.com",
 				Token:     "test-token",
 				Transport: &transport.HTTPTransport{},
@@ -28,7 +28,7 @@ func TestNewJenkinsIntegration(t *testing.T) {
 		},
 		{
 			name: "missing base URL",
-			config: &api.ConnectorConfig{
+			config: &api.ProviderConfig{
 				Token:     "test-token",
 				Transport: &transport.HTTPTransport{},
 			},
@@ -47,7 +47,7 @@ func TestNewJenkinsIntegration(t *testing.T) {
 }
 
 func TestJenkinsIntegration_Operations(t *testing.T) {
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		BaseURL:   "https://jenkins.example.com",
 		Token:     "test-token",
 		Transport: &transport.HTTPTransport{},
@@ -120,7 +120,7 @@ func TestJenkinsIntegration_BasicAuth(t *testing.T) {
 		t.Fatalf("NewHTTPTransport() error = %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		BaseURL:   server.URL,
 		Token:     "test-token",
 		Transport: httpTransport,
@@ -182,7 +182,7 @@ func TestJenkinsIntegration_GetBuild(t *testing.T) {
 		t.Fatalf("NewHTTPTransport() error = %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		BaseURL:   server.URL,
 		Token:     "test-token",
 		Transport: httpTransport,
@@ -237,7 +237,7 @@ func TestJenkinsIntegration_ListJobs(t *testing.T) {
 		t.Fatalf("NewHTTPTransport() error = %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		BaseURL:   server.URL,
 		Token:     "test-token",
 		Transport: httpTransport,
@@ -284,7 +284,7 @@ func TestJenkinsIntegration_ErrorHandling(t *testing.T) {
 		t.Fatalf("NewHTTPTransport() error = %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		BaseURL:   server.URL,
 		Token:     "test-token",
 		Transport: httpTransport,
@@ -318,7 +318,7 @@ func TestJenkinsIntegration_UnknownOperation(t *testing.T) {
 		t.Fatalf("NewHTTPTransport() error = %v", err)
 	}
 
-	config := &api.ConnectorConfig{
+	config := &api.ProviderConfig{
 		BaseURL:   "https://jenkins.example.com",
 		Token:     "test-token",
 		Transport: httpTransport,

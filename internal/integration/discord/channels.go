@@ -49,7 +49,7 @@ func (c *DiscordIntegration) listChannels(ctx context.Context, inputs map[string
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"channels": channelList,
 	}), nil
 }
@@ -85,7 +85,7 @@ func (c *DiscordIntegration) getChannel(ctx context.Context, inputs map[string]i
 	}
 
 	// Return operation result
-	return c.ToConnectorResult(resp, map[string]interface{}{
+	return c.ToResult(resp, map[string]interface{}{
 		"id":       channel.ID,
 		"name":     channel.Name,
 		"type":     channel.Type,

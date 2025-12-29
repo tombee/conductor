@@ -8,7 +8,7 @@ import (
 	op "github.com/tombee/conductor/internal/operation"
 )
 
-// ExecutePaginated implements paginated operations for GitHub connector.
+// ExecutePaginated implements paginated operations for GitHub integration.
 // Supports list_issues, list_prs, and list_repos operations.
 func (c *GitHubIntegration) ExecutePaginated(ctx context.Context, operation string, inputs map[string]interface{}) (<-chan *op.Result, error) {
 	// Check if pagination is enabled
