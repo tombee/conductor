@@ -137,8 +137,15 @@ func (b *WorkflowBuilder) Build() (*Workflow, error) {
 		}
 	}
 
-	// TODO: Validate no circular dependencies
-	// TODO: Validate template references (D12)
+	// Validate no circular dependencies using DFS
+	if err := b.validateNoCycles(); err != nil {
+		return nil, err
+	}
+
+	// Validate template references exist
+	if err := b.validateTemplateReferences(); err != nil {
+		return nil, err
+	}
 
 	return &Workflow{
 		Name:   b.name,
@@ -213,6 +220,177 @@ func (s *SDK) ValidateInputs(ctx context.Context, wf *Workflow, inputs map[strin
 
 	// TODO: Validate input types match expected types
 	// This requires type checking logic
+
+	return nil
+}
+
+// validateNoCycles checks for circular dependencies using depth-first search
+func (b *WorkflowBuilder) validateNoCycles() error {
+	// Build adjacency list for dependency graph
+	graph := make(map[string][]string)
+	for _, step := range b.steps {
+		graph[step.id] = step.dependencies
+	}
+
+	// Track visited nodes and nodes in current path
+	visited := make(map[string]bool)
+	inPath := make(map[string]bool)
+
+	// DFS function to detect cycles
+	var dfs func(string, []string) error
+	dfs = func(stepID string, path []string) error {
+		if inPath[stepID] {
+			// Found a cycle - build cycle path for error message
+			cycleStart := -1
+			for i, id := range path {
+				if id == stepID {
+					cycleStart = i
+					break
+				}
+			}
+			cyclePath := append(path[cycleStart:], stepID)
+			return &ValidationError{
+				Field:   "dependencies",
+				Message: fmt.Sprintf("circular dependency detected: %v", cyclePath),
+			}
+		}
+
+		if visited[stepID] {
+			return nil // Already checked this path
+		}
+
+		visited[stepID] = true
+		inPath[stepID] = true
+		path = append(path, stepID)
+
+		// Visit all dependencies
+		for _, depID := range graph[stepID] {
+			if err := dfs(depID, path); err != nil {
+				return err
+			}
+		}
+
+		inPath[stepID] = false
+		return nil
+	}
+
+	// Check all steps for cycles
+	for _, step := range b.steps {
+		if !visited[step.id] {
+			if err := dfs(step.id, []string{}); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// validateTemplateReferences validates that all template references exist
+func (b *WorkflowBuilder) validateTemplateReferences() error {
+	// Build a map of valid step IDs
+	stepIDs := make(map[string]bool)
+	for _, step := range b.steps {
+		stepIDs[step.id] = true
+	}
+
+	// Check each step's template fields for references
+	for _, step := range b.steps {
+		// Collect all template strings from this step
+		var templates []string
+
+		switch step.stepType {
+		case "llm":
+			if step.system != "" {
+				templates = append(templates, step.system)
+			}
+			if step.prompt != "" {
+				templates = append(templates, step.prompt)
+			}
+		case "agent":
+			if step.agentPrompt != "" {
+				templates = append(templates, step.agentPrompt)
+			}
+		case "action":
+			// Check action inputs for template strings
+			for _, input := range step.actionInputs {
+				if str, ok := input.(string); ok {
+					templates = append(templates, str)
+				}
+			}
+		}
+
+		// Validate each template
+		for _, tmpl := range templates {
+			if err := validateTemplateString(tmpl, stepIDs, step.id); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// validateTemplateString checks if a template string references valid steps
+func validateTemplateString(tmpl string, stepIDs map[string]bool, currentStepID string) error {
+	// Simple regex-based validation for {{.steps.STEPID}} references
+	// This is a basic implementation - a full template parser would be more robust
+	const stepRefPrefix = "{{.steps."
+	const stepRefSuffix = "}}"
+
+	pos := 0
+	for {
+		// Find next step reference
+		start := -1
+		for i := pos; i < len(tmpl)-len(stepRefPrefix); i++ {
+			if tmpl[i:i+len(stepRefPrefix)] == stepRefPrefix {
+				start = i
+				break
+			}
+		}
+
+		if start == -1 {
+			break // No more references
+		}
+
+		// Find end of reference
+		end := -1
+		for i := start + len(stepRefPrefix); i < len(tmpl)-1; i++ {
+			if tmpl[i:i+2] == stepRefSuffix {
+				end = i
+				break
+			}
+		}
+
+		if end == -1 {
+			// Unclosed template reference - this is a template syntax error
+			// We'll let the template engine handle this at runtime
+			break
+		}
+
+		// Extract step ID (between "{{.steps." and the next ".")
+		refStart := start + len(stepRefPrefix)
+		refContent := tmpl[refStart:end]
+
+		// Find the step ID (first part before any ".")
+		stepID := refContent
+		for dotPos := 0; dotPos < len(refContent); dotPos++ {
+			if refContent[dotPos] == '.' {
+				stepID = refContent[:dotPos]
+				break
+			}
+		}
+
+		// Validate step exists
+		if !stepIDs[stepID] {
+			return &ValidationError{
+				Field:   fmt.Sprintf("step[%s].template", currentStepID),
+				Message: fmt.Sprintf("template references non-existent step: %s", stepID),
+			}
+		}
+
+		pos = end + 2
+	}
 
 	return nil
 }
