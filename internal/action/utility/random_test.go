@@ -13,8 +13,8 @@ func newTestAction(seed int64) *UtilityAction {
 		MaxIDLength:         256,
 		DefaultNanoidLength: 21,
 	}
-	uc, _ := New(cfg)
-	return uc
+	action, _ := New(cfg)
+	return action
 }
 
 func TestRandomInt(t *testing.T) {
@@ -22,7 +22,7 @@ func TestRandomInt(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("basic range", func(t *testing.T) {
-		result, err := uc.Execute(ctx, "random_int", map[string]interface{}{
+		result, err := action.Execute(ctx, "random_int", map[string]interface{}{
 			"min": 1,
 			"max": 10,
 		})
@@ -40,7 +40,7 @@ func TestRandomInt(t *testing.T) {
 	})
 
 	t.Run("min equals max", func(t *testing.T) {
-		result, err := uc.Execute(ctx, "random_int", map[string]interface{}{
+		result, err := action.Execute(ctx, "random_int", map[string]interface{}{
 			"min": 5,
 			"max": 5,
 		})
@@ -55,7 +55,7 @@ func TestRandomInt(t *testing.T) {
 	})
 
 	t.Run("min greater than max returns error", func(t *testing.T) {
-		_, err := uc.Execute(ctx, "random_int", map[string]interface{}{
+		_, err := action.Execute(ctx, "random_int", map[string]interface{}{
 			"min": 10,
 			"max": 1,
 		})
@@ -73,7 +73,7 @@ func TestRandomInt(t *testing.T) {
 	})
 
 	t.Run("missing min parameter", func(t *testing.T) {
-		_, err := uc.Execute(ctx, "random_int", map[string]interface{}{
+		_, err := action.Execute(ctx, "random_int", map[string]interface{}{
 			"max": 10,
 		})
 		if err == nil {
@@ -82,7 +82,7 @@ func TestRandomInt(t *testing.T) {
 	})
 
 	t.Run("missing max parameter", func(t *testing.T) {
-		_, err := uc.Execute(ctx, "random_int", map[string]interface{}{
+		_, err := action.Execute(ctx, "random_int", map[string]interface{}{
 			"min": 1,
 		})
 		if err == nil {
@@ -97,7 +97,7 @@ func TestRandomChoose(t *testing.T) {
 
 	t.Run("basic selection", func(t *testing.T) {
 		items := []interface{}{"a", "b", "c", "d"}
-		result, err := uc.Execute(ctx, "random_choose", map[string]interface{}{
+		result, err := action.Execute(ctx, "random_choose", map[string]interface{}{
 			"items": items,
 		})
 		if err != nil {
@@ -118,7 +118,7 @@ func TestRandomChoose(t *testing.T) {
 	})
 
 	t.Run("single item", func(t *testing.T) {
-		result, err := uc.Execute(ctx, "random_choose", map[string]interface{}{
+		result, err := action.Execute(ctx, "random_choose", map[string]interface{}{
 			"items": []interface{}{"only_one"},
 		})
 		if err != nil {
@@ -131,7 +131,7 @@ func TestRandomChoose(t *testing.T) {
 	})
 
 	t.Run("empty items returns error", func(t *testing.T) {
-		_, err := uc.Execute(ctx, "random_choose", map[string]interface{}{
+		_, err := action.Execute(ctx, "random_choose", map[string]interface{}{
 			"items": []interface{}{},
 		})
 		if err == nil {
@@ -145,7 +145,7 @@ func TestRandomChoose(t *testing.T) {
 	})
 
 	t.Run("missing items parameter", func(t *testing.T) {
-		_, err := uc.Execute(ctx, "random_choose", map[string]interface{}{})
+		_, err := action.Execute(ctx, "random_choose", map[string]interface{}{})
 		if err == nil {
 			t.Fatal("expected error when items is missing")
 		}
@@ -157,7 +157,7 @@ func TestRandomWeighted(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("basic weighted selection", func(t *testing.T) {
-		result, err := uc.Execute(ctx, "random_weighted", map[string]interface{}{
+		result, err := action.Execute(ctx, "random_weighted", map[string]interface{}{
 			"items": []interface{}{
 				map[string]interface{}{"value": "common", "weight": 90},
 				map[string]interface{}{"value": "rare", "weight": 10},
@@ -174,7 +174,7 @@ func TestRandomWeighted(t *testing.T) {
 	})
 
 	t.Run("single weight 100%", func(t *testing.T) {
-		result, err := uc.Execute(ctx, "random_weighted", map[string]interface{}{
+		result, err := action.Execute(ctx, "random_weighted", map[string]interface{}{
 			"items": []interface{}{
 				map[string]interface{}{"value": "only", "weight": 100},
 			},
@@ -189,7 +189,7 @@ func TestRandomWeighted(t *testing.T) {
 	})
 
 	t.Run("zero total weight returns error", func(t *testing.T) {
-		_, err := uc.Execute(ctx, "random_weighted", map[string]interface{}{
+		_, err := action.Execute(ctx, "random_weighted", map[string]interface{}{
 			"items": []interface{}{
 				map[string]interface{}{"value": "a", "weight": 0},
 				map[string]interface{}{"value": "b", "weight": 0},
@@ -201,7 +201,7 @@ func TestRandomWeighted(t *testing.T) {
 	})
 
 	t.Run("negative weight returns error", func(t *testing.T) {
-		_, err := uc.Execute(ctx, "random_weighted", map[string]interface{}{
+		_, err := action.Execute(ctx, "random_weighted", map[string]interface{}{
 			"items": []interface{}{
 				map[string]interface{}{"value": "a", "weight": -10},
 			},
@@ -212,7 +212,7 @@ func TestRandomWeighted(t *testing.T) {
 	})
 
 	t.Run("missing value field returns error", func(t *testing.T) {
-		_, err := uc.Execute(ctx, "random_weighted", map[string]interface{}{
+		_, err := action.Execute(ctx, "random_weighted", map[string]interface{}{
 			"items": []interface{}{
 				map[string]interface{}{"weight": 10},
 			},
@@ -228,7 +228,7 @@ func TestRandomSample(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("sample subset", func(t *testing.T) {
-		result, err := uc.Execute(ctx, "random_sample", map[string]interface{}{
+		result, err := action.Execute(ctx, "random_sample", map[string]interface{}{
 			"items": []interface{}{"a", "b", "c", "d", "e"},
 			"count": 3,
 		})
@@ -252,7 +252,7 @@ func TestRandomSample(t *testing.T) {
 	})
 
 	t.Run("sample all", func(t *testing.T) {
-		result, err := uc.Execute(ctx, "random_sample", map[string]interface{}{
+		result, err := action.Execute(ctx, "random_sample", map[string]interface{}{
 			"items": []interface{}{"a", "b", "c"},
 			"count": 3,
 		})
@@ -267,7 +267,7 @@ func TestRandomSample(t *testing.T) {
 	})
 
 	t.Run("count exceeds items returns error", func(t *testing.T) {
-		_, err := uc.Execute(ctx, "random_sample", map[string]interface{}{
+		_, err := action.Execute(ctx, "random_sample", map[string]interface{}{
 			"items": []interface{}{"a", "b"},
 			"count": 5,
 		})
@@ -282,7 +282,7 @@ func TestRandomSample(t *testing.T) {
 	})
 
 	t.Run("count zero returns error", func(t *testing.T) {
-		_, err := uc.Execute(ctx, "random_sample", map[string]interface{}{
+		_, err := action.Execute(ctx, "random_sample", map[string]interface{}{
 			"items": []interface{}{"a", "b"},
 			"count": 0,
 		})
@@ -298,7 +298,7 @@ func TestRandomShuffle(t *testing.T) {
 
 	t.Run("shuffle array", func(t *testing.T) {
 		original := []interface{}{"a", "b", "c", "d", "e"}
-		result, err := uc.Execute(ctx, "random_shuffle", map[string]interface{}{
+		result, err := action.Execute(ctx, "random_shuffle", map[string]interface{}{
 			"items": original,
 		})
 		if err != nil {
@@ -323,7 +323,7 @@ func TestRandomShuffle(t *testing.T) {
 	})
 
 	t.Run("shuffle empty array", func(t *testing.T) {
-		result, err := uc.Execute(ctx, "random_shuffle", map[string]interface{}{
+		result, err := action.Execute(ctx, "random_shuffle", map[string]interface{}{
 			"items": []interface{}{},
 		})
 		if err != nil {
@@ -337,7 +337,7 @@ func TestRandomShuffle(t *testing.T) {
 	})
 
 	t.Run("shuffle single item", func(t *testing.T) {
-		result, err := uc.Execute(ctx, "random_shuffle", map[string]interface{}{
+		result, err := action.Execute(ctx, "random_shuffle", map[string]interface{}{
 			"items": []interface{}{"only"},
 		})
 		if err != nil {

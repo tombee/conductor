@@ -48,8 +48,8 @@ func TestNewSlackIntegration(t *testing.T) {
 			}
 
 			if !tt.wantError {
-				if operation.Name() != "slack" {
-					t.Errorf("Expected integration name 'slack', got '%s'", operation.Name())
+				if integration.Name() != "slack" {
+					t.Errorf("Expected integration name 'slack', got '%s'", integration.Name())
 				}
 
 				// Verify base URL is set correctly

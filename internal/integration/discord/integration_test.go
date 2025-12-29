@@ -29,8 +29,8 @@ func TestNewDiscordIntegration(t *testing.T) {
 		t.Fatalf("Failed to create integration: %v", err)
 	}
 
-	if operation.Name() != "discord" {
-		t.Errorf("Expected integration name 'discord', got '%s'", operation.Name())
+	if integration.Name() != "discord" {
+		t.Errorf("Expected integration name 'discord', got '%s'", integration.Name())
 	}
 
 	// Verify default base URL is set

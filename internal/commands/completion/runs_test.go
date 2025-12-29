@@ -56,7 +56,7 @@ func TestCompleteRunIDs(t *testing.T) {
 	defer server.Close()
 
 	// Configure client to use test server
-	t.Setenv("CONDUCTOR_HOST", "tcp://"+server.Triggerer.Addr().String())
+	t.Setenv("CONDUCTOR_HOST", "tcp://"+server.Listener.Addr().String())
 
 	completions, directive := CompleteRunIDs(nil, nil, "")
 
@@ -114,7 +114,7 @@ func TestCompleteActiveRunIDs(t *testing.T) {
 	}))
 	defer server.Close()
 
-	t.Setenv("CONDUCTOR_HOST", "tcp://"+server.Triggerer.Addr().String())
+	t.Setenv("CONDUCTOR_HOST", "tcp://"+server.Listener.Addr().String())
 
 	completions, _ := CompleteActiveRunIDs(nil, nil, "")
 
@@ -154,7 +154,7 @@ func TestRunCaching(t *testing.T) {
 	}))
 	defer server.Close()
 
-	t.Setenv("CONDUCTOR_HOST", "tcp://"+server.Triggerer.Addr().String())
+	t.Setenv("CONDUCTOR_HOST", "tcp://"+server.Listener.Addr().String())
 
 	// First call should hit the server
 	_, _ = CompleteRunIDs(nil, nil, "")
@@ -215,7 +215,7 @@ func TestCompleteRunIDs_MalformedResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	t.Setenv("CONDUCTOR_HOST", "tcp://"+server.Triggerer.Addr().String())
+	t.Setenv("CONDUCTOR_HOST", "tcp://"+server.Listener.Addr().String())
 
 	completions, _ := CompleteRunIDs(nil, nil, "")
 
@@ -255,7 +255,7 @@ func TestCompleteRunIDs_MissingFields(t *testing.T) {
 	}))
 	defer server.Close()
 
-	t.Setenv("CONDUCTOR_HOST", "tcp://"+server.Triggerer.Addr().String())
+	t.Setenv("CONDUCTOR_HOST", "tcp://"+server.Listener.Addr().String())
 
 	completions, _ := CompleteRunIDs(nil, nil, "")
 
@@ -305,7 +305,7 @@ func TestCompleteRunIDs_Timeout(t *testing.T) {
 	}))
 	defer server.Close()
 
-	t.Setenv("CONDUCTOR_HOST", "tcp://"+server.Triggerer.Addr().String())
+	t.Setenv("CONDUCTOR_HOST", "tcp://"+server.Listener.Addr().String())
 
 	start := time.Now()
 	completions, _ := CompleteRunIDs(nil, nil, "")
