@@ -30,7 +30,7 @@ func TestDetectEmbeddedCredentials(t *testing.T) {
 			name: "no credentials",
 			def: &Definition{
 				Name: "test",
-				Connectors: map[string]ConnectorDefinition{
+				Integrations: map[string]IntegrationDefinition{
 					"github": {
 						Name: "github",
 						Auth: &AuthDefinition{
@@ -45,7 +45,7 @@ func TestDetectEmbeddedCredentials(t *testing.T) {
 			name: "GitHub token in connector",
 			def: &Definition{
 				Name: "test",
-				Connectors: map[string]ConnectorDefinition{
+				Integrations: map[string]IntegrationDefinition{
 					"github": {
 						Name: "github",
 						Auth: &AuthDefinition{
@@ -61,7 +61,7 @@ func TestDetectEmbeddedCredentials(t *testing.T) {
 			name: "Anthropic API key in connector",
 			def: &Definition{
 				Name: "test",
-				Connectors: map[string]ConnectorDefinition{
+				Integrations: map[string]IntegrationDefinition{
 					"anthropic": {
 						Name: "anthropic",
 						Auth: &AuthDefinition{
@@ -77,7 +77,7 @@ func TestDetectEmbeddedCredentials(t *testing.T) {
 			name: "AWS access key in connector",
 			def: &Definition{
 				Name: "test",
-				Connectors: map[string]ConnectorDefinition{
+				Integrations: map[string]IntegrationDefinition{
 					"aws": {
 						Name: "aws",
 						Auth: &AuthDefinition{
@@ -110,7 +110,7 @@ func TestDetectEmbeddedCredentials(t *testing.T) {
 			name: "multiple credentials",
 			def: &Definition{
 				Name: "test",
-				Connectors: map[string]ConnectorDefinition{
+				Integrations: map[string]IntegrationDefinition{
 					"github": {
 						Name: "github",
 						Auth: &AuthDefinition{
@@ -167,7 +167,7 @@ func TestRequirementsDefinitionValidate(t *testing.T) {
 		{
 			name: "valid requirements",
 			req: &RequirementsDefinition{
-				Connectors: []ConnectorRequirement{
+				Integrations: []IntegrationRequirement{
 					{Name: "github", Capabilities: []string{"issues", "pull_requests"}},
 					{Name: "slack", Optional: true},
 				},
@@ -180,7 +180,7 @@ func TestRequirementsDefinitionValidate(t *testing.T) {
 		{
 			name: "missing connector name",
 			req: &RequirementsDefinition{
-				Connectors: []ConnectorRequirement{
+				Integrations: []IntegrationRequirement{
 					{Name: ""},
 				},
 			},
@@ -189,7 +189,7 @@ func TestRequirementsDefinitionValidate(t *testing.T) {
 		{
 			name: "duplicate connector",
 			req: &RequirementsDefinition{
-				Connectors: []ConnectorRequirement{
+				Integrations: []IntegrationRequirement{
 					{Name: "github"},
 					{Name: "github"},
 				},

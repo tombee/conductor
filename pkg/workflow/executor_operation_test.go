@@ -60,8 +60,8 @@ func TestExecuteConnector(t *testing.T) {
 			name: "successful connector execution",
 			step: &StepDefinition{
 				ID:        "test_step",
-				Type:      StepTypeConnector,
-				Connector: "github.create_issue",
+				Type:      StepTypeIntegration,
+				Integration: "github.create_issue",
 			},
 			inputs: map[string]interface{}{
 				"title": "Test Issue",
@@ -102,8 +102,8 @@ func TestExecuteConnector(t *testing.T) {
 			name: "connector step with missing connector field",
 			step: &StepDefinition{
 				ID:        "test_step",
-				Type:      StepTypeConnector,
-				Connector: "",
+				Type:      StepTypeIntegration,
+				Integration: "",
 			},
 			inputs:       map[string]interface{}{},
 			mockRegistry: &mockOperationRegistry{},
@@ -113,8 +113,8 @@ func TestExecuteConnector(t *testing.T) {
 			name: "connector step without registry",
 			step: &StepDefinition{
 				ID:        "test_step",
-				Type:      StepTypeConnector,
-				Connector: "github.create_issue",
+				Type:      StepTypeIntegration,
+				Integration: "github.create_issue",
 			},
 			inputs:       map[string]interface{}{},
 			mockRegistry: nil,
@@ -124,8 +124,8 @@ func TestExecuteConnector(t *testing.T) {
 			name: "connector returns nil result without error (contract violation)",
 			step: &StepDefinition{
 				ID:        "test_step",
-				Type:      StepTypeConnector,
-				Connector: "broken.connector",
+				Type:      StepTypeIntegration,
+				Integration: "broken.connector",
 			},
 			inputs: map[string]interface{}{},
 			mockRegistry: &mockOperationRegistry{
@@ -147,7 +147,7 @@ func TestExecuteConnector(t *testing.T) {
 			}
 
 			// Execute connector step
-			output, err := executor.executeConnector(context.Background(), tt.step, tt.inputs)
+			output, err := executor.executeIntegration(context.Background(), tt.step, tt.inputs)
 
 			// Check error expectation
 			if tt.expectError && err == nil {

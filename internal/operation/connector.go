@@ -164,7 +164,7 @@ func DefaultConfig() *Config {
 }
 
 // New creates a connector from a workflow definition.
-func New(def *workflow.ConnectorDefinition, config *Config) (Connector, error) {
+func New(def *workflow.IntegrationDefinition, config *Config) (Connector, error) {
 	// Initialize transport registry if not provided
 	if config.TransportRegistry == nil {
 		config.TransportRegistry = NewDefaultTransportRegistry()
@@ -180,7 +180,7 @@ func New(def *workflow.ConnectorDefinition, config *Config) (Connector, error) {
 }
 
 // newPackageConnector creates a connector from a package reference.
-func newPackageConnector(def *workflow.ConnectorDefinition, config *Config) (Connector, error) {
+func newPackageConnector(def *workflow.IntegrationDefinition, config *Config) (Connector, error) {
 	// Extract connector name from "connectors/<name>"
 	if strings.HasPrefix(def.From, "connectors/") {
 		parts := strings.Split(def.From, "/")
@@ -231,7 +231,7 @@ func newPackageConnector(def *workflow.ConnectorDefinition, config *Config) (Con
 }
 
 // newHTTPConnector creates an inline HTTP connector.
-func newHTTPConnector(def *workflow.ConnectorDefinition, config *Config) (Connector, error) {
+func newHTTPConnector(def *workflow.IntegrationDefinition, config *Config) (Connector, error) {
 	// Initialize metrics collector if enabled
 	var metricsCollector *MetricsCollector
 	if config.EnableMetrics {
@@ -319,7 +319,7 @@ func newHTTPConnector(def *workflow.ConnectorDefinition, config *Config) (Connec
 // httpConnector implements Connector for inline HTTP definitions.
 type httpConnector struct {
 	name             string
-	def              *workflow.ConnectorDefinition
+	def              *workflow.IntegrationDefinition
 	config           *Config
 	metricsCollector *MetricsCollector
 	transport        transport.Transport

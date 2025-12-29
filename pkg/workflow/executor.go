@@ -326,17 +326,13 @@ func (e *Executor) executeStep(ctx context.Context, step *StepDefinition, workfl
 		return e.executeCondition(ctx, &resolvedStep, inputs, workflowContext)
 	case StepTypeParallel:
 		return e.executeParallel(ctx, &resolvedStep, inputs, workflowContext)
-	case StepTypeConnector:
-		return e.executeConnector(ctx, &resolvedStep, inputs)
-	case StepTypeBuiltin:
-		// Convert builtin step to connector format for execution
-		resolvedStep.Connector = resolvedStep.BuiltinConnector + "." + resolvedStep.BuiltinOperation
-		return e.executeConnector(ctx, &resolvedStep, inputs)
+	case StepTypeIntegration:
+		return e.executeIntegration(ctx, &resolvedStep, inputs)
 	default:
 		return nil, &errors.ValidationError{
 			Field:      "type",
 			Message:    fmt.Sprintf("unsupported step type: %s", step.Type),
-			Suggestion: "use one of: llm, condition, parallel, connector, builtin",
+			Suggestion: "use one of: llm, condition, parallel, integration",
 		}
 	}
 }
@@ -387,10 +383,11 @@ func (e *Executor) executeWithRetry(ctx context.Context, step *StepDefinition, w
 	return lastOutput, fmt.Errorf("step failed after %d attempts: %w", retry.MaxAttempts, lastErr)
 }
 
-// executeConnector executes a connector step by invoking an operation.
-// The step.Connector field should be in format "name.operation".
+// executeIntegration executes an integration step by invoking an operation.
+// The operation reference can be either step.Integration (for integrations) or
+// step.Action + step.Operation (for builtin actions).
 // Inputs are passed through to operation registry without type assertions.
-func (e *Executor) executeConnector(ctx context.Context, step *StepDefinition, inputs map[string]interface{}) (map[string]interface{}, error) {
+func (e *Executor) executeIntegration(ctx context.Context, step *StepDefinition, inputs map[string]interface{}) (map[string]interface{}, error) {
 	// Check if operation registry is configured
 	if e.operationRegistry == nil {
 		return nil, &errors.ConfigError{
@@ -399,28 +396,33 @@ func (e *Executor) executeConnector(ctx context.Context, step *StepDefinition, i
 		}
 	}
 
-	// Validate connector field is present
-	if step.Connector == "" {
+	// Determine the operation reference
+	var operationRef string
+	if step.Integration != "" {
+		operationRef = step.Integration
+	} else if step.Action != "" && step.Operation != "" {
+		operationRef = step.Action + "." + step.Operation
+	} else {
 		return nil, &errors.ValidationError{
-			Field:      "connector",
-			Message:    "connector field is required for connector step",
-			Suggestion: "specify connector in format 'name.operation'",
+			Field:      "integration/action",
+			Message:    "integration step requires either 'integration' or 'action'+'operation' fields",
+			Suggestion: "specify integration in format 'name.operation' or use action and operation fields",
 		}
 	}
 
 	// Log operation execution start with structured logging
 	e.logger.Debug("executing operation",
 		"step_id", step.ID,
-		"connector", step.Connector,
+		"operation", operationRef,
 		"inputs", maskSensitiveInputs(inputs),
 	)
 
 	// Execute the operation
-	result, err := e.operationRegistry.Execute(ctx, step.Connector, inputs)
+	result, err := e.operationRegistry.Execute(ctx, operationRef, inputs)
 	if err != nil {
 		e.logger.Error("operation execution failed",
 			"step_id", step.ID,
-			"operation", step.Connector,
+			"operation", operationRef,
 			"error", err,
 		)
 		return nil, fmt.Errorf("operation execution failed: %w", err)
@@ -430,15 +432,15 @@ func (e *Executor) executeConnector(ctx context.Context, step *StepDefinition, i
 	if result == nil {
 		e.logger.Error("operation returned nil result without error",
 			"step_id", step.ID,
-			"operation", step.Connector,
+			"operation", operationRef,
 		)
-		return nil, fmt.Errorf("operation %q returned nil result without error", step.Connector)
+		return nil, fmt.Errorf("operation %q returned nil result without error", operationRef)
 	}
 
 	// Log successful execution with metadata
 	e.logger.Debug("operation completed",
 		"step_id", step.ID,
-		"operation", step.Connector,
+		"operation", operationRef,
 		"status_code", result.GetStatusCode(),
 		"metadata", result.GetMetadata(),
 	)

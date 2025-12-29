@@ -41,7 +41,7 @@ func (r *Registry) LoadFromDefinition(def *workflow.Definition) error {
 	r.connectors = make(map[string]Connector)
 
 	// Load each connector definition
-	for name, connDef := range def.Connectors {
+	for name, connDef := range def.Integrations {
 		// Ensure name is set (it should be from validation)
 		connDef.Name = name
 

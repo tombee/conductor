@@ -173,8 +173,8 @@ func analyzeWorkflowRequirements(wf *workflow.Definition, workflowPath string) w
 		stepSource := fmt.Sprintf("step %d (%s)", i+1, step.ID)
 
 		// Analyze builtin connector if specified
-		if step.BuiltinConnector != "" {
-			analyzeTool(step.BuiltinConnector, step.Inputs, stepSource, workflowDir, &reqs)
+		if step.Action != "" {
+			analyzeTool(step.Action, step.Inputs, stepSource, workflowDir, &reqs)
 		}
 
 		// Analyze inline prompts for potential file/network references

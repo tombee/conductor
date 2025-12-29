@@ -119,21 +119,21 @@ func DetectEmbeddedCredentials(def *Definition) []string {
 		}
 	}
 
-	// Check connectors for embedded auth
-	for name, connector := range def.Connectors {
-		if connector.Auth != nil {
+	// Check integrations for embedded auth
+	for name, integration := range def.Integrations {
+		if integration.Auth != nil {
 			// Check all auth fields
-			if connector.Auth.Token != "" {
-				checkValue(fmt.Sprintf("connectors.%s.auth.token", name), connector.Auth.Token)
+			if integration.Auth.Token != "" {
+				checkValue(fmt.Sprintf("integrations.%s.auth.token", name), integration.Auth.Token)
 			}
-			if connector.Auth.Username != "" {
-				checkValue(fmt.Sprintf("connectors.%s.auth.username", name), connector.Auth.Username)
+			if integration.Auth.Username != "" {
+				checkValue(fmt.Sprintf("integrations.%s.auth.username", name), integration.Auth.Username)
 			}
-			if connector.Auth.Password != "" {
-				checkValue(fmt.Sprintf("connectors.%s.auth.password", name), connector.Auth.Password)
+			if integration.Auth.Password != "" {
+				checkValue(fmt.Sprintf("integrations.%s.auth.password", name), integration.Auth.Password)
 			}
-			if connector.Auth.Value != "" {
-				checkValue(fmt.Sprintf("connectors.%s.auth.value", name), connector.Auth.Value)
+			if integration.Auth.Value != "" {
+				checkValue(fmt.Sprintf("integrations.%s.auth.value", name), integration.Auth.Value)
 			}
 		}
 	}

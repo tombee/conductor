@@ -98,8 +98,8 @@ func loadBundledPackage(from string) (*PackageDefinition, error) {
 
 // mergePackageWithOverrides merges a package definition with user overrides.
 // User can override: base_url, auth, headers, rate_limit
-func mergePackageWithOverrides(pkg *PackageDefinition, def *workflow.ConnectorDefinition) *workflow.ConnectorDefinition {
-	merged := &workflow.ConnectorDefinition{
+func mergePackageWithOverrides(pkg *PackageDefinition, def *workflow.IntegrationDefinition) *workflow.IntegrationDefinition {
+	merged := &workflow.IntegrationDefinition{
 		Name: def.Name,
 		From: def.From,
 	}

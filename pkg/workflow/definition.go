@@ -54,8 +54,8 @@ type Definition struct {
 	// MCPServers define MCP server configurations for tool providers
 	MCPServers []MCPServerConfig `yaml:"mcp_servers,omitempty" json:"mcp_servers,omitempty"`
 
-	// Connectors define declarative HTTP/SSH connectors for external integrations
-	Connectors map[string]ConnectorDefinition `yaml:"connectors,omitempty" json:"connectors,omitempty"`
+	// Integrations define declarative HTTP/SSH integrations for external services
+	Integrations map[string]IntegrationDefinition `yaml:"integrations,omitempty" json:"integrations,omitempty"`
 
 	// CostLimits define cost constraints at the workflow level
 	CostLimits *CostLimits `yaml:"cost_limits,omitempty" json:"cost_limits,omitempty"`
@@ -225,17 +225,17 @@ type StepDefinition struct {
 	// Tools lists the custom tools this step can access (references workflow-level tools by name)
 	Tools []string `yaml:"tools,omitempty" json:"tools,omitempty"`
 
-	// Connector specifies the connector and operation to invoke (format: "connector_name.operation_name")
-	// Only valid for type: connector steps
-	Connector string `yaml:"connector,omitempty" json:"connector,omitempty"`
+	// Integration specifies the integration and operation to invoke (format: "integration_name.operation_name")
+	// Only valid for type: integration steps
+	Integration string `yaml:"integration,omitempty" json:"integration,omitempty"`
 
-	// BuiltinConnector specifies the builtin connector name (file, shell)
-	// Only valid for type: builtin steps
-	BuiltinConnector string `yaml:"builtin_connector,omitempty" json:"builtin_connector,omitempty"`
+	// Action specifies the action name for builtin operations (file, shell, http, transform)
+	// Only valid for type: integration steps when using builtin actions
+	Action string `yaml:"action,omitempty" json:"action,omitempty"`
 
-	// BuiltinOperation specifies the operation to invoke on the builtin connector
-	// Only valid for type: builtin steps
-	BuiltinOperation string `yaml:"builtin_operation,omitempty" json:"builtin_operation,omitempty"`
+	// Operation specifies the operation to invoke on the action or integration
+	// Only valid for type: integration steps
+	Operation string `yaml:"operation,omitempty" json:"operation,omitempty"`
 
 	// Condition defines when this step should execute
 	Condition *ConditionDefinition `yaml:"condition,omitempty" json:"condition,omitempty"`
@@ -296,11 +296,8 @@ const (
 	// StepTypeParallel executes multiple steps concurrently
 	StepTypeParallel StepType = "parallel"
 
-	// StepTypeConnector executes a declarative connector operation
-	StepTypeConnector StepType = "connector"
-
-	// StepTypeBuiltin executes a builtin connector operation (file, shell)
-	StepTypeBuiltin StepType = "builtin"
+	// StepTypeIntegration executes a declarative integration operation
+	StepTypeIntegration StepType = "integration"
 )
 
 // ModelTier represents the model capability tier for LLM steps.
@@ -479,17 +476,17 @@ type MCPServerConfig struct {
 	Timeout int `yaml:"timeout,omitempty" json:"timeout,omitempty"`
 }
 
-// ConnectorDefinition defines a declarative connector for external integrations.
-// Connectors provide schema-validated, deterministic operations that execute without LLM involvement.
-type ConnectorDefinition struct {
-	// Name is inferred from the map key in workflow.connectors
+// IntegrationDefinition defines a declarative integration for external services.
+// Integrations provide schema-validated, deterministic operations that execute without LLM involvement.
+type IntegrationDefinition struct {
+	// Name is inferred from the map key in workflow.integrations
 	Name string `yaml:"-" json:"name,omitempty"`
 
-	// From imports a connector package (e.g., "connectors/github", "github.com/org/connector@v1.0")
+	// From imports an integration package (e.g., "integrations/github", "github.com/org/integration@v1.0")
 	// Mutually exclusive with inline definition (BaseURL + Operations)
 	From string `yaml:"from,omitempty" json:"from,omitempty"`
 
-	// BaseURL is the base URL for all operations (required for inline connectors)
+	// BaseURL is the base URL for all operations (required for inline integrations)
 	BaseURL string `yaml:"base_url,omitempty" json:"base_url,omitempty"`
 
 	// Transport specifies which transport to use ("http", "aws_sigv4", "oauth2")
@@ -511,12 +508,12 @@ type ConnectorDefinition struct {
 	// RateLimit defines rate limiting configuration
 	RateLimit *RateLimitConfig `yaml:"rate_limit,omitempty" json:"rate_limit,omitempty"`
 
-	// Operations define named operations for inline connectors
+	// Operations define named operations for inline integrations
 	// Not used when From is specified (operations come from package)
 	Operations map[string]OperationDefinition `yaml:"operations,omitempty" json:"operations,omitempty"`
 }
 
-// OperationDefinition defines a single operation within a connector.
+// OperationDefinition defines a single operation within an integration.
 type OperationDefinition struct {
 	// Method is the HTTP method (GET, POST, PUT, PATCH, DELETE)
 	Method string `yaml:"method" json:"method"`
@@ -530,7 +527,7 @@ type OperationDefinition struct {
 	// ResponseTransform is a jq expression to transform the response
 	ResponseTransform string `yaml:"response_transform,omitempty" json:"response_transform,omitempty"`
 
-	// Headers are operation-specific headers (merged with connector headers)
+	// Headers are operation-specific headers (merged with integration headers)
 	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
 
 	// Timeout is the operation-specific timeout in seconds
@@ -540,7 +537,7 @@ type OperationDefinition struct {
 	Retry *RetryDefinition `yaml:"retry,omitempty" json:"retry,omitempty"`
 }
 
-// AuthDefinition defines authentication configuration for a connector.
+// AuthDefinition defines authentication configuration for an integration.
 type AuthDefinition struct {
 	// Type is the authentication type (bearer, basic, api_key, oauth2_client)
 	// Optional - inferred as "bearer" if only Token is present
@@ -575,7 +572,7 @@ type AuthDefinition struct {
 	Scopes []string `yaml:"scopes,omitempty" json:"scopes,omitempty"`
 }
 
-// RateLimitConfig defines rate limiting configuration for a connector.
+// RateLimitConfig defines rate limiting configuration for an integration.
 type RateLimitConfig struct {
 	// RequestsPerSecond limits the number of requests per second
 	RequestsPerSecond float64 `yaml:"requests_per_second,omitempty" json:"requests_per_second,omitempty"`
@@ -936,24 +933,24 @@ const (
 // This enables portable workflow definitions that don't embed credentials.
 // Runtime bindings are provided by execution profiles.
 type RequirementsDefinition struct {
-	// Connectors lists required connector dependencies
-	Connectors []ConnectorRequirement `yaml:"connectors,omitempty" json:"connectors,omitempty"`
+	// Integrations lists required integration dependencies
+	Integrations []IntegrationRequirement `yaml:"integrations,omitempty" json:"integrations,omitempty"`
 
 	// MCPServers lists required MCP server dependencies
 	MCPServers []MCPServerRequirement `yaml:"mcp_servers,omitempty" json:"mcp_servers,omitempty"`
 }
 
-// ConnectorRequirement describes a required connector dependency.
-type ConnectorRequirement struct {
-	// Name is the connector identifier (must match profile binding key)
+// IntegrationRequirement describes a required integration dependency.
+type IntegrationRequirement struct {
+	// Name is the integration identifier (must match profile binding key)
 	Name string `yaml:"name" json:"name"`
 
 	// Capabilities are optional hints about required operations
-	// Example: ["issues", "pull_requests"] for GitHub connector
+	// Example: ["issues", "pull_requests"] for GitHub integration
 	Capabilities []string `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
 
-	// Optional indicates this connector is not required for the workflow to function
-	// Missing optional connectors will cause step-level errors, not submission-time errors
+	// Optional indicates this integration is not required for the workflow to function
+	// Missing optional integrations will cause step-level errors, not submission-time errors
 	Optional bool `yaml:"optional,omitempty" json:"optional,omitempty"`
 }
 
@@ -968,16 +965,16 @@ type MCPServerRequirement struct {
 
 // Validate checks if the requirements definition is valid.
 func (r *RequirementsDefinition) Validate() error {
-	// Validate connector requirements
-	connectorNames := make(map[string]bool)
-	for i, req := range r.Connectors {
+	// Validate integration requirements
+	integrationNames := make(map[string]bool)
+	for i, req := range r.Integrations {
 		if req.Name == "" {
-			return fmt.Errorf("connector requirement %d: name is required", i)
+			return fmt.Errorf("integration requirement %d: name is required", i)
 		}
-		if connectorNames[req.Name] {
-			return fmt.Errorf("duplicate connector requirement: %s", req.Name)
+		if integrationNames[req.Name] {
+			return fmt.Errorf("duplicate integration requirement: %s", req.Name)
 		}
-		connectorNames[req.Name] = true
+		integrationNames[req.Name] = true
 	}
 
 	// Validate MCP server requirements
@@ -1133,17 +1130,22 @@ func (d *Definition) autoGenerateStepIDs() {
 
 		// Determine the base ID based on step type
 		var baseID string
-		if step.Type == StepTypeBuiltin {
-			baseID = step.BuiltinConnector + "_" + step.BuiltinOperation
-		} else if step.Type == StepTypeConnector {
-			// Connector field is in format "connector.operation", convert to "connector_operation"
-			baseID = step.Connector
-			// Replace dot with underscore
-			for j, c := range baseID {
-				if c == '.' {
-					baseID = baseID[:j] + "_" + baseID[j+1:]
-					break
+		if step.Type == StepTypeIntegration {
+			// For integration steps, use action/integration_operation format
+			if step.Action != "" {
+				baseID = step.Action + "_" + step.Operation
+			} else if step.Integration != "" {
+				// Integration field is in format "integration.operation", convert to "integration_operation"
+				baseID = step.Integration
+				// Replace dot with underscore
+				for j, c := range baseID {
+					if c == '.' {
+						baseID = baseID[:j] + "_" + baseID[j+1:]
+						break
+					}
 				}
+			} else {
+				baseID = "integration"
 			}
 		} else {
 			// For other step types (llm, parallel, condition), generate a generic ID
@@ -1294,43 +1296,43 @@ func (d *Definition) Validate() error {
 		mcpServerNames[server.Name] = true
 	}
 
-	// Validate connectors and build connector name index
-	connectorNames := make(map[string]bool)
-	for name, connector := range d.Connectors {
+	// Validate integrations and build integration name index
+	integrationNames := make(map[string]bool)
+	for name, integration := range d.Integrations {
 		// Set the name from the map key
-		connector.Name = name
-		d.Connectors[name] = connector
+		integration.Name = name
+		d.Integrations[name] = integration
 
-		if err := connector.Validate(); err != nil {
-			return fmt.Errorf("invalid connector %s: %w", name, err)
+		if err := integration.Validate(); err != nil {
+			return fmt.Errorf("invalid integration %s: %w", name, err)
 		}
-		connectorNames[name] = true
+		integrationNames[name] = true
 	}
 
-	// Validate step connector references
+	// Validate step integration references
 	for _, step := range d.Steps {
-		if step.Type == StepTypeConnector && step.Connector != "" {
-			// Parse connector.operation format
-			parts := splitConnectorReference(step.Connector)
+		if step.Type == StepTypeIntegration && step.Integration != "" {
+			// Parse integration.operation format
+			parts := splitIntegrationReference(step.Integration)
 			if len(parts) != 2 {
-				return fmt.Errorf("step %s: connector must be in format 'connector_name.operation_name', got: %s", step.ID, step.Connector)
+				return fmt.Errorf("step %s: integration must be in format 'integration_name.operation_name', got: %s", step.ID, step.Integration)
 			}
-			connectorName, operationName := parts[0], parts[1]
+			integrationName, operationName := parts[0], parts[1]
 
-			// Check connector exists
-			if !connectorNames[connectorName] {
-				return fmt.Errorf("step %s references undefined connector: %s", step.ID, connectorName)
+			// Check integration exists
+			if !integrationNames[integrationName] {
+				return fmt.Errorf("step %s references undefined integration: %s", step.ID, integrationName)
 			}
 
-			// Check operation exists (only for inline connectors, not packages)
-			connector := d.Connectors[connectorName]
-			if connector.From == "" {
-				// Inline connector - validate operation exists
-				if _, exists := connector.Operations[operationName]; !exists {
-					return fmt.Errorf("step %s references undefined operation %s in connector %s", step.ID, operationName, connectorName)
+			// Check operation exists (only for inline integrations, not packages)
+			integration := d.Integrations[integrationName]
+			if integration.From == "" {
+				// Inline integration - validate operation exists
+				if _, exists := integration.Operations[operationName]; !exists {
+					return fmt.Errorf("step %s references undefined operation %s in integration %s", step.ID, operationName, integrationName)
 				}
 			}
-			// For package connectors, we can't validate operations at definition time
+			// For package integrations, we can't validate operations at definition time
 		}
 	}
 
@@ -1351,8 +1353,8 @@ func (d *Definition) Validate() error {
 	return nil
 }
 
-// splitConnectorReference splits a connector reference like "github.create_issue" into ["github", "create_issue"]
-func splitConnectorReference(ref string) []string {
+// splitIntegrationReference splits an integration reference like "github.create_issue" into ["github", "create_issue"]
+func splitIntegrationReference(ref string) []string {
 	// Find the first dot
 	dotIndex := -1
 	for i, ch := range ref {
@@ -1408,11 +1410,10 @@ func (s *StepDefinition) Validate() error {
 
 	// Validate step type
 	validTypes := map[StepType]bool{
-		StepTypeCondition: true,
-		StepTypeLLM:       true,
-		StepTypeParallel:  true,
-		StepTypeConnector: true,
-		StepTypeBuiltin:   true,
+		StepTypeCondition:   true,
+		StepTypeLLM:         true,
+		StepTypeParallel:    true,
+		StepTypeIntegration: true,
 	}
 	if !validTypes[s.Type] {
 		return fmt.Errorf("invalid step type: %s", s.Type)
@@ -1435,30 +1436,34 @@ func (s *StepDefinition) Validate() error {
 		return fmt.Errorf("condition is required for condition step type")
 	}
 
-	// Validate connector field for connector steps
-	if s.Type == StepTypeConnector {
-		if s.Connector == "" {
-			return fmt.Errorf("connector is required for connector step type")
-		}
-		// Format validation happens at workflow level where we can check against defined connectors
-	}
+	// Validate integration field for integration steps
+	if s.Type == StepTypeIntegration {
+		// Must have either Integration (for integrations) or Action+Operation (for builtin actions)
+		hasIntegration := s.Integration != ""
+		hasAction := s.Action != "" && s.Operation != ""
 
-	// Validate builtin connector field for builtin steps
-	if s.Type == StepTypeBuiltin {
-		if s.BuiltinConnector == "" {
-			return fmt.Errorf("builtin_connector is required for builtin step type")
+		if !hasIntegration && !hasAction {
+			return fmt.Errorf("integration step requires either 'integration' field or 'action'+'operation' fields")
 		}
-		if s.BuiltinOperation == "" {
-			return fmt.Errorf("builtin_operation is required for builtin step type")
+
+		if hasIntegration && hasAction {
+			return fmt.Errorf("integration step cannot have both 'integration' and 'action' fields")
 		}
-		// Validate builtin connector name
-		validBuiltins := map[string]bool{
-			"file":  true,
-			"shell": true,
+
+		// Validate builtin action names
+		if hasAction {
+			validActions := map[string]bool{
+				"file":      true,
+				"shell":     true,
+				"http":      true,
+				"transform": true,
+				"utility":   true,
+			}
+			if !validActions[s.Action] {
+				return fmt.Errorf("invalid action: %s (must be file, shell, http, transform, or utility)", s.Action)
+			}
 		}
-		if !validBuiltins[s.BuiltinConnector] {
-			return fmt.Errorf("invalid builtin connector: %s (must be file or shell)", s.BuiltinConnector)
-		}
+		// Format validation for integration field happens at workflow level where we can check against defined integrations
 	}
 
 	// Validate error handling
@@ -1604,11 +1609,11 @@ func (m *MCPServerConfig) Validate() error {
 	return nil
 }
 
-// Validate checks if the connector definition is valid (FR8).
-func (c *ConnectorDefinition) Validate() error {
+// Validate checks if the integration definition is valid.
+func (c *IntegrationDefinition) Validate() error {
 	// Validate name (should be set from map key)
 	if c.Name == "" {
-		return fmt.Errorf("connector name is required")
+		return fmt.Errorf("integration name is required")
 	}
 
 	// Check for mutually exclusive fields: from vs inline definition
@@ -1616,21 +1621,21 @@ func (c *ConnectorDefinition) Validate() error {
 	hasInline := c.BaseURL != "" || len(c.Operations) > 0
 
 	if !hasFrom && !hasInline {
-		return fmt.Errorf("connector must specify either 'from' (package import) or inline definition (base_url + operations)")
+		return fmt.Errorf("integration must specify either 'from' (package import) or inline definition (base_url + operations)")
 	}
 
 	if hasFrom && hasInline {
-		return fmt.Errorf("connector cannot specify both 'from' and inline definition (base_url/operations)")
+		return fmt.Errorf("integration cannot specify both 'from' and inline definition (base_url/operations)")
 	}
 
-	// For inline connectors, base_url is required
+	// For inline integrations, base_url is required
 	if !hasFrom && c.BaseURL == "" {
-		return fmt.Errorf("base_url is required for inline connector definition")
+		return fmt.Errorf("base_url is required for inline integration definition")
 	}
 
-	// For inline connectors, must have at least one operation
+	// For inline integrations, must have at least one operation
 	if !hasFrom && len(c.Operations) == 0 {
-		return fmt.Errorf("inline connector must define at least one operation")
+		return fmt.Errorf("inline integration must define at least one operation")
 	}
 
 	// Validate auth if specified
@@ -2082,13 +2087,14 @@ func (t *FunctionDefinition) Validate() error {
 	return nil
 }
 
-// shorthandPattern matches connector.operation keys like "file.read" or "github.list_issues"
+// shorthandPattern matches action.operation or integration.operation keys like "file.read" or "github.list_issues"
 var shorthandPattern = regexp.MustCompile(`^([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)$`)
 
-// builtinConnectorNames lists builtin connectors that don't need connectors: config
-var builtinConnectorNames = map[string]bool{
+// builtinActionNames lists builtin actions that don't need integrations: config
+var builtinActionNames = map[string]bool{
 	"file":      true,
 	"shell":     true,
+	"http":      true,
 	"transform": true,
 	"utility":   true,
 }
@@ -2156,17 +2162,17 @@ func (s *StepDefinition) UnmarshalYAML(unmarshal func(interface{}) error) error 
 	shorthandKey, shorthandValue := findShorthandKey(raw)
 
 	if shorthandKey != "" {
-		// Parse shorthand: file.read -> connector=file, operation=read
+		// Parse shorthand: file.read -> action=file, operation=read
 		matches := shorthandPattern.FindStringSubmatch(shorthandKey)
 		if matches == nil {
 			return fmt.Errorf("invalid shorthand key format: %s", shorthandKey)
 		}
 
-		connectorName := matches[1]
+		name := matches[1]
 		operationName := matches[2]
 
-		// Determine step type
-		isBuiltin := builtinConnectorNames[connectorName]
+		// Determine if this is a builtin action or an integration
+		isBuiltin := builtinActionNames[name]
 
 		// Extract standard fields (id, condition, etc.)
 		extractStandardFields(raw, s, shorthandKey)
@@ -2177,16 +2183,17 @@ func (s *StepDefinition) UnmarshalYAML(unmarshal func(interface{}) error) error 
 			return fmt.Errorf("invalid shorthand value for %s: %w", shorthandKey, err)
 		}
 
+		// All steps use type: integration
+		s.Type = StepTypeIntegration
+		s.Inputs = inputs
+
 		if isBuiltin {
-			s.Type = StepTypeBuiltin
-			s.BuiltinConnector = connectorName
-			s.BuiltinOperation = operationName
-			s.Inputs = inputs
+			// Builtin action: set action and operation fields
+			s.Action = name
+			s.Operation = operationName
 		} else {
-			s.Type = StepTypeConnector
-			// Connector field uses format "connector_name.operation_name"
-			s.Connector = connectorName + "." + operationName
-			s.Inputs = inputs
+			// User-defined integration: set integration field
+			s.Integration = name + "." + operationName
 		}
 
 		return nil

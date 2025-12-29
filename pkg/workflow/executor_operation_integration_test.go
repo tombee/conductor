@@ -46,8 +46,8 @@ func TestConnectorStepIntegration(t *testing.T) {
 	t.Run("simple connector step", func(t *testing.T) {
 		step := &StepDefinition{
 			ID:        "get_repo",
-			Type:      StepTypeConnector,
-			Connector: "github.get_repo",
+			Type:      StepTypeIntegration,
+			Integration: "github.get_repo",
 			Inputs: map[string]interface{}{
 				"owner": "tombee",
 				"repo":  "conductor",
@@ -90,8 +90,8 @@ func TestConnectorStepIntegration(t *testing.T) {
 	t.Run("connector step error handling", func(t *testing.T) {
 		step := &StepDefinition{
 			ID:        "unknown_op",
-			Type:      StepTypeConnector,
-			Connector: "unknown.operation",
+			Type:      StepTypeIntegration,
+			Integration: "unknown.operation",
 			Inputs:    map[string]interface{}{},
 		}
 
@@ -132,8 +132,8 @@ func TestConnectorStepIntegration(t *testing.T) {
 
 		step := &StepDefinition{
 			ID:        "retry_test",
-			Type:      StepTypeConnector,
-			Connector: "test.operation",
+			Type:      StepTypeIntegration,
+			Integration: "test.operation",
 			Inputs:    map[string]interface{}{},
 			Retry: &RetryDefinition{
 				MaxAttempts:       3,
@@ -206,8 +206,8 @@ func TestConnectorStep_OutputAvailableToNextStep(t *testing.T) {
 	// Step 1: Get user data
 	step1 := &StepDefinition{
 		ID:        "get_user",
-		Type:      StepTypeConnector,
-		Connector: "github.get_user",
+		Type:      StepTypeIntegration,
+		Integration: "github.get_user",
 		Inputs: map[string]interface{}{
 			"username": "testuser",
 		},
@@ -227,8 +227,8 @@ func TestConnectorStep_OutputAvailableToNextStep(t *testing.T) {
 	// Step 2: Use step 1 output
 	step2 := &StepDefinition{
 		ID:        "notify_slack",
-		Type:      StepTypeConnector,
-		Connector: "slack.post_message",
+		Type:      StepTypeIntegration,
+		Integration: "slack.post_message",
 		Inputs: map[string]interface{}{
 			"channel": "#general",
 			"text":    "User testuser has ID 12345",
@@ -270,8 +270,8 @@ func TestConnectorStep_ErrorFlowsToOnError(t *testing.T) {
 	// Step that will fail
 	step := &StepDefinition{
 		ID:        "create_issue",
-		Type:      StepTypeConnector,
-		Connector: "github.create_issue",
+		Type:      StepTypeIntegration,
+		Integration: "github.create_issue",
 		Inputs: map[string]interface{}{
 			"title": "Test Issue",
 		},
@@ -335,8 +335,8 @@ func TestConnectorStep_WithResponseTransform(t *testing.T) {
 	// Execute connector that returns transformed response
 	step := &StepDefinition{
 		ID:        "get_items",
-		Type:      StepTypeConnector,
-		Connector: "api.list_items",
+		Type:      StepTypeIntegration,
+		Integration: "api.list_items",
 		Inputs:    map[string]interface{}{},
 	}
 
@@ -407,20 +407,20 @@ func TestConnectorStep_InParallelExecution(t *testing.T) {
 	steps := []*StepDefinition{
 		{
 			ID:        "get_github_user",
-			Type:      StepTypeConnector,
-			Connector: "github.get_user",
+			Type:      StepTypeIntegration,
+			Integration: "github.get_user",
 			Inputs:    map[string]interface{}{"username": "testuser"},
 		},
 		{
 			ID:        "get_slack_profile",
-			Type:      StepTypeConnector,
-			Connector: "slack.get_profile",
+			Type:      StepTypeIntegration,
+			Integration: "slack.get_profile",
 			Inputs:    map[string]interface{}{"user_id": "U123"},
 		},
 		{
 			ID:        "get_jira_issues",
-			Type:      StepTypeConnector,
-			Connector: "jira.get_issues",
+			Type:      StepTypeIntegration,
+			Integration: "jira.get_issues",
 			Inputs:    map[string]interface{}{"project": "TEST"},
 		},
 	}

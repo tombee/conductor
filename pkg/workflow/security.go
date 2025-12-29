@@ -81,8 +81,8 @@ func checkShellInjectionRisk(def *Definition, result *SecurityValidationResult) 
 }
 
 func checkStepShellInjection(step *StepDefinition, result *SecurityValidationResult, pattern *regexp.Regexp) {
-	// Check if this is a shell.run step (builtin connector)
-	if step.Type == StepTypeBuiltin && step.BuiltinConnector == "shell" && step.BuiltinOperation == "run" {
+	// Check if this is a shell.run step (builtin action)
+	if step.Type == StepTypeIntegration && step.Action == "shell" && step.Operation == "run" {
 		// Check if inputs contain a command as a string with template variables
 		if step.Inputs != nil {
 			if cmdVal, exists := step.Inputs["command"]; exists {
@@ -134,10 +134,10 @@ func detectPlaintextCredentials(def *Definition, result *SecurityValidationResul
 		{regexp.MustCompile(`^xai-[a-zA-Z0-9]{40,}$`), "xAI API key"},
 	}
 
-	// Check connector auth fields
-	for connectorName, connector := range def.Connectors {
-		if connector.Auth != nil {
-			auth := connector.Auth
+	// Check integration auth fields
+	for integrationName, integration := range def.Integrations {
+		if integration.Auth != nil {
+			auth := integration.Auth
 
 			// Check all auth fields that might contain credentials
 			fieldsToCheck := map[string]string{
@@ -161,7 +161,7 @@ func detectPlaintextCredentials(def *Definition, result *SecurityValidationResul
 				for _, cp := range credentialPatterns {
 					if cp.pattern.MatchString(fieldValue) {
 						result.Errors = append(result.Errors, SecurityWarning{
-							StepID:   fmt.Sprintf("connectors.%s", connectorName),
+							StepID:   fmt.Sprintf("integrations.%s", integrationName),
 							Type:     "plaintext_credential",
 							Severity: "error",
 							Message:  fmt.Sprintf("Plaintext %s detected in auth.%s", cp.description, fieldName),
@@ -173,8 +173,8 @@ func detectPlaintextCredentials(def *Definition, result *SecurityValidationResul
 									"        %s: ${%s}  # Environment variable\n"+
 									"        # OR\n"+
 									"        %s: $secret:%s  # Secrets backend",
-								connectorName, fieldName, strings.ToUpper(connectorName)+"_"+strings.ToUpper(fieldName),
-								fieldName, strings.ToLower(connectorName)+"_"+fieldName,
+								integrationName, fieldName, strings.ToUpper(integrationName)+"_"+strings.ToUpper(fieldName),
+								fieldName, strings.ToLower(integrationName)+"_"+fieldName,
 							),
 						})
 						break // Only report first matching pattern per field
@@ -186,7 +186,7 @@ func detectPlaintextCredentials(def *Definition, result *SecurityValidationResul
 					// Only add generic warning if we haven't already added a specific pattern match
 					alreadyReported := false
 					for _, warning := range result.Errors {
-						if warning.StepID == fmt.Sprintf("connectors.%s", connectorName) && warning.Type == "plaintext_credential" {
+						if warning.StepID == fmt.Sprintf("connectors.%s", integrationName) && warning.Type == "plaintext_credential" {
 							alreadyReported = true
 							break
 						}
@@ -194,7 +194,7 @@ func detectPlaintextCredentials(def *Definition, result *SecurityValidationResul
 
 					if !alreadyReported {
 						result.Errors = append(result.Errors, SecurityWarning{
-							StepID:   fmt.Sprintf("connectors.%s", connectorName),
+							StepID:   fmt.Sprintf("connectors.%s", integrationName),
 							Type:     "plaintext_credential",
 							Severity: "error",
 							Message:  fmt.Sprintf("Potential plaintext credential in auth.%s", fieldName),
@@ -202,7 +202,7 @@ func detectPlaintextCredentials(def *Definition, result *SecurityValidationResul
 								"Use environment variables or secrets:\n"+
 									"  auth:\n"+
 									"    %s: ${%s_TOKEN}",
-								fieldName, strings.ToUpper(connectorName),
+								fieldName, strings.ToUpper(integrationName),
 							),
 						})
 					}
@@ -237,7 +237,7 @@ func checkOverlyPermissivePaths(def *Definition, result *SecurityValidationResul
 
 func checkStepPermissivePaths(step *StepDefinition, result *SecurityValidationResult) {
 	// Check if this is a file connector step
-	if step.Type == StepTypeBuiltin && step.BuiltinConnector == "file" {
+	if step.Type == StepTypeIntegration && step.Action == "file" {
 		if step.Inputs != nil {
 			// Check path field
 			if pathVal, exists := step.Inputs["path"]; exists {
@@ -289,35 +289,36 @@ func isOverlyPermissivePath(path string) bool {
 	return false
 }
 
-// checkMissingAuth detects external connectors without auth configuration
+// checkMissingAuth detects external integrations without auth configuration
 func checkMissingAuth(def *Definition, result *SecurityValidationResult) {
-	builtinConnectors := map[string]bool{
+	builtinActions := map[string]bool{
 		"file":      true,
 		"shell":     true,
 		"http":      true,
 		"transform": true,
+		"utility":   true,
 	}
 
-	for connectorName, connector := range def.Connectors {
-		// Skip builtin connectors
-		if builtinConnectors[connectorName] {
+	for integrationName, integration := range def.Integrations {
+		// Skip builtin actions
+		if builtinActions[integrationName] {
 			continue
 		}
 
-		// External connectors should have auth configured
-		if connector.Auth == nil {
+		// External integrations should have auth configured
+		if integration.Auth == nil {
 			result.Warnings = append(result.Warnings, SecurityWarning{
-				StepID:   fmt.Sprintf("connectors.%s", connectorName),
+				StepID:   fmt.Sprintf("integrations.%s", integrationName),
 				Type:     "missing_auth",
 				Severity: "warning",
-				Message:  fmt.Sprintf("External connector %q has no auth configuration", connectorName),
+				Message:  fmt.Sprintf("External integration %q has no auth configuration", integrationName),
 				Suggestion: fmt.Sprintf(
 					"Consider adding authentication:\n"+
-						"  connectors:\n"+
+						"  integrations:\n"+
 						"    %s:\n"+
 						"      auth:\n"+
 						"        token: ${%s_TOKEN}",
-					connectorName, strings.ToUpper(connectorName),
+					integrationName, strings.ToUpper(integrationName),
 				),
 			})
 		}

@@ -680,7 +680,7 @@ func Default() *Config {
 							Allowlist: nil, // No restrictions - backward compatible
 						},
 						Bindings: profile.Bindings{
-							Connectors: make(map[string]profile.ConnectorBinding),
+							Integrations: make(map[string]profile.IntegrationBinding),
 							MCPServers: make(map[string]profile.MCPServerBinding),
 						},
 					},

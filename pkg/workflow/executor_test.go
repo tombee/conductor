@@ -304,9 +304,9 @@ func TestExecutor_RetryExhaustion(t *testing.T) {
 	step := &StepDefinition{
 		ID:       "step-6",
 		Name:     "failing-step",
-		Type:             StepTypeBuiltin,
-		BuiltinConnector: "shell",
-		BuiltinOperation: "run",
+		Type:             StepTypeIntegration,
+		Action: "shell",
+		Operation: "run",
 		Retry: &RetryDefinition{
 			MaxAttempts:        2,
 			BackoffBase:        1,
@@ -342,9 +342,9 @@ func TestExecutor_Timeout(t *testing.T) {
 	step := &StepDefinition{
 		ID:       "step-7",
 		Name:     "slow-step",
-		Type:             StepTypeBuiltin,
-		BuiltinConnector: "shell",
-		BuiltinOperation: "run",
+		Type:             StepTypeIntegration,
+		Action: "shell",
+		Operation: "run",
 		Timeout:  1, // 1 second timeout to trigger before tool completes
 	}
 
@@ -372,9 +372,9 @@ func TestExecutor_ErrorStrategyIgnore(t *testing.T) {
 	step := &StepDefinition{
 		ID:       "step-8",
 		Name:     "ignore-error-step",
-		Type:             StepTypeBuiltin,
-		BuiltinConnector: "shell",
-		BuiltinOperation: "run",
+		Type:             StepTypeIntegration,
+		Action: "shell",
+		Operation: "run",
 		OnError: &ErrorHandlingDefinition{
 			Strategy: ErrorStrategyIgnore,
 		},
@@ -408,9 +408,9 @@ func TestExecutor_ErrorStrategyFail(t *testing.T) {
 	step := &StepDefinition{
 		ID:       "step-9",
 		Name:     "fail-error-step",
-		Type:             StepTypeBuiltin,
-		BuiltinConnector: "shell",
-		BuiltinOperation: "run",
+		Type:             StepTypeIntegration,
+		Action: "shell",
+		Operation: "run",
 		OnError: &ErrorHandlingDefinition{
 			Strategy: ErrorStrategyFail,
 		},
@@ -440,9 +440,9 @@ func TestExecutor_ErrorStrategyFallback(t *testing.T) {
 	step := &StepDefinition{
 		ID:       "step-10",
 		Name:     "fallback-error-step",
-		Type:             StepTypeBuiltin,
-		BuiltinConnector: "shell",
-		BuiltinOperation: "run",
+		Type:             StepTypeIntegration,
+		Action: "shell",
+		Operation: "run",
 		OnError: &ErrorHandlingDefinition{
 			Strategy:     ErrorStrategyFallback,
 			FallbackStep: "fallback-step",
@@ -491,9 +491,9 @@ func TestExecutor_ActionWithoutToolRegistry(t *testing.T) {
 	step := &StepDefinition{
 		ID:       "step-12",
 		Name:     "no-registry-step",
-		Type:             StepTypeBuiltin,
-		BuiltinConnector: "file",
-		BuiltinOperation: "read",
+		Type:             StepTypeIntegration,
+		Action: "file",
+		Operation: "read",
 	}
 
 	_, err := executor.Execute(ctx, step, nil)
@@ -1003,9 +1003,9 @@ func TestExecutor_ToolStepWithoutRegistry(t *testing.T) {
 
 	step := &StepDefinition{
 		ID:       "tool-step",
-		Type:             StepTypeBuiltin,
-		BuiltinConnector: "file",
-		BuiltinOperation: "read",
+		Type:             StepTypeIntegration,
+		Action: "file",
+		Operation: "read",
 	}
 
 	_, err := executor.Execute(ctx, step, nil)

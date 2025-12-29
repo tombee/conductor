@@ -4,16 +4,16 @@ import (
 	"testing"
 )
 
-func TestConnectorDefinitionValidate(t *testing.T) {
+func TestIntegrationDefinitionValidate(t *testing.T) {
 	tests := []struct {
 		name      string
-		connector ConnectorDefinition
+		connector IntegrationDefinition
 		wantErr   bool
 		errMsg    string
 	}{
 		{
 			name: "valid inline connector",
-			connector: ConnectorDefinition{
+			connector: IntegrationDefinition{
 				Name:    "github",
 				BaseURL: "https://api.github.com",
 				Auth: &AuthDefinition{
@@ -30,7 +30,7 @@ func TestConnectorDefinitionValidate(t *testing.T) {
 		},
 		{
 			name: "valid package connector",
-			connector: ConnectorDefinition{
+			connector: IntegrationDefinition{
 				Name: "github",
 				From: "connectors/github",
 				Auth: &AuthDefinition{
@@ -41,7 +41,7 @@ func TestConnectorDefinitionValidate(t *testing.T) {
 		},
 		{
 			name: "missing name",
-			connector: ConnectorDefinition{
+			connector: IntegrationDefinition{
 				BaseURL: "https://api.github.com",
 				Operations: map[string]OperationDefinition{
 					"test": {Method: "GET", Path: "/test"},
@@ -52,7 +52,7 @@ func TestConnectorDefinitionValidate(t *testing.T) {
 		},
 		{
 			name: "missing from and inline definition",
-			connector: ConnectorDefinition{
+			connector: IntegrationDefinition{
 				Name: "test",
 			},
 			wantErr: true,
@@ -60,7 +60,7 @@ func TestConnectorDefinitionValidate(t *testing.T) {
 		},
 		{
 			name: "both from and inline definition",
-			connector: ConnectorDefinition{
+			connector: IntegrationDefinition{
 				Name:    "test",
 				From:    "connectors/test",
 				BaseURL: "https://api.test.com",
@@ -73,7 +73,7 @@ func TestConnectorDefinitionValidate(t *testing.T) {
 		},
 		{
 			name: "inline connector missing base_url",
-			connector: ConnectorDefinition{
+			connector: IntegrationDefinition{
 				Name: "test",
 				Operations: map[string]OperationDefinition{
 					"test": {Method: "GET", Path: "/test"},
@@ -84,7 +84,7 @@ func TestConnectorDefinitionValidate(t *testing.T) {
 		},
 		{
 			name: "inline connector missing operations",
-			connector: ConnectorDefinition{
+			connector: IntegrationDefinition{
 				Name:    "test",
 				BaseURL: "https://api.test.com",
 			},
@@ -93,7 +93,7 @@ func TestConnectorDefinitionValidate(t *testing.T) {
 		},
 		{
 			name: "invalid auth",
-			connector: ConnectorDefinition{
+			connector: IntegrationDefinition{
 				Name:    "test",
 				BaseURL: "https://api.test.com",
 				Auth: &AuthDefinition{
@@ -108,7 +108,7 @@ func TestConnectorDefinitionValidate(t *testing.T) {
 		},
 		{
 			name: "invalid rate limit",
-			connector: ConnectorDefinition{
+			connector: IntegrationDefinition{
 				Name:    "test",
 				BaseURL: "https://api.test.com",
 				RateLimit: &RateLimitConfig{
@@ -123,7 +123,7 @@ func TestConnectorDefinitionValidate(t *testing.T) {
 		},
 		{
 			name: "invalid operation",
-			connector: ConnectorDefinition{
+			connector: IntegrationDefinition{
 				Name:    "test",
 				BaseURL: "https://api.test.com",
 				Operations: map[string]OperationDefinition{
@@ -142,12 +142,12 @@ func TestConnectorDefinitionValidate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.connector.Validate()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ConnectorDefinition.Validate() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("IntegrationDefinition.Validate() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if err != nil && tt.errMsg != "" {
 				if !contains(err.Error(), tt.errMsg) {
-					t.Errorf("ConnectorDefinition.Validate() error = %v, want error containing %q", err, tt.errMsg)
+					t.Errorf("IntegrationDefinition.Validate() error = %v, want error containing %q", err, tt.errMsg)
 				}
 			}
 		})

@@ -199,11 +199,11 @@ func (r *Resolver) Resolve(ctx context.Context, resCtx *ResolutionContext) (*Res
 
 // resolveConnectorRequirements resolves all connector requirements.
 func (r *Resolver) resolveConnectorRequirements(ctx context.Context, resCtx *ResolutionContext, resolved *ResolvedBinding) error {
-	if resCtx.Workflow.Requires == nil || resCtx.Workflow.Requires.Connectors == nil {
+	if resCtx.Workflow.Requires == nil || resCtx.Workflow.Requires.Integrations == nil {
 		return nil
 	}
 
-	for _, req := range resCtx.Workflow.Requires.Connectors {
+	for _, req := range resCtx.Workflow.Requires.Integrations {
 		binding, source, err := r.resolveConnectorBinding(ctx, resCtx, req.Name)
 		if err != nil {
 			if req.Optional {
@@ -233,19 +233,19 @@ func (r *Resolver) resolveConnectorRequirements(ctx context.Context, resCtx *Res
 }
 
 // resolveConnectorBinding finds the connector binding following resolution order.
-func (r *Resolver) resolveConnectorBinding(ctx context.Context, resCtx *ResolutionContext, name string) (*profile.ConnectorBinding, BindingSource, error) {
+func (r *Resolver) resolveConnectorBinding(ctx context.Context, resCtx *ResolutionContext, name string) (*profile.IntegrationBinding, BindingSource, error) {
 	// 1. Check profile binding (highest priority)
-	if resCtx.Profile != nil && resCtx.Profile.Bindings.Connectors != nil {
-		if binding, exists := resCtx.Profile.Bindings.Connectors[name]; exists {
+	if resCtx.Profile != nil && resCtx.Profile.Bindings.Integrations != nil {
+		if binding, exists := resCtx.Profile.Bindings.Integrations[name]; exists {
 			return &binding, SourceProfile, nil
 		}
 	}
 
 	// 2. Check inline workflow definition (backward compatibility)
-	if resCtx.Workflow.Connectors != nil {
-		if connDef, exists := resCtx.Workflow.Connectors[name]; exists {
-			// Convert ConnectorDefinition to ConnectorBinding
-			binding := &profile.ConnectorBinding{
+	if resCtx.Workflow.Integrations != nil {
+		if connDef, exists := resCtx.Workflow.Integrations[name]; exists {
+			// Convert IntegrationDefinition to ConnectorBinding
+			binding := &profile.IntegrationBinding{
 				BaseURL: connDef.BaseURL,
 				Headers: connDef.Headers,
 			}
@@ -273,7 +273,7 @@ func (r *Resolver) resolveConnectorBinding(ctx context.Context, resCtx *Resoluti
 }
 
 // resolveConnectorSecrets resolves all secret references in a connector binding.
-func (r *Resolver) resolveConnectorSecrets(ctx context.Context, resCtx *ResolutionContext, binding *profile.ConnectorBinding) (*ResolvedConnectorBinding, error) {
+func (r *Resolver) resolveConnectorSecrets(ctx context.Context, resCtx *ResolutionContext, binding *profile.IntegrationBinding) (*ResolvedConnectorBinding, error) {
 	resolved := &ResolvedConnectorBinding{
 		BaseURL: binding.BaseURL,
 		Headers: binding.Headers,
@@ -422,8 +422,8 @@ func (r *Resolver) resolveMCPServerSecrets(ctx context.Context, resCtx *Resoluti
 // resolveInlineBindings handles workflows without requires section (backward compatibility).
 func (r *Resolver) resolveInlineBindings(ctx context.Context, resCtx *ResolutionContext, resolved *ResolvedBinding) (*ResolvedBinding, error) {
 	// Process inline connectors
-	for name, connDef := range resCtx.Workflow.Connectors {
-		binding := &profile.ConnectorBinding{
+	for name, connDef := range resCtx.Workflow.Integrations {
+		binding := &profile.IntegrationBinding{
 			BaseURL: connDef.BaseURL,
 			Headers: connDef.Headers,
 		}

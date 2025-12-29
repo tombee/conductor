@@ -27,7 +27,7 @@ func TestRequirementsDefinition_Validate(t *testing.T) {
 		{
 			name: "valid with connectors and MCP servers",
 			requires: RequirementsDefinition{
-				Connectors: []ConnectorRequirement{
+				Integrations: []IntegrationRequirement{
 					{Name: "github", Capabilities: []string{"issues", "pull_requests"}},
 					{Name: "slack", Optional: true},
 				},
@@ -40,7 +40,7 @@ func TestRequirementsDefinition_Validate(t *testing.T) {
 		{
 			name: "empty connector name",
 			requires: RequirementsDefinition{
-				Connectors: []ConnectorRequirement{
+				Integrations: []IntegrationRequirement{
 					{Name: ""},
 				},
 			},
@@ -49,7 +49,7 @@ func TestRequirementsDefinition_Validate(t *testing.T) {
 		{
 			name: "duplicate connector names",
 			requires: RequirementsDefinition{
-				Connectors: []ConnectorRequirement{
+				Integrations: []IntegrationRequirement{
 					{Name: "github"},
 					{Name: "github"},
 				},
@@ -116,19 +116,19 @@ steps:
 		t.Fatal("Requires should not be nil")
 	}
 
-	if len(def.Requires.Connectors) != 2 {
-		t.Errorf("Expected 2 connector requirements, got %d", len(def.Requires.Connectors))
+	if len(def.Requires.Integrations) != 2 {
+		t.Errorf("Expected 2 connector requirements, got %d", len(def.Requires.Integrations))
 	}
 
-	if def.Requires.Connectors[0].Name != "github" {
-		t.Errorf("Expected connector name 'github', got %q", def.Requires.Connectors[0].Name)
+	if def.Requires.Integrations[0].Name != "github" {
+		t.Errorf("Expected connector name 'github', got %q", def.Requires.Integrations[0].Name)
 	}
 
-	if len(def.Requires.Connectors[0].Capabilities) != 2 {
-		t.Errorf("Expected 2 capabilities, got %d", len(def.Requires.Connectors[0].Capabilities))
+	if len(def.Requires.Integrations[0].Capabilities) != 2 {
+		t.Errorf("Expected 2 capabilities, got %d", len(def.Requires.Integrations[0].Capabilities))
 	}
 
-	if !def.Requires.Connectors[1].Optional {
+	if !def.Requires.Integrations[1].Optional {
 		t.Error("Second connector should be optional")
 	}
 

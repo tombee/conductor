@@ -32,9 +32,9 @@ func TestCheckShellInjectionRisk(t *testing.T) {
 				Steps: []StepDefinition{
 					{
 						ID:               "run_cmd",
-						Type:             StepTypeBuiltin,
-						BuiltinConnector: "shell",
-						BuiltinOperation: "run",
+						Type:             StepTypeIntegration,
+						Action: "shell",
+						Operation: "run",
 						Inputs: map[string]interface{}{
 							"command": "git commit -m '{{.inputs.message}}'",
 						},
@@ -51,9 +51,9 @@ func TestCheckShellInjectionRisk(t *testing.T) {
 				Steps: []StepDefinition{
 					{
 						ID:               "run_cmd",
-						Type:             StepTypeBuiltin,
-						BuiltinConnector: "shell",
-						BuiltinOperation: "run",
+						Type:             StepTypeIntegration,
+						Action: "shell",
+						Operation: "run",
 						Inputs: map[string]interface{}{
 							"command": []interface{}{"git", "commit", "-m", "{{.inputs.message}}"},
 						},
@@ -68,9 +68,9 @@ func TestCheckShellInjectionRisk(t *testing.T) {
 				Steps: []StepDefinition{
 					{
 						ID:               "run_cmd",
-						Type:             StepTypeBuiltin,
-						BuiltinConnector: "shell",
-						BuiltinOperation: "run",
+						Type:             StepTypeIntegration,
+						Action: "shell",
+						Operation: "run",
 						Inputs: map[string]interface{}{
 							"command": "git status",
 						},
@@ -89,9 +89,9 @@ func TestCheckShellInjectionRisk(t *testing.T) {
 						Steps: []StepDefinition{
 							{
 								ID:               "run_cmd",
-								Type:             StepTypeBuiltin,
-								BuiltinConnector: "shell",
-								BuiltinOperation: "run",
+								Type:             StepTypeIntegration,
+								Action: "shell",
+								Operation: "run",
 								Inputs: map[string]interface{}{
 									"command": "echo {{.item}}",
 								},
@@ -110,9 +110,9 @@ func TestCheckShellInjectionRisk(t *testing.T) {
 				Steps: []StepDefinition{
 					{
 						ID:               "read_file",
-						Type:             StepTypeBuiltin,
-						BuiltinConnector: "file",
-						BuiltinOperation: "read",
+						Type:             StepTypeIntegration,
+						Action: "file",
+						Operation: "read",
 						Inputs: map[string]interface{}{
 							"path": "{{.inputs.path}}",
 						},
@@ -162,7 +162,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 		{
 			name: "GitHub token plaintext",
 			def: &Definition{
-				Connectors: map[string]ConnectorDefinition{
+				Integrations: map[string]IntegrationDefinition{
 					"github": {
 						Auth: &AuthDefinition{
 							Token: "ghp_FAKE_TEST_TOKEN_NOT_REAL_00000000000",
@@ -178,7 +178,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 		{
 			name: "OpenAI key plaintext",
 			def: &Definition{
-				Connectors: map[string]ConnectorDefinition{
+				Integrations: map[string]IntegrationDefinition{
 					"openai": {
 						Auth: &AuthDefinition{
 							Token: "sk-1234567890abcdefghijklmnopqrstuvwxyz",
@@ -194,7 +194,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 		{
 			name: "Anthropic key plaintext",
 			def: &Definition{
-				Connectors: map[string]ConnectorDefinition{
+				Integrations: map[string]IntegrationDefinition{
 					"anthropic": {
 						Auth: &AuthDefinition{
 							Token: "sk-ant-api03-FAKE_TEST_KEY_NOT_REAL_00000000000000000000000000000000000000000000000000000000000000000000000000",
@@ -210,7 +210,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 		{
 			name: "Slack bot token plaintext",
 			def: &Definition{
-				Connectors: map[string]ConnectorDefinition{
+				Integrations: map[string]IntegrationDefinition{
 					"slack": {
 						Auth: &AuthDefinition{
 							Token: "xoxb-0000000000-0000000000-FAKE_NOT_REAL_TEST",
@@ -226,7 +226,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 		{
 			name: "environment variable reference is safe",
 			def: &Definition{
-				Connectors: map[string]ConnectorDefinition{
+				Integrations: map[string]IntegrationDefinition{
 					"github": {
 						Auth: &AuthDefinition{
 							Token: "${GITHUB_TOKEN}",
@@ -239,7 +239,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 		{
 			name: "secret backend reference is safe",
 			def: &Definition{
-				Connectors: map[string]ConnectorDefinition{
+				Integrations: map[string]IntegrationDefinition{
 					"github": {
 						Auth: &AuthDefinition{
 							Token: "$secret:github_token",
@@ -252,7 +252,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 		{
 			name: "password field with plaintext",
 			def: &Definition{
-				Connectors: map[string]ConnectorDefinition{
+				Integrations: map[string]IntegrationDefinition{
 					"database": {
 						Auth: &AuthDefinition{
 							Password: "supersecret123",
@@ -268,7 +268,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 		{
 			name: "client_secret field with plaintext",
 			def: &Definition{
-				Connectors: map[string]ConnectorDefinition{
+				Integrations: map[string]IntegrationDefinition{
 					"oauth_app": {
 						Auth: &AuthDefinition{
 							ClientSecret: "secret123",
@@ -284,7 +284,7 @@ func TestDetectPlaintextCredentials(t *testing.T) {
 		{
 			name: "no auth definition",
 			def: &Definition{
-				Connectors: map[string]ConnectorDefinition{
+				Integrations: map[string]IntegrationDefinition{
 					"public_api": {},
 				},
 			},
@@ -379,9 +379,9 @@ func TestCheckOverlyPermissivePaths(t *testing.T) {
 				Steps: []StepDefinition{
 					{
 						ID:               "read_all",
-						Type:             StepTypeBuiltin,
-						BuiltinConnector: "file",
-						BuiltinOperation: "read",
+						Type:             StepTypeIntegration,
+						Action: "file",
+						Operation: "read",
 						Inputs: map[string]interface{}{
 							"path": "/",
 						},
@@ -398,9 +398,9 @@ func TestCheckOverlyPermissivePaths(t *testing.T) {
 				Steps: []StepDefinition{
 					{
 						ID:               "read_home",
-						Type:             StepTypeBuiltin,
-						BuiltinConnector: "file",
-						BuiltinOperation: "read",
+						Type:             StepTypeIntegration,
+						Action: "file",
+						Operation: "read",
 						Inputs: map[string]interface{}{
 							"path": "~",
 						},
@@ -417,9 +417,9 @@ func TestCheckOverlyPermissivePaths(t *testing.T) {
 				Steps: []StepDefinition{
 					{
 						ID:               "read_out",
-						Type:             StepTypeBuiltin,
-						BuiltinConnector: "file",
-						BuiltinOperation: "write",
+						Type:             StepTypeIntegration,
+						Action: "file",
+						Operation: "write",
 						Inputs: map[string]interface{}{
 							"path": "$out/",
 						},
@@ -436,9 +436,9 @@ func TestCheckOverlyPermissivePaths(t *testing.T) {
 				Steps: []StepDefinition{
 					{
 						ID:               "read_config",
-						Type:             StepTypeBuiltin,
-						BuiltinConnector: "file",
-						BuiltinOperation: "read",
+						Type:             StepTypeIntegration,
+						Action: "file",
+						Operation: "read",
 						Inputs: map[string]interface{}{
 							"path": "~/projects/myapp/config.json",
 						},
@@ -453,9 +453,9 @@ func TestCheckOverlyPermissivePaths(t *testing.T) {
 				Steps: []StepDefinition{
 					{
 						ID:               "run_shell",
-						Type:             StepTypeBuiltin,
-						BuiltinConnector: "shell",
-						BuiltinOperation: "run",
+						Type:             StepTypeIntegration,
+						Action: "shell",
+						Operation: "run",
 						Inputs: map[string]interface{}{
 							"command": "ls /",
 						},
@@ -474,9 +474,9 @@ func TestCheckOverlyPermissivePaths(t *testing.T) {
 						Steps: []StepDefinition{
 							{
 								ID:               "read_root",
-								Type:             StepTypeBuiltin,
-								BuiltinConnector: "file",
-								BuiltinOperation: "list",
+								Type:             StepTypeIntegration,
+								Action: "file",
+								Operation: "list",
 								Inputs: map[string]interface{}{
 									"path": "/",
 								},
@@ -560,7 +560,7 @@ func TestCheckMissingAuth(t *testing.T) {
 		{
 			name: "external connector without auth",
 			def: &Definition{
-				Connectors: map[string]ConnectorDefinition{
+				Integrations: map[string]IntegrationDefinition{
 					"github": {
 						BaseURL: "https://api.github.com",
 					},
@@ -573,7 +573,7 @@ func TestCheckMissingAuth(t *testing.T) {
 		{
 			name: "external connector with auth",
 			def: &Definition{
-				Connectors: map[string]ConnectorDefinition{
+				Integrations: map[string]IntegrationDefinition{
 					"github": {
 						BaseURL: "https://api.github.com",
 						Auth: &AuthDefinition{
@@ -587,7 +587,7 @@ func TestCheckMissingAuth(t *testing.T) {
 		{
 			name: "builtin connector without auth is okay",
 			def: &Definition{
-				Connectors: map[string]ConnectorDefinition{
+				Integrations: map[string]IntegrationDefinition{
 					"file": {
 						BaseURL: "file://",
 					},
@@ -598,7 +598,7 @@ func TestCheckMissingAuth(t *testing.T) {
 		{
 			name: "multiple connectors, one missing auth",
 			def: &Definition{
-				Connectors: map[string]ConnectorDefinition{
+				Integrations: map[string]IntegrationDefinition{
 					"github": {
 						BaseURL: "https://api.github.com",
 						Auth: &AuthDefinition{
@@ -646,7 +646,7 @@ func TestCheckMissingAuth(t *testing.T) {
 func TestValidateSecurity_Integration(t *testing.T) {
 	// Test multiple security issues in one workflow
 	def := &Definition{
-		Connectors: map[string]ConnectorDefinition{
+		Integrations: map[string]IntegrationDefinition{
 			"github": {
 				BaseURL: "https://api.github.com",
 				Auth: &AuthDefinition{
@@ -661,18 +661,18 @@ func TestValidateSecurity_Integration(t *testing.T) {
 		Steps: []StepDefinition{
 			{
 				ID:               "run_dangerous",
-				Type:             StepTypeBuiltin,
-				BuiltinConnector: "shell",
-				BuiltinOperation: "run",
+				Type:             StepTypeIntegration,
+				Action: "shell",
+				Operation: "run",
 				Inputs: map[string]interface{}{
 					"command": "rm -rf {{.inputs.path}}",
 				},
 			},
 			{
 				ID:               "read_root",
-				Type:             StepTypeBuiltin,
-				BuiltinConnector: "file",
-				BuiltinOperation: "list",
+				Type:             StepTypeIntegration,
+				Action: "file",
+				Operation: "list",
 				Inputs: map[string]interface{}{
 					"path": "/",
 				},

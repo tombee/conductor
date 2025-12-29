@@ -87,7 +87,7 @@ type Bindings struct {
 	// Connectors maps connector names to their configuration
 	// Key: connector name from workflow requires section
 	// Value: connector binding with auth and other settings
-	Connectors map[string]ConnectorBinding `yaml:"connectors,omitempty" json:"connectors,omitempty"`
+	Integrations map[string]IntegrationBinding `yaml:"connectors,omitempty" json:"connectors,omitempty"`
 
 	// MCPServers maps MCP server names to their configuration
 	// Key: MCP server name from workflow requires section
@@ -95,8 +95,8 @@ type Bindings struct {
 	MCPServers map[string]MCPServerBinding `yaml:"mcp_servers,omitempty" json:"mcp_servers,omitempty"`
 }
 
-// ConnectorBinding provides runtime configuration for a connector.
-type ConnectorBinding struct {
+// IntegrationBinding provides runtime configuration for a connector.
+type IntegrationBinding struct {
 	// Auth contains authentication credentials
 	// Can reference secrets: ${GITHUB_TOKEN}, env:API_KEY, file:/path/to/secret
 	Auth AuthBinding `yaml:"auth,omitempty" json:"auth,omitempty"`

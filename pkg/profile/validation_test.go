@@ -89,7 +89,7 @@ func TestProfile_Validate(t *testing.T) {
 				Name:        "prod",
 				Description: "Production environment",
 				Bindings: Bindings{
-					Connectors: map[string]ConnectorBinding{
+					Connectors: map[string]IntegrationBinding{
 						"github": {
 							Auth: AuthBinding{
 								Token: "${GITHUB_TOKEN}",

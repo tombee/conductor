@@ -393,12 +393,12 @@ func extractModelTiers(def *workflow.Definition) []string {
 
 // extractConnectorNames extracts the names of connectors defined in the workflow
 func extractConnectorNames(def *workflow.Definition) []string {
-	if def == nil || len(def.Connectors) == 0 {
+	if def == nil || len(def.Integrations) == 0 {
 		return nil
 	}
 
-	names := make([]string, 0, len(def.Connectors))
-	for name := range def.Connectors {
+	names := make([]string, 0, len(def.Integrations))
+	for name := range def.Integrations {
 		names = append(names, name)
 	}
 	return names

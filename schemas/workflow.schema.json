@@ -73,11 +73,11 @@
         "$ref": "#/$defs/function"
       }
     },
-    "connectors": {
+    "integrations": {
       "type": "object",
       "description": "Declarative definitions for service integrations (GitHub, Slack, etc). Builtin actions (file, shell, http, transform) work without configuration.",
       "additionalProperties": {
-        "$ref": "#/$defs/connector"
+        "$ref": "#/$defs/integration"
       }
     },
     "mcp_servers": {
@@ -282,24 +282,30 @@
         },
         "type": {
           "type": "string",
-          "enum": ["llm", "parallel", "condition", "connector"],
-          "description": "Step type: 'llm' for LLM calls, 'parallel' for concurrent execution, 'condition' for branching. 'connector' type (kept for backward compatibility) is auto-detected from shorthand syntax (action.operation: or integration.operation:) and rarely specified explicitly."
+          "enum": ["llm", "parallel", "condition", "integration"],
+          "description": "Step type: 'llm' for LLM calls, 'parallel' for concurrent execution, 'condition' for branching, 'integration' for actions and integrations. Usually auto-detected from shorthand syntax (action.operation: or integration.operation:)."
         },
         "agent": {
           "type": "string",
           "description": "References a named agent definition for provider selection. The agent's preferences and capability requirements will be used for LLM provider resolution."
         },
-        "connector": {
+        "integration": {
           "type": "string",
-          "description": "Action or integration name (e.g., 'github', 'slack', 'file', 'shell'). Auto-extracted from shorthand syntax. Field name kept for backward compatibility.",
+          "description": "Integration reference in format 'name.operation' (e.g., 'github.create_issue', 'slack.send_message'). Auto-extracted from shorthand syntax.",
+          "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$",
+          "examples": ["github.create_issue", "slack.send_message", "jira.create_ticket"]
+        },
+        "action": {
+          "type": "string",
+          "description": "Builtin action name (e.g., 'file', 'shell', 'http', 'transform', 'utility'). Used with 'operation' field for builtin actions.",
           "pattern": "^[a-z][a-z0-9_]*$",
-          "examples": ["github", "slack", "file", "shell", "http", "transform"]
+          "examples": ["file", "shell", "http", "transform", "utility"]
         },
         "operation": {
           "type": "string",
-          "description": "Operation to execute on the action or integration (e.g., 'create_issue', 'read', 'run'). Auto-extracted from shorthand syntax.",
+          "description": "Operation to execute on the builtin action (e.g., 'read', 'write', 'run'). Used with 'action' field.",
           "pattern": "^[a-z][a-z0-9_]*$",
-          "examples": ["create_issue", "read", "write", "run", "get", "post"]
+          "examples": ["read", "write", "run", "get", "post", "parse_json"]
         },
         "inputs": {
           "type": "object",
@@ -436,12 +442,15 @@
           "if": {
             "properties": {
               "type": {
-                "const": "connector"
+                "const": "integration"
               }
             }
           },
           "then": {
-            "required": ["connector", "operation"]
+            "anyOf": [
+              {"required": ["integration"]},
+              {"required": ["action", "operation"]}
+            ]
           }
         }
       ],
@@ -689,15 +698,15 @@
         }
       ]
     },
-    "connector": {
+    "integration": {
       "type": "object",
       "required": ["from"],
-      "description": "Declarative definition for external service integrations. Integrations expose operations that can be called from workflow steps using shorthand syntax. Field name kept for backward compatibility.",
+      "description": "Declarative definition for external service integrations. Integrations expose operations that can be called from workflow steps using shorthand syntax.",
       "properties": {
         "from": {
           "type": "string",
-          "description": "Integration package source. Can be a local path (connectors/github) or future package reference.",
-          "examples": ["connectors/github", "connectors/slack", "connectors/jira"]
+          "description": "Integration package source. Can be a local path (integrations/github) or future package reference.",
+          "examples": ["integrations/github", "integrations/slack", "integrations/jira"]
         },
         "auth": {
           "type": "object",

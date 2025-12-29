@@ -14,7 +14,7 @@ func TestValidateExpressionInjection(t *testing.T) {
 			name: "safe literal expression",
 			step: &StepDefinition{
 				ID:   "test",
-				Type: StepTypeBuiltin,
+				Type: StepTypeIntegration,
 				Inputs: map[string]interface{}{
 					"expr": ".items[0].name",
 				},
@@ -25,7 +25,7 @@ func TestValidateExpressionInjection(t *testing.T) {
 			name: "safe expression with functions",
 			step: &StepDefinition{
 				ID:   "test",
-				Type: StepTypeBuiltin,
+				Type: StepTypeIntegration,
 				Inputs: map[string]interface{}{
 					"expr": "map(.price) | add",
 				},
@@ -36,7 +36,7 @@ func TestValidateExpressionInjection(t *testing.T) {
 			name: "injection attempt with template expression",
 			step: &StepDefinition{
 				ID:   "test",
-				Type: StepTypeBuiltin,
+				Type: StepTypeIntegration,
 				Inputs: map[string]interface{}{
 					"expr": ".items | map({{.malicious}})",
 				},
@@ -47,7 +47,7 @@ func TestValidateExpressionInjection(t *testing.T) {
 			name: "injection attempt with workflow variable",
 			step: &StepDefinition{
 				ID:   "test",
-				Type: StepTypeBuiltin,
+				Type: StepTypeIntegration,
 				Inputs: map[string]interface{}{
 					"expr": "{{.steps.user_input.output}}",
 				},
@@ -58,7 +58,7 @@ func TestValidateExpressionInjection(t *testing.T) {
 			name: "step without expr field",
 			step: &StepDefinition{
 				ID:   "test",
-				Type: StepTypeBuiltin,
+				Type: StepTypeIntegration,
 				Inputs: map[string]interface{}{
 					"data": "some data",
 				},
@@ -69,7 +69,7 @@ func TestValidateExpressionInjection(t *testing.T) {
 			name: "step without inputs",
 			step: &StepDefinition{
 				ID:   "test",
-				Type: StepTypeBuiltin,
+				Type: StepTypeIntegration,
 			},
 			wantErr: false,
 		},
@@ -77,7 +77,7 @@ func TestValidateExpressionInjection(t *testing.T) {
 			name: "non-string expr (handled elsewhere)",
 			step: &StepDefinition{
 				ID:   "test",
-				Type: StepTypeBuiltin,
+				Type: StepTypeIntegration,
 				Inputs: map[string]interface{}{
 					"expr": 123,
 				},
@@ -88,7 +88,7 @@ func TestValidateExpressionInjection(t *testing.T) {
 			name: "expression with only opening brackets",
 			step: &StepDefinition{
 				ID:   "test",
-				Type: StepTypeBuiltin,
+				Type: StepTypeIntegration,
 				Inputs: map[string]interface{}{
 					"expr": ".items | select(.name == \"{{\")",
 				},
@@ -99,7 +99,7 @@ func TestValidateExpressionInjection(t *testing.T) {
 			name: "expression with only closing brackets",
 			step: &StepDefinition{
 				ID:   "test",
-				Type: StepTypeBuiltin,
+				Type: StepTypeIntegration,
 				Inputs: map[string]interface{}{
 					"expr": ".items | select(.name == \"}}\")",
 				},

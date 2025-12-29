@@ -153,7 +153,7 @@ func (p *Profile) Validate() error {
 // Validate checks if Bindings are valid.
 func (b *Bindings) Validate() error {
 	// Validate connector bindings
-	for name, binding := range b.Connectors {
+	for name, binding := range b.Integrations {
 		if name == "" {
 			return &ValidationError{
 				Field:   "connectors",
@@ -181,8 +181,8 @@ func (b *Bindings) Validate() error {
 	return nil
 }
 
-// Validate checks if a ConnectorBinding is valid.
-func (c *ConnectorBinding) Validate() error {
+// Validate checks if a IntegrationBinding is valid.
+func (c *IntegrationBinding) Validate() error {
 	// Auth validation
 	if err := c.Auth.Validate(); err != nil {
 		return fmt.Errorf("auth: %w", err)

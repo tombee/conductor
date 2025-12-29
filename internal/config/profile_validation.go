@@ -101,7 +101,7 @@ func ValidateProfiles(workspaces map[string]Workspace) ([]string, []string, erro
 			}
 
 			// Validate connector bindings
-			for connectorName, binding := range prof.Bindings.Connectors {
+			for connectorName, binding := range prof.Bindings.Integrations {
 				connectorPath := fmt.Sprintf("%s.bindings.connectors.%s", profilePath, connectorName)
 				if err := validateConnectorBinding(connectorPath, binding); err != nil {
 					errors = append(errors, err.Error())
@@ -130,7 +130,7 @@ func detectPlaintextCredentials(profilePath string, prof profile.Profile) []stri
 	var warnings []string
 
 	// Check connector auth fields
-	for connectorName, binding := range prof.Bindings.Connectors {
+	for connectorName, binding := range prof.Bindings.Integrations {
 		credPath := fmt.Sprintf("%s.bindings.connectors.%s.auth", profilePath, connectorName)
 
 		// Check token
@@ -228,7 +228,7 @@ func validateAllowlistPattern(pattern string) error {
 }
 
 // validateConnectorBinding validates a connector binding.
-func validateConnectorBinding(path string, binding profile.ConnectorBinding) error {
+func validateConnectorBinding(path string, binding profile.IntegrationBinding) error {
 	// If basic auth is used, both username and password should be present
 	if binding.Auth.Username != "" && binding.Auth.Password == "" {
 		return fmt.Errorf("%s: basic auth requires both username and password", path)

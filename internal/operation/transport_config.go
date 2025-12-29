@@ -9,8 +9,8 @@ import (
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
-// toHTTPTransportConfig converts a ConnectorDefinition to HTTPTransportConfig.
-func toHTTPTransportConfig(def *workflow.ConnectorDefinition) *transport.HTTPTransportConfig {
+// toHTTPTransportConfig converts a IntegrationDefinition to HTTPTransportConfig.
+func toHTTPTransportConfig(def *workflow.IntegrationDefinition) *transport.HTTPTransportConfig {
 	config := &transport.HTTPTransportConfig{
 		BaseURL: def.BaseURL,
 		Timeout: 30 * time.Second, // Default timeout
@@ -69,8 +69,8 @@ func toAuthConfig(auth *workflow.AuthDefinition) *transport.AuthConfig {
 	return authConfig
 }
 
-// toAWSTransportConfig converts a ConnectorDefinition to AWSTransportConfig.
-func toAWSTransportConfig(def *workflow.ConnectorDefinition) (*transport.AWSTransportConfig, error) {
+// toAWSTransportConfig converts a IntegrationDefinition to AWSTransportConfig.
+func toAWSTransportConfig(def *workflow.IntegrationDefinition) (*transport.AWSTransportConfig, error) {
 	if def.AWS == nil {
 		return nil, fmt.Errorf("aws configuration required for aws_sigv4 transport")
 	}
@@ -85,8 +85,8 @@ func toAWSTransportConfig(def *workflow.ConnectorDefinition) (*transport.AWSTran
 	return config, nil
 }
 
-// toOAuth2TransportConfig converts a ConnectorDefinition to OAuth2TransportConfig.
-func toOAuth2TransportConfig(def *workflow.ConnectorDefinition) (*transport.OAuth2TransportConfig, error) {
+// toOAuth2TransportConfig converts a IntegrationDefinition to OAuth2TransportConfig.
+func toOAuth2TransportConfig(def *workflow.IntegrationDefinition) (*transport.OAuth2TransportConfig, error) {
 	if def.OAuth2 == nil {
 		return nil, fmt.Errorf("oauth2 configuration required for oauth2 transport")
 	}
