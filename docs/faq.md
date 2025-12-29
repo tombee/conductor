@@ -214,7 +214,7 @@ webhooks:
     workflow: workflows/pr-review.yaml
 ```
 
-See [Daemon Mode](building-workflows/daemon-mode.md) and [Deployment Guide](production/deployment.md).
+See [Daemon Mode](building-workflows/controller.md) and [Deployment Guide](production/deployment.md).
 
 ### Can I run Conductor in production?
 

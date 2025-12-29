@@ -631,6 +631,6 @@ curl -X POST https://api.github.com/repos/org/repo/hooks \
 ## See Also
 
 - [API Reference](../reference/api.md) - Complete API documentation
-- [Daemon Mode](daemon-mode.md) - Running Conductor as a service
+- [Daemon Mode](controller.md) - Running Conductor as a service
 - [Profiles](profiles.md) - Runtime configuration with profiles
 - [Workflow Schema](../reference/workflow-schema.md) - Workflow input/output definitions

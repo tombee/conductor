@@ -552,7 +552,7 @@ func TestPublicAPIConfig(t *testing.T) {
 				c.Controller.Listen.PublicAPI.TCP = ""
 			},
 			wantErr: true,
-			errText: "daemon.listen.public_api.tcp is required when public_api.enabled is true",
+			errText: "controller.listen.public_api.tcp is required when public_api.enabled is true",
 		},
 		{
 			name: "public API disabled with TCP address",
@@ -615,7 +615,7 @@ func TestPublicAPIFromFile(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	yamlContent := `
-daemon:
+controller:
   listen:
     socket_path: /tmp/conductor.sock
     tcp_addr: :9000

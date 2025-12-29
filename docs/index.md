@@ -174,7 +174,7 @@ Conductor prompts you for inputs. In seconds, you'll get a complete song with ge
 - [Performance](guides/performance.md) — Speed and cost optimization
 - [Debugging](guides/debugging.md) — Troubleshoot workflow issues
 - [Testing](guides/testing.md) — Validate and test workflows
-- [Daemon Mode](guides/daemon-mode.md) — Run as a service
+- [Daemon Mode](guides/controller.md) — Run as a service
 
 ### Reference
 

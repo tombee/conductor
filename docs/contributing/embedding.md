@@ -35,7 +35,7 @@ Most users should interact with Conductor through the CLI and daemon (`conductor
 - Consistent state management across restarts
 - API access for community tools
 
-See [Daemon Mode](../guides/daemon-mode.md) for more on the controller architecture.
+See [Daemon Mode](../guides/controller.md) for more on the controller architecture.
 :::
 
 

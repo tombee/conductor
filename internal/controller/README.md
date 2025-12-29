@@ -1,12 +1,12 @@
-# internal/daemon
+# internal/controller
 
-The daemon package provides Conductor's persistent server process (`conductord`).
+The controller package provides Conductor's persistent server process.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                           Daemon                                 │
+│                         Controller                              │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐ │
@@ -36,8 +36,8 @@ The daemon package provides Conductor's persistent server process (`conductord`)
 
 | Package | Purpose |
 |---------|---------|
-| `daemon.go` | Main Daemon struct - lifecycle and component wiring |
-| `runner/` | Workflow execution engine with checkpointing |
+| `controller.go` | Main Controller struct - lifecycle and component wiring |
+| `runner/` | Workflow executor with checkpointing |
 | `backend/` | Run state persistence (memory, postgres) |
 | `api/` | REST API handlers for runs, triggers, schedules |
 
@@ -57,7 +57,7 @@ The daemon package provides Conductor's persistent server process (`conductord`)
 | `listener/` | Unix socket and TCP listener setup |
 | `leader/` | Leader election for distributed mode |
 | `checkpoint/` | Run state checkpointing for recovery |
-| `config/` | Daemon-specific configuration |
+| `config/` | Controller-specific configuration |
 
 ### Integrations
 
@@ -70,19 +70,19 @@ The daemon package provides Conductor's persistent server process (`conductord`)
 
 ## Data Flow
 
-1. **API Request → Runner**
+1. **API Request -> Runner**
    - Client sends POST to `/v1/trigger/{workflow}`
    - API handler loads workflow YAML
    - Runner.Submit() creates run with pending status
    - Semaphore controls concurrency
 
-2. **Webhook → Runner**
+2. **Webhook -> Runner**
    - External service sends POST to `/webhooks/{path}`
    - Webhook router matches route, verifies signature
    - Maps payload to workflow inputs
    - Runner.Submit() creates run
 
-3. **Scheduler → Runner**
+3. **Scheduler -> Runner**
    - Cron job fires based on schedule
    - Scheduler loads workflow
    - Runner.Submit() creates run
@@ -95,10 +95,10 @@ The daemon package provides Conductor's persistent server process (`conductord`)
 
 ## Configuration
 
-Key configuration options in `config.Config.Daemon`:
+Key configuration options in `config.Config.Controller`:
 
 ```yaml
-daemon:
+controller:
   listen:
     socket_path: /var/run/conductor.sock
     # OR

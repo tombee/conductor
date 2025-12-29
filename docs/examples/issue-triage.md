@@ -412,4 +412,4 @@ Full workflow definition: [examples/issue-triage/workflow.yaml](https://github.c
 
 - [Sequential Processing Pattern](../building-workflows/patterns.md#sequential-processing)
 - [Structured JSON Output](../reference/workflow-schema.md#response-format)
-- [GitHub Actions Integration](../building-workflows/daemon-mode.md#github-webhooks)
+- [GitHub Actions Integration](../building-workflows/controller.md#github-webhooks)

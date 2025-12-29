@@ -215,4 +215,4 @@ Adapt the `process_event` step for your use case:
 
 - [Webhook Receivers Recipe](../../../docs/recipes/automation/webhooks.md)
 - [CLI Scripting Recipe](../../../docs/recipes/automation/cli-scripting.md)
-- [Daemon Mode - Webhooks](../../../docs/guides/daemon-mode.md#webhooks)
+- [Daemon Mode - Webhooks](../../../docs/guides/controller.md#webhooks)

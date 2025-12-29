@@ -465,4 +465,4 @@ Full workflow definition: [examples/iac-review/workflow.yaml](https://github.com
 - [Sequential Processing Pattern](../building-workflows/patterns.md#sequential-processing)
 - [Conditional Execution](../building-workflows/flow-control.md#conditional-execution)
 - [Error Handling](../building-workflows/error-handling.md)
-- [CI/CD Integration](../building-workflows/daemon-mode.md)
+- [CI/CD Integration](../building-workflows/controller.md)

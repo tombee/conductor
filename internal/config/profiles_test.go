@@ -199,9 +199,9 @@ workspaces:
 				profile := ws.Profiles["custom"]
 				integration := profile.Bindings.Integrations["api"]
 				assert.Equal(t, "https://api.example.com", integration.BaseURL)
-				assert.Equal(t, "https://api.example.com", integration.Auth.Header)
-				assert.Equal(t, "https://api.example.com", integration.Auth.Value)
-				assert.Equal(t, "https://api.example.com", integration.Headers["X-Custom-Header"])
+				assert.Equal(t, "X-API-Key", integration.Auth.Header)
+				assert.Equal(t, "${API_KEY}", integration.Auth.Value)
+				assert.Equal(t, "custom-value", integration.Headers["X-Custom-Header"])
 			},
 		},
 	}

@@ -588,6 +588,6 @@ secret_providers:
 
 ## See Also
 
-- [Daemon Mode Guide](daemon-mode.md) - Running workflows via controller
+- [Daemon Mode Guide](controller.md) - Running workflows via controller
 - [Error Handling](error-handling.md) - Troubleshooting profile errors
 - [Security](../operations/security.md) - Security best practices

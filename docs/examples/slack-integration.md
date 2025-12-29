@@ -382,4 +382,4 @@ Full workflow definition: [examples/slack-integration/workflow.yaml](https://git
 - [Slack Block Kit](https://api.slack.com/block-kit) - Rich message formatting
 - [Slack mrkdwn](https://api.slack.com/reference/surfaces/formatting) - Text formatting reference
 - [Workflow Patterns](../building-workflows/patterns.md#sequential-processing)
-- [Daemon Mode](../building-workflows/daemon-mode.md) - Automated notifications
+- [Daemon Mode](../building-workflows/controller.md) - Automated notifications

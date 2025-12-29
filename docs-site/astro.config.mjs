@@ -49,7 +49,7 @@ export default defineConfig({
             { label: 'Debugging', slug: 'building-workflows/debugging' },
             { label: 'Performance', slug: 'building-workflows/performance' },
             { label: 'Profiles', slug: 'building-workflows/profiles' },
-            { label: 'Daemon Mode', slug: 'building-workflows/daemon-mode' },
+            { label: 'Controller', slug: 'building-workflows/controller' },
             { label: 'Endpoints', slug: 'building-workflows/endpoints' },
           ],
         },

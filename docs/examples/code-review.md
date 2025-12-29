@@ -307,4 +307,4 @@ Full workflow definition: [examples/code-review/workflow.yaml](https://github.co
 
 - [Parallel Execution Pattern](../building-workflows/patterns.md#parallel-execution)
 - [Error Handling](../building-workflows/error-handling.md)
-- [GitHub Integration Guide](../building-workflows/daemon-mode.md#github-webhooks)
+- [GitHub Integration Guide](../building-workflows/controller.md#github-webhooks)
