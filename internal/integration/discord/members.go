@@ -61,7 +61,7 @@ func (c *DiscordIntegration) listMembers(ctx context.Context, inputs map[string]
 		}
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"members": memberList,
 	}), nil
@@ -107,7 +107,7 @@ func (c *DiscordIntegration) getMember(ctx context.Context, inputs map[string]in
 		}
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"user":      userData,
 		"nick":      member.Nick,

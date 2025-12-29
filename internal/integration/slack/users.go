@@ -97,7 +97,7 @@ func (c *SlackIntegration) getUser(ctx context.Context, inputs map[string]interf
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	result := map[string]interface{}{
 		"id":        userResp.User.ID,
 		"name":      userResp.User.Name,

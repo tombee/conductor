@@ -71,7 +71,7 @@ func NewDatadogIntegration(config *api.ConnectorConfig) (operation.Connector, er
 	return integration, nil
 }
 
-// Name returns the connector identifier.
+// Name returns the integration identifier.
 func (d *DatadogIntegration) Name() string {
 	return d.name
 }

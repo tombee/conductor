@@ -77,7 +77,7 @@ func (c *JiraIntegration) createIssue(ctx context.Context, inputs map[string]int
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"id":   issue.ID,
 		"key":  issue.Key,
@@ -352,7 +352,7 @@ func (c *JiraIntegration) addComment(ctx context.Context, inputs map[string]inte
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"id":      comment.ID,
 		"self":    comment.Self,
@@ -477,7 +477,7 @@ func (c *JiraIntegration) searchIssues(ctx context.Context, inputs map[string]in
 		issues[i] = issueMap
 	}
 
-	// Return connector result with pagination info
+	// Return operation result with pagination info
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"issues":     issues,
 		"startAt":    searchResults.StartAt,

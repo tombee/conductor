@@ -1105,7 +1105,7 @@ func (d *Definition) ApplyDefaults() error {
 // 1. First pass: collect all explicit IDs
 // 2. Second pass: generate auto-IDs, skipping numbers that would collide
 //
-// Auto-ID format: {connector}_{operation}_{N}
+// Auto-ID format: {provider}_{operation}_{N}
 // Example: file_read_1, github_create_issue_2
 func (d *Definition) autoGenerateStepIDs() {
 	// First pass: collect all explicit IDs
@@ -1116,7 +1116,7 @@ func (d *Definition) autoGenerateStepIDs() {
 		}
 	}
 
-	// Track counters for each connector.operation combination
+	// Track counters for each provider.operation combination
 	counters := make(map[string]int)
 
 	// Second pass: generate auto-IDs for steps without explicit IDs
@@ -2213,7 +2213,7 @@ func (s *StepDefinition) UnmarshalYAML(unmarshal func(interface{}) error) error 
 	return nil
 }
 
-// findShorthandKey looks for a connector.operation key in the map
+// findShorthandKey looks for a provider.operation key in the map
 func findShorthandKey(raw map[string]interface{}) (string, interface{}) {
 	for key, value := range raw {
 		if shorthandPattern.MatchString(key) {

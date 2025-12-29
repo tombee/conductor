@@ -62,7 +62,7 @@ func NewCloudWatchIntegration(config *api.ConnectorConfig) (operation.Connector,
 	}, nil
 }
 
-// Name returns the connector identifier.
+// Name returns the integration identifier.
 func (c *CloudWatchIntegration) Name() string {
 	return c.name
 }

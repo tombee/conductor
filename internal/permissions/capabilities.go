@@ -78,21 +78,21 @@ var CapabilityRegistry = map[string]*ProviderCapabilities{
 		Capabilities: map[ProviderCapability]bool{
 			CapTools: true,
 		},
-		Notes: "Anthropic Claude supports tool filtering via the tools array in API requests. Path, network, secret, shell, and env controls must be enforced at the connector level.",
+		Notes: "Anthropic Claude supports tool filtering via the tools array in API requests. Path, network, secret, shell, and env controls must be enforced at the integration level.",
 	},
 	"openai": {
 		ProviderName: "openai",
 		Capabilities: map[ProviderCapability]bool{
 			CapTools: true,
 		},
-		Notes: "OpenAI supports tool filtering via the tools array in API requests. Path, network, secret, shell, and env controls must be enforced at the connector level.",
+		Notes: "OpenAI supports tool filtering via the tools array in API requests. Path, network, secret, shell, and env controls must be enforced at the integration level.",
 	},
 	"ollama": {
 		ProviderName: "ollama",
 		Capabilities: map[ProviderCapability]bool{
 			CapTools: true,
 		},
-		Notes: "Ollama supports tool filtering via the tools array in API requests. Path, network, secret, shell, and env controls must be enforced at the connector level.",
+		Notes: "Ollama supports tool filtering via the tools array in API requests. Path, network, secret, shell, and env controls must be enforced at the integration level.",
 	},
 	"aider": {
 		ProviderName: "aider",
@@ -107,7 +107,7 @@ var CapabilityRegistry = map[string]*ProviderCapabilities{
 		Capabilities: map[ProviderCapability]bool{
 			CapTools: true,
 		},
-		Notes: "Codex CLI supports tool filtering. Path, network, secret, shell, and env controls must be enforced at the connector level.",
+		Notes: "Codex CLI supports tool filtering. Path, network, secret, shell, and env controls must be enforced at the integration level.",
 	},
 	"cursor": {
 		ProviderName: "cursor",
@@ -122,7 +122,7 @@ var CapabilityRegistry = map[string]*ProviderCapabilities{
 		Capabilities: map[ProviderCapability]bool{
 			CapTools: true,
 		},
-		Notes: "Gemini CLI supports tool filtering via function calling. Path, network, secret, shell, and env controls must be enforced at the connector level.",
+		Notes: "Gemini CLI supports tool filtering via function calling. Path, network, secret, shell, and env controls must be enforced at the integration level.",
 	},
 	"claude-code": {
 		ProviderName: "claude-code",

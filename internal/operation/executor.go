@@ -69,36 +69,36 @@ func parseRetryAfter(value string) int {
 	return 0
 }
 
-// httpExecutor handles HTTP request execution for connector operations.
+// httpExecutor handles HTTP request execution for integration operations.
 type httpExecutor struct {
-	connector     *httpConnector
+	integration   *httpConnector
 	operation     *workflow.OperationDefinition
 	operationName string
 	rateLimiter   *RateLimiter
 }
 
 // newHTTPExecutor creates a new HTTP executor for an operation.
-func newHTTPExecutor(connector *httpConnector, operationName string) (*httpExecutor, error) {
-	op, exists := connector.def.Operations[operationName]
+func newHTTPExecutor(integration *httpConnector, operationName string) (*httpExecutor, error) {
+	op, exists := integration.def.Operations[operationName]
 	if !exists {
 		return nil, &Error{
 			Type:    ErrorTypeValidation,
-			Message: fmt.Sprintf("operation %q not found in connector %q", operationName, connector.name),
+			Message: fmt.Sprintf("operation %q not found in integration %q", operationName, integration.name),
 		}
 	}
 
 	// Create rate limiter if configured
 	var rateLimiter *RateLimiter
-	if connector.def.RateLimit != nil {
+	if integration.def.RateLimit != nil {
 		stateFile := ""
-		if connector.config.StateFilePath != "" {
-			stateFile = fmt.Sprintf("%s/%s.json", connector.config.StateFilePath, connector.name)
+		if integration.config.StateFilePath != "" {
+			stateFile = fmt.Sprintf("%s/%s.json", integration.config.StateFilePath, integration.name)
 		}
-		rateLimiter = NewRateLimiter(connector.def.RateLimit, stateFile)
+		rateLimiter = NewRateLimiter(integration.def.RateLimit, stateFile)
 	}
 
 	return &httpExecutor{
-		connector:     connector,
+		integration:   integration,
 		operation:     &op,
 		operationName: operationName,
 		rateLimiter:   rateLimiter,
@@ -114,7 +114,7 @@ func (e *httpExecutor) buildTransportRequest(ctx context.Context, inputs map[str
 	}
 
 	// Validate URL for SSRF protection
-	if err := ValidateURL(requestURL, e.connector.config.AllowedHosts, e.connector.config.BlockedHosts); err != nil {
+	if err := ValidateURL(requestURL, e.integration.config.AllowedHosts, e.integration.config.BlockedHosts); err != nil {
 		return nil, err
 	}
 
@@ -137,8 +137,8 @@ func (e *httpExecutor) buildTransportRequest(ctx context.Context, inputs map[str
 	// Build headers map
 	headers := make(map[string]string)
 
-	// Apply connector-level headers
-	for key, value := range e.connector.def.Headers {
+	// Apply integration-level headers
+	for key, value := range e.integration.def.Headers {
 		if isSensitiveHeader(key) {
 			return nil, &Error{
 				Type:    ErrorTypeValidation,
@@ -149,19 +149,19 @@ func (e *httpExecutor) buildTransportRequest(ctx context.Context, inputs map[str
 		if err != nil {
 			return nil, &Error{
 				Type:    ErrorTypeValidation,
-				Message: fmt.Sprintf("connector header %q expansion failed: %v", key, err),
+				Message: fmt.Sprintf("integration header %q expansion failed: %v", key, err),
 			}
 		}
 		if err := sanitizeHeaderValue(key, expandedValue); err != nil {
 			return nil, &Error{
 				Type:    ErrorTypeValidation,
-				Message: fmt.Sprintf("connector header validation failed: %v", err),
+				Message: fmt.Sprintf("integration header validation failed: %v", err),
 			}
 		}
 		headers[key] = expandedValue
 	}
 
-	// Apply operation-level headers (override connector headers)
+	// Apply operation-level headers (override integration headers)
 	for key, value := range e.operation.Headers {
 		if isSensitiveHeader(key) {
 			return nil, &Error{
@@ -186,9 +186,9 @@ func (e *httpExecutor) buildTransportRequest(ctx context.Context, inputs map[str
 	}
 
 	// Apply authentication headers if auth is not handled by transport.
-	// This maintains backward compatibility with connectors that use plain auth values.
+	// This maintains backward compatibility with integrations that use plain auth values.
 	// When auth uses ${ENV_VAR} syntax, it's handled by the transport layer.
-	if e.connector.def.Auth != nil && !usesEnvVarSyntax(e.connector.def.Auth) {
+	if e.integration.def.Auth != nil && !usesEnvVarSyntax(e.integration.def.Auth) {
 		// Create a temporary HTTP request to apply auth headers
 		tempReq, err := http.NewRequest(e.operation.Method, requestURL, nil)
 		if err != nil {
@@ -198,7 +198,7 @@ func (e *httpExecutor) buildTransportRequest(ctx context.Context, inputs map[str
 			}
 		}
 
-		if err := ApplyAuth(tempReq, e.connector.def.Auth); err != nil {
+		if err := ApplyAuth(tempReq, e.integration.def.Auth); err != nil {
 			return nil, &Error{
 				Type:    ErrorTypeAuth,
 				Message: fmt.Sprintf("authentication failed: %v", err),
@@ -226,7 +226,7 @@ func (e *httpExecutor) buildTransportRequest(ctx context.Context, inputs map[str
 	}, nil
 }
 
-// convertTransportResponse converts a transport.Response to a connector Result.
+// convertTransportResponse converts a transport.Response to an operation Result.
 func (e *httpExecutor) convertTransportResponse(resp *transport.Response) (*Result, error) {
 	// Parse response body as JSON
 	var responseData interface{}
@@ -274,11 +274,11 @@ func (e *httpExecutor) convertTransportResponse(resp *transport.Response) (*Resu
 	}, nil
 }
 
-// convertTransportError converts a transport error to a connector Error.
+// convertTransportError converts a transport error to an operation Error.
 func (e *httpExecutor) convertTransportError(err error) error {
 	// Check if it's already a transport error
 	if transportErr, ok := err.(*transport.TransportError); ok {
-		// Convert transport error type to connector error type
+		// Convert transport error type to operation error type
 		var errType ErrorType
 		switch transportErr.Type {
 		case transport.ErrorTypeAuth:
@@ -325,13 +325,13 @@ func (e *httpExecutor) Execute(ctx context.Context, inputs map[string]interface{
 	var statusCode int
 	var waitDuration time.Duration
 
-	// Inject default fields for observability connectors
+	// Inject default fields for observability integrations
 	injector := NewDefaultFieldInjector()
-	injector.InjectDefaults(inputs, e.connector.name)
+	injector.InjectDefaults(inputs, e.integration.name)
 
-	// Validate inputs for observability connectors
+	// Validate inputs for observability integrations
 	validator := NewValidator()
-	if err := validator.ValidateConnectorInputs(e.connector.name, e.operationName, inputs); err != nil {
+	if err := validator.ValidateIntegrationInputs(e.integration.name, e.operationName, inputs); err != nil {
 		return nil, err
 	}
 
@@ -343,15 +343,15 @@ func (e *httpExecutor) Execute(ctx context.Context, inputs map[string]interface{
 	waitDuration = time.Since(waitStart)
 
 	// Record rate limit wait if it was significant (>1ms)
-	if waitDuration > time.Millisecond && e.connector.metricsCollector != nil {
-		e.connector.metricsCollector.RecordRateLimitWait(e.connector.name, waitDuration)
+	if waitDuration > time.Millisecond && e.integration.metricsCollector != nil {
+		e.integration.metricsCollector.RecordRateLimitWait(e.integration.name, waitDuration)
 	}
 
 	// Defer metrics recording
 	defer func() {
-		if e.connector.metricsCollector != nil {
+		if e.integration.metricsCollector != nil {
 			duration := time.Since(startTime)
-			e.connector.metricsCollector.RecordRequest(e.connector.name, e.operationName, statusCode, duration)
+			e.integration.metricsCollector.RecordRequest(e.integration.name, e.operationName, statusCode, duration)
 		}
 	}()
 
@@ -362,7 +362,7 @@ func (e *httpExecutor) Execute(ctx context.Context, inputs map[string]interface{
 	}
 
 	// Execute request through transport
-	transportResp, err := e.connector.transport.Execute(ctx, transportReq)
+	transportResp, err := e.integration.transport.Execute(ctx, transportReq)
 	if err != nil {
 		return nil, e.convertTransportError(err)
 	}
@@ -392,7 +392,7 @@ func (e *httpExecutor) Execute(ctx context.Context, inputs map[string]interface{
 		return nil, err
 	}
 
-	// Convert transport response to connector result
+	// Convert transport response to operation result
 	result, err := e.convertTransportResponse(transportResp)
 	if err != nil {
 		return nil, err
@@ -407,7 +407,7 @@ func (e *httpExecutor) Execute(ctx context.Context, inputs map[string]interface{
 // buildURL constructs the request URL from base URL, path template, and inputs.
 func (e *httpExecutor) buildURL(inputs map[string]interface{}) (string, error) {
 	// Start with base URL
-	baseURL := e.connector.def.BaseURL
+	baseURL := e.integration.def.BaseURL
 
 	// Substitute path parameters
 	path := e.operation.Path
@@ -489,10 +489,10 @@ func (e *httpExecutor) getPathParameters() map[string]bool {
 	return params
 }
 
-// applyHeaders applies connector and operation headers to the request.
+// applyHeaders applies integration and operation headers to the request.
 func (e *httpExecutor) applyHeaders(req *http.Request, inputs map[string]interface{}) error {
-	// Apply connector-level headers
-	for key, value := range e.connector.def.Headers {
+	// Apply integration-level headers
+	for key, value := range e.integration.def.Headers {
 		// Check if this is a sensitive header
 		if isSensitiveHeader(key) {
 			return fmt.Errorf("cannot override protected header %q", key)
@@ -500,18 +500,18 @@ func (e *httpExecutor) applyHeaders(req *http.Request, inputs map[string]interfa
 
 		expandedValue, err := expandEnvVar(value)
 		if err != nil {
-			return fmt.Errorf("connector header %q expansion failed: %w", key, err)
+			return fmt.Errorf("integration header %q expansion failed: %w", key, err)
 		}
 
 		// Validate header value for injection
 		if err := sanitizeHeaderValue(key, expandedValue); err != nil {
-			return fmt.Errorf("connector header validation failed: %w", err)
+			return fmt.Errorf("integration header validation failed: %w", err)
 		}
 
 		req.Header.Set(key, expandedValue)
 	}
 
-	// Apply operation-level headers (override connector headers)
+	// Apply operation-level headers (override integration headers)
 	for key, value := range e.operation.Headers {
 		// Check if this is a sensitive header
 		if isSensitiveHeader(key) {

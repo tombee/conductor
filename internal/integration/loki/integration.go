@@ -46,7 +46,7 @@ func NewLokiIntegration(config *api.ConnectorConfig) (operation.Connector, error
 	return integration, nil
 }
 
-// Name returns the connector identifier.
+// Name returns the integration identifier.
 func (l *LokiIntegration) Name() string {
 	return l.name
 }

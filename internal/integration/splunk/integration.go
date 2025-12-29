@@ -52,7 +52,7 @@ func NewSplunkIntegration(config *api.ConnectorConfig) (operation.Connector, err
 	return integration, nil
 }
 
-// Name returns the connector identifier.
+// Name returns the integration identifier.
 func (s *SplunkIntegration) Name() string {
 	return s.name
 }

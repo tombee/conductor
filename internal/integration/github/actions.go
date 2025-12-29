@@ -59,7 +59,7 @@ func (c *GitHubIntegration) getWorkflowRuns(ctx context.Context, inputs map[stri
 		workflowRuns[i] = item
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"total_count":   runsResp.TotalCount,
 		"workflow_runs": workflowRuns,

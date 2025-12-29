@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// DefaultFieldInjector provides auto-population of common fields for observability connectors.
+// DefaultFieldInjector provides auto-population of common fields for observability integrations.
 type DefaultFieldInjector struct {
 	hostname  string
 	timestamp int64
@@ -25,17 +25,17 @@ func NewDefaultFieldInjector() *DefaultFieldInjector {
 }
 
 // InjectDefaults adds default fields to inputs if they are not already present.
-// This is used for observability connectors that benefit from auto-populated
+// This is used for observability integrations that benefit from auto-populated
 // timestamp and hostname fields.
-func (d *DefaultFieldInjector) InjectDefaults(inputs map[string]interface{}, connectorName string) {
-	// Only inject defaults for known observability connectors
-	if !isObservabilityConnector(connectorName) {
+func (d *DefaultFieldInjector) InjectDefaults(inputs map[string]interface{}, integrationName string) {
+	// Only inject defaults for known observability integrations
+	if !isObservabilityIntegration(integrationName) {
 		return
 	}
 
 	// Inject timestamp if not present
-	// Different connectors use different field names and formats
-	switch connectorName {
+	// Different integrations use different field names and formats
+	switch integrationName {
 	case "datadog":
 		// Datadog uses Unix timestamp in seconds
 		if _, exists := inputs["timestamp"]; !exists {
@@ -83,14 +83,14 @@ func (d *DefaultFieldInjector) InjectDefaults(inputs map[string]interface{}, con
 	}
 }
 
-// isObservabilityConnector returns true if the connector is an observability platform.
-func isObservabilityConnector(name string) bool {
-	observabilityConnectors := map[string]bool{
+// isObservabilityIntegration returns true if the integration is an observability platform.
+func isObservabilityIntegration(name string) bool {
+	observabilityIntegrations := map[string]bool{
 		"datadog":       true,
 		"splunk":        true,
 		"cloudwatch":    true,
 		"loki":          true,
 		"elasticsearch": true,
 	}
-	return observabilityConnectors[name]
+	return observabilityIntegrations[name]
 }

@@ -57,13 +57,13 @@ func ValidateSecurity(def *Definition) *SecurityValidationResult {
 	// Check for shell injection risks in steps
 	checkShellInjectionRisk(def, result)
 
-	// Check for plaintext credentials in connector auth
+	// Check for plaintext credentials in integration auth
 	detectPlaintextCredentials(def, result)
 
 	// Check for overly permissive file paths
 	checkOverlyPermissivePaths(def, result)
 
-	// Check for missing auth on external connectors
+	// Check for missing auth on external integrations
 	checkMissingAuth(def, result)
 
 	return result
@@ -236,7 +236,7 @@ func checkOverlyPermissivePaths(def *Definition, result *SecurityValidationResul
 }
 
 func checkStepPermissivePaths(step *StepDefinition, result *SecurityValidationResult) {
-	// Check if this is a file connector step
+	// Check if this is a file action step
 	if step.Type == StepTypeIntegration && step.Action == "file" {
 		if step.Inputs != nil {
 			// Check path field

@@ -84,9 +84,9 @@ func (c *InheritEnvConfig) UnmarshalYAML(unmarshal func(interface{}) error) erro
 
 // Bindings maps abstract workflow requirements to concrete runtime values.
 type Bindings struct {
-	// Connectors maps connector names to their configuration
-	// Key: connector name from workflow requires section
-	// Value: connector binding with auth and other settings
+	// Integrations maps integration names to their configuration
+	// Key: integration name from workflow requires section
+	// Value: integration binding with auth and other settings
 	Integrations map[string]IntegrationBinding `yaml:"connectors,omitempty" json:"connectors,omitempty"`
 
 	// MCPServers maps MCP server names to their configuration
@@ -95,20 +95,20 @@ type Bindings struct {
 	MCPServers map[string]MCPServerBinding `yaml:"mcp_servers,omitempty" json:"mcp_servers,omitempty"`
 }
 
-// IntegrationBinding provides runtime configuration for a connector.
+// IntegrationBinding provides runtime configuration for an integration.
 type IntegrationBinding struct {
 	// Auth contains authentication credentials
 	// Can reference secrets: ${GITHUB_TOKEN}, env:API_KEY, file:/path/to/secret
 	Auth AuthBinding `yaml:"auth,omitempty" json:"auth,omitempty"`
 
-	// BaseURL overrides the connector's default base URL (optional)
+	// BaseURL overrides the integration's default base URL (optional)
 	BaseURL string `yaml:"base_url,omitempty" json:"base_url,omitempty"`
 
 	// Headers provides additional HTTP headers (optional)
 	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
 }
 
-// AuthBinding contains authentication credentials for a connector.
+// AuthBinding contains authentication credentials for an integration.
 // Supports multiple auth types: bearer tokens, basic auth, API keys.
 type AuthBinding struct {
 	// Token for bearer authentication

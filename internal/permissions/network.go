@@ -156,7 +156,7 @@ func stripPort(host string) string {
 // domain initially resolves to a safe IP but later changes to a metadata endpoint.
 //
 // NOTE: DNS pinning is currently implemented as a separate function for future integration
-// with the HTTP connector. The permission check (CheckNetwork) validates patterns only.
+// with the HTTP integration. The permission check (CheckNetwork) validates patterns only.
 // DNS resolution and pinning should be done at the HTTP client level to ensure the
 // resolved IP hasn't changed between permission check and actual request.
 func performDNSPinning(ctx context.Context, hostname string) error {

@@ -21,7 +21,7 @@ type JiraIntegration struct {
 // NewJiraIntegration creates a new Jira integration.
 func NewJiraIntegration(config *api.ConnectorConfig) (operation.Connector, error) {
 	if config.BaseURL == "" {
-		return nil, fmt.Errorf("jira connector requires base_url configuration (e.g., https://your-domain.atlassian.net)")
+		return nil, fmt.Errorf("jira integration requires base_url configuration (e.g., https://your-domain.atlassian.net)")
 	}
 
 	// Jira requires email and API token for Basic auth
@@ -30,11 +30,11 @@ func NewJiraIntegration(config *api.ConnectorConfig) (operation.Connector, error
 		email = config.AdditionalAuth["email"]
 	}
 	if email == "" {
-		return nil, fmt.Errorf("jira connector requires email in additional_auth configuration")
+		return nil, fmt.Errorf("jira integration requires email in additional_auth configuration")
 	}
 
 	if config.Token == "" {
-		return nil, fmt.Errorf("jira connector requires API token")
+		return nil, fmt.Errorf("jira integration requires API token")
 	}
 
 	// Ensure base URL ends with /rest/api/3

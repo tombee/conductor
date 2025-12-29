@@ -43,7 +43,7 @@ func (c *DiscordIntegration) createWebhook(ctx context.Context, inputs map[strin
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"id":         webhook.ID,
 		"name":       webhook.Name,
@@ -110,7 +110,7 @@ func (c *DiscordIntegration) sendWebhook(ctx context.Context, inputs map[string]
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"id":         message.ID,
 		"channel_id": message.ChannelID,

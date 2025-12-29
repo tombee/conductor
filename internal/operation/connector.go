@@ -10,43 +10,43 @@ import (
 )
 
 // TransportRegistry is an alias for transport.Registry to avoid import cycles
-// and provide a cleaner API at the connector package level.
+// and provide a cleaner API at the operation package level.
 type TransportRegistry = transport.Registry
 
-// builtinAPIFactory is a function type for creating builtin API connectors.
-type builtinAPIFactory func(connectorName string, baseURL string, authType string, authToken string) (Connector, error)
+// builtinAPIFactory is a function type for creating builtin API integrations.
+type builtinAPIFactory func(integrationName string, baseURL string, authType string, authToken string) (Connector, error)
 
-// builtinAPIFactories holds registered builtin API connector factories.
+// builtinAPIFactories holds registered builtin API integration factories.
 var builtinAPIFactories = make(map[string]builtinAPIFactory)
 
-// RegisterBuiltinAPI registers a builtin API connector factory.
-// This is called by the builtin package during init().
+// RegisterBuiltinAPI registers a builtin API integration factory.
+// This is called by the integration package during init().
 func RegisterBuiltinAPI(name string, factory builtinAPIFactory) {
 	builtinAPIFactories[name] = factory
 }
 
-// isBuiltinAPI returns true if a builtin API connector is registered.
+// isBuiltinAPI returns true if a builtin API integration is registered.
 func isBuiltinAPI(name string) bool {
 	_, ok := builtinAPIFactories[name]
 	return ok
 }
 
-// newBuiltinAPIConnector creates a builtin API connector.
+// newBuiltinAPIConnector creates a builtin API integration.
 func newBuiltinAPIConnector(name string, baseURL string, authType string, authToken string) (Connector, error) {
 	factory, ok := builtinAPIFactories[name]
 	if !ok {
 		return nil, &Error{
 			Type:    ErrorTypeNotFound,
-			Message: "builtin API connector not found: " + name,
+			Message: "builtin API integration not found: " + name,
 		}
 	}
 	return factory(name, baseURL, authType, authToken)
 }
 
-// Connector represents a configured external integration.
-// Each connector can execute multiple named operations.
+// Connector represents a configured operation provider (integration or action).
+// Each provider can execute multiple named operations.
 type Connector interface {
-	// Name returns the connector identifier
+	// Name returns the provider identifier
 	Name() string
 
 	// Execute runs a named operation with the given inputs
@@ -54,7 +54,7 @@ type Connector interface {
 }
 
 // PaginatedConnector extends Connector to support paginated operations.
-// Connectors that support pagination (GitHub, Slack, Jira, Discord) implement
+// Integrations that support pagination (GitHub, Slack, Jira, Discord) implement
 // this interface to stream results through a channel.
 type PaginatedConnector interface {
 	Connector
@@ -70,7 +70,7 @@ type PaginatedConnector interface {
 	ExecutePaginated(ctx context.Context, operation string, inputs map[string]interface{}) (<-chan *Result, error)
 }
 
-// Result represents the output of a connector operation.
+// Result represents the output of an operation.
 type Result struct {
 	// Response is the transformed response data
 	Response interface{}
@@ -78,7 +78,7 @@ type Result struct {
 	// RawResponse is the original response before transformation (for debugging)
 	RawResponse interface{}
 
-	// StatusCode is the HTTP status code (for HTTP connectors)
+	// StatusCode is the HTTP status code (for HTTP operations)
 	StatusCode int
 
 	// Headers contains response headers
@@ -98,7 +98,7 @@ func (r *Result) GetRawResponse() interface{} {
 	return r.RawResponse
 }
 
-// GetStatusCode returns the HTTP status code (for HTTP connectors).
+// GetStatusCode returns the HTTP status code (for HTTP operations).
 func (r *Result) GetStatusCode() int {
 	return r.StatusCode
 }
@@ -108,9 +108,9 @@ func (r *Result) GetMetadata() map[string]interface{} {
 	return r.Metadata
 }
 
-// Config holds runtime configuration for connector execution.
+// Config holds runtime configuration for operation execution.
 type Config struct {
-	// MaxConcurrentRequests limits concurrent operations per connector
+	// MaxConcurrentRequests limits concurrent operations per integration
 	MaxConcurrentRequests int
 
 	// DefaultTimeout is the default operation timeout in seconds
@@ -163,32 +163,32 @@ func DefaultConfig() *Config {
 	}
 }
 
-// New creates a connector from a workflow definition.
+// New creates an operation provider from a workflow definition.
 func New(def *workflow.IntegrationDefinition, config *Config) (Connector, error) {
 	// Initialize transport registry if not provided
 	if config.TransportRegistry == nil {
 		config.TransportRegistry = NewDefaultTransportRegistry()
 	}
 
-	// For package-based connectors (from: connectors/github)
+	// For package-based integrations (from: integrations/github)
 	if def.From != "" {
 		return newPackageConnector(def, config)
 	}
 
-	// For inline HTTP connectors (base_url + operations)
+	// For inline HTTP integrations (base_url + operations)
 	return newHTTPConnector(def, config)
 }
 
-// newPackageConnector creates a connector from a package reference.
+// newPackageConnector creates an integration from a package reference.
 func newPackageConnector(def *workflow.IntegrationDefinition, config *Config) (Connector, error) {
-	// Extract connector name from "connectors/<name>"
-	if strings.HasPrefix(def.From, "connectors/") {
+	// Extract integration name from "integrations/<name>"
+	if strings.HasPrefix(def.From, "integrations/") {
 		parts := strings.Split(def.From, "/")
 		if len(parts) == 2 {
-			connectorName := parts[1]
+			integrationName := parts[1]
 
-			// Check if it's a registered builtin API connector
-			if isBuiltinAPI(connectorName) {
+			// Check if it's a registered builtin API integration
+			if isBuiltinAPI(integrationName) {
 				var authType, authToken string
 
 				// Handle authentication based on AuthDefinition fields
@@ -212,12 +212,12 @@ func newPackageConnector(def *workflow.IntegrationDefinition, config *Config) (C
 					}
 				}
 
-				return newBuiltinAPIConnector(connectorName, def.BaseURL, authType, authToken)
+				return newBuiltinAPIConnector(integrationName, def.BaseURL, authType, authToken)
 			}
 		}
 	}
 
-	// Fall back to loading package definition (for custom YAML connectors)
+	// Fall back to loading package definition (for custom YAML integrations)
 	pkg, err := loadPackage(def.From)
 	if err != nil {
 		return nil, err
@@ -226,11 +226,11 @@ func newPackageConnector(def *workflow.IntegrationDefinition, config *Config) (C
 	// Merge package with user overrides (auth, base_url, etc.)
 	merged := mergePackageWithOverrides(pkg, def)
 
-	// Create HTTP connector from merged definition
+	// Create HTTP integration from merged definition
 	return newHTTPConnector(merged, config)
 }
 
-// newHTTPConnector creates an inline HTTP connector.
+// newHTTPConnector creates an inline HTTP integration.
 func newHTTPConnector(def *workflow.IntegrationDefinition, config *Config) (Connector, error) {
 	// Initialize metrics collector if enabled
 	var metricsCollector *MetricsCollector
@@ -242,7 +242,7 @@ func newHTTPConnector(def *workflow.IntegrationDefinition, config *Config) (Conn
 		}
 	}
 
-	// Create transport based on connector definition
+	// Create transport based on integration definition
 	transportType := def.Transport
 	if transportType == "" {
 		transportType = "http" // Default to HTTP transport
@@ -258,7 +258,7 @@ func newHTTPConnector(def *workflow.IntegrationDefinition, config *Config) (Conn
 		if err != nil {
 			return nil, &Error{
 				Type:        ErrorTypeValidation,
-				Message:     fmt.Sprintf("failed to create HTTP transport for connector %q: %v", def.Name, err),
+				Message:     fmt.Sprintf("failed to create HTTP transport for integration %q: %v", def.Name, err),
 				SuggestText: "Check that base_url is valid and authentication is properly configured",
 			}
 		}
@@ -268,7 +268,7 @@ func newHTTPConnector(def *workflow.IntegrationDefinition, config *Config) (Conn
 		if configErr != nil {
 			return nil, &Error{
 				Type:        ErrorTypeValidation,
-				Message:     fmt.Sprintf("invalid AWS configuration for connector %q: %v", def.Name, configErr),
+				Message:     fmt.Sprintf("invalid AWS configuration for integration %q: %v", def.Name, configErr),
 				SuggestText: "Ensure 'aws' section includes 'service' and 'region' fields",
 			}
 		}
@@ -276,7 +276,7 @@ func newHTTPConnector(def *workflow.IntegrationDefinition, config *Config) (Conn
 		if err != nil {
 			return nil, &Error{
 				Type:        ErrorTypeValidation,
-				Message:     fmt.Sprintf("failed to create AWS SigV4 transport for connector %q: %v", def.Name, err),
+				Message:     fmt.Sprintf("failed to create AWS SigV4 transport for integration %q: %v", def.Name, err),
 				SuggestText: "Check AWS credentials and region configuration",
 			}
 		}
@@ -286,7 +286,7 @@ func newHTTPConnector(def *workflow.IntegrationDefinition, config *Config) (Conn
 		if configErr != nil {
 			return nil, &Error{
 				Type:        ErrorTypeValidation,
-				Message:     fmt.Sprintf("invalid OAuth2 configuration for connector %q: %v", def.Name, configErr),
+				Message:     fmt.Sprintf("invalid OAuth2 configuration for integration %q: %v", def.Name, configErr),
 				SuggestText: "Ensure 'oauth2' section includes client_id, client_secret, and token_url",
 			}
 		}
@@ -294,7 +294,7 @@ func newHTTPConnector(def *workflow.IntegrationDefinition, config *Config) (Conn
 		if err != nil {
 			return nil, &Error{
 				Type:        ErrorTypeValidation,
-				Message:     fmt.Sprintf("failed to create OAuth2 transport for connector %q: %v", def.Name, err),
+				Message:     fmt.Sprintf("failed to create OAuth2 transport for integration %q: %v", def.Name, err),
 				SuggestText: "Check OAuth2 credentials and token URL configuration",
 			}
 		}
@@ -302,7 +302,7 @@ func newHTTPConnector(def *workflow.IntegrationDefinition, config *Config) (Conn
 	default:
 		return nil, &Error{
 			Type:        ErrorTypeValidation,
-			Message:     fmt.Sprintf("unsupported transport type %q for connector %q", transportType, def.Name),
+			Message:     fmt.Sprintf("unsupported transport type %q for integration %q", transportType, def.Name),
 			SuggestText: "Supported transport types: http, aws_sigv4, oauth2",
 		}
 	}
@@ -325,7 +325,7 @@ type httpConnector struct {
 	transport        transport.Transport
 }
 
-// Name returns the connector identifier.
+// Name returns the integration identifier.
 func (c *httpConnector) Name() string {
 	return c.name
 }
@@ -342,7 +342,7 @@ func (c *httpConnector) Execute(ctx context.Context, operation string, inputs ma
 	return executor.Execute(ctx, inputs)
 }
 
-// GetMetricsCollector returns the metrics collector for this connector.
+// GetMetricsCollector returns the metrics collector for this integration.
 func (c *httpConnector) GetMetricsCollector() *MetricsCollector {
 	return c.metricsCollector
 }

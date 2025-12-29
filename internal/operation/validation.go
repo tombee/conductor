@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// Validator provides input validation for connectors.
+// Validator provides input validation for integrations.
 type Validator struct{}
 
 // NewValidator creates a new validator instance.
@@ -150,10 +150,10 @@ func (v *Validator) ValidateElasticsearchIndex(index string) error {
 	return nil
 }
 
-// ValidateConnectorInputs validates inputs for a specific connector operation.
-// This delegates to connector-specific validation based on the connector name.
-func (v *Validator) ValidateConnectorInputs(connectorName string, operation string, inputs map[string]interface{}) error {
-	switch connectorName {
+// ValidateIntegrationInputs validates inputs for a specific integration operation.
+// This delegates to integration-specific validation based on the integration name.
+func (v *Validator) ValidateIntegrationInputs(integrationName string, operation string, inputs map[string]interface{}) error {
+	switch integrationName {
 	case "loki":
 		return v.validateLokiInputs(operation, inputs)
 	case "datadog":
@@ -163,7 +163,7 @@ func (v *Validator) ValidateConnectorInputs(connectorName string, operation stri
 	case "cloudwatch":
 		return v.validateCloudWatchInputs(operation, inputs)
 	default:
-		// No validation for other connectors
+		// No validation for other integrations
 		return nil
 	}
 }
@@ -186,7 +186,7 @@ func (v *Validator) validateLokiInputs(operation string, inputs map[string]inter
 
 // validateDatadogInputs validates Datadog-specific inputs.
 func (v *Validator) validateDatadogInputs(operation string, inputs map[string]interface{}) error {
-	// Site validation is done at connector config level, not per-operation
+	// Site validation is done at integration config level, not per-operation
 	// However, we can validate tags format here
 	if tags, ok := inputs["tags"].([]interface{}); ok {
 		for i, tag := range tags {
@@ -225,7 +225,7 @@ func (v *Validator) validateElasticsearchInputs(operation string, inputs map[str
 
 // validateCloudWatchInputs validates CloudWatch-specific inputs.
 func (v *Validator) validateCloudWatchInputs(operation string, inputs map[string]interface{}) error {
-	// CloudWatch unit validation is already done in the connector
+	// CloudWatch unit validation is already done in the integration
 	// No additional validation needed here
 	return nil
 }

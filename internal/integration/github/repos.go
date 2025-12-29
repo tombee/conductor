@@ -41,7 +41,7 @@ func (c *GitHubIntegration) getFile(ctx context.Context, inputs map[string]inter
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"name":         fileContent.Name,
 		"path":         fileContent.Path,

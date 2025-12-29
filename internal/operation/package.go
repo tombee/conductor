@@ -7,7 +7,7 @@ import (
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
-// PackageDefinition represents a connector package YAML file.
+// PackageDefinition represents an integration package YAML file.
 type PackageDefinition struct {
 	Version     string                                 `yaml:"version"`
 	Name        string                                 `yaml:"name"`
@@ -18,27 +18,27 @@ type PackageDefinition struct {
 	Operations  map[string]workflow.OperationDefinition `yaml:"operations"`
 }
 
-// loadPackage loads a connector package from a "from" reference.
+// loadPackage loads an integration package from a "from" reference.
 // Supports:
-//   - "connectors/github" -> bundled connector
-//   - "./path/to/connector.yaml" -> local file (future)
-//   - "github.com/org/connector@v1.0" -> remote package (future)
+//   - "integrations/github" -> bundled integration
+//   - "./path/to/integration.yaml" -> local file (future)
+//   - "github.com/org/integration@v1.0" -> remote package (future)
 func loadPackage(from string) (*PackageDefinition, error) {
-	// Check if it's a bundled connector reference
-	if strings.HasPrefix(from, "connectors/") {
+	// Check if it's a bundled integration reference
+	if strings.HasPrefix(from, "integrations/") {
 		return loadBundledPackage(from)
 	}
 
 	// Future: support local files and remote packages
 	return nil, &Error{
 		Type:       ErrorTypeNotImplemented,
-		Message:    fmt.Sprintf("connector package source %q not yet supported", from),
-		SuggestText: "use bundled connectors (from: connectors/<name>) or inline definitions",
+		Message:    fmt.Sprintf("integration package source %q not yet supported", from),
+		SuggestText: "use bundled integrations (from: integrations/<name>) or inline definitions",
 	}
 }
 
-// builtinConnectorInfo contains metadata for Go-based builtin connectors.
-var builtinConnectorInfo = map[string]struct {
+// builtinIntegrationInfo contains metadata for Go-based builtin integrations.
+var builtinIntegrationInfo = map[string]struct {
 	baseURL     string
 	description string
 }{
@@ -50,49 +50,49 @@ var builtinConnectorInfo = map[string]struct {
 	"cloudwatch": {baseURL: "https://logs.us-east-1.amazonaws.com", description: "AWS CloudWatch Logs and Metrics"},
 }
 
-// loadBundledPackage loads a bundled connector.
-// For Go-based builtin connectors (github, slack, jira, discord, jenkins),
-// this returns metadata from the builtin connector info.
+// loadBundledPackage loads a bundled integration.
+// For Go-based builtin integrations (github, slack, jira, discord, jenkins),
+// this returns metadata from the builtin integration info.
 func loadBundledPackage(from string) (*PackageDefinition, error) {
-	// Extract connector name from "connectors/<name>"
+	// Extract integration name from "integrations/<name>"
 	parts := strings.Split(from, "/")
 	if len(parts) != 2 {
 		return nil, &Error{
 			Type:    ErrorTypeValidation,
-			Message: fmt.Sprintf("invalid bundled connector reference %q: expected format 'connectors/<name>'", from),
+			Message: fmt.Sprintf("invalid bundled integration reference %q: expected format 'integrations/<name>'", from),
 		}
 	}
 
-	connectorName := parts[1]
+	integrationName := parts[1]
 
-	// Check if it's a registered Go-based builtin connector
-	if isBuiltinAPI(connectorName) {
-		info, ok := builtinConnectorInfo[connectorName]
+	// Check if it's a registered Go-based builtin integration
+	if isBuiltinAPI(integrationName) {
+		info, ok := builtinIntegrationInfo[integrationName]
 		if !ok {
 			// Fallback for unknown builtins
 			info = struct{ baseURL, description string }{
 				baseURL:     "https://api.example.com",
-				description: "Builtin connector",
+				description: "Builtin integration",
 			}
 		}
 
-		// Return metadata for the builtin connector
-		// Note: Operations are handled internally by Go connectors,
+		// Return metadata for the builtin integration
+		// Note: Operations are handled internally by Go integrations,
 		// so we return an empty operations map for package metadata
 		return &PackageDefinition{
 			Version:     "2.0",
-			Name:        connectorName,
+			Name:        integrationName,
 			Description: info.description,
 			BaseURL:     info.baseURL,
 			Operations:  map[string]workflow.OperationDefinition{},
 		}, nil
 	}
 
-	// Not a builtin connector - report not found
+	// Not a builtin integration - report not found
 	return nil, &Error{
 		Type:        ErrorTypeNotFound,
-		Message:     fmt.Sprintf("bundled connector %q not found", connectorName),
-		SuggestText: "available bundled connectors: github, slack, jira, discord, jenkins",
+		Message:     fmt.Sprintf("bundled integration %q not found", integrationName),
+		SuggestText: "available bundled integrations: github, slack, jira, discord, jenkins",
 	}
 }
 

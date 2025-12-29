@@ -17,7 +17,7 @@ package errors
 // UserVisibleError defines errors that should be displayed to end users
 // with user-friendly messages and actionable suggestions.
 //
-// Domain-specific errors (like connector.Error and MCPError) should
+// Domain-specific errors (like operation.Error and MCPError) should
 // implement this interface to integrate with CLI error formatting.
 type UserVisibleError interface {
 	error

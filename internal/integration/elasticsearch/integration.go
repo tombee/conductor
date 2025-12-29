@@ -51,7 +51,7 @@ func NewElasticsearchIntegration(config *api.ConnectorConfig) (operation.Connect
 	return integration, nil
 }
 
-// Name returns the connector identifier.
+// Name returns the integration identifier.
 func (e *ElasticsearchIntegration) Name() string {
 	return e.name
 }

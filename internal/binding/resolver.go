@@ -80,19 +80,19 @@ type ResolutionContext struct {
 
 // ResolvedBinding represents a successfully resolved binding.
 type ResolvedBinding struct {
-	// ConnectorBindings maps connector names to resolved configurations
+	// ConnectorBindings maps integration names to resolved configurations
 	ConnectorBindings map[string]ResolvedConnectorBinding
 
 	// MCPServerBindings maps MCP server names to resolved configurations
 	MCPServerBindings map[string]ResolvedMCPServerBinding
 }
 
-// ResolvedConnectorBinding contains resolved connector configuration.
+// ResolvedConnectorBinding contains resolved integration configuration.
 type ResolvedConnectorBinding struct {
 	// Auth contains resolved authentication credentials (secrets resolved to values)
 	Auth ResolvedAuthBinding
 
-	// BaseURL is the connector base URL (optional)
+	// BaseURL is the integration base URL (optional)
 	BaseURL string
 
 	// Headers are additional HTTP headers (optional)
@@ -184,7 +184,7 @@ func (r *Resolver) Resolve(ctx context.Context, resCtx *ResolutionContext) (*Res
 		return r.resolveInlineBindings(ctx, resCtx, resolved)
 	}
 
-	// Resolve connector requirements
+	// Resolve integration requirements
 	if err := r.resolveConnectorRequirements(ctx, resCtx, resolved); err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func (r *Resolver) Resolve(ctx context.Context, resCtx *ResolutionContext) (*Res
 	return resolved, nil
 }
 
-// resolveConnectorRequirements resolves all connector requirements.
+// resolveConnectorRequirements resolves all integration requirements.
 func (r *Resolver) resolveConnectorRequirements(ctx context.Context, resCtx *ResolutionContext, resolved *ResolvedBinding) error {
 	if resCtx.Workflow.Requires == nil || resCtx.Workflow.Requires.Integrations == nil {
 		return nil
@@ -207,7 +207,7 @@ func (r *Resolver) resolveConnectorRequirements(ctx context.Context, resCtx *Res
 		binding, source, err := r.resolveConnectorBinding(ctx, resCtx, req.Name)
 		if err != nil {
 			if req.Optional {
-				// Optional connector missing - skip with warning
+				// Optional integration missing - skip with warning
 				// TODO: Add warning logging
 				continue
 			}
@@ -215,14 +215,14 @@ func (r *Resolver) resolveConnectorRequirements(ctx context.Context, resCtx *Res
 				profile.ErrorCategoryNotFound,
 				fmt.Sprintf("connectors.%s", req.Name),
 				resCtx.Profile.Name,
-				fmt.Sprintf("workflow requires connector %q but no binding found", req.Name),
+				fmt.Sprintf("workflow requires integration %q but no binding found", req.Name),
 			)
 		}
 
 		// Resolve secrets in the binding
 		resolvedBinding, err := r.resolveConnectorSecrets(ctx, resCtx, binding)
 		if err != nil {
-			return fmt.Errorf("failed to resolve secrets for connector %q: %w", req.Name, err)
+			return fmt.Errorf("failed to resolve secrets for integration %q: %w", req.Name, err)
 		}
 
 		resolvedBinding.Source = source
@@ -232,7 +232,7 @@ func (r *Resolver) resolveConnectorRequirements(ctx context.Context, resCtx *Res
 	return nil
 }
 
-// resolveConnectorBinding finds the connector binding following resolution order.
+// resolveConnectorBinding finds the integration binding following resolution order.
 func (r *Resolver) resolveConnectorBinding(ctx context.Context, resCtx *ResolutionContext, name string) (*profile.IntegrationBinding, BindingSource, error) {
 	// 1. Check profile binding (highest priority)
 	if resCtx.Profile != nil && resCtx.Profile.Bindings.Integrations != nil {
@@ -264,15 +264,15 @@ func (r *Resolver) resolveConnectorBinding(ctx context.Context, resCtx *Resoluti
 
 	// 3. Environment variable access (if inherit_env enabled)
 	// For connectors, environment-based auth is handled through secret resolution
-	// No direct environment binding for connector configuration
+	// No direct environment binding for integration configuration
 
 	// 4. No default value support for connectors
 
 	// 5. Not found
-	return nil, "", fmt.Errorf("connector %q not found", name)
+	return nil, "", fmt.Errorf("integration %q not found", name)
 }
 
-// resolveConnectorSecrets resolves all secret references in a connector binding.
+// resolveConnectorSecrets resolves all secret references in an integration binding.
 func (r *Resolver) resolveConnectorSecrets(ctx context.Context, resCtx *ResolutionContext, binding *profile.IntegrationBinding) (*ResolvedConnectorBinding, error) {
 	resolved := &ResolvedConnectorBinding{
 		BaseURL: binding.BaseURL,
@@ -439,7 +439,7 @@ func (r *Resolver) resolveInlineBindings(ctx context.Context, resCtx *Resolution
 
 		resolvedBinding, err := r.resolveConnectorSecrets(ctx, resCtx, binding)
 		if err != nil {
-			return nil, fmt.Errorf("failed to resolve inline connector %q: %w", name, err)
+			return nil, fmt.Errorf("failed to resolve inline integration %q: %w", name, err)
 		}
 
 		resolvedBinding.Source = SourceInline

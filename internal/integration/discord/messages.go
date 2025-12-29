@@ -43,7 +43,7 @@ func (c *DiscordIntegration) sendMessage(ctx context.Context, inputs map[string]
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"id":         message.ID,
 		"channel_id": message.ChannelID,
@@ -88,7 +88,7 @@ func (c *DiscordIntegration) editMessage(ctx context.Context, inputs map[string]
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"id":               message.ID,
 		"channel_id":       message.ChannelID,
@@ -121,7 +121,7 @@ func (c *DiscordIntegration) deleteMessage(ctx context.Context, inputs map[strin
 		return nil, err
 	}
 
-	// Return connector result (DELETE returns 204 No Content)
+	// Return operation result (DELETE returns 204 No Content)
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"success": true,
 	}), nil
@@ -159,7 +159,7 @@ func (c *DiscordIntegration) addReaction(ctx context.Context, inputs map[string]
 		return nil, err
 	}
 
-	// Return connector result (PUT returns 204 No Content)
+	// Return operation result (PUT returns 204 No Content)
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"success": true,
 	}), nil
@@ -201,7 +201,7 @@ func (c *DiscordIntegration) createThread(ctx context.Context, inputs map[string
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"id":        thread.ID,
 		"name":      thread.Name,
@@ -247,7 +247,7 @@ func (c *DiscordIntegration) sendEmbed(ctx context.Context, inputs map[string]in
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"id":         message.ID,
 		"channel_id": message.ChannelID,

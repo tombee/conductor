@@ -43,7 +43,7 @@ func (e *ValidationError) Error() string {
 // NotFoundError represents a resource not found error.
 // Use this when a requested resource does not exist.
 type NotFoundError struct {
-	// Resource is the type of resource (e.g., "workflow", "tool", "connector")
+	// Resource is the type of resource (e.g., "workflow", "tool", "integration")
 	Resource string
 
 	// ID is the identifier that was not found

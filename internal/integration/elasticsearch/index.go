@@ -18,7 +18,7 @@ func (e *ElasticsearchIntegration) indexDocument(ctx context.Context, inputs map
 		return nil, fmt.Errorf("missing required parameter: document")
 	}
 
-	// Get index name (optional if connector has a default)
+	// Get index name (required)
 	indexName, ok := inputs["index"].(string)
 	if !ok || indexName == "" {
 		return nil, fmt.Errorf("missing required parameter: index")

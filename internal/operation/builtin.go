@@ -28,7 +28,7 @@ func init() {
 	})
 }
 
-// BuiltinConfig holds configuration for builtin connectors.
+// BuiltinConfig holds configuration for builtin actions.
 type BuiltinConfig struct {
 	// WorkflowDir is the base directory for ./ paths
 	WorkflowDir string
@@ -51,14 +51,14 @@ type BuiltinConfig struct {
 	// AllowAbsolute controls whether absolute paths are allowed
 	AllowAbsolute bool
 
-	// DNSMonitor provides DNS query monitoring for HTTP connector
+	// DNSMonitor provides DNS query monitoring for HTTP action
 	DNSMonitor *security.DNSQueryMonitor
 
 	// SecurityConfig provides HTTP security validation
 	SecurityConfig *security.HTTPSecurityConfig
 }
 
-// builtinNames lists all builtin connector names.
+// builtinNames lists all builtin action names.
 var builtinNames = map[string]bool{
 	"file":      true,
 	"shell":     true,
@@ -67,25 +67,25 @@ var builtinNames = map[string]bool{
 	"http":      true,
 }
 
-// IsBuiltin returns true if the connector name is a builtin.
+// IsBuiltin returns true if the action name is a builtin.
 func IsBuiltin(name string) bool {
 	return builtinNames[name]
 }
 
-// BuiltinConnector wraps a builtin connector to implement the Connector interface.
+// BuiltinConnector wraps a builtin action to implement the Connector interface.
 type BuiltinConnector struct {
-	name               string
-	fileConnector      *file.FileConnector
-	shellConnector     *shell.ShellConnector
-	transformConnector *transform.TransformConnector
-	utilityConnector   *utility.UtilityConnector
-	httpConnector      *http.HTTPConnector
+	name            string
+	fileAction      *file.FileConnector
+	shellAction     *shell.ShellConnector
+	transformAction *transform.TransformConnector
+	utilityAction   *utility.UtilityConnector
+	httpAction      *http.HTTPConnector
 }
 
-// NewBuiltin creates a builtin connector by name.
+// NewBuiltin creates a builtin action by name.
 func NewBuiltin(name string, config *BuiltinConfig) (Connector, error) {
 	if !IsBuiltin(name) {
-		return nil, fmt.Errorf("unknown builtin connector: %s", name)
+		return nil, fmt.Errorf("unknown builtin action: %s", name)
 	}
 
 	switch name {
@@ -108,12 +108,12 @@ func NewBuiltin(name string, config *BuiltinConfig) (Connector, error) {
 
 		fc, err := file.New(fileConfig)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create file connector: %w", err)
+			return nil, fmt.Errorf("failed to create file action: %w", err)
 		}
 
 		return &BuiltinConnector{
-			name:          "file",
-			fileConnector: fc,
+			name:       "file",
+			fileAction: fc,
 		}, nil
 
 	case "shell":
@@ -122,34 +122,34 @@ func NewBuiltin(name string, config *BuiltinConfig) (Connector, error) {
 		}
 		sc, err := shell.New(shellConfig)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create shell connector: %w", err)
+			return nil, fmt.Errorf("failed to create shell action: %w", err)
 		}
 
 		return &BuiltinConnector{
-			name:           "shell",
-			shellConnector: sc,
+			name:        "shell",
+			shellAction: sc,
 		}, nil
 
 	case "transform":
 		tc, err := transform.New(nil) // Use default config
 		if err != nil {
-			return nil, fmt.Errorf("failed to create transform connector: %w", err)
+			return nil, fmt.Errorf("failed to create transform action: %w", err)
 		}
 
 		return &BuiltinConnector{
-			name:               "transform",
-			transformConnector: tc,
+			name:            "transform",
+			transformAction: tc,
 		}, nil
 
 	case "utility":
 		uc, err := utility.New(nil) // Use default config
 		if err != nil {
-			return nil, fmt.Errorf("failed to create utility connector: %w", err)
+			return nil, fmt.Errorf("failed to create utility action: %w", err)
 		}
 
 		return &BuiltinConnector{
-			name:             "utility",
-			utilityConnector: uc,
+			name:          "utility",
+			utilityAction: uc,
 		}, nil
 
 	case "http":
@@ -159,20 +159,20 @@ func NewBuiltin(name string, config *BuiltinConfig) (Connector, error) {
 		}
 		hc, err := http.New(httpConfig)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create http connector: %w", err)
+			return nil, fmt.Errorf("failed to create http action: %w", err)
 		}
 
 		return &BuiltinConnector{
-			name:          "http",
-			httpConnector: hc,
+			name:       "http",
+			httpAction: hc,
 		}, nil
 
 	default:
-		return nil, fmt.Errorf("unknown builtin connector: %s", name)
+		return nil, fmt.Errorf("unknown builtin action: %s", name)
 	}
 }
 
-// Name returns the connector identifier.
+// Name returns the action identifier.
 func (c *BuiltinConnector) Name() string {
 	return c.name
 }
@@ -181,7 +181,7 @@ func (c *BuiltinConnector) Name() string {
 func (c *BuiltinConnector) Execute(ctx context.Context, operation string, inputs map[string]interface{}) (*Result, error) {
 	switch c.name {
 	case "file":
-		result, err := c.fileConnector.Execute(ctx, operation, inputs)
+		result, err := c.fileAction.Execute(ctx, operation, inputs)
 		if err != nil {
 			return nil, err
 		}
@@ -191,7 +191,7 @@ func (c *BuiltinConnector) Execute(ctx context.Context, operation string, inputs
 		}, nil
 
 	case "shell":
-		result, err := c.shellConnector.Execute(ctx, operation, inputs)
+		result, err := c.shellAction.Execute(ctx, operation, inputs)
 		if err != nil {
 			return nil, err
 		}
@@ -201,7 +201,7 @@ func (c *BuiltinConnector) Execute(ctx context.Context, operation string, inputs
 		}, nil
 
 	case "transform":
-		result, err := c.transformConnector.Execute(ctx, operation, inputs)
+		result, err := c.transformAction.Execute(ctx, operation, inputs)
 		if err != nil {
 			return nil, err
 		}
@@ -211,7 +211,7 @@ func (c *BuiltinConnector) Execute(ctx context.Context, operation string, inputs
 		}, nil
 
 	case "utility":
-		result, err := c.utilityConnector.Execute(ctx, operation, inputs)
+		result, err := c.utilityAction.Execute(ctx, operation, inputs)
 		if err != nil {
 			return nil, err
 		}
@@ -221,7 +221,7 @@ func (c *BuiltinConnector) Execute(ctx context.Context, operation string, inputs
 		}, nil
 
 	case "http":
-		result, err := c.httpConnector.Execute(ctx, operation, inputs)
+		result, err := c.httpAction.Execute(ctx, operation, inputs)
 		if err != nil {
 			return nil, err
 		}
@@ -231,11 +231,11 @@ func (c *BuiltinConnector) Execute(ctx context.Context, operation string, inputs
 		}, nil
 
 	default:
-		return nil, fmt.Errorf("unknown builtin connector: %s", c.name)
+		return nil, fmt.Errorf("unknown builtin action: %s", c.name)
 	}
 }
 
-// GetBuiltinOperations returns the list of operations for a builtin connector.
+// GetBuiltinOperations returns the list of operations for a builtin action.
 func GetBuiltinOperations(name string) []string {
 	switch name {
 	case "file":
@@ -266,7 +266,7 @@ func GetBuiltinOperations(name string) []string {
 	}
 }
 
-// GetBuiltinDescription returns a description for a builtin connector.
+// GetBuiltinDescription returns a description for a builtin action.
 func GetBuiltinDescription(name string) string {
 	switch name {
 	case "file":

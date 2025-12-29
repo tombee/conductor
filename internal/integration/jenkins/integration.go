@@ -22,7 +22,7 @@ type JenkinsIntegration struct {
 // NewJenkinsIntegration creates a new Jenkins integration.
 func NewJenkinsIntegration(config *api.ConnectorConfig) (operation.Connector, error) {
 	if config.BaseURL == "" {
-		return nil, fmt.Errorf("jenkins connector requires base_url configuration")
+		return nil, fmt.Errorf("jenkins integration requires base_url configuration")
 	}
 
 	base := api.NewBaseConnector("jenkins", config)

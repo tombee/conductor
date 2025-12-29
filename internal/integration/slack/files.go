@@ -50,7 +50,7 @@ func (c *SlackIntegration) uploadFile(ctx context.Context, inputs map[string]int
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"file_id":   fileResp.File.ID,
 		"name":      fileResp.File.Name,

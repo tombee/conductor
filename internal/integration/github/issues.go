@@ -42,7 +42,7 @@ func (c *GitHubIntegration) createIssue(ctx context.Context, inputs map[string]i
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"number":   issue.Number,
 		"html_url": issue.HTMLURL,
@@ -86,7 +86,7 @@ func (c *GitHubIntegration) updateIssue(ctx context.Context, inputs map[string]i
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"number":     issue.Number,
 		"html_url":   issue.HTMLURL,
@@ -128,7 +128,7 @@ func (c *GitHubIntegration) closeIssue(ctx context.Context, inputs map[string]in
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	result := map[string]interface{}{
 		"number": issue.Number,
 		"state":  issue.State,
@@ -176,7 +176,7 @@ func (c *GitHubIntegration) addComment(ctx context.Context, inputs map[string]in
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"id":         comment.ID,
 		"html_url":   comment.HTMLURL,

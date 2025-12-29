@@ -42,7 +42,7 @@ func (c *GitHubIntegration) createPR(ctx context.Context, inputs map[string]inte
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	result := map[string]interface{}{
 		"number":   pr.Number,
 		"html_url": pr.HTMLURL,
@@ -96,7 +96,7 @@ func (c *GitHubIntegration) mergePR(ctx context.Context, inputs map[string]inter
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"merged":  mergeResult.Merged,
 		"sha":     mergeResult.SHA,

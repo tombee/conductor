@@ -8,14 +8,14 @@ import (
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
-// Registry manages a collection of connectors for a workflow.
+// Registry manages a collection of operation providers for a workflow.
 type Registry struct {
 	mu         sync.RWMutex
-	connectors map[string]Connector
+	providers  map[string]Connector
 	config     *Config
 }
 
-// NewRegistry creates a new connector registry.
+// NewRegistry creates a new operation registry.
 func NewRegistry(config *Config) *Registry {
 	if config == nil {
 		config = DefaultConfig()
@@ -27,105 +27,105 @@ func NewRegistry(config *Config) *Registry {
 	}
 
 	return &Registry{
-		connectors: make(map[string]Connector),
-		config:     config,
+		providers: make(map[string]Connector),
+		config:    config,
 	}
 }
 
-// LoadFromDefinition loads all connectors from a workflow definition.
+// LoadFromDefinition loads all integrations from a workflow definition.
 func (r *Registry) LoadFromDefinition(def *workflow.Definition) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	// Clear existing connectors
-	r.connectors = make(map[string]Connector)
+	// Clear existing providers
+	r.providers = make(map[string]Connector)
 
-	// Load each connector definition
-	for name, connDef := range def.Integrations {
+	// Load each integration definition
+	for name, integrationDef := range def.Integrations {
 		// Ensure name is set (it should be from validation)
-		connDef.Name = name
+		integrationDef.Name = name
 
-		// Create connector
-		connector, err := New(&connDef, r.config)
+		// Create integration
+		provider, err := New(&integrationDef, r.config)
 		if err != nil {
-			return fmt.Errorf("failed to create connector %q: %w", name, err)
+			return fmt.Errorf("failed to create integration %q: %w", name, err)
 		}
 
-		r.connectors[name] = connector
+		r.providers[name] = provider
 	}
 
 	return nil
 }
 
-// Get retrieves a connector by name.
+// Get retrieves an operation provider by name.
 func (r *Registry) Get(name string) (Connector, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	connector, exists := r.connectors[name]
+	provider, exists := r.providers[name]
 	if !exists {
 		return nil, &Error{
-			Type:    ErrorTypeValidation,
-			Message: fmt.Sprintf("connector %q not found", name),
-			SuggestText: "Check that the connector is defined in the workflow connectors section",
+			Type:        ErrorTypeValidation,
+			Message:     fmt.Sprintf("operation provider %q not found", name),
+			SuggestText: "Check that the integration or action is defined in the workflow",
 		}
 	}
 
-	return connector, nil
+	return provider, nil
 }
 
-// Execute runs a connector operation.
-// The reference should be in format "connector_name.operation_name".
+// Execute runs an operation.
+// The reference should be in format "provider_name.operation_name".
 func (r *Registry) Execute(ctx context.Context, reference string, inputs map[string]interface{}) (*Result, error) {
-	// Parse reference (connector_name.operation_name)
-	connectorName, operationName, err := parseReference(reference)
+	// Parse reference (provider_name.operation_name)
+	providerName, operationName, err := parseReference(reference)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get connector
-	connector, err := r.Get(connectorName)
+	// Get provider
+	provider, err := r.Get(providerName)
 	if err != nil {
 		return nil, err
 	}
 
 	// Execute operation
-	return connector.Execute(ctx, operationName, inputs)
+	return provider.Execute(ctx, operationName, inputs)
 }
 
-// List returns the names of all registered connectors.
+// List returns the names of all registered operation providers.
 func (r *Registry) List() []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	names := make([]string, 0, len(r.connectors))
-	for name := range r.connectors {
+	names := make([]string, 0, len(r.providers))
+	for name := range r.providers {
 		names = append(names, name)
 	}
 
 	return names
 }
 
-// Register adds a connector to the registry.
-func (r *Registry) Register(name string, connector Connector) {
+// Register adds an operation provider to the registry.
+func (r *Registry) Register(name string, provider Connector) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.connectors[name] = connector
+	r.providers[name] = provider
 }
 
-// LoadBuiltins loads all builtin connectors (file, shell, transform, utility).
+// LoadBuiltins loads all builtin actions (file, shell, transform, utility, http).
 func (r *Registry) LoadBuiltins(config *BuiltinConfig) error {
 	for name := range builtinNames {
-		connector, err := NewBuiltin(name, config)
+		action, err := NewBuiltin(name, config)
 		if err != nil {
-			return fmt.Errorf("failed to load builtin connector %q: %w", name, err)
+			return fmt.Errorf("failed to load builtin action %q: %w", name, err)
 		}
-		r.Register(name, connector)
+		r.Register(name, action)
 	}
 	return nil
 }
 
-// NewBuiltinRegistry creates a registry with all builtin connectors pre-loaded.
+// NewBuiltinRegistry creates a registry with all builtin actions pre-loaded.
 func NewBuiltinRegistry(config *BuiltinConfig) (*Registry, error) {
 	registry := NewRegistry(nil)
 	if err := registry.LoadBuiltins(config); err != nil {
@@ -153,8 +153,8 @@ func (a *workflowRegistryAdapter) Execute(ctx context.Context, reference string,
 	return result, nil
 }
 
-// parseReference splits a connector reference into connector and operation names.
-// Expected format: "connector_name.operation_name"
+// parseReference splits an operation reference into provider and operation names.
+// Expected format: "provider_name.operation_name"
 func parseReference(reference string) (string, string, error) {
 	// Find the first dot
 	dotIndex := -1
@@ -168,19 +168,19 @@ func parseReference(reference string) (string, string, error) {
 	if dotIndex == -1 {
 		return "", "", &Error{
 			Type:    ErrorTypeValidation,
-			Message: fmt.Sprintf("invalid connector reference %q: must be in format 'connector_name.operation_name'", reference),
+			Message: fmt.Sprintf("invalid operation reference %q: must be in format 'provider.operation'", reference),
 		}
 	}
 
-	connectorName := reference[:dotIndex]
+	providerName := reference[:dotIndex]
 	operationName := reference[dotIndex+1:]
 
-	if connectorName == "" || operationName == "" {
+	if providerName == "" || operationName == "" {
 		return "", "", &Error{
 			Type:    ErrorTypeValidation,
-			Message: fmt.Sprintf("invalid connector reference %q: connector and operation names cannot be empty", reference),
+			Message: fmt.Sprintf("invalid operation reference %q: provider and operation names cannot be empty", reference),
 		}
 	}
 
-	return connectorName, operationName, nil
+	return providerName, operationName, nil
 }

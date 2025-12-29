@@ -42,7 +42,7 @@ func (c *GitHubIntegration) createRelease(ctx context.Context, inputs map[string
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	result := map[string]interface{}{
 		"id":         release.ID,
 		"html_url":   release.HTMLURL,

@@ -96,7 +96,7 @@ func (c *SlackIntegration) createChannel(ctx context.Context, inputs map[string]
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"channel_id":  createResp.Channel.ID,
 		"channel_name": createResp.Channel.Name,
@@ -141,7 +141,7 @@ func (c *SlackIntegration) inviteToChannel(ctx context.Context, inputs map[strin
 		return nil, err
 	}
 
-	// Return connector result
+	// Return operation result
 	return c.ToConnectorResult(resp, map[string]interface{}{
 		"channel_id": inviteResp.Channel.ID,
 		"ok":         inviteResp.OK,

@@ -152,16 +152,16 @@ func (p *Profile) Validate() error {
 
 // Validate checks if Bindings are valid.
 func (b *Bindings) Validate() error {
-	// Validate connector bindings
+	// Validate integration bindings
 	for name, binding := range b.Integrations {
 		if name == "" {
 			return &ValidationError{
 				Field:   "connectors",
-				Message: "connector name cannot be empty",
+				Message: "integration name cannot be empty",
 			}
 		}
 		if err := binding.Validate(); err != nil {
-			return fmt.Errorf("connector %q: %w", name, err)
+			return fmt.Errorf("integration %q: %w", name, err)
 		}
 	}
 
