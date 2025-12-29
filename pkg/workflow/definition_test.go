@@ -7,13 +7,13 @@ import (
 func TestIntegrationDefinitionValidate(t *testing.T) {
 	tests := []struct {
 		name      string
-		connector IntegrationDefinition
+		integration IntegrationDefinition
 		wantErr   bool
 		errMsg    string
 	}{
 		{
 			name: "valid inline connector",
-			connector: IntegrationDefinition{
+			integration: IntegrationDefinition{
 				Name:    "github",
 				BaseURL: "https://api.github.com",
 				Auth: &AuthDefinition{
@@ -30,7 +30,7 @@ func TestIntegrationDefinitionValidate(t *testing.T) {
 		},
 		{
 			name: "valid package connector",
-			connector: IntegrationDefinition{
+			integration: IntegrationDefinition{
 				Name: "github",
 				From: "connectors/github",
 				Auth: &AuthDefinition{
@@ -41,26 +41,26 @@ func TestIntegrationDefinitionValidate(t *testing.T) {
 		},
 		{
 			name: "missing name",
-			connector: IntegrationDefinition{
+			integration: IntegrationDefinition{
 				BaseURL: "https://api.github.com",
 				Operations: map[string]OperationDefinition{
 					"test": {Method: "GET", Path: "/test"},
 				},
 			},
 			wantErr: true,
-			errMsg:  "connector name is required",
+			errMsg:  "integration name is required",
 		},
 		{
 			name: "missing from and inline definition",
-			connector: IntegrationDefinition{
+			integration: IntegrationDefinition{
 				Name: "test",
 			},
 			wantErr: true,
-			errMsg:  "connector must specify either 'from' (package import) or inline definition (base_url + operations)",
+			errMsg:  "integration must specify either 'from' (package import) or inline definition (base_url + operations)",
 		},
 		{
 			name: "both from and inline definition",
-			connector: IntegrationDefinition{
+			integration: IntegrationDefinition{
 				Name:    "test",
 				From:    "connectors/test",
 				BaseURL: "https://api.test.com",
@@ -69,31 +69,31 @@ func TestIntegrationDefinitionValidate(t *testing.T) {
 				},
 			},
 			wantErr: true,
-			errMsg:  "connector cannot specify both 'from' and inline definition (base_url/operations)",
+			errMsg:  "integration cannot specify both 'from' and inline definition (base_url/operations)",
 		},
 		{
-			name: "inline connector missing base_url",
-			connector: IntegrationDefinition{
+			name: "inline integration missing base_url",
+			integration: IntegrationDefinition{
 				Name: "test",
 				Operations: map[string]OperationDefinition{
 					"test": {Method: "GET", Path: "/test"},
 				},
 			},
 			wantErr: true,
-			errMsg:  "base_url is required for inline connector definition",
+			errMsg:  "base_url is required for inline integration definition",
 		},
 		{
-			name: "inline connector missing operations",
-			connector: IntegrationDefinition{
+			name: "inline integration missing operations",
+			integration: IntegrationDefinition{
 				Name:    "test",
 				BaseURL: "https://api.test.com",
 			},
 			wantErr: true,
-			errMsg:  "inline connector must define at least one operation",
+			errMsg:  "inline integration must define at least one operation",
 		},
 		{
 			name: "invalid auth",
-			connector: IntegrationDefinition{
+			integration: IntegrationDefinition{
 				Name:    "test",
 				BaseURL: "https://api.test.com",
 				Auth: &AuthDefinition{
@@ -108,7 +108,7 @@ func TestIntegrationDefinitionValidate(t *testing.T) {
 		},
 		{
 			name: "invalid rate limit",
-			connector: IntegrationDefinition{
+			integration: IntegrationDefinition{
 				Name:    "test",
 				BaseURL: "https://api.test.com",
 				RateLimit: &RateLimitConfig{
@@ -123,7 +123,7 @@ func TestIntegrationDefinitionValidate(t *testing.T) {
 		},
 		{
 			name: "invalid operation",
-			connector: IntegrationDefinition{
+			integration: IntegrationDefinition{
 				Name:    "test",
 				BaseURL: "https://api.test.com",
 				Operations: map[string]OperationDefinition{
@@ -140,7 +140,7 @@ func TestIntegrationDefinitionValidate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.connector.Validate()
+			err := tt.integration.Validate()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("IntegrationDefinition.Validate() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -434,7 +434,7 @@ func TestConnectorStepValidation(t *testing.T) {
 name: test-workflow
 version: "1.0"
 
-connectors:
+integrations:
   github:
     base_url: https://api.github.com
     auth:
@@ -446,8 +446,8 @@ connectors:
 
 steps:
   - id: create_issue
-    type: connector
-    connector: github.create_issue
+    type: integration
+    integration: github.create_issue
     inputs:
       owner: test
       repo: test
@@ -461,7 +461,7 @@ steps:
 name: test-workflow
 version: "1.0"
 
-connectors:
+integrations:
   github:
     from: connectors/github
     auth:
@@ -469,8 +469,8 @@ connectors:
 
 steps:
   - id: create_issue
-    type: connector
-    connector: github.create_issue
+    type: integration
+    integration: github.create_issue
     inputs:
       owner: test
       repo: test
@@ -483,7 +483,7 @@ steps:
 name: test-workflow
 version: "1.0"
 
-connectors:
+integrations:
   github:
     from: connectors/github
     auth:
@@ -491,12 +491,12 @@ connectors:
 
 steps:
   - id: create_issue
-    type: connector
+    type: integration
     inputs:
       owner: test
 `,
 			wantErr: true,
-			errMsg:  "connector is required for connector step type",
+			errMsg:  "integration step requires either 'integration' field or 'action'+'operation' fields",
 		},
 		{
 			name: "connector step invalid format",
@@ -504,7 +504,7 @@ steps:
 name: test-workflow
 version: "1.0"
 
-connectors:
+integrations:
   github:
     from: connectors/github
     auth:
@@ -512,21 +512,21 @@ connectors:
 
 steps:
   - id: create_issue
-    type: connector
-    connector: invalid_format
+    type: integration
+    integration: invalid_format
     inputs:
       owner: test
 `,
 			wantErr: true,
-			errMsg:  "connector must be in format 'connector_name.operation_name'",
+			errMsg:  "integration must be in format 'integration_name.operation_name'",
 		},
 		{
-			name: "connector step undefined connector",
+			name: "connector step undefined integration",
 			definition: `
 name: test-workflow
 version: "1.0"
 
-connectors:
+integrations:
   github:
     from: connectors/github
     auth:
@@ -534,13 +534,13 @@ connectors:
 
 steps:
   - id: create_issue
-    type: connector
-    connector: slack.post_message
+    type: integration
+    integration: slack.post_message
     inputs:
       channel: test
 `,
 			wantErr: true,
-			errMsg:  "references undefined connector: slack",
+			errMsg:  "references undefined integration: slack",
 		},
 		{
 			name: "connector step undefined operation in inline connector",
@@ -548,7 +548,7 @@ steps:
 name: test-workflow
 version: "1.0"
 
-connectors:
+integrations:
   github:
     base_url: https://api.github.com
     auth:
@@ -560,13 +560,13 @@ connectors:
 
 steps:
   - id: update_issue
-    type: connector
-    connector: github.update_issue
+    type: integration
+    integration: github.update_issue
     inputs:
       owner: test
 `,
 			wantErr: true,
-			errMsg:  "references undefined operation update_issue in connector github",
+			errMsg:  "references undefined operation update_issue in integration github",
 		},
 	}
 

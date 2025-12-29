@@ -93,7 +93,7 @@ name: test-workflow
 version: "1.0"
 
 requires:
-  connectors:
+  integrations:
     - name: github
       capabilities: [issues, pull_requests]
     - name: slack
@@ -117,7 +117,7 @@ steps:
 	}
 
 	if len(def.Requires.Integrations) != 2 {
-		t.Errorf("Expected 2 connector requirements, got %d", len(def.Requires.Integrations))
+		t.Errorf("Expected 2 integration requirements, got %d", len(def.Requires.Integrations))
 	}
 
 	if def.Requires.Integrations[0].Name != "github" {

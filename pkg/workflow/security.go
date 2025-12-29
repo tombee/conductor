@@ -186,7 +186,7 @@ func detectPlaintextCredentials(def *Definition, result *SecurityValidationResul
 					// Only add generic warning if we haven't already added a specific pattern match
 					alreadyReported := false
 					for _, warning := range result.Errors {
-						if warning.StepID == fmt.Sprintf("connectors.%s", integrationName) && warning.Type == "plaintext_credential" {
+						if warning.StepID == fmt.Sprintf("integrations.%s", integrationName) && warning.Type == "plaintext_credential" {
 							alreadyReported = true
 							break
 						}
@@ -194,7 +194,7 @@ func detectPlaintextCredentials(def *Definition, result *SecurityValidationResul
 
 					if !alreadyReported {
 						result.Errors = append(result.Errors, SecurityWarning{
-							StepID:   fmt.Sprintf("connectors.%s", integrationName),
+							StepID:   fmt.Sprintf("integrations.%s", integrationName),
 							Type:     "plaintext_credential",
 							Severity: "error",
 							Message:  fmt.Sprintf("Potential plaintext credential in auth.%s", fieldName),
