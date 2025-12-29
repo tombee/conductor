@@ -33,6 +33,7 @@ import (
 	"github.com/tombee/conductor/internal/commands/run"
 	"github.com/tombee/conductor/internal/commands/secrets"
 	"github.com/tombee/conductor/internal/commands/security"
+	"github.com/tombee/conductor/internal/commands/triggers"
 	"github.com/tombee/conductor/internal/commands/validate"
 	versioncmd "github.com/tombee/conductor/internal/commands/version"
 	"github.com/tombee/conductor/internal/commands/workflow"
@@ -117,6 +118,7 @@ func main() {
 	rootCmd.AddCommand(management.NewTracesCommand())
 	rootCmd.AddCommand(management.NewCacheCommand())
 	rootCmd.AddCommand(endpoint.NewCommand())
+	rootCmd.AddCommand(triggers.NewTriggersCommand())
 
 	// Configuration and security
 	rootCmd.AddCommand(config.NewConfigCommand())

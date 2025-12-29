@@ -123,6 +123,29 @@ func (r *Router) SetOverrideHandler(handler *OverrideHandler) {
 	}
 }
 
+// SetTriggerManagementHandler sets the trigger management handler and registers trigger routes.
+func (r *Router) SetTriggerManagementHandler(handler *TriggerManagementHandler) {
+	if handler != nil {
+		// Webhook trigger routes
+		r.mux.HandleFunc("POST /v1/triggers/webhooks", handler.HandleCreateWebhook)
+		r.mux.HandleFunc("GET /v1/triggers/webhooks", handler.HandleListWebhooks)
+		r.mux.HandleFunc("DELETE /v1/triggers/webhooks/{path...}", handler.HandleDeleteWebhook)
+
+		// Schedule trigger routes
+		r.mux.HandleFunc("POST /v1/triggers/schedules", handler.HandleCreateSchedule)
+		r.mux.HandleFunc("GET /v1/triggers/schedules", handler.HandleListSchedules)
+		r.mux.HandleFunc("DELETE /v1/triggers/schedules/{name}", handler.HandleDeleteSchedule)
+
+		// Endpoint trigger routes
+		r.mux.HandleFunc("POST /v1/triggers/endpoints", handler.HandleCreateEndpoint)
+		r.mux.HandleFunc("GET /v1/triggers/endpoints", handler.HandleListEndpoints)
+		r.mux.HandleFunc("DELETE /v1/triggers/endpoints/{name}", handler.HandleDeleteEndpoint)
+
+		// Combined list route
+		r.mux.HandleFunc("GET /v1/triggers", handler.HandleListAll)
+	}
+}
+
 // NewRouter creates a new HTTP router with all API endpoints.
 func NewRouter(cfg RouterConfig) *Router {
 	r := &Router{
