@@ -221,6 +221,10 @@ Run multiple steps concurrently:
 
 ## What's Next?
 
+**Explore all capabilities:**
+
+See everything Conductor can do on the [Features](../features.md) page—from workflow patterns to integrations to production features.
+
 **Try a real-world example:**
 ```bash
 conductor run examples/git-branch-code-review/workflow.yaml

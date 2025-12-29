@@ -1,10 +1,10 @@
 # Monitoring
 
-Monitor Conductor workflows and daemon health in production.
+Monitor Conductor workflows and controller health in production.
 
 ## Health Endpoint
 
-Check daemon health:
+Check controller health:
 
 ```bash
 curl http://localhost:9000/health
@@ -72,6 +72,107 @@ docker logs -f conductor
 tail -f /var/log/conductor/conductor.log
 ```
 
+## Correlation IDs
+
+Conductor assigns a unique correlation ID to each workflow run for distributed tracing.
+
+### Format
+
+Correlation IDs are UUID v4 format:
+
+```
+550e8400-e29b-41d4-a716-446655440000
+```
+
+Generated at workflow start, the same ID is used across all steps, LLM calls, and integration requests.
+
+### Propagation
+
+Correlation IDs flow through:
+
+| Location | How |
+|----------|-----|
+| **HTTP headers** | `X-Correlation-ID` header on outbound requests |
+| **Log entries** | `correlation_id` field in structured logs |
+| **LLM provider calls** | Passed to provider for request tracking |
+| **Run records** | Stored with workflow run data |
+
+### Finding Logs by Correlation ID
+
+**grep:**
+```bash
+grep "550e8400-e29b-41d4-a716-446655440000" /var/log/conductor/conductor.log
+```
+
+**jq (JSON logs):**
+```bash
+cat conductor.log | jq 'select(.correlation_id == "550e8400-e29b-41d4-a716-446655440000")'
+```
+
+**Elasticsearch:**
+```json
+{
+  "query": {
+    "term": {
+      "correlation_id": "550e8400-e29b-41d4-a716-446655440000"
+    }
+  }
+}
+```
+
+**CloudWatch Insights:**
+```
+fields @timestamp, @message
+| filter correlation_id = "550e8400-e29b-41d4-a716-446655440000"
+| sort @timestamp asc
+```
+
+### Accessing in Workflows
+
+Access the current correlation ID in templates:
+
+```conductor
+steps:
+  - id: log_context
+    shell.run:
+      command: ["echo", "Processing with ID: {{.run.correlation_id}}"]
+```
+
+### Cross-System Debugging Runbook
+
+When debugging issues across systems:
+
+**Step 1: Get the workflow run ID**
+
+```bash
+conductor runs list --status failed --limit 5
+```
+
+**Step 2: Get the correlation ID**
+
+```bash
+conductor runs show <run-id> | grep correlation_id
+```
+
+**Step 3: Search Conductor logs**
+
+```bash
+grep "<correlation-id>" /var/log/conductor/conductor.log
+```
+
+**Step 4: Search LLM provider logs**
+
+Use the correlation ID to find matching requests in your LLM provider's dashboard or logs. The `X-Correlation-ID` header is sent with each request.
+
+### Privacy Considerations
+
+!!! note "Data linkability"
+    Correlation IDs enable linking logs across systems, which may have privacy implications:
+
+    - **GDPR/HIPAA:** Correlation IDs are not PII themselves, but they link to data that may be PII. Include them in data retention policies.
+    - **Third parties:** If logs are shared with external services, consider whether correlation IDs should be redacted.
+    - **Retention alignment:** Ensure correlation ID retention matches your data retention policies.
+
 ## Common Monitoring Patterns
 
 ### Prometheus Integration
@@ -99,7 +200,7 @@ Create dashboards tracking:
 Set up alerts for:
 - High failure rates (>5% of workflows)
 - Long execution times (p95 > threshold)
-- Daemon health check failures
+- Controller health check failures
 - High error rates
 
 ## Best Practices
@@ -114,7 +215,7 @@ logging:
 Track `conductor_workflows_total{status="failed"}` vs `status="success"`
 
 **3. Track token costs:**
-Monitor `conductor_llm_tokens_total` to control spending
+Monitor `conductor_llm_tokens_total` to control spending. See [Cost Tracking](cost-tracking.md) for budgets and alerts.
 
 **4. Set up health checks:**
 Ping `/health` endpoint regularly

@@ -220,11 +220,14 @@ If you're still stuck:
    conductor run workflow.yaml --log-level=debug
    ```
 
-2. **Search existing issues:**
+2. **Use correlation IDs for cross-system debugging:**
+   See [Monitoring: Correlation IDs](monitoring.md#correlation-ids) for tracing requests across services.
+
+3. **Search existing issues:**
    https://github.com/tombee/conductor/issues
 
-3. **Ask in discussions:**
+4. **Ask in discussions:**
    https://github.com/tombee/conductor/discussions
 
-4. **Open an issue:**
+5. **Open an issue:**
    Include workflow YAML, error messages, and logs

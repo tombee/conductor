@@ -108,6 +108,7 @@ steps:
 5. **Parallel steps** — Set `type: parallel` to run multiple steps concurrently.
 
 [Learn More →](learn/concepts/workflows-steps.md){ .md-button .md-button--primary }
+[Explore All Features →](features.md){ .md-button }
 
 ---
 
@@ -183,9 +184,9 @@ Conductor prompts you for inputs. In seconds, you'll get a complete song with ge
 - [Configuration](reference/configuration.md) — Config file options
 - [Error Codes](reference/error-codes.md) — Error reference
 
-### Operations
+### Actions
 
-- [File](reference/actions/file.md), [Shell](reference/actions/shell.md), [HTTP](reference/actions/http.md), [Transform](reference/actions/transform.md)
+- [File](reference/actions/file.md), [Shell](reference/actions/shell.md), [HTTP](reference/actions/http.md), [Transform](reference/actions/transform.md), [Utility](reference/actions/utility.md)
 
 ### Service Integrations
 

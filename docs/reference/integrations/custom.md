@@ -560,5 +560,5 @@ rate_limit:
 ## Next Steps
 
 - Review [bundled integration examples](./github.md)
+- Explore [MCP Servers](../../guides/mcp.md) for LLM-callable tools
 - Learn about [MCP vs Integrations](./index.md#when-to-use-connectors-vs-mcp)
-- Read [operational runbooks](./runbooks.md)
