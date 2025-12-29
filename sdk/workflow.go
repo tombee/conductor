@@ -3,6 +3,8 @@ package sdk
 import (
 	"context"
 	"fmt"
+
+	"github.com/tombee/conductor/pkg/workflow"
 )
 
 // InputType represents the type of a workflow input parameter.
@@ -17,11 +19,16 @@ const (
 )
 
 // Workflow represents an executable workflow definition.
-// Created by WorkflowBuilder.Build().
+// Created by WorkflowBuilder.Build() or loaded from YAML.
 type Workflow struct {
-	name   string
-	inputs map[string]*InputDef
-	steps  []*stepDef
+	// Name is the workflow identifier (exported for SDK consumers)
+	Name string
+
+	// Internal fields
+	name       string
+	inputs     map[string]*InputDef
+	steps      []*stepDef
+	definition *workflow.Definition // Set when loaded from YAML
 }
 
 // InputDef defines a workflow input parameter.
@@ -134,6 +141,7 @@ func (b *WorkflowBuilder) Build() (*Workflow, error) {
 	// TODO: Validate template references (D12)
 
 	return &Workflow{
+		Name:   b.name,
 		name:   b.name,
 		inputs: b.inputs,
 		steps:  b.steps,
@@ -170,6 +178,12 @@ type stepDef struct {
 	condition     string
 	thenSteps     []*stepDef
 	elseSteps     []*stepDef
+}
+
+// StepCount returns the number of steps in the workflow.
+// Useful for testing and workflow inspection.
+func (wf *Workflow) StepCount() int {
+	return len(wf.steps)
 }
 
 // ValidateInputs validates workflow inputs against expected types.

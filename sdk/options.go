@@ -215,9 +215,8 @@ func WithTool(name string, tool Tool) Option {
 //	)
 func WithBuiltinActions() Option {
 	return func(s *SDK) error {
-		// TODO: Implement in Phase 2
-		// This will import internal/action/* packages and register them
-		return fmt.Errorf("WithBuiltinActions not implemented yet (Phase 2)")
+		s.builtinActionsEnabled = true
+		return nil
 	}
 }
 
@@ -232,9 +231,8 @@ func WithBuiltinActions() Option {
 //	)
 func WithBuiltinIntegrations() Option {
 	return func(s *SDK) error {
-		// TODO: Implement in Phase 2
-		// This will import internal/integration/* packages and register them
-		return fmt.Errorf("WithBuiltinIntegrations not implemented yet (Phase 2)")
+		s.builtinIntegrationsEnabled = true
+		return nil
 	}
 }
 

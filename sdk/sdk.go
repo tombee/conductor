@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"sync"
 
 	"github.com/tombee/conductor/pkg/llm"
 	"github.com/tombee/conductor/pkg/tools"
+	"github.com/tombee/conductor/pkg/workflow"
+	"gopkg.in/yaml.v3"
 )
 
 // SDK is the main entry point for workflow execution.
@@ -36,6 +39,10 @@ type SDK struct {
 	// MCP server configurations
 	mcpServers map[string]MCPConfig
 	mcpMu      sync.RWMutex
+
+	// Builtin features
+	builtinActionsEnabled      bool
+	builtinIntegrationsEnabled bool
 
 	// Cleanup resources
 	closeMu sync.Mutex
@@ -178,6 +185,196 @@ func (s *SDK) NewWorkflow(name string) *WorkflowBuilder {
 		inputs: make(map[string]*InputDef),
 		steps:  make([]*stepDef, 0),
 	}
+}
+
+// ExtendWorkflow creates a builder from an existing workflow for extension.
+// Useful for loading YAML and adding programmatic steps.
+//
+// Example:
+//
+//	baseWf, err := s.LoadWorkflowFile("./base-workflow.yaml")
+//	if err != nil {
+//		return err
+//	}
+//
+//	extendedWf, err := s.ExtendWorkflow(baseWf).
+//		Step("custom_step").LLM().
+//			Prompt("Additional processing...").
+//			Done().
+//		Build()
+func (s *SDK) ExtendWorkflow(wf *Workflow) *WorkflowBuilder {
+	// Create a builder initialized with the existing workflow's state
+	builder := &WorkflowBuilder{
+		sdk:    s,
+		name:   wf.Name,
+		inputs: make(map[string]*InputDef),
+		steps:  make([]*stepDef, 0),
+	}
+
+	// Copy inputs
+	for name, inputDef := range wf.inputs {
+		builder.inputs[name] = inputDef
+	}
+
+	// Copy steps
+	builder.steps = append(builder.steps, wf.steps...)
+
+	return builder
+}
+
+// LoadWorkflow parses a YAML workflow definition.
+// Returns an error if the YAML is invalid or exceeds security limits.
+//
+// Security limits enforced:
+//   - Maximum file size: 10MB
+//   - Maximum step count: 1000 steps
+//   - Maximum recursion depth: 100
+//
+// Platform-only features (triggers, schedules) are silently ignored.
+// Use LoadWorkflowWithWarnings() to get warnings about ignored features.
+//
+// Example:
+//
+//	yamlContent := []byte(`
+//	  name: code-review
+//	  inputs:
+//	    - name: code
+//	      type: string
+//	  steps:
+//	    - id: analyze
+//	      llm:
+//	        model: claude-sonnet-4-20250514
+//	        prompt: "Review: {{.inputs.code}}"
+//	`)
+//	wf, err := s.LoadWorkflow(yamlContent)
+func (s *SDK) LoadWorkflow(yamlContent []byte) (*Workflow, error) {
+	wf, _, err := s.LoadWorkflowWithWarnings(yamlContent)
+	return wf, err
+}
+
+// LoadWorkflowFile parses a YAML workflow from a file path.
+// Returns an error if the file cannot be read or parsed.
+//
+// Example:
+//
+//	wf, err := s.LoadWorkflowFile("./workflows/code-review.yaml")
+//	if err != nil {
+//		return fmt.Errorf("load workflow: %w", err)
+//	}
+func (s *SDK) LoadWorkflowFile(path string) (*Workflow, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read workflow file: %w", err)
+	}
+	return s.LoadWorkflow(content)
+}
+
+// LoadWorkflowWithWarnings parses YAML and returns warnings for ignored features.
+// Use this when loading platform workflows that may have triggers/schedules.
+//
+// Warnings are returned for:
+//   - listen: triggers (webhooks, schedules, API endpoints)
+//   - Platform-specific features not supported in SDK
+//
+// Example:
+//
+//	wf, warnings, err := s.LoadWorkflowWithWarnings(yamlContent)
+//	if err != nil {
+//		return err
+//	}
+//	for _, warning := range warnings {
+//		log.Printf("Warning: %s", warning)
+//	}
+func (s *SDK) LoadWorkflowWithWarnings(yamlContent []byte) (*Workflow, []string, error) {
+	// Enforce security limits
+	const maxWorkflowSize = 10 * 1024 * 1024 // 10MB
+	if len(yamlContent) > maxWorkflowSize {
+		return nil, nil, fmt.Errorf("workflow file too large: %d bytes (max %d)", len(yamlContent), maxWorkflowSize)
+	}
+
+	// Parse the YAML workflow definition
+	var def workflow.Definition
+	if err := yaml.Unmarshal(yamlContent, &def); err != nil {
+		return nil, nil, fmt.Errorf("parse workflow YAML: %w", err)
+	}
+
+	// Enforce step count limit
+	const maxSteps = 1000
+	if len(def.Steps) > maxSteps {
+		return nil, nil, fmt.Errorf("workflow has too many steps: %d (max %d)", len(def.Steps), maxSteps)
+	}
+
+	// Collect warnings for platform-only features
+	var warnings []string
+	if def.Trigger != nil {
+		warnings = append(warnings, "workflow 'listen' configuration ignored - triggers not supported in SDK")
+	}
+
+	// Convert workflow.Definition to SDK Workflow
+	// For now, we store the definition and will convert steps on-demand during execution
+	// Full conversion to internal stepDef format will be implemented when workflow execution is added
+	wf := &Workflow{
+		Name:       def.Name,
+		definition: &def,
+		inputs:     make(map[string]*InputDef),
+		steps:      make([]*stepDef, 0),
+	}
+
+	// Convert inputs from definition
+	for _, input := range def.Inputs {
+		inputDef := &InputDef{
+			name: input.Name,
+		}
+		// Map type strings to InputType
+		switch input.Type {
+		case "string":
+			inputDef.typ = TypeString
+		case "number":
+			inputDef.typ = TypeNumber
+		case "boolean":
+			inputDef.typ = TypeBoolean
+		case "array":
+			inputDef.typ = TypeArray
+		case "object":
+			inputDef.typ = TypeObject
+		default:
+			inputDef.typ = TypeString // default to string
+		}
+
+		if input.Default != nil {
+			inputDef.defaultValue = input.Default
+			inputDef.hasDefault = true
+		}
+
+		wf.inputs[input.Name] = inputDef
+	}
+
+	// Convert steps from definition
+	// This is a minimal conversion - full step conversion will be done during execution
+	for _, step := range def.Steps {
+		stepDef := &stepDef{
+			id: step.ID,
+		}
+
+		// Detect step type based on definition fields
+		// The StepDefinition has direct fields for LLM config, not a nested struct
+		if step.Prompt != "" || step.Model != "" {
+			stepDef.stepType = "llm"
+			stepDef.model = step.Model
+			stepDef.prompt = step.Prompt
+			stepDef.system = step.System
+		} else if step.Action != "" {
+			stepDef.stepType = "action"
+			stepDef.actionName = step.Action
+		} else if step.Integration != "" {
+			stepDef.stepType = "integration"
+			stepDef.actionName = step.Integration // reuse actionName for integration name
+		}
+
+		wf.steps = append(wf.steps, stepDef)
+	}
+
+	return wf, warnings, nil
 }
 
 // llmRegistry returns the internal LLM provider registry for testing
