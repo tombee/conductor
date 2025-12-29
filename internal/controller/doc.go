@@ -13,15 +13,15 @@
 // limitations under the License.
 
 /*
-Package daemon provides the core conductord daemon server.
+Package controller provides the core conductor controller server.
 
-The daemon is Conductor's persistent server process that executes workflows,
+The controller is Conductor's persistent server process that executes workflows,
 manages scheduled runs, handles webhooks, and provides a REST API for workflow
 orchestration.
 
 # Architecture
 
-The Daemon struct is the central component that orchestrates all subsystems:
+The Controller struct is the central component that orchestrates all subsystems:
 
   - Runner: Executes workflows with concurrency control and checkpointing
   - Backend: Persists run state (memory for dev, PostgreSQL for production)
@@ -33,10 +33,10 @@ The Daemon struct is the central component that orchestrates all subsystems:
 
 # Usage
 
-Create and start a daemon:
+Create and start a controller:
 
 	cfg, _ := config.Load()
-	d, err := daemon.New(cfg, daemon.Options{
+	c, err := controller.New(cfg, controller.Options{
 	    Version: "1.0.0",
 	})
 	if err != nil {
@@ -45,17 +45,17 @@ Create and start a daemon:
 
 	// Start blocks until context is cancelled
 	go func() {
-	    if err := d.Start(ctx); err != nil {
+	    if err := c.Start(ctx); err != nil {
 	        log.Fatal(err)
 	    }
 	}()
 
 	// Graceful shutdown
-	d.Shutdown(context.Background())
+	c.Shutdown(context.Background())
 
 # Subpackages
 
-The daemon package has several subpackages:
+The controller package has several subpackages:
 
   - api: HTTP handlers for the REST API
   - auth: API key authentication middleware
@@ -63,13 +63,13 @@ The daemon package has several subpackages:
   - checkpoint: Checkpoint management for run recovery
   - leader: Leader election for distributed mode
   - listener: Network listener setup (Unix socket, TCP)
-  - runner: Workflow execution engine
+  - runner: Workflow executor
   - scheduler: Cron-based workflow scheduling
   - webhook: Webhook processing and routing
 
 # Configuration
 
-The daemon is configured via [config.Config], which supports:
+The controller is configured via [config.Config], which supports:
 
   - Listen address (Unix socket or TCP)
   - Backend type (memory or postgres)
@@ -78,4 +78,4 @@ The daemon is configured via [config.Config], which supports:
   - Schedule definitions
   - Authentication settings
 */
-package daemon
+package controller

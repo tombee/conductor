@@ -28,19 +28,19 @@ import (
 // Returns an error listing all workflows that require public API when it's disabled.
 func ValidatePublicAPIRequirements(cfg *Config) error {
 	// If public API is enabled, no validation needed
-	if cfg.Daemon.Listen.PublicAPI.Enabled {
+	if cfg.Controller.Listen.PublicAPI.Enabled {
 		return nil
 	}
 
 	// If no workflows directory configured, skip validation
-	if cfg.Daemon.WorkflowsDir == "" {
+	if cfg.Controller.WorkflowsDir == "" {
 		return nil
 	}
 
 	// Scan workflows for listen.webhook and listen.api configurations
 	var workflowsRequiringPublicAPI []string
 
-	err := filepath.Walk(cfg.Daemon.WorkflowsDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(cfg.Controller.WorkflowsDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			// Skip files we can't access
 			return nil

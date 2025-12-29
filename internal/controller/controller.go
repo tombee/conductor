@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package daemon
+package controller
 
 import (
 	"context"
@@ -54,15 +54,15 @@ import (
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
-// Options contains daemon options set at build time.
+// Options contains controller options set at build time.
 type Options struct {
 	Version   string
 	Commit    string
 	BuildDate string
 }
 
-// Daemon is the main conductord daemon.
-type Daemon struct {
+// Controller is the main conductor controller service.
+type Controller struct {
 	cfg          *config.Config
 	opts         Options
 	logger       *slog.Logger
@@ -97,8 +97,8 @@ type Daemon struct {
 	autoStarted  bool
 }
 
-// New creates a new daemon instance.
-func New(cfg *config.Config, opts Options) (*Daemon, error) {
+// New creates a new controller instance.
+func New(cfg *config.Config, opts Options) (*Controller, error) {
 	// Validate that workflows requiring public API have it enabled
 	if err := config.ValidatePublicAPIRequirements(cfg); err != nil {
 		return nil, err
@@ -106,11 +106,11 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 
 	// Create logger with daemon component context
 	// Use daemon-specific log configuration if available, otherwise fall back to global log config
-	level := cfg.Daemon.DaemonLog.Level
+	level := cfg.Controller.ControllerLog.Level
 	if level == "" {
 		level = cfg.Log.Level
 	}
-	format := cfg.Daemon.DaemonLog.Format
+	format := cfg.Controller.ControllerLog.Format
 	if format == "" {
 		format = cfg.Log.Format
 	}
@@ -125,13 +125,13 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 	var be backend.Backend
 	var db *sql.DB
 
-	switch cfg.Daemon.Backend.Type {
+	switch cfg.Controller.Backend.Type {
 	case "postgres":
 		pgCfg := postgres.Config{
-			ConnectionString: cfg.Daemon.Backend.Postgres.ConnectionString,
-			MaxOpenConns:     cfg.Daemon.Backend.Postgres.MaxOpenConns,
-			MaxIdleConns:     cfg.Daemon.Backend.Postgres.MaxIdleConns,
-			ConnMaxLifetime:  time.Duration(cfg.Daemon.Backend.Postgres.ConnMaxLifetimeSeconds) * time.Second,
+			ConnectionString: cfg.Controller.Backend.Postgres.ConnectionString,
+			MaxOpenConns:     cfg.Controller.Backend.Postgres.MaxOpenConns,
+			MaxIdleConns:     cfg.Controller.Backend.Postgres.MaxIdleConns,
+			ConnMaxLifetime:  time.Duration(cfg.Controller.Backend.Postgres.ConnMaxLifetimeSeconds) * time.Second,
 		}
 		pgBackend, err := postgres.New(pgCfg)
 		if err != nil {
@@ -146,7 +146,7 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 
 	// Create checkpoint manager
 	cm, err := checkpoint.NewManager(checkpoint.ManagerConfig{
-		Dir: cfg.Daemon.CheckpointDir(),
+		Dir: cfg.Controller.CheckpointDir(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create checkpoint manager: %w", err)
@@ -157,8 +157,8 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 
 	// Create runner with configured concurrency and cost tracking
 	r := runner.New(runner.Config{
-		MaxParallel:    cfg.Daemon.MaxConcurrentRuns,
-		DefaultTimeout: cfg.Daemon.DefaultTimeout,
+		MaxParallel:    cfg.Controller.MaxConcurrentRuns,
+		DefaultTimeout: cfg.Controller.DefaultTimeout,
 	}, be, cm, runner.WithCostStore(costStore))
 
 	// Create remote workflow fetcher
@@ -205,9 +205,9 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 
 	// Create scheduler if enabled
 	var sched *scheduler.Scheduler
-	if cfg.Daemon.Schedules.Enabled && len(cfg.Daemon.Schedules.Schedules) > 0 {
-		schedules := make([]scheduler.Schedule, len(cfg.Daemon.Schedules.Schedules))
-		for i, s := range cfg.Daemon.Schedules.Schedules {
+	if cfg.Controller.Schedules.Enabled && len(cfg.Controller.Schedules.Schedules) > 0 {
+		schedules := make([]scheduler.Schedule, len(cfg.Controller.Schedules.Schedules))
+		for i, s := range cfg.Controller.Schedules.Schedules {
 			schedules[i] = scheduler.Schedule{
 				Name:     s.Name,
 				Cron:     s.Cron,
@@ -219,7 +219,7 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 		}
 		sched, err = scheduler.New(scheduler.Config{
 			Schedules:    schedules,
-			WorkflowsDir: cfg.Daemon.WorkflowsDir,
+			WorkflowsDir: cfg.Controller.WorkflowsDir,
 		}, r)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create scheduler: %w", err)
@@ -228,18 +228,18 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 
 	// Create endpoint handler if enabled
 	var endpointHandler *endpoint.Handler
-	if cfg.Daemon.Endpoints.Enabled {
+	if cfg.Controller.Endpoints.Enabled {
 		// Create rate limiter for endpoints
 		rateLimiter := auth.NewNamedRateLimiter()
 
 		// Load endpoint configuration with rate limiter
-		registry, err := endpoint.LoadConfig(cfg.Daemon.Endpoints, cfg.Daemon.WorkflowsDir, rateLimiter)
+		registry, err := endpoint.LoadConfig(cfg.Controller.Endpoints, cfg.Controller.WorkflowsDir, rateLimiter)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load endpoints: %w", err)
 		}
 
 		// Create handler and wire in rate limiter
-		endpointHandler = endpoint.NewHandler(registry, r, cfg.Daemon.WorkflowsDir)
+		endpointHandler = endpoint.NewHandler(registry, r, cfg.Controller.WorkflowsDir)
 		endpointHandler.SetRateLimiter(rateLimiter)
 
 		logger.Info("endpoints loaded",
@@ -247,8 +247,8 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 	}
 
 	// Prepare API keys for auth middleware (will be initialized later)
-	apiKeys := make([]auth.APIKey, len(cfg.Daemon.DaemonAuth.APIKeys))
-	for i, key := range cfg.Daemon.DaemonAuth.APIKeys {
+	apiKeys := make([]auth.APIKey, len(cfg.Controller.ControllerAuth.APIKeys))
+	for i, key := range cfg.Controller.ControllerAuth.APIKeys {
 		apiKeys[i] = auth.APIKey{
 			Key:       key,
 			Name:      fmt.Sprintf("key-%d", i+1),
@@ -258,8 +258,8 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 
 	// Create leader elector if distributed mode is enabled
 	var elector *leader.Elector
-	if cfg.Daemon.Distributed.Enabled && db != nil {
-		instanceID := cfg.Daemon.Distributed.InstanceID
+	if cfg.Controller.Distributed.Enabled && db != nil {
+		instanceID := cfg.Controller.Distributed.InstanceID
 		if instanceID == "" {
 			instanceID = uuid.New().String()
 		}
@@ -290,8 +290,8 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 	// Initialize OpenTelemetry provider for metrics and tracing
 	var otelProvider *tracing.OTelProvider
 	var retentionMgr *tracing.RetentionManager
-	if cfg.Daemon.Observability.Enabled {
-		tracingCfg := observabilityToTracingConfig(cfg.Daemon.Observability, opts.Version)
+	if cfg.Controller.Observability.Enabled {
+		tracingCfg := observabilityToTracingConfig(cfg.Controller.Observability, opts.Version)
 		otelProvider, err = tracing.NewOTelProviderWithConfig(tracingCfg)
 		if err != nil {
 			logger.Warn("failed to initialize OpenTelemetry provider",
@@ -307,8 +307,8 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 			// Create retention manager if trace storage is configured and retention is non-zero
 			if otelProvider.GetStore() != nil && tracingCfg.Storage.Retention.Traces > 0 {
 				cleanupInterval := 1 * time.Hour // Default cleanup interval
-				if cfg.Daemon.Observability.Storage.Retention.CleanupInterval > 0 {
-					cleanupInterval = time.Duration(cfg.Daemon.Observability.Storage.Retention.CleanupInterval) * time.Hour
+				if cfg.Controller.Observability.Storage.Retention.CleanupInterval > 0 {
+					cleanupInterval = time.Duration(cfg.Controller.Observability.Storage.Retention.CleanupInterval) * time.Hour
 				}
 
 				retentionMgr = tracing.NewRetentionManager(
@@ -328,13 +328,13 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 	autoStarted := os.Getenv("CONDUCTOR_AUTO_STARTED") == "1"
 	if autoStarted {
 		logger.Info("daemon auto-started by CLI",
-			slog.Duration("idle_timeout", cfg.Daemon.IdleTimeout))
+			slog.Duration("idle_timeout", cfg.Controller.IdleTimeout))
 	}
 
 	// Create audit logger if enabled
 	var auditLogger *audit.Logger
-	if cfg.Daemon.Observability.Enabled && cfg.Daemon.Observability.Audit.Enabled {
-		auditCfg := cfg.Daemon.Observability.Audit
+	if cfg.Controller.Observability.Enabled && cfg.Controller.Observability.Audit.Enabled {
+		auditCfg := cfg.Controller.Observability.Audit
 		var err error
 		auditLogger, err = audit.NewLoggerFromDestination(auditCfg.Destination, auditCfg.FilePath)
 		if err != nil {
@@ -402,15 +402,15 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 
 	// Create auth middleware (after security components are initialized)
 	authMw := auth.NewMiddleware(auth.Config{
-		Enabled:         cfg.Daemon.DaemonAuth.Enabled,
+		Enabled:         cfg.Controller.ControllerAuth.Enabled,
 		APIKeys:         apiKeys,
-		AllowUnixSocket: cfg.Daemon.DaemonAuth.AllowUnixSocket,
+		AllowUnixSocket: cfg.Controller.ControllerAuth.AllowUnixSocket,
 		OverrideManager: overrideManager,
 		Logger:          logger,
 	})
 
 
-	return &Daemon{
+	return &Controller{
 		cfg:             cfg,
 		opts:            opts,
 		logger:          logger,
@@ -439,73 +439,73 @@ func New(cfg *config.Config, opts Options) (*Daemon, error) {
 }
 
 // Start starts the daemon and blocks until the context is cancelled.
-func (d *Daemon) Start(ctx context.Context) error {
-	d.mu.Lock()
-	if d.started {
-		d.mu.Unlock()
+func (c *Controller) Start(ctx context.Context) error {
+	c.mu.Lock()
+	if c.started {
+		c.mu.Unlock()
 		return fmt.Errorf("daemon already started")
 	}
-	d.started = true
-	d.mu.Unlock()
+	c.started = true
+	c.mu.Unlock()
 
 	// Create cancellable context for idle timeout monitoring
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	// Start idle timeout monitor for auto-started daemons
-	d.startIdleTimeoutMonitor(ctx, cancel)
+	c.startIdleTimeoutMonitor(ctx, cancel)
 
 	// Check permissions on critical directories and files at startup
-	d.checkPermissionsAtStartup()
+	c.checkPermissionsAtStartup()
 
 	// Log security warnings for risky configurations
-	d.logSecurityWarnings()
+	c.logSecurityWarnings()
 
 	// Write PID file if configured
-	if d.cfg.Daemon.PIDFile != "" {
-		if err := d.writePIDFile(); err != nil {
+	if c.cfg.Controller.PIDFile != "" {
+		if err := c.writePIDFile(); err != nil {
 			return fmt.Errorf("failed to write PID file: %w", err)
 		}
-		d.pidFile = d.cfg.Daemon.PIDFile
+		c.pidFile = c.cfg.Controller.PIDFile
 	}
 
 	// Resume any interrupted runs from checkpoints
-	if err := d.runner.ResumeInterrupted(ctx); err != nil {
-		d.logger.Warn("failed to resume interrupted runs",
+	if err := c.runner.ResumeInterrupted(ctx); err != nil {
+		c.logger.Warn("failed to resume interrupted runs",
 			internallog.Error(err))
 	}
 
 	// Create listener
-	ln, err := listener.New(d.cfg.Daemon.Listen)
+	ln, err := listener.New(c.cfg.Controller.Listen)
 	if err != nil {
 		return fmt.Errorf("failed to create listener: %w", err)
 	}
-	d.ln = ln
+	c.ln = ln
 
 	// Create HTTP router
 	router := api.NewRouter(api.RouterConfig{
-		Version:   d.opts.Version,
-		Commit:    d.opts.Commit,
-		BuildDate: d.opts.BuildDate,
+		Version:   c.opts.Version,
+		Commit:    c.opts.Commit,
+		BuildDate: c.opts.BuildDate,
 	})
 
 	// Wire up activity recorder for idle timeout tracking
-	router.SetActivityRecorder(d)
+	router.SetActivityRecorder(c)
 
 	// Register runs API
-	runsHandler := api.NewRunsHandler(d.runner)
+	runsHandler := api.NewRunsHandler(c.runner)
 	runsHandler.RegisterRoutes(router.Mux())
 
 	// Register trigger API
-	triggerHandler := api.NewTriggerHandler(d.runner, d.cfg.Daemon.WorkflowsDir)
+	triggerHandler := api.NewTriggerHandler(c.runner, c.cfg.Controller.WorkflowsDir)
 	triggerHandler.RegisterRoutes(router.Mux())
 
 	// Register webhook routes on control plane only if public API is disabled
 	// When public API is enabled, webhooks are only available on the public API port
 	// When public API is disabled, webhooks from config are available on control plane
-	if !d.cfg.Daemon.Listen.PublicAPI.Enabled {
-		webhookRoutes := make([]webhook.Route, len(d.cfg.Daemon.Webhooks.Routes))
-		for i, r := range d.cfg.Daemon.Webhooks.Routes {
+	if !c.cfg.Controller.Listen.PublicAPI.Enabled {
+		webhookRoutes := make([]webhook.Route, len(c.cfg.Controller.Webhooks.Routes))
+		for i, r := range c.cfg.Controller.Webhooks.Routes {
 			webhookRoutes[i] = webhook.Route{
 				Path:         r.Path,
 				Source:       r.Source,
@@ -517,63 +517,63 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 		webhookRouter := webhook.NewRouter(webhook.Config{
 			Routes:       webhookRoutes,
-			WorkflowsDir: d.cfg.Daemon.WorkflowsDir,
-		}, d.runner)
+			WorkflowsDir: c.cfg.Controller.WorkflowsDir,
+		}, c.runner)
 		webhookRouter.RegisterRoutes(router.Mux())
 	}
 
 	// Register schedules API
-	schedulesHandler := api.NewSchedulesHandler(d.scheduler)
+	schedulesHandler := api.NewSchedulesHandler(c.scheduler)
 	schedulesHandler.RegisterRoutes(router.Mux())
 
 	// Register endpoint routes if enabled
-	if d.endpointHandler != nil {
-		d.endpointHandler.RegisterRoutes(router.Mux())
+	if c.endpointHandler != nil {
+		c.endpointHandler.RegisterRoutes(router.Mux())
 	}
 
 	// Register MCP API if registry is available
-	if d.mcpRegistry != nil {
-		mcpHandler := api.NewMCPHandler(d.mcpRegistry, d.mcpLogCapture)
+	if c.mcpRegistry != nil {
+		mcpHandler := api.NewMCPHandler(c.mcpRegistry, c.mcpLogCapture)
 		mcpHandler.RegisterRoutes(router.Mux())
 	}
 
 	// Wire up scheduler to router for health endpoint
-	if d.scheduler != nil {
-		router.SetScheduleProvider(d.scheduler)
+	if c.scheduler != nil {
+		router.SetScheduleProvider(c.scheduler)
 	}
 
 	// Wire up MCP registry to router for health endpoint
-	if d.mcpRegistry != nil {
-		router.SetMCPProvider(&mcpStatusAdapter{registry: d.mcpRegistry})
+	if c.mcpRegistry != nil {
+		router.SetMCPProvider(&mcpStatusAdapter{registry: c.mcpRegistry})
 	}
 
 	// Wire up audit status provider to router for health endpoint
-	router.SetAuditProvider(&auditStatusAdapter{cfg: d.cfg})
+	router.SetAuditProvider(&auditStatusAdapter{cfg: c.cfg})
 
 	// Wire up metrics handler if observability is enabled
 	// Combine OTel metrics with security metrics if both are available
-	if d.otelProvider != nil {
+	if c.otelProvider != nil {
 		var metricsHandler http.Handler
-		if d.metricsCollector != nil {
+		if c.metricsCollector != nil {
 			// Create combined handler with both OTel and security metrics
-			metricsHandler = NewCombinedMetricsHandler(d.otelProvider.MetricsHandler(), d.metricsCollector)
+			metricsHandler = NewCombinedMetricsHandler(c.otelProvider.MetricsHandler(), c.metricsCollector)
 		} else {
 			// Use OTel metrics only
-			metricsHandler = d.otelProvider.MetricsHandler()
+			metricsHandler = c.otelProvider.MetricsHandler()
 		}
 		router.SetMetricsHandler(metricsHandler)
-	} else if d.metricsCollector != nil {
+	} else if c.metricsCollector != nil {
 		// If only security metrics are available (no OTel), create a simple handler
 		metricsHandler := NewCombinedMetricsHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// No OTel metrics, empty base
 			w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
-		}), d.metricsCollector)
+		}), c.metricsCollector)
 		router.SetMetricsHandler(metricsHandler)
 	}
 
 	// Wire up override management handler if enabled
-	if d.overrideManager != nil {
-		overrideHandler := api.NewOverrideHandler(d.overrideManager)
+	if c.overrideManager != nil {
+		overrideHandler := api.NewOverrideHandler(c.overrideManager)
 		router.SetOverrideHandler(overrideHandler)
 	}
 
@@ -586,17 +586,17 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Apply audit middleware if enabled (before auth so it can log auth failures too)
 	// Actually, apply after auth so we have user context
-	if d.auditLogger != nil {
-		trustedProxies := d.cfg.Daemon.Observability.Audit.TrustedProxies
-		handler = audit.Middleware(d.auditLogger, trustedProxies)(handler)
+	if c.auditLogger != nil {
+		trustedProxies := c.cfg.Controller.Observability.Audit.TrustedProxies
+		handler = audit.Middleware(c.auditLogger, trustedProxies)(handler)
 	}
 
 	// Apply auth middleware (outer layer)
-	if d.authMw != nil {
-		handler = d.authMw.Wrap(handler)
+	if c.authMw != nil {
+		handler = c.authMw.Wrap(handler)
 	}
 
-	d.server = &http.Server{
+	c.server = &http.Server{
 		Handler:      handler,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
@@ -604,78 +604,78 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// Log startup
-	d.logger.Info("conductord starting",
-		slog.String("version", d.opts.Version),
+	c.logger.Info("conductord starting",
+		slog.String("version", c.opts.Version),
 		slog.String("listen_addr", ln.Addr().String()))
 
 	// Start leader election if in distributed mode
-	if d.leader != nil {
-		d.leader.Start(ctx)
+	if c.leader != nil {
+		c.leader.Start(ctx)
 
 		// Register callback to start/stop scheduler based on leadership
-		if d.scheduler != nil && d.cfg.Daemon.Distributed.LeaderElection {
-			d.leader.OnLeadershipChange(func(isLeader bool) {
+		if c.scheduler != nil && c.cfg.Controller.Distributed.LeaderElection {
+			c.leader.OnLeadershipChange(func(isLeader bool) {
 				if isLeader {
-					d.scheduler.Start(ctx)
-					d.logger.Info("became leader - scheduler started",
-						slog.Int("schedule_count", len(d.cfg.Daemon.Schedules.Schedules)))
+					c.scheduler.Start(ctx)
+					c.logger.Info("became leader - scheduler started",
+						slog.Int("schedule_count", len(c.cfg.Controller.Schedules.Schedules)))
 				} else {
-					d.scheduler.Stop()
-					d.logger.Info("lost leadership - scheduler stopped")
+					c.scheduler.Stop()
+					c.logger.Info("lost leadership - scheduler stopped")
 				}
 			})
 		}
 	}
 
 	// Start scheduler if configured (and not using leader election)
-	if d.scheduler != nil && (d.leader == nil || !d.cfg.Daemon.Distributed.LeaderElection) {
-		d.scheduler.Start(ctx)
-		d.logger.Info("scheduler started",
-			slog.Int("schedule_count", len(d.cfg.Daemon.Schedules.Schedules)))
+	if c.scheduler != nil && (c.leader == nil || !c.cfg.Controller.Distributed.LeaderElection) {
+		c.scheduler.Start(ctx)
+		c.logger.Info("scheduler started",
+			slog.Int("schedule_count", len(c.cfg.Controller.Schedules.Schedules)))
 	}
 
 	// Start MCP registry (auto-starts configured servers)
-	if d.mcpRegistry != nil {
-		if err := d.mcpRegistry.Start(ctx); err != nil {
-			d.logger.Warn("MCP registry start error",
+	if c.mcpRegistry != nil {
+		if err := c.mcpRegistry.Start(ctx); err != nil {
+			c.logger.Warn("MCP registry start error",
 				internallog.Error(err))
 		} else {
-			summary := d.mcpRegistry.GetSummary()
-			d.logger.Info("MCP registry started",
+			summary := c.mcpRegistry.GetSummary()
+			c.logger.Info("MCP registry started",
 				slog.Int("configured", summary.Total),
 				slog.Int("running", summary.Running))
 		}
 	}
 
 	// Start trace retention manager if configured
-	if d.retentionMgr != nil {
-		d.retentionMgr.Start()
-		d.logger.Info("trace retention manager started")
+	if c.retentionMgr != nil {
+		c.retentionMgr.Start()
+		c.logger.Info("trace retention manager started")
 	}
 
 	// Start OverrideManager cleanup goroutine
-	if d.overrideManager != nil {
-		d.overrideStopChan = make(chan struct{})
-		go d.overrideManager.StartAutoCleanup(d.overrideStopChan)
-		d.logger.Info("security override cleanup goroutine started")
+	if c.overrideManager != nil {
+		c.overrideStopChan = make(chan struct{})
+		go c.overrideManager.StartAutoCleanup(c.overrideStopChan)
+		c.logger.Info("security override cleanup goroutine started")
 	}
 
 	// Create and start public API server if enabled
 	var publicErrCh chan error
-	if d.cfg.Daemon.Listen.PublicAPI.Enabled {
+	if c.cfg.Controller.Listen.PublicAPI.Enabled {
 		publicRouter := api.NewPublicRouter(api.PublicRouterConfig{
-			Runner:       d.runner,
-			WorkflowsDir: d.cfg.Daemon.WorkflowsDir,
+			Runner:       c.runner,
+			WorkflowsDir: c.cfg.Controller.WorkflowsDir,
 		})
-		d.publicServer = publicapi.New(
-			d.cfg.Daemon.Listen.PublicAPI,
+		c.publicServer = publicapi.New(
+			c.cfg.Controller.Listen.PublicAPI,
 			publicRouter.Handler(),
-			internallog.WithComponent(d.logger, "public-api"),
+			internallog.WithComponent(c.logger, "public-api"),
 		)
 
 		publicErrCh = make(chan error, 1)
 		go func() {
-			if err := d.publicServer.Start(ctx); err != nil {
+			if err := c.publicServer.Start(ctx); err != nil {
 				publicErrCh <- fmt.Errorf("public API server error: %w", err)
 			}
 			close(publicErrCh)
@@ -685,7 +685,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// Start control plane server
 	errCh := make(chan error, 1)
 	go func() {
-		if err := d.server.Serve(ln); err != nil && err != http.ErrServerClosed {
+		if err := c.server.Serve(ln); err != nil && err != http.ErrServerClosed {
 			errCh <- err
 		}
 		close(errCh)
@@ -704,234 +704,234 @@ func (d *Daemon) Start(ctx context.Context) error {
 }
 
 // Shutdown gracefully shuts down the daemon.
-func (d *Daemon) Shutdown(ctx context.Context) error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+func (c *Controller) Shutdown(ctx context.Context) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	if !d.started {
+	if !c.started {
 		return nil
 	}
 
 	// Start draining: log the drain start with active workflow count
-	activeCount := d.runner.ActiveRunCount()
-	d.logger.Info("graceful shutdown initiated",
+	activeCount := c.runner.ActiveRunCount()
+	c.logger.Info("graceful shutdown initiated",
 		slog.Int("active_workflows", activeCount))
 
 	// Put runner into draining mode to stop accepting new workflows
-	d.runner.StartDraining()
+	c.runner.StartDraining()
 
 	// Stop accepting new connections (disable keep-alive)
-	if d.server != nil {
-		d.server.SetKeepAlivesEnabled(false)
+	if c.server != nil {
+		c.server.SetKeepAlivesEnabled(false)
 	}
 
 	// Wait for active workflows to complete (with drain timeout)
-	drainCtx, drainCancel := context.WithTimeout(ctx, d.cfg.Daemon.DrainTimeout)
+	drainCtx, drainCancel := context.WithTimeout(ctx, c.cfg.Controller.DrainTimeout)
 	defer drainCancel()
 
-	if err := d.runner.WaitForDrain(drainCtx, d.cfg.Daemon.DrainTimeout); err != nil {
-		remainingCount := d.runner.ActiveRunCount()
-		d.logger.Warn("drain timeout exceeded",
+	if err := c.runner.WaitForDrain(drainCtx, c.cfg.Controller.DrainTimeout); err != nil {
+		remainingCount := c.runner.ActiveRunCount()
+		c.logger.Warn("drain timeout exceeded",
 			slog.Int("remaining_workflows", remainingCount),
-			slog.Duration("drain_timeout", d.cfg.Daemon.DrainTimeout))
+			slog.Duration("drain_timeout", c.cfg.Controller.DrainTimeout))
 	} else {
-		d.logger.Info("all workflows completed during drain")
+		c.logger.Info("all workflows completed during drain")
 	}
 
 	// Stop runner and wait for all goroutines to exit
 	// Use remaining shutdown context time for runner stop
-	if err := d.runner.Stop(ctx); err != nil {
-		d.logger.Warn("runner stop timeout",
+	if err := c.runner.Stop(ctx); err != nil {
+		c.logger.Warn("runner stop timeout",
 			internallog.Error(err))
 	} else {
-		d.logger.Info("runner stopped cleanly")
+		c.logger.Info("runner stopped cleanly")
 	}
 
 	// Stop leader election
-	if d.leader != nil {
-		d.leader.Stop()
+	if c.leader != nil {
+		c.leader.Stop()
 	}
 
 	// Stop scheduler
-	if d.scheduler != nil {
-		d.scheduler.Stop()
+	if c.scheduler != nil {
+		c.scheduler.Stop()
 	}
 
 	// Stop MCP registry
-	if d.mcpRegistry != nil {
-		if err := d.mcpRegistry.Stop(); err != nil {
-			d.logger.Error("MCP registry shutdown error",
+	if c.mcpRegistry != nil {
+		if err := c.mcpRegistry.Stop(); err != nil {
+			c.logger.Error("MCP registry shutdown error",
 				internallog.Error(err))
 		}
 	}
 
 	// T7: Stop OverrideManager cleanup goroutine
-	if d.overrideStopChan != nil {
-		close(d.overrideStopChan)
-		d.logger.Info("security override cleanup goroutine stopped")
+	if c.overrideStopChan != nil {
+		close(c.overrideStopChan)
+		c.logger.Info("security override cleanup goroutine stopped")
 	}
 
 	// T7: Close audit logger via security manager
-	if d.securityManager != nil {
-		if err := d.securityManager.Close(); err != nil {
-			d.logger.Error("security manager shutdown error",
+	if c.securityManager != nil {
+		if err := c.securityManager.Close(); err != nil {
+			c.logger.Error("security manager shutdown error",
 				internallog.Error(err))
 		} else {
-			d.logger.Info("security manager shutdown complete")
+			c.logger.Info("security manager shutdown complete")
 		}
 	}
 
 	// Shutdown public API server first (if enabled)
-	if d.publicServer != nil {
-		shutdownCtx, cancel := context.WithTimeout(ctx, d.cfg.Daemon.ShutdownTimeout)
+	if c.publicServer != nil {
+		shutdownCtx, cancel := context.WithTimeout(ctx, c.cfg.Controller.ShutdownTimeout)
 		defer cancel()
 
-		if err := d.publicServer.Shutdown(shutdownCtx); err != nil {
-			d.logger.Error("public API server shutdown error",
+		if err := c.publicServer.Shutdown(shutdownCtx); err != nil {
+			c.logger.Error("public API server shutdown error",
 				internallog.Error(err))
 		}
 	}
 
 	// Shutdown control plane HTTP server
-	if d.server != nil {
-		shutdownCtx, cancel := context.WithTimeout(ctx, d.cfg.Daemon.ShutdownTimeout)
+	if c.server != nil {
+		shutdownCtx, cancel := context.WithTimeout(ctx, c.cfg.Controller.ShutdownTimeout)
 		defer cancel()
 
-		if err := d.server.Shutdown(shutdownCtx); err != nil {
-			d.logger.Error("HTTP server shutdown error",
+		if err := c.server.Shutdown(shutdownCtx); err != nil {
+			c.logger.Error("HTTP server shutdown error",
 				internallog.Error(err))
 		}
 	}
 
 	// Clean up PID file
-	if d.pidFile != "" {
-		if err := os.Remove(d.pidFile); err != nil && !os.IsNotExist(err) {
-			d.logger.Error("failed to remove PID file",
+	if c.pidFile != "" {
+		if err := os.Remove(c.pidFile); err != nil && !os.IsNotExist(err) {
+			c.logger.Error("failed to remove PID file",
 				internallog.Error(err),
-				slog.String("path", d.pidFile))
+				slog.String("path", c.pidFile))
 		}
 	}
 
 	// Clean up Unix socket file if it exists
-	if d.cfg.Daemon.Listen.SocketPath != "" {
-		if err := os.Remove(d.cfg.Daemon.Listen.SocketPath); err != nil && !os.IsNotExist(err) {
-			d.logger.Error("failed to remove socket file",
+	if c.cfg.Controller.Listen.SocketPath != "" {
+		if err := os.Remove(c.cfg.Controller.Listen.SocketPath); err != nil && !os.IsNotExist(err) {
+			c.logger.Error("failed to remove socket file",
 				internallog.Error(err),
-				slog.String("path", d.cfg.Daemon.Listen.SocketPath))
+				slog.String("path", c.cfg.Controller.Listen.SocketPath))
 		}
 	}
 
 	// Stop retention manager before shutting down trace storage
-	if d.retentionMgr != nil {
-		d.retentionMgr.Stop()
-		d.logger.Info("trace retention manager stopped")
+	if c.retentionMgr != nil {
+		c.retentionMgr.Stop()
+		c.logger.Info("trace retention manager stopped")
 	}
 
 	// Flush pending spans before shutdown
-	if d.otelProvider != nil {
+	if c.otelProvider != nil {
 		flushCtx, flushCancel := context.WithTimeout(ctx, 10*time.Second)
 		defer flushCancel()
-		if err := d.otelProvider.ForceFlush(flushCtx); err != nil {
-			d.logger.Warn("failed to flush pending spans",
+		if err := c.otelProvider.ForceFlush(flushCtx); err != nil {
+			c.logger.Warn("failed to flush pending spans",
 				internallog.Error(err))
 		}
 	}
 
 	// Shutdown OpenTelemetry provider
-	if d.otelProvider != nil {
+	if c.otelProvider != nil {
 		shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
-		if err := d.otelProvider.Shutdown(shutdownCtx); err != nil {
-			d.logger.Error("OpenTelemetry provider shutdown error",
+		if err := c.otelProvider.Shutdown(shutdownCtx); err != nil {
+			c.logger.Error("OpenTelemetry provider shutdown error",
 				internallog.Error(err))
 		}
 	}
 
 	// Close audit logger
-	if d.auditLogger != nil {
-		if err := d.auditLogger.Close(); err != nil {
-			d.logger.Error("failed to close audit logger",
+	if c.auditLogger != nil {
+		if err := c.auditLogger.Close(); err != nil {
+			c.logger.Error("failed to close audit logger",
 				internallog.Error(err))
 		}
 	}
 
 	// Close backend
-	if d.backend != nil {
-		if err := d.backend.Close(); err != nil {
-			d.logger.Error("failed to close backend",
+	if c.backend != nil {
+		if err := c.backend.Close(); err != nil {
+			c.logger.Error("failed to close backend",
 				internallog.Error(err))
 		}
 	}
 
-	d.started = false
-	d.logger.Info("daemon stopped")
+	c.started = false
+	c.logger.Info("daemon stopped")
 	return nil
 }
 
 // checkPermissionsAtStartup checks critical paths for insecure permissions and logs warnings.
-func (d *Daemon) checkPermissionsAtStartup() {
+func (c *Controller) checkPermissionsAtStartup() {
 	pathsToCheck := []string{}
 
 	// Check data directory (contains checkpoints, state files)
-	if d.cfg.Daemon.DataDir != "" {
-		pathsToCheck = append(pathsToCheck, d.cfg.Daemon.DataDir)
+	if c.cfg.Controller.DataDir != "" {
+		pathsToCheck = append(pathsToCheck, c.cfg.Controller.DataDir)
 	}
 
 	// Check PID file directory
-	if d.cfg.Daemon.PIDFile != "" {
-		pidDir := filepath.Dir(d.cfg.Daemon.PIDFile)
+	if c.cfg.Controller.PIDFile != "" {
+		pidDir := filepath.Dir(c.cfg.Controller.PIDFile)
 		pathsToCheck = append(pathsToCheck, pidDir)
 	}
 
 	// Check workflows directory (may contain sensitive configurations)
-	if d.cfg.Daemon.WorkflowsDir != "" {
-		pathsToCheck = append(pathsToCheck, d.cfg.Daemon.WorkflowsDir)
+	if c.cfg.Controller.WorkflowsDir != "" {
+		pathsToCheck = append(pathsToCheck, c.cfg.Controller.WorkflowsDir)
 	}
 
 	// Check each path and log warnings
 	for _, path := range pathsToCheck {
 		warnings := security.CheckConfigPermissions(path)
 		for _, warning := range warnings {
-			d.logger.Warn("security warning",
+			c.logger.Warn("security warning",
 				slog.String("warning", warning))
 		}
 	}
 }
 
 // logSecurityWarnings logs warnings for risky security configurations.
-func (d *Daemon) logSecurityWarnings() {
+func (c *Controller) logSecurityWarnings() {
 	// If force-insecure is set, log a single warning and skip detailed checks
-	if d.cfg.Daemon.ForceInsecure {
-		d.logger.Warn("security: running with --force-insecure flag",
+	if c.cfg.Controller.ForceInsecure {
+		c.logger.Warn("security: running with --force-insecure flag",
 			slog.String("warning", "security warnings suppressed - not recommended for production"))
 		return
 	}
 
 	// Warn if authentication is disabled
-	if !d.cfg.Daemon.DaemonAuth.Enabled {
-		d.logger.Warn("security: authentication is disabled",
+	if !c.cfg.Controller.ControllerAuth.Enabled {
+		c.logger.Warn("security: authentication is disabled",
 			slog.String("recommendation", "enable daemon_auth.enabled for production use"))
 
 		// Extra warning if listening on non-localhost TCP
-		if d.cfg.Daemon.Listen.TCPAddr != "" && !isLocalhostAddr(d.cfg.Daemon.Listen.TCPAddr) {
-			d.logger.Warn("security: authentication disabled on network-accessible address",
-				slog.String("tcp_addr", d.cfg.Daemon.Listen.TCPAddr),
+		if c.cfg.Controller.Listen.TCPAddr != "" && !isLocalhostAddr(c.cfg.Controller.Listen.TCPAddr) {
+			c.logger.Warn("security: authentication disabled on network-accessible address",
+				slog.String("tcp_addr", c.cfg.Controller.Listen.TCPAddr),
 				slog.String("risk", "unauthenticated API access from network"))
 		}
 
 		// Warning if public API is enabled without auth
-		if d.cfg.Daemon.Listen.PublicAPI.Enabled {
-			d.logger.Warn("security: public API enabled without authentication",
-				slog.String("public_api_tcp", d.cfg.Daemon.Listen.PublicAPI.TCP),
+		if c.cfg.Controller.Listen.PublicAPI.Enabled {
+			c.logger.Warn("security: public API enabled without authentication",
+				slog.String("public_api_tcp", c.cfg.Controller.Listen.PublicAPI.TCP),
 				slog.String("risk", "publicly accessible unauthenticated webhooks"))
 		}
 	}
 
 	// Warn if TLS is not enabled for TCP listener
-	if d.cfg.Daemon.Listen.TCPAddr != "" && d.cfg.Daemon.Listen.TLSCert == "" {
-		if !isLocalhostAddr(d.cfg.Daemon.Listen.TCPAddr) {
-			d.logger.Warn("security: TLS not configured for network listener",
-				slog.String("tcp_addr", d.cfg.Daemon.Listen.TCPAddr),
+	if c.cfg.Controller.Listen.TCPAddr != "" && c.cfg.Controller.Listen.TLSCert == "" {
+		if !isLocalhostAddr(c.cfg.Controller.Listen.TCPAddr) {
+			c.logger.Warn("security: TLS not configured for network listener",
+				slog.String("tcp_addr", c.cfg.Controller.Listen.TCPAddr),
 				slog.String("recommendation", "configure tls_cert and tls_key for encrypted connections"))
 		}
 	}
@@ -961,16 +961,16 @@ func isLocalhostAddr(addr string) bool {
 }
 
 // writePIDFile writes the current process ID to the PID file.
-func (d *Daemon) writePIDFile() error {
+func (c *Controller) writePIDFile() error {
 	// Create parent directory with restrictive permissions (0700)
-	dir := filepath.Dir(d.cfg.Daemon.PIDFile)
+	dir := filepath.Dir(c.cfg.Controller.PIDFile)
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
 
 	// Write PID with 0600 permissions (owner-only access)
 	pid := os.Getpid()
-	return os.WriteFile(d.cfg.Daemon.PIDFile, []byte(fmt.Sprintf("%d\n", pid)), 0600)
+	return os.WriteFile(c.cfg.Controller.PIDFile, []byte(fmt.Sprintf("%d\n", pid)), 0600)
 }
 
 // mcpStatusAdapter adapts mcp.Registry to api.MCPStatusProvider.
@@ -1100,23 +1100,23 @@ func observabilityToTracingConfig(obs config.ObservabilityConfig, version string
 
 // RecordActivity updates the last activity timestamp.
 // This should be called on every incoming API request.
-func (d *Daemon) RecordActivity() {
-	d.mu.Lock()
-	d.lastActivity = time.Now()
-	d.mu.Unlock()
+func (c *Controller) RecordActivity() {
+	c.mu.Lock()
+	c.lastActivity = time.Now()
+	c.mu.Unlock()
 }
 
 // timeSinceLastActivity returns duration since last activity.
-func (d *Daemon) timeSinceLastActivity() time.Duration {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	return time.Since(d.lastActivity)
+func (c *Controller) timeSinceLastActivity() time.Duration {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return time.Since(c.lastActivity)
 }
 
 // startIdleTimeoutMonitor starts a goroutine that monitors idle timeout.
-// Only applies to auto-started daemons.
-func (d *Daemon) startIdleTimeoutMonitor(ctx context.Context, cancel context.CancelFunc) {
-	if !d.autoStarted || d.cfg.Daemon.IdleTimeout == 0 {
+// Only applies to auto-started controllers.
+func (c *Controller) startIdleTimeoutMonitor(ctx context.Context, cancel context.CancelFunc) {
+	if !c.autoStarted || c.cfg.Controller.IdleTimeout == 0 {
 		return
 	}
 
@@ -1129,11 +1129,11 @@ func (d *Daemon) startIdleTimeoutMonitor(ctx context.Context, cancel context.Can
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				idle := d.timeSinceLastActivity()
-				if idle >= d.cfg.Daemon.IdleTimeout {
-					d.logger.Info("shutting down due to idle timeout",
+				idle := c.timeSinceLastActivity()
+				if idle >= c.cfg.Controller.IdleTimeout {
+					c.logger.Info("shutting down due to idle timeout",
 						slog.Duration("idle_duration", idle),
-						slog.Duration("idle_timeout", d.cfg.Daemon.IdleTimeout))
+						slog.Duration("idle_timeout", c.cfg.Controller.IdleTimeout))
 					cancel()
 					return
 				}

@@ -28,7 +28,7 @@ import (
 
 // New creates a new listener based on configuration.
 // Priority: TCP (if configured) > Unix socket (default)
-func New(cfg config.DaemonListenConfig) (net.Listener, error) {
+func New(cfg config.ControllerListenConfig) (net.Listener, error) {
 	// If TCP address is configured, use TCP
 	if cfg.TCPAddr != "" {
 		return newTCPListener(cfg)
@@ -67,7 +67,7 @@ func newUnixListener(socketPath string) (net.Listener, error) {
 }
 
 // newTCPListener creates a TCP listener, with optional TLS.
-func newTCPListener(cfg config.DaemonListenConfig) (net.Listener, error) {
+func newTCPListener(cfg config.ControllerListenConfig) (net.Listener, error) {
 	// Security check: block non-localhost bindings unless explicitly allowed
 	if !cfg.AllowRemote && isRemoteAddr(cfg.TCPAddr) {
 		return nil, fmt.Errorf(
@@ -135,12 +135,12 @@ func isRemoteAddr(addr string) bool {
 //   - unix:///path/to/socket
 //   - tcp://host:port
 //   - https://host:port
-func ParseConductorHost(host string) (*config.DaemonListenConfig, error) {
+func ParseConductorHost(host string) (*config.ControllerListenConfig, error) {
 	if host == "" {
 		return nil, nil
 	}
 
-	cfg := &config.DaemonListenConfig{}
+	cfg := &config.ControllerListenConfig{}
 
 	switch {
 	case strings.HasPrefix(host, "unix://"):

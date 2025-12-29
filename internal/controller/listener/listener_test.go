@@ -15,7 +15,7 @@ func TestNew_UnixSocket(t *testing.T) {
 	tmpDir := t.TempDir()
 	socketPath := filepath.Join(tmpDir, "test.sock")
 
-	cfg := config.DaemonListenConfig{
+	cfg := config.ControllerListenConfig{
 		SocketPath: socketPath,
 	}
 
@@ -46,7 +46,7 @@ func TestNew_UnixSocket(t *testing.T) {
 }
 
 func TestNew_TCP_Localhost(t *testing.T) {
-	cfg := config.DaemonListenConfig{
+	cfg := config.ControllerListenConfig{
 		TCPAddr: "127.0.0.1:0", // Use port 0 to get a random available port
 	}
 
@@ -105,7 +105,7 @@ func TestNew_TCP_BlocksRemote(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := config.DaemonListenConfig{
+			cfg := config.ControllerListenConfig{
 				TCPAddr:     tt.addr,
 				AllowRemote: false,
 			}
@@ -128,7 +128,7 @@ func TestNew_TCP_BlocksRemote(t *testing.T) {
 }
 
 func TestNew_TCP_AllowRemote(t *testing.T) {
-	cfg := config.DaemonListenConfig{
+	cfg := config.ControllerListenConfig{
 		TCPAddr:     "0.0.0.0:0",
 		AllowRemote: true,
 	}
@@ -150,7 +150,7 @@ func TestNew_UnixSocket_CreatesDirectory(t *testing.T) {
 
 	socketPath := filepath.Join(tmpDir, "n", "s.sock")
 
-	cfg := config.DaemonListenConfig{
+	cfg := config.ControllerListenConfig{
 		SocketPath: socketPath,
 	}
 
@@ -183,7 +183,7 @@ func TestNew_UnixSocket_RemovesExisting(t *testing.T) {
 		t.Fatalf("Failed to create file: %v", err)
 	}
 
-	cfg := config.DaemonListenConfig{
+	cfg := config.ControllerListenConfig{
 		SocketPath: socketPath,
 	}
 
@@ -317,7 +317,7 @@ func TestNew_Preference(t *testing.T) {
 		tmpDir := t.TempDir()
 		socketPath := filepath.Join(tmpDir, "test.sock")
 
-		cfg := config.DaemonListenConfig{
+		cfg := config.ControllerListenConfig{
 			SocketPath: socketPath,
 			TCPAddr:    "127.0.0.1:0",
 		}

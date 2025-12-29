@@ -196,9 +196,9 @@ steps:
 			}
 
 			cfg := &Config{
-				Daemon: DaemonConfig{
+				Controller: ControllerConfig{
 					WorkflowsDir: tmpDir,
-					Listen: DaemonListenConfig{
+					Listen: ControllerListenConfig{
 						PublicAPI: PublicAPIConfig{
 							Enabled: tt.publicEnabled,
 						},

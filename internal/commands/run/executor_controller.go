@@ -163,7 +163,7 @@ func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, ou
 		Enabled: true,
 	}
 	if cfg != nil {
-		autoStartCfg.SocketPath = cfg.Daemon.SocketPath
+		autoStartCfg.SocketPath = cfg.Controller.SocketPath
 	}
 
 	c, err := client.EnsureDaemon(autoStartCfg)

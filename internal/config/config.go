@@ -37,12 +37,12 @@ var (
 
 // Config represents the complete Conductor configuration.
 type Config struct {
-	Server   ServerConfig           `yaml:"server"`
-	Auth     AuthConfig             `yaml:"auth"`
-	Log      LogConfig              `yaml:"log"`
-	LLM      LLMConfig              `yaml:"llm"`      // Global LLM settings (timeouts, retries, etc.)
-	Daemon   DaemonConfig           `yaml:"daemon"`   // Daemon-related settings
-	Security security.SecurityConfig `yaml:"security"` // Security framework settings
+	Server     ServerConfig             `yaml:"server"`
+	Auth       AuthConfig               `yaml:"auth"`
+	Log        LogConfig                `yaml:"log"`
+	LLM        LLMConfig                `yaml:"llm"`        // Global LLM settings (timeouts, retries, etc.)
+	Controller ControllerConfig         `yaml:"controller"` // Controller service settings
+	Security   security.SecurityConfig  `yaml:"security"`   // Security framework settings
 
 	// Multi-provider configuration (new format)
 	DefaultProvider            string        `yaml:"default_provider,omitempty" json:"default_provider,omitempty"`
@@ -56,48 +56,48 @@ type Config struct {
 	Workspaces map[string]Workspace `yaml:"workspaces,omitempty" json:"workspaces,omitempty"`
 }
 
-// DaemonConfig configures daemon-related settings.
-// This struct includes both CLI daemon connection settings and daemon server settings.
-type DaemonConfig struct {
+// ControllerConfig configures controller service settings.
+// This struct includes both CLI controller connection settings and controller server settings.
+type ControllerConfig struct {
 	// ForceInsecure explicitly acknowledges running with insecure configuration.
 	// When true, security warnings about disabled auth or TLS are suppressed.
 	// This flag is intended for development/testing environments only.
 	// Default: false
 	ForceInsecure bool `yaml:"force_insecure"`
 
-	// AutoStart enables automatic daemon startup when CLI commands need it.
-	// When true, CLI will spawn conductord if not already running.
+	// AutoStart enables automatic controller startup when CLI commands need it.
+	// When true, CLI will spawn the controller if not already running.
 	// Default: true
 	AutoStart bool `yaml:"auto_start"`
 
-	// IdleTimeout is how long an auto-started daemon waits before shutting down due to inactivity.
-	// Only applies to daemons started via auto-start (not manually started daemons).
+	// IdleTimeout is how long an auto-started controller waits before shutting down due to inactivity.
+	// Only applies to controllers started via auto-start (not manually started controllers).
 	// Default: 30m
 	IdleTimeout time.Duration `yaml:"idle_timeout,omitempty"`
 
-	// SocketPath is the Unix socket path for daemon communication.
+	// SocketPath is the Unix socket path for controller communication.
 	// Environment: CONDUCTOR_SOCKET
 	// Default: ~/.conductor/conductor.sock (or XDG_RUNTIME_DIR/conductor/conductor.sock)
 	SocketPath string `yaml:"socket_path,omitempty"`
 
-	// APIKey is the API key for authenticating with the daemon.
+	// APIKey is the API key for authenticating with the controller.
 	// Environment: CONDUCTOR_API_KEY
 	APIKey string `yaml:"api_key,omitempty"`
 
-	// Listen configures the daemon's listener (daemon-specific).
-	Listen DaemonListenConfig `yaml:"listen,omitempty"`
+	// Listen configures the controller's listener.
+	Listen ControllerListenConfig `yaml:"listen,omitempty"`
 
-	// PIDFile is the path to the PID file (daemon-specific). Empty means no PID file.
+	// PIDFile is the path to the PID file. Empty means no PID file.
 	PIDFile string `yaml:"pid_file,omitempty"`
 
-	// DataDir is the directory for daemon data (checkpoints, state).
+	// DataDir is the directory for controller data (checkpoints, state).
 	DataDir string `yaml:"data_dir,omitempty"`
 
 	// WorkflowsDir is the directory to search for workflow files.
 	WorkflowsDir string `yaml:"workflows_dir,omitempty"`
 
-	// DaemonLog is daemon-specific logging configuration.
-	DaemonLog DaemonLogConfig `yaml:"daemon_log,omitempty"`
+	// ControllerLog is controller-specific logging configuration.
+	ControllerLog ControllerLogConfig `yaml:"controller_log,omitempty"`
 
 	// MaxConcurrentRuns limits concurrent workflow executions.
 	MaxConcurrentRuns int `yaml:"max_concurrent_runs,omitempty"`
@@ -127,8 +127,8 @@ type DaemonConfig struct {
 	// Endpoints configures named API endpoints (daemon-specific).
 	Endpoints EndpointsConfig `yaml:"endpoints,omitempty"`
 
-	// DaemonAuth configures daemon authentication (different from CLI auth).
-	DaemonAuth DaemonAuthConfig `yaml:"daemon_auth,omitempty"`
+	// ControllerAuth configures controller authentication (different from CLI auth).
+	ControllerAuth ControllerAuthConfig `yaml:"controller_auth,omitempty"`
 
 	// Backend configures the storage backend.
 	Backend BackendConfig `yaml:"backend,omitempty"`
@@ -140,8 +140,8 @@ type DaemonConfig struct {
 	Observability ObservabilityConfig `yaml:"observability,omitempty"`
 }
 
-// DaemonListenConfig configures how the daemon listens for connections.
-type DaemonListenConfig struct {
+// ControllerListenConfig configures how the daemon listens for connections.
+type ControllerListenConfig struct {
 	// SocketPath is the Unix socket path (default).
 	SocketPath string `yaml:"socket_path,omitempty"`
 
@@ -177,8 +177,8 @@ type PublicAPIConfig struct {
 	TCP string `yaml:"tcp,omitempty"`
 }
 
-// DaemonLogConfig configures daemon logging (separate from CLI logging).
-type DaemonLogConfig struct {
+// ControllerLogConfig configures daemon logging (separate from CLI logging).
+type ControllerLogConfig struct {
 	// Level is the log level (debug, info, warn, error).
 	Level string `yaml:"level,omitempty"`
 
@@ -186,8 +186,8 @@ type DaemonLogConfig struct {
 	Format string `yaml:"format,omitempty"`
 }
 
-// DaemonAuthConfig configures daemon authentication (separate from CLI auth).
-type DaemonAuthConfig struct {
+// ControllerAuthConfig configures daemon authentication (separate from CLI auth).
+type ControllerAuthConfig struct {
 	// Enabled controls whether authentication is required.
 	Enabled bool `yaml:"enabled"`
 
@@ -609,17 +609,17 @@ func Default() *Config {
 				Enabled: false,
 			},
 		},
-		Daemon: DaemonConfig{
+		Controller: ControllerConfig{
 			AutoStart:   true,
 			IdleTimeout: 30 * time.Minute,
-			Listen: DaemonListenConfig{
+			Listen: ControllerListenConfig{
 				SocketPath:  socketPath,
 				AllowRemote: false,
 			},
 			PIDFile:            "", // No PID file by default
 			DataDir:            dataDir,
 			WorkflowsDir:       "./workflows",
-			DaemonLog: DaemonLogConfig{
+			ControllerLog: ControllerLogConfig{
 				Level:  "info",
 				Format: "text",
 			},
@@ -636,7 +636,7 @@ func Default() *Config {
 				LeaderElection:           true,
 				StalledJobTimeoutSeconds: 300, // 5 minutes
 			},
-			DaemonAuth: DaemonAuthConfig{
+			ControllerAuth: ControllerAuthConfig{
 				Enabled:         true, // Secure by default
 				AllowUnixSocket: true, // Convenient local development
 			},
@@ -813,68 +813,68 @@ func (c *Config) applyDefaults() {
 	}
 
 	// Daemon defaults
-	if c.Daemon.IdleTimeout == 0 {
-		c.Daemon.IdleTimeout = defaults.Daemon.IdleTimeout
+	if c.Controller.IdleTimeout == 0 {
+		c.Controller.IdleTimeout = defaults.Controller.IdleTimeout
 	}
-	if c.Daemon.Listen.SocketPath == "" {
-		c.Daemon.Listen.SocketPath = defaults.Daemon.Listen.SocketPath
+	if c.Controller.Listen.SocketPath == "" {
+		c.Controller.Listen.SocketPath = defaults.Controller.Listen.SocketPath
 	}
-	if c.Daemon.DataDir == "" {
-		c.Daemon.DataDir = defaults.Daemon.DataDir
+	if c.Controller.DataDir == "" {
+		c.Controller.DataDir = defaults.Controller.DataDir
 	}
-	if c.Daemon.WorkflowsDir == "" {
-		c.Daemon.WorkflowsDir = defaults.Daemon.WorkflowsDir
+	if c.Controller.WorkflowsDir == "" {
+		c.Controller.WorkflowsDir = defaults.Controller.WorkflowsDir
 	}
-	if c.Daemon.DaemonLog.Level == "" {
-		c.Daemon.DaemonLog.Level = defaults.Daemon.DaemonLog.Level
+	if c.Controller.ControllerLog.Level == "" {
+		c.Controller.ControllerLog.Level = defaults.Controller.ControllerLog.Level
 	}
-	if c.Daemon.DaemonLog.Format == "" {
-		c.Daemon.DaemonLog.Format = defaults.Daemon.DaemonLog.Format
+	if c.Controller.ControllerLog.Format == "" {
+		c.Controller.ControllerLog.Format = defaults.Controller.ControllerLog.Format
 	}
-	if c.Daemon.MaxConcurrentRuns == 0 {
-		c.Daemon.MaxConcurrentRuns = defaults.Daemon.MaxConcurrentRuns
+	if c.Controller.MaxConcurrentRuns == 0 {
+		c.Controller.MaxConcurrentRuns = defaults.Controller.MaxConcurrentRuns
 	}
-	if c.Daemon.DefaultTimeout == 0 {
-		c.Daemon.DefaultTimeout = defaults.Daemon.DefaultTimeout
+	if c.Controller.DefaultTimeout == 0 {
+		c.Controller.DefaultTimeout = defaults.Controller.DefaultTimeout
 	}
-	if c.Daemon.ShutdownTimeout == 0 {
-		c.Daemon.ShutdownTimeout = defaults.Daemon.ShutdownTimeout
+	if c.Controller.ShutdownTimeout == 0 {
+		c.Controller.ShutdownTimeout = defaults.Controller.ShutdownTimeout
 	}
-	if c.Daemon.DrainTimeout == 0 {
-		c.Daemon.DrainTimeout = defaults.Daemon.DrainTimeout
+	if c.Controller.DrainTimeout == 0 {
+		c.Controller.DrainTimeout = defaults.Controller.DrainTimeout
 	}
-	if c.Daemon.Backend.Type == "" {
-		c.Daemon.Backend.Type = defaults.Daemon.Backend.Type
+	if c.Controller.Backend.Type == "" {
+		c.Controller.Backend.Type = defaults.Controller.Backend.Type
 	}
-	if c.Daemon.Distributed.StalledJobTimeoutSeconds == 0 {
-		c.Daemon.Distributed.StalledJobTimeoutSeconds = defaults.Daemon.Distributed.StalledJobTimeoutSeconds
+	if c.Controller.Distributed.StalledJobTimeoutSeconds == 0 {
+		c.Controller.Distributed.StalledJobTimeoutSeconds = defaults.Controller.Distributed.StalledJobTimeoutSeconds
 	}
-	if c.Daemon.Observability.ServiceName == "" {
-		c.Daemon.Observability.ServiceName = defaults.Daemon.Observability.ServiceName
+	if c.Controller.Observability.ServiceName == "" {
+		c.Controller.Observability.ServiceName = defaults.Controller.Observability.ServiceName
 	}
-	if c.Daemon.Observability.ServiceVersion == "" {
-		c.Daemon.Observability.ServiceVersion = defaults.Daemon.Observability.ServiceVersion
+	if c.Controller.Observability.ServiceVersion == "" {
+		c.Controller.Observability.ServiceVersion = defaults.Controller.Observability.ServiceVersion
 	}
-	if c.Daemon.Observability.Sampling.Type == "" {
-		c.Daemon.Observability.Sampling.Type = defaults.Daemon.Observability.Sampling.Type
+	if c.Controller.Observability.Sampling.Type == "" {
+		c.Controller.Observability.Sampling.Type = defaults.Controller.Observability.Sampling.Type
 	}
-	if c.Daemon.Observability.Sampling.Rate == 0 {
-		c.Daemon.Observability.Sampling.Rate = defaults.Daemon.Observability.Sampling.Rate
+	if c.Controller.Observability.Sampling.Rate == 0 {
+		c.Controller.Observability.Sampling.Rate = defaults.Controller.Observability.Sampling.Rate
 	}
-	if c.Daemon.Observability.Storage.Backend == "" {
-		c.Daemon.Observability.Storage.Backend = defaults.Daemon.Observability.Storage.Backend
+	if c.Controller.Observability.Storage.Backend == "" {
+		c.Controller.Observability.Storage.Backend = defaults.Controller.Observability.Storage.Backend
 	}
-	if c.Daemon.Observability.Storage.Retention.TraceDays == 0 {
-		c.Daemon.Observability.Storage.Retention.TraceDays = defaults.Daemon.Observability.Storage.Retention.TraceDays
+	if c.Controller.Observability.Storage.Retention.TraceDays == 0 {
+		c.Controller.Observability.Storage.Retention.TraceDays = defaults.Controller.Observability.Storage.Retention.TraceDays
 	}
-	if c.Daemon.Observability.Storage.Retention.EventDays == 0 {
-		c.Daemon.Observability.Storage.Retention.EventDays = defaults.Daemon.Observability.Storage.Retention.EventDays
+	if c.Controller.Observability.Storage.Retention.EventDays == 0 {
+		c.Controller.Observability.Storage.Retention.EventDays = defaults.Controller.Observability.Storage.Retention.EventDays
 	}
-	if c.Daemon.Observability.Storage.Retention.AggregateDays == 0 {
-		c.Daemon.Observability.Storage.Retention.AggregateDays = defaults.Daemon.Observability.Storage.Retention.AggregateDays
+	if c.Controller.Observability.Storage.Retention.AggregateDays == 0 {
+		c.Controller.Observability.Storage.Retention.AggregateDays = defaults.Controller.Observability.Storage.Retention.AggregateDays
 	}
-	if c.Daemon.Observability.Redaction.Level == "" {
-		c.Daemon.Observability.Redaction.Level = defaults.Daemon.Observability.Redaction.Level
+	if c.Controller.Observability.Redaction.Level == "" {
+		c.Controller.Observability.Redaction.Level = defaults.Controller.Observability.Redaction.Level
 	}
 
 	// Workspace defaults
@@ -947,65 +947,65 @@ func (c *Config) loadFromEnv() {
 
 	// Daemon configuration (CLI-related)
 	if val := os.Getenv("CONDUCTOR_DAEMON_AUTO_START"); val != "" {
-		c.Daemon.AutoStart = val == "1" || strings.ToLower(val) == "true"
+		c.Controller.AutoStart = val == "1" || strings.ToLower(val) == "true"
 	}
 	if val := os.Getenv("CONDUCTOR_SOCKET"); val != "" {
-		c.Daemon.SocketPath = val
+		c.Controller.SocketPath = val
 	}
 	if val := os.Getenv("CONDUCTOR_API_KEY"); val != "" {
-		c.Daemon.APIKey = val
+		c.Controller.APIKey = val
 	}
 
 	// Daemon configuration (daemon-specific)
 	if val := os.Getenv("CONDUCTOR_LISTEN_SOCKET"); val != "" {
-		c.Daemon.Listen.SocketPath = val
+		c.Controller.Listen.SocketPath = val
 	}
 	if val := os.Getenv("CONDUCTOR_TCP_ADDR"); val != "" {
-		c.Daemon.Listen.TCPAddr = val
+		c.Controller.Listen.TCPAddr = val
 	}
 	if val := os.Getenv("CONDUCTOR_PUBLIC_API_ENABLED"); val != "" {
-		c.Daemon.Listen.PublicAPI.Enabled = val == "1" || strings.ToLower(val) == "true"
+		c.Controller.Listen.PublicAPI.Enabled = val == "1" || strings.ToLower(val) == "true"
 	}
 	if val := os.Getenv("CONDUCTOR_PUBLIC_API_TCP"); val != "" {
-		c.Daemon.Listen.PublicAPI.TCP = val
+		c.Controller.Listen.PublicAPI.TCP = val
 	}
 	if val := os.Getenv("CONDUCTOR_PID_FILE"); val != "" {
-		c.Daemon.PIDFile = val
+		c.Controller.PIDFile = val
 	}
 	if val := os.Getenv("CONDUCTOR_DATA_DIR"); val != "" {
-		c.Daemon.DataDir = val
+		c.Controller.DataDir = val
 	}
 	if val := os.Getenv("CONDUCTOR_WORKFLOWS_DIR"); val != "" {
-		c.Daemon.WorkflowsDir = val
+		c.Controller.WorkflowsDir = val
 	}
 	if val := os.Getenv("CONDUCTOR_DAEMON_LOG_LEVEL"); val != "" {
-		c.Daemon.DaemonLog.Level = val
+		c.Controller.ControllerLog.Level = val
 	}
 	if val := os.Getenv("CONDUCTOR_DAEMON_LOG_FORMAT"); val != "" {
-		c.Daemon.DaemonLog.Format = val
+		c.Controller.ControllerLog.Format = val
 	}
 	if val := os.Getenv("CONDUCTOR_MAX_CONCURRENT_RUNS"); val != "" {
 		if runs, err := strconv.Atoi(val); err == nil {
-			c.Daemon.MaxConcurrentRuns = runs
+			c.Controller.MaxConcurrentRuns = runs
 		}
 	}
 	if val := os.Getenv("CONDUCTOR_DEFAULT_TIMEOUT"); val != "" {
 		if duration, err := time.ParseDuration(val); err == nil {
-			c.Daemon.DefaultTimeout = duration
+			c.Controller.DefaultTimeout = duration
 		}
 	}
 	if val := os.Getenv("CONDUCTOR_SHUTDOWN_TIMEOUT"); val != "" {
 		if duration, err := time.ParseDuration(val); err == nil {
-			c.Daemon.ShutdownTimeout = duration
+			c.Controller.ShutdownTimeout = duration
 		}
 	}
 	if val := os.Getenv("CONDUCTOR_DRAIN_TIMEOUT"); val != "" {
 		if duration, err := time.ParseDuration(val); err == nil {
-			c.Daemon.DrainTimeout = duration
+			c.Controller.DrainTimeout = duration
 		}
 	}
 	if val := os.Getenv("CONDUCTOR_CHECKPOINTS_ENABLED"); val != "" {
-		c.Daemon.CheckpointsEnabled = val == "1" || strings.ToLower(val) == "true"
+		c.Controller.CheckpointsEnabled = val == "1" || strings.ToLower(val) == "true"
 	}
 
 	// LLM configuration
@@ -1119,16 +1119,16 @@ func (c *Config) Validate() error {
 	}
 
 	// Validate public API configuration
-	if c.Daemon.Listen.PublicAPI.Enabled {
-		if c.Daemon.Listen.PublicAPI.TCP == "" {
+	if c.Controller.Listen.PublicAPI.Enabled {
+		if c.Controller.Listen.PublicAPI.TCP == "" {
 			errs = append(errs, "daemon.listen.public_api.tcp is required when public_api.enabled is true")
 		}
 	}
 
 	// Validate endpoints configuration
-	if c.Daemon.Endpoints.Enabled {
+	if c.Controller.Endpoints.Enabled {
 		endpointNames := make(map[string]bool)
-		for i, ep := range c.Daemon.Endpoints.Endpoints {
+		for i, ep := range c.Controller.Endpoints.Endpoints {
 			// Validate required fields
 			if ep.Name == "" {
 				errs = append(errs, fmt.Sprintf("daemon.endpoints.endpoints[%d]: name is required", i))
@@ -1159,8 +1159,8 @@ func (c *Config) Validate() error {
 	}
 
 	// Validate retention days (must be positive when observability is enabled)
-	if c.Daemon.Observability.Enabled {
-		ret := c.Daemon.Observability.Storage.Retention
+	if c.Controller.Observability.Enabled {
+		ret := c.Controller.Observability.Storage.Retention
 		if ret.TraceDays <= 0 {
 			errs = append(errs, fmt.Sprintf("daemon.observability.storage.retention.trace_days must be positive, got %d", ret.TraceDays))
 		}
@@ -1172,24 +1172,24 @@ func (c *Config) Validate() error {
 		}
 
 		// Validate sampling rate is in valid range [0.0, 1.0]
-		if c.Daemon.Observability.Sampling.Enabled {
-			rate := c.Daemon.Observability.Sampling.Rate
+		if c.Controller.Observability.Sampling.Enabled {
+			rate := c.Controller.Observability.Sampling.Rate
 			if rate < 0.0 || rate > 1.0 {
 				errs = append(errs, fmt.Sprintf("daemon.observability.sampling.rate must be between 0.0 and 1.0, got %f", rate))
 			}
 		}
 
 		// Validate audit configuration
-		if c.Daemon.Observability.Audit.Enabled {
+		if c.Controller.Observability.Audit.Enabled {
 			validDestinations := map[string]bool{"file": true, "stdout": true, "syslog": true}
-			if c.Daemon.Observability.Audit.Destination == "" {
+			if c.Controller.Observability.Audit.Destination == "" {
 				errs = append(errs, "daemon.observability.audit.destination is required when audit.enabled is true")
-			} else if !validDestinations[c.Daemon.Observability.Audit.Destination] {
-				errs = append(errs, fmt.Sprintf("daemon.observability.audit.destination must be one of [file, stdout, syslog], got %q", c.Daemon.Observability.Audit.Destination))
+			} else if !validDestinations[c.Controller.Observability.Audit.Destination] {
+				errs = append(errs, fmt.Sprintf("daemon.observability.audit.destination must be one of [file, stdout, syslog], got %q", c.Controller.Observability.Audit.Destination))
 			}
 
 			// Validate file_path is set when destination is file
-			if c.Daemon.Observability.Audit.Destination == "file" && c.Daemon.Observability.Audit.FilePath == "" {
+			if c.Controller.Observability.Audit.Destination == "file" && c.Controller.Observability.Audit.FilePath == "" {
 				errs = append(errs, "daemon.observability.audit.file_path is required when audit.destination is 'file'")
 			}
 		}
@@ -1271,7 +1271,7 @@ func defaultDataDir() string {
 }
 
 // CheckpointDir returns the checkpoint directory path for the daemon.
-func (c *DaemonConfig) CheckpointDir() string {
+func (c *ControllerConfig) CheckpointDir() string {
 	if !c.CheckpointsEnabled {
 		return ""
 	}

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package daemon
+package controller
 
 import (
 	"context"
@@ -28,14 +28,14 @@ import (
 	"github.com/tombee/conductor/internal/config"
 )
 
-func TestDaemonStartStop(t *testing.T) {
+func TestControllerStartStop(t *testing.T) {
 	// Create temp directory for socket
 	tmpDir := t.TempDir()
 	socketPath := filepath.Join(tmpDir, "test.sock")
 
 	cfg := config.Default()
-	cfg.Daemon.Listen.SocketPath = socketPath
-	cfg.Daemon.ShutdownTimeout = 5 * time.Second
+	cfg.Controller.Listen.SocketPath = socketPath
+	cfg.Controller.ShutdownTimeout = 5 * time.Second
 
 	d, err := New(cfg, Options{
 		Version:   "test",
@@ -43,7 +43,7 @@ func TestDaemonStartStop(t *testing.T) {
 		BuildDate: "test",
 	})
 	if err != nil {
-		t.Fatalf("Failed to create daemon: %v", err)
+		t.Fatalf("Failed to create controller: %v", err)
 	}
 
 	// Start daemon in background
@@ -110,19 +110,19 @@ func TestDaemonStartStop(t *testing.T) {
 	}
 }
 
-func TestDaemonPIDFile(t *testing.T) {
+func TestControllerPIDFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	socketPath := filepath.Join(tmpDir, "test.sock")
 	pidFile := filepath.Join(tmpDir, "test.pid")
 
 	cfg := config.Default()
-	cfg.Daemon.Listen.SocketPath = socketPath
-	cfg.Daemon.PIDFile = pidFile
-	cfg.Daemon.ShutdownTimeout = 5 * time.Second
+	cfg.Controller.Listen.SocketPath = socketPath
+	cfg.Controller.PIDFile = pidFile
+	cfg.Controller.ShutdownTimeout = 5 * time.Second
 
 	d, err := New(cfg, Options{Version: "test"})
 	if err != nil {
-		t.Fatalf("Failed to create daemon: %v", err)
+		t.Fatalf("Failed to create controller: %v", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -158,13 +158,13 @@ func TestDaemonPIDFile(t *testing.T) {
 	}
 }
 
-func TestDaemonVersionEndpoint(t *testing.T) {
+func TestControllerVersionEndpoint(t *testing.T) {
 	tmpDir := t.TempDir()
 	socketPath := filepath.Join(tmpDir, "test.sock")
 
 	cfg := config.Default()
-	cfg.Daemon.Listen.SocketPath = socketPath
-	cfg.Daemon.ShutdownTimeout = 5 * time.Second
+	cfg.Controller.Listen.SocketPath = socketPath
+	cfg.Controller.ShutdownTimeout = 5 * time.Second
 
 	d, err := New(cfg, Options{
 		Version:   "1.2.3",
@@ -172,7 +172,7 @@ func TestDaemonVersionEndpoint(t *testing.T) {
 		BuildDate: "2025-01-01",
 	})
 	if err != nil {
-		t.Fatalf("Failed to create daemon: %v", err)
+		t.Fatalf("Failed to create controller: %v", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

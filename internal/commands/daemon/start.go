@@ -111,28 +111,28 @@ func runStart(ctx context.Context, opts startOptions) error {
 
 	// Apply flag overrides
 	if opts.socket != "" {
-		cfg.Daemon.Listen.SocketPath = opts.socket
+		cfg.Controller.Listen.SocketPath = opts.socket
 	}
 	if opts.tcpAddr != "" {
-		cfg.Daemon.Listen.TCPAddr = opts.tcpAddr
+		cfg.Controller.Listen.TCPAddr = opts.tcpAddr
 	}
 	if opts.allowRemote {
-		cfg.Daemon.Listen.AllowRemote = true
+		cfg.Controller.Listen.AllowRemote = true
 	}
 	if opts.workflowsDir != "" {
-		cfg.Daemon.WorkflowsDir = opts.workflowsDir
+		cfg.Controller.WorkflowsDir = opts.workflowsDir
 	}
 	if opts.backend != "" {
-		cfg.Daemon.Backend.Type = opts.backend
+		cfg.Controller.Backend.Type = opts.backend
 	}
 	if opts.forceInsecure {
-		cfg.Daemon.ForceInsecure = true
+		cfg.Controller.ForceInsecure = true
 	}
 
 	// Determine PID file path (unless foreground mode)
 	var pidFilePath string
 	if !opts.foreground {
-		pidFilePath = cfg.Daemon.PIDFile
+		pidFilePath = cfg.Controller.PIDFile
 		if pidFilePath == "" {
 			// Default PID file location
 			homeDir, err := os.UserHomeDir()
@@ -162,10 +162,10 @@ func runStart(ctx context.Context, opts startOptions) error {
 			Commit:       "",
 			BuildDate:    "",
 			BackendType:  opts.backend,
-			SocketPath:   cfg.Daemon.Listen.SocketPath,
-			TCPAddr:      cfg.Daemon.Listen.TCPAddr,
-			AllowRemote:  cfg.Daemon.Listen.AllowRemote,
-			WorkflowsDir: cfg.Daemon.WorkflowsDir,
+			SocketPath:   cfg.Controller.Listen.SocketPath,
+			TCPAddr:      cfg.Controller.Listen.TCPAddr,
+			AllowRemote:  cfg.Controller.Listen.AllowRemote,
+			WorkflowsDir: cfg.Controller.WorkflowsDir,
 		}
 
 		if err := daemonpkg.Run(runOpts); err != nil {
@@ -286,22 +286,22 @@ func runStart(ctx context.Context, opts startOptions) error {
 func buildDaemonArgs(cfg *config.Config, opts startOptions) []string {
 	args := []string{"--daemon-child"}
 
-	if cfg.Daemon.Listen.SocketPath != "" {
-		args = append(args, "--socket", cfg.Daemon.Listen.SocketPath)
+	if cfg.Controller.Listen.SocketPath != "" {
+		args = append(args, "--socket", cfg.Controller.Listen.SocketPath)
 	}
-	if cfg.Daemon.Listen.TCPAddr != "" {
-		args = append(args, "--tcp", cfg.Daemon.Listen.TCPAddr)
+	if cfg.Controller.Listen.TCPAddr != "" {
+		args = append(args, "--tcp", cfg.Controller.Listen.TCPAddr)
 	}
-	if cfg.Daemon.Listen.AllowRemote {
+	if cfg.Controller.Listen.AllowRemote {
 		args = append(args, "--allow-remote")
 	}
-	if cfg.Daemon.WorkflowsDir != "" {
-		args = append(args, "--workflows-dir", cfg.Daemon.WorkflowsDir)
+	if cfg.Controller.WorkflowsDir != "" {
+		args = append(args, "--workflows-dir", cfg.Controller.WorkflowsDir)
 	}
-	if cfg.Daemon.Backend.Type != "" {
-		args = append(args, "--backend", cfg.Daemon.Backend.Type)
+	if cfg.Controller.Backend.Type != "" {
+		args = append(args, "--backend", cfg.Controller.Backend.Type)
 	}
-	if cfg.Daemon.ForceInsecure {
+	if cfg.Controller.ForceInsecure {
 		args = append(args, "--force-insecure")
 	}
 
@@ -311,12 +311,12 @@ func buildDaemonArgs(cfg *config.Config, opts startOptions) []string {
 // getHealthEndpoint returns the health check endpoint URL based on daemon config.
 func getHealthEndpoint(cfg *config.Config) string {
 	// If TCP is configured, use that
-	if cfg.Daemon.Listen.TCPAddr != "" {
-		return fmt.Sprintf("http://%s/health", cfg.Daemon.Listen.TCPAddr)
+	if cfg.Controller.Listen.TCPAddr != "" {
+		return fmt.Sprintf("http://%s/health", cfg.Controller.Listen.TCPAddr)
 	}
 
 	// Otherwise use Unix socket
-	socketPath := cfg.Daemon.Listen.SocketPath
+	socketPath := cfg.Controller.Listen.SocketPath
 	if socketPath == "" {
 		homeDir, _ := os.UserHomeDir()
 		socketPath = filepath.Join(homeDir, ".conductor", "conductor.sock")

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package daemon
+package controller
 
 import (
 	"context"
@@ -63,34 +63,34 @@ func Run(opts RunOptions) error {
 
 	// Apply overrides from options
 	if opts.BackendType != "" {
-		cfg.Daemon.Backend.Type = opts.BackendType
+		cfg.Controller.Backend.Type = opts.BackendType
 	}
 	if opts.PostgresURL != "" {
-		cfg.Daemon.Backend.Postgres.ConnectionString = opts.PostgresURL
+		cfg.Controller.Backend.Postgres.ConnectionString = opts.PostgresURL
 	}
 	if opts.Distributed {
-		cfg.Daemon.Distributed.Enabled = true
+		cfg.Controller.Distributed.Enabled = true
 	}
 	if opts.InstanceID != "" {
-		cfg.Daemon.Distributed.InstanceID = opts.InstanceID
+		cfg.Controller.Distributed.InstanceID = opts.InstanceID
 	}
 	if opts.SocketPath != "" {
-		cfg.Daemon.Listen.SocketPath = opts.SocketPath
+		cfg.Controller.Listen.SocketPath = opts.SocketPath
 	}
 	if opts.TCPAddr != "" {
-		cfg.Daemon.Listen.TCPAddr = opts.TCPAddr
+		cfg.Controller.Listen.TCPAddr = opts.TCPAddr
 	}
 	if opts.WorkflowsDir != "" {
-		cfg.Daemon.WorkflowsDir = opts.WorkflowsDir
+		cfg.Controller.WorkflowsDir = opts.WorkflowsDir
 	}
 	if opts.TLSCert != "" {
-		cfg.Daemon.Listen.TLSCert = opts.TLSCert
+		cfg.Controller.Listen.TLSCert = opts.TLSCert
 	}
 	if opts.TLSKey != "" {
-		cfg.Daemon.Listen.TLSKey = opts.TLSKey
+		cfg.Controller.Listen.TLSKey = opts.TLSKey
 	}
 	if opts.AllowRemote {
-		cfg.Daemon.Listen.AllowRemote = true
+		cfg.Controller.Listen.AllowRemote = true
 		logger.Warn("--allow-remote is enabled. The daemon will accept connections from any network address. Ensure you have proper authentication and TLS configured for production use.")
 	}
 

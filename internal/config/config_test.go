@@ -50,10 +50,10 @@ func TestDefault(t *testing.T) {
 	}
 
 	// Daemon auth defaults - secure by default
-	if !cfg.Daemon.DaemonAuth.Enabled {
+	if !cfg.Controller.ControllerAuth.Enabled {
 		t.Errorf("expected daemon auth enabled by default, got disabled")
 	}
-	if !cfg.Daemon.DaemonAuth.AllowUnixSocket {
+	if !cfg.Controller.ControllerAuth.AllowUnixSocket {
 		t.Errorf("expected daemon auth allow_unix_socket true by default, got false")
 	}
 
@@ -171,8 +171,8 @@ func TestValidate(t *testing.T) {
 		{
 			name: "invalid trace_days when observability enabled",
 			modify: func(c *Config) {
-				c.Daemon.Observability.Enabled = true
-				c.Daemon.Observability.Storage.Retention.TraceDays = 0
+				c.Controller.Observability.Enabled = true
+				c.Controller.Observability.Storage.Retention.TraceDays = 0
 			},
 			wantErr: true,
 			errText: "trace_days must be positive",
@@ -180,8 +180,8 @@ func TestValidate(t *testing.T) {
 		{
 			name: "invalid event_days when observability enabled",
 			modify: func(c *Config) {
-				c.Daemon.Observability.Enabled = true
-				c.Daemon.Observability.Storage.Retention.EventDays = -1
+				c.Controller.Observability.Enabled = true
+				c.Controller.Observability.Storage.Retention.EventDays = -1
 			},
 			wantErr: true,
 			errText: "event_days must be positive",
@@ -189,8 +189,8 @@ func TestValidate(t *testing.T) {
 		{
 			name: "invalid aggregate_days when observability enabled",
 			modify: func(c *Config) {
-				c.Daemon.Observability.Enabled = true
-				c.Daemon.Observability.Storage.Retention.AggregateDays = 0
+				c.Controller.Observability.Enabled = true
+				c.Controller.Observability.Storage.Retention.AggregateDays = 0
 			},
 			wantErr: true,
 			errText: "aggregate_days must be positive",
@@ -198,8 +198,8 @@ func TestValidate(t *testing.T) {
 		{
 			name: "zero retention days allowed when observability disabled",
 			modify: func(c *Config) {
-				c.Daemon.Observability.Enabled = false
-				c.Daemon.Observability.Storage.Retention.TraceDays = 0
+				c.Controller.Observability.Enabled = false
+				c.Controller.Observability.Storage.Retention.TraceDays = 0
 			},
 			wantErr: false,
 		},
@@ -540,16 +540,16 @@ func TestPublicAPIConfig(t *testing.T) {
 		{
 			name: "public API enabled with TCP address",
 			modify: func(c *Config) {
-				c.Daemon.Listen.PublicAPI.Enabled = true
-				c.Daemon.Listen.PublicAPI.TCP = ":9001"
+				c.Controller.Listen.PublicAPI.Enabled = true
+				c.Controller.Listen.PublicAPI.TCP = ":9001"
 			},
 			wantErr: false,
 		},
 		{
 			name: "public API enabled without TCP address",
 			modify: func(c *Config) {
-				c.Daemon.Listen.PublicAPI.Enabled = true
-				c.Daemon.Listen.PublicAPI.TCP = ""
+				c.Controller.Listen.PublicAPI.Enabled = true
+				c.Controller.Listen.PublicAPI.TCP = ""
 			},
 			wantErr: true,
 			errText: "daemon.listen.public_api.tcp is required when public_api.enabled is true",
@@ -557,8 +557,8 @@ func TestPublicAPIConfig(t *testing.T) {
 		{
 			name: "public API disabled with TCP address",
 			modify: func(c *Config) {
-				c.Daemon.Listen.PublicAPI.Enabled = false
-				c.Daemon.Listen.PublicAPI.TCP = ":9001"
+				c.Controller.Listen.PublicAPI.Enabled = false
+				c.Controller.Listen.PublicAPI.TCP = ":9001"
 			},
 			wantErr: false, // TCP can be set but ignored when disabled
 		},
@@ -601,11 +601,11 @@ func TestPublicAPIFromEnv(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !cfg.Daemon.Listen.PublicAPI.Enabled {
+	if !cfg.Controller.Listen.PublicAPI.Enabled {
 		t.Errorf("expected public API enabled, got disabled")
 	}
-	if cfg.Daemon.Listen.PublicAPI.TCP != ":9001" {
-		t.Errorf("expected TCP :9001, got %q", cfg.Daemon.Listen.PublicAPI.TCP)
+	if cfg.Controller.Listen.PublicAPI.TCP != ":9001" {
+		t.Errorf("expected TCP :9001, got %q", cfg.Controller.Listen.PublicAPI.TCP)
 	}
 }
 
@@ -638,10 +638,10 @@ daemon:
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !cfg.Daemon.Listen.PublicAPI.Enabled {
+	if !cfg.Controller.Listen.PublicAPI.Enabled {
 		t.Errorf("expected public API enabled, got disabled")
 	}
-	if cfg.Daemon.Listen.PublicAPI.TCP != ":9001" {
-		t.Errorf("expected TCP :9001, got %q", cfg.Daemon.Listen.PublicAPI.TCP)
+	if cfg.Controller.Listen.PublicAPI.TCP != ":9001" {
+		t.Errorf("expected TCP :9001, got %q", cfg.Controller.Listen.PublicAPI.TCP)
 	}
 }

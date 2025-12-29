@@ -82,7 +82,7 @@ func runStop(ctx context.Context, opts stopOptions) error {
 	}
 
 	// Determine PID file path
-	pidFilePath := cfg.Daemon.PIDFile
+	pidFilePath := cfg.Controller.PIDFile
 	if pidFilePath == "" {
 		// Default PID file location
 		homeDir, err := os.UserHomeDir()
