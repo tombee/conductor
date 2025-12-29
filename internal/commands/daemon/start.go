@@ -24,7 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tombee/conductor/internal/config"
-	daemonpkg "github.com/tombee/conductor/internal/daemon"
+	daemonpkg "github.com/tombee/conductor/internal/controller"
 	"github.com/tombee/conductor/internal/lifecycle"
 )
 

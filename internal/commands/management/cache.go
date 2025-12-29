@@ -21,7 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tombee/conductor/internal/commands/shared"
-	"github.com/tombee/conductor/internal/daemon/cache"
+	"github.com/tombee/conductor/internal/controller/cache"
 )
 
 // NewCacheCommand creates the cache management command.

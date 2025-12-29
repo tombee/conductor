@@ -18,7 +18,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/tombee/conductor/internal/daemon/auth"
+	"github.com/tombee/conductor/internal/controller/auth"
 )
 
 // Middleware creates an HTTP middleware that logs API access.

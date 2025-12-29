@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tombee/conductor/internal/daemon/api"
+	"github.com/tombee/conductor/internal/controller/api"
 	"github.com/tombee/conductor/internal/tracing/redact"
 	"github.com/tombee/conductor/internal/tracing/storage"
 	"github.com/tombee/conductor/pkg/observability"

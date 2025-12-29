@@ -21,7 +21,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/tombee/conductor/internal/daemon/auth"
+	"github.com/tombee/conductor/internal/controller/auth"
 )
 
 func TestMiddleware_AuditableEndpoints(t *testing.T) {

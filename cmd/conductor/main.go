@@ -36,7 +36,7 @@ import (
 	"github.com/tombee/conductor/internal/commands/validate"
 	versioncmd "github.com/tombee/conductor/internal/commands/version"
 	"github.com/tombee/conductor/internal/commands/workflow"
-	daemonpkg "github.com/tombee/conductor/internal/daemon"
+	daemonpkg "github.com/tombee/conductor/internal/controller"
 )
 
 // Version information (injected via ldflags at build time)
