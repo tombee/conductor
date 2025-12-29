@@ -39,7 +39,7 @@ version: "1.0"
 
 # Abstract service requirements
 requires:
-  connectors:
+  integrations:
     - name: github
     - name: slack
       optional: true
@@ -56,14 +56,14 @@ steps:
 The runtime bindings: credentials, MCP server configurations, secrets, provider settings.
 
 ```conductor
-# conductord.yaml - Contains credentials
+# conductor.yaml - Contains credentials
 workspaces:
   default:
     profiles:
       prod:
         inherit_env: false
         bindings:
-          connectors:
+          integrations:
             github:
               auth:
                 token: ${GITHUB_TOKEN}
@@ -76,7 +76,7 @@ workspaces:
 
 ### Daemon Configuration
 
-Profiles are defined in `conductord.yaml`:
+Profiles are defined in `conductor.yaml`:
 
 ```conductor
 workspaces:
@@ -91,7 +91,7 @@ workspaces:
         # Strict isolation for production
         inherit_env: false
         bindings:
-          connectors:
+          integrations:
             github:
               auth:
                 token: ${PROD_GITHUB_TOKEN}
@@ -103,7 +103,7 @@ workspaces:
         description: "Frontend team dev environment"
         inherit_env: false
         bindings:
-          connectors:
+          integrations:
             github:
               auth:
                 token: ${FRONTEND_GITHUB_TOKEN}
@@ -111,7 +111,7 @@ workspaces:
       prod:
         inherit_env: false
         bindings:
-          connectors:
+          integrations:
             github:
               auth:
                 token: file:/etc/conductor/secrets/frontend-github-token
@@ -138,7 +138,7 @@ token: file:/etc/conductor/secrets/github-token
 
 ### File Provider Security
 
-File references require explicit configuration in the daemon config:
+File references require explicit configuration in the controller config:
 
 ```conductor
 secret_providers:
@@ -220,7 +220,7 @@ Profile Configuration:
   Profile: prod
 
   Note: Profile binding validation requires daemon connection
-  Run with --daemon to validate actual bindings
+  Run with --controller to validate actual bindings
 ```
 
 ## Profile Selection Precedence
@@ -248,7 +248,7 @@ grep -r "ghp_\|sk-ant-\|xoxb-" workflows/
 
 ### Step 2: Create First Profile
 
-Add a named profile to `conductord.yaml`:
+Add a named profile to `conductor.yaml`:
 
 ```conductor
 workspaces:
@@ -260,7 +260,7 @@ workspaces:
       prod:  # New profile
         inherit_env: false
         bindings:
-          connectors:
+          integrations:
             github:
               auth:
                 token: ${GITHUB_TOKEN}
@@ -282,7 +282,7 @@ Update workflow to use abstract references:
 
 ```conductor
 # Before
-connectors:
+integrations:
   github:
     type: github
     auth:
@@ -290,7 +290,7 @@ connectors:
 
 # After
 requires:
-  connectors:
+  integrations:
     - name: github  # Abstract reference
 ```
 
@@ -308,7 +308,7 @@ conductor run workflow.yaml --daemon --profile prod
 ### Security
 
 1. **Never commit credentials** to version control
-   - Use `.gitignore` for `conductord.yaml` or
+   - Use `.gitignore` for `conductor.yaml` or
    - Use environment-specific config files
 
 2. **Use `inherit_env: false` for production**
@@ -362,13 +362,13 @@ conductor run workflow.yaml --daemon --profile prod
 ### Multi-Environment Deployment
 
 ```conductor
-# conductord.yaml
+# conductor.yaml
 workspaces:
   default:
     profiles:
       dev:
         bindings:
-          connectors:
+          integrations:
             github:
               auth:
                 token: ${DEV_GITHUB_TOKEN}
@@ -378,7 +378,7 @@ workspaces:
 
       staging:
         bindings:
-          connectors:
+          integrations:
             github:
               auth:
                 token: ${STAGING_GITHUB_TOKEN}
@@ -389,7 +389,7 @@ workspaces:
       prod:
         inherit_env: false
         bindings:
-          connectors:
+          integrations:
             github:
               auth:
                 token: file:/etc/conductor/secrets/github-prod
@@ -414,13 +414,13 @@ conductor run deploy.yaml -d -p prod -i version=1.2.3
 ### Team Isolation
 
 ```conductor
-# conductord.yaml
+# conductor.yaml
 workspaces:
   frontend:
     profiles:
       default:
         bindings:
-          connectors:
+          integrations:
             github:
               auth:
                 token: ${FRONTEND_GITHUB_TOKEN}
@@ -429,7 +429,7 @@ workspaces:
     profiles:
       default:
         bindings:
-          connectors:
+          integrations:
             github:
               auth:
                 token: ${BACKEND_GITHUB_TOKEN}
@@ -450,20 +450,20 @@ conductor run backend-workflow.yaml -d -w backend
 ```conductor
 # workflow.yaml
 requires:
-  connectors:
+  integrations:
     - name: github
     - name: slack
       optional: true  # Won't fail if not bound
 ```
 
 ```conductor
-# conductord.yaml
+# conductor.yaml
 workspaces:
   default:
     profiles:
       minimal:
         bindings:
-          connectors:
+          integrations:
             github:
               auth:
                 token: ${GITHUB_TOKEN}
@@ -471,7 +471,7 @@ workspaces:
 
       full:
         bindings:
-          connectors:
+          integrations:
             github:
               auth:
                 token: ${GITHUB_TOKEN}
@@ -488,7 +488,7 @@ workspaces:
 Error: profile not found: frontend/prod
 ```
 
-**Solution:** Check `conductord.yaml` has the workspace and profile defined:
+**Solution:** Check `conductor.yaml` has the workspace and profile defined:
 
 ```conductor
 workspaces:
@@ -500,7 +500,7 @@ workspaces:
 ### Binding Resolution Failed
 
 ```
-Error: binding resolution failed for profile default/prod: required binding not found: connectors.github
+Error: binding resolution failed for profile default/prod: required binding not found: integrations.github
 ```
 
 **Solution:** Add the required binding to the profile:
@@ -509,7 +509,7 @@ Error: binding resolution failed for profile default/prod: required binding not 
 profiles:
   prod:
     bindings:
-      connectors:
+      integrations:
         github:
           auth:
             token: ${GITHUB_TOKEN}
@@ -555,7 +555,7 @@ workspace_name:
       description: string (optional)
       inherit_env: bool | {allowlist: [string]}
       bindings:
-        connectors:
+        integrations:
           connector_name:
             auth: {...}
         mcp_servers:
@@ -588,6 +588,6 @@ secret_providers:
 
 ## See Also
 
-- [Daemon Mode Guide](daemon-mode.md) - Running workflows via daemon
+- [Daemon Mode Guide](daemon-mode.md) - Running workflows via controller
 - [Error Handling](error-handling.md) - Troubleshooting profile errors
 - [Security](../operations/security.md) - Security best practices

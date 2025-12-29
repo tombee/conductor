@@ -34,7 +34,7 @@ To enable GitHub/Slack webhooks, expose the public API on a second port:
 # On the VM, enable public API
 ssh exe.dev ssh conductor
 cat >> ~/.config/conductor/config.yaml << EOF
-daemon:
+controller:
   listen:
     public_api:
       enabled: true
@@ -93,8 +93,8 @@ Install directly on servers:
 # Download and install
 curl -LO https://github.com/tombee/conductor/releases/latest/download/conductor-linux-amd64.tar.gz
 tar xzf conductor-linux-amd64.tar.gz
-sudo mv conductor conductord /usr/local/bin/
-sudo chmod +x /usr/local/bin/conductor /usr/local/bin/conductord
+sudo mv conductor conductor /usr/local/bin/
+sudo chmod +x /usr/local/bin/conductor /usr/local/bin/conductor
 
 # Create system user and directories
 sudo useradd --system --no-create-home --shell /bin/false conductor
@@ -119,7 +119,7 @@ Type=simple
 User=conductor
 Group=conductor
 EnvironmentFile=/etc/conductor/env
-ExecStart=/usr/local/bin/conductord
+ExecStart=/usr/local/bin/conductor
 Restart=on-failure
 RestartSec=5s
 

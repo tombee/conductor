@@ -21,7 +21,7 @@ This guide is for advanced users who want to embed Conductor as a Go library in 
 Conductor is designed as an embeddable library that you can integrate into your Go applications. This guide shows you how to use Conductor packages to add AI-powered automation to your project.
 
 :::note[When to Embed vs Use Daemon]
-Most users should interact with Conductor through the CLI and daemon (`conductord`). Embedding is recommended only for:
+Most users should interact with Conductor through the CLI and daemon (`conductor`). Embedding is recommended only for:
 
 - Serverless functions (where daemon overhead is prohibitive)
 - Unit tests (where you need fine-grained control)
@@ -35,7 +35,7 @@ Most users should interact with Conductor through the CLI and daemon (`conductor
 - Consistent state management across restarts
 - API access for community tools
 
-See [Daemon Mode](../guides/daemon-mode.md) for more on the daemon architecture.
+See [Daemon Mode](../guides/daemon-mode.md) for more on the controller architecture.
 :::
 
 

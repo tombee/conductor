@@ -41,7 +41,7 @@ providers:
     type: claude-code
 
 # Daemon configuration
-daemon:
+controller:
   auto_start: false
   socket_path: ~/.config/conductor/conductor.sock
 ```
@@ -50,21 +50,21 @@ daemon:
 
 ## Server Configuration
 
-Configuration for the Conductor server (when running as a daemon).
+Configuration for the Conductor server (when running as a controller).
 
 ### server.port
 
 **Type:** `integer`
 **Default:** `9876`
 
-Port for the daemon server. To use a different port:
+Port for the controller server. To use a different port:
 
 ```conductor
 server:
   port: 8080
 ```
 
-If the port is already in use, the daemon will fail immediately with a clear error message indicating the port number and suggesting diagnostic commands (`lsof -i :PORT` or `ss -tlnp`) to identify the conflicting service.
+If the port is already in use, the controller will fail immediately with a clear error message indicating the port number and suggesting diagnostic commands (`lsof -i :PORT` or `ss -tlnp`) to identify the conflicting service.
 
 ### server.shutdown_timeout
 
@@ -330,10 +330,10 @@ Settings for the Conductor daemon.
 **Type:** `boolean`
 **Default:** `false`
 
-Automatically start the daemon when running `conductor run --daemon` if not already running.
+Automatically start the controller when running `conductor run --daemon` if not already running.
 
 ```conductor
-daemon:
+controller:
   auto_start: false
 ```
 
@@ -343,10 +343,10 @@ daemon:
 **Default:** `~/.config/conductor/conductor.sock`
 **Environment:** `CONDUCTOR_DAEMON_SOCKET`
 
-Path to the daemon Unix socket.
+Path to the controller Unix socket.
 
 ```conductor
-daemon:
+controller:
   socket_path: ~/.config/conductor/conductor.sock
 ```
 
@@ -359,7 +359,7 @@ daemon:
 Explicitly acknowledge running with insecure configuration. When set, security warnings about disabled authentication or TLS are suppressed. **For development/testing environments only.**
 
 ```conductor
-daemon:
+controller:
   force_insecure: false  # Not recommended for production
 ```
 
@@ -376,14 +376,14 @@ Security settings for daemon API authentication. **Authentication is enabled by 
 **Type:** `boolean`
 **Default:** `true`
 
-Enable API authentication for the daemon. When enabled, all API requests must include a valid authentication token.
+Enable API authentication for the controller. When enabled, all API requests must include a valid authentication token.
 
 ```conductor
 daemon_auth:
   enabled: true  # Secure by default
 ```
 
-When authentication is disabled and the daemon is accessible over the network, a security warning is logged at startup.
+When authentication is disabled and the controller is accessible over the network, a security warning is logged at startup.
 
 ### daemon_auth.allow_unix_socket
 
@@ -425,7 +425,7 @@ Number of days to retain event data. Must be a positive integer when observabili
 Number of days to retain aggregate metrics. Must be a positive integer when observability is enabled.
 
 ```conductor
-daemon:
+controller:
   observability:
     enabled: true
     storage:
@@ -562,7 +562,7 @@ providers:
     type: openai
     api_key: ${OPENAI_API_KEY}
 
-daemon:
+controller:
   auto_start: true
   # Authentication is enabled by default - no need to specify
 
@@ -587,7 +587,7 @@ providers:
   claude-code:
     type: claude-code
 
-daemon:
+controller:
   auto_start: true
 ```
 
@@ -632,9 +632,9 @@ conductor doctor
 4. **Use credential managers** for API keys when possible
 5. **Rotate API keys** regularly
 6. **Enable rate limiting** in production environments
-7. **Keep authentication enabled** - the daemon enables auth by default; only disable for local development
-8. **Use TLS for remote access** - if exposing the daemon over TCP, configure TLS
-9. **Review security warnings** - the daemon logs warnings at startup for insecure configurations
+7. **Keep authentication enabled** - the controller enables auth by default; only disable for local development
+8. **Use TLS for remote access** - if exposing the controller over TCP, configure TLS
+9. **Review security warnings** - the controller logs warnings at startup for insecure configurations
 10. **Never use `--force-insecure` in production** - this flag suppresses security warnings and should only be used for testing
 
 ---

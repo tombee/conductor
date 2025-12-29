@@ -11,7 +11,7 @@ This guide explains Conductor's internal architecture and design decisions. It's
 
 ## Overview
 
-Conductor is a platform for AI workflow orchestration. It provides a daemon-first architecture where all operations go through `conductord`, enabling consistent execution, checkpointing, and an API for community tools.
+Conductor is a platform for AI workflow orchestration. It provides a controller-first architecture where all operations go through `conductor`, enabling consistent execution, checkpointing, and an API for community tools.
 
 > **Tagline:** Portable AI workflows in simple YAML.
 
@@ -31,7 +31,7 @@ For visual architecture diagrams, see:
 conductor/
 ├── cmd/
 │   ├── conductor/       # CLI client
-│   └── conductord/      # Daemon binary
+│   └── conductor/      # Daemon binary
 ├── pkg/                 # Public packages (embeddable)
 │   ├── workflow/        # Parser, executor
 │   ├── llm/             # LLM provider abstraction
@@ -62,7 +62,7 @@ conductor/
                            │ Daemon API (recommended)
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  conductord                                                  │
+│  conductor                                                  │
 │  - Unix socket + HTTP API   - Webhook routing               │
 │  - Scheduling (cron)        - State & checkpointing         │
 │  - Provider management      - Job queue                     │
@@ -84,7 +84,7 @@ Some diagrams and documentation may reference companion desktop applications as 
 
 ## Daemon-First Architecture
 
-All CLI commands go through `conductord`. The daemon is required, not optional.
+All CLI commands go through `conductor`. The controller is required, not optional.
 
 **Why daemon-first:**
 - Consistent execution model (checkpointing, state, recovery)
@@ -99,7 +99,7 @@ conductor run workflow.yaml
      │
      │ Unix socket (default) or HTTP
      ▼
-conductord (daemon)
+conductor (daemon)
      │
      │ Execute workflow
      ▼
@@ -108,7 +108,7 @@ LLM Providers / Tools
 
 ### Daemon API
 
-The daemon exposes a versioned REST API:
+The controller exposes a versioned REST API:
 
 ```
 POST   /v1/runs                    # Start workflow
@@ -232,7 +232,7 @@ result, err := executor.Execute(ctx, workflowDef, workflow.RunOptions{
 })
 ```
 
-**When to embed vs use daemon:**
+**When to embed vs use controller:**
 
 | Use Case | Recommendation |
 |----------|----------------|

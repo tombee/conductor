@@ -5,7 +5,7 @@ The GitHub integration provides integration with the GitHub API for managing iss
 ## Quick Start
 
 ```conductor
-connectors:
+integrations:
   github:
     from: integrations/github
     auth:
@@ -15,7 +15,7 @@ connectors:
 For GitHub Enterprise, override the `base_url`:
 
 ```conductor
-connectors:
+integrations:
   github:
     from: integrations/github
     base_url: https://github.mycompany.com/api/v3
@@ -601,7 +601,7 @@ GitHub API has rate limits:
 The integration includes conservative defaults:
 
 ```conductor
-connectors:
+integrations:
   github:
     from: integrations/github
     auth:

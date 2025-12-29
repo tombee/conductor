@@ -369,7 +369,7 @@ When using `--json` output format, Conductor returns structured error codes for 
 
 ## Connector Errors
 
-Connector operations use typed errors for consistent handling across all connectors.
+Connector operations use typed errors for consistent handling across all integrations.
 
 ### Error Types
 
@@ -407,7 +407,7 @@ Suggestion: Wait for rate limit window or configure rate_limit in connector
 1. Wait for rate limit window to reset
 2. Configure rate limiting in connector:
    ```yaml
-   connectors:
+   integrations:
      github:
        rate_limit:
          requests_per_second: 1
@@ -434,7 +434,7 @@ Suggestion: Wait for rate limit window or configure rate_limit in connector
 1. Verify target host is safe to access
 2. Add to allowed hosts:
    ```yaml
-   connectors:
+   integrations:
      custom:
        allowed_hosts:
          - api.trusted-service.com

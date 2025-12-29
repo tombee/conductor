@@ -84,7 +84,7 @@ conductor integration status --rate-limits
 
 3. **Reload configuration**
    ```bash
-   # For daemon mode
+   # For controller mode
    conductor reload
 
    # Or restart daemon

@@ -5,7 +5,7 @@ The Slack integration provides integration with the Slack API for posting messag
 ## Quick Start
 
 ```conductor
-connectors:
+integrations:
   slack:
     from: integrations/slack
     auth:

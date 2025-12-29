@@ -5,7 +5,7 @@ The Discord integration provides integration with Discord for bot messages and w
 ## Quick Start
 
 ```conductor
-connectors:
+integrations:
   discord:
     from: integrations/discord
     auth:

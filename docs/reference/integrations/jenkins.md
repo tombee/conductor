@@ -5,7 +5,7 @@ The Jenkins integration provides integration with Jenkins CI/CD.
 ## Quick Start
 
 ```conductor
-connectors:
+integrations:
   jenkins:
     from: integrations/jenkins
     base_url: https://jenkins.company.com

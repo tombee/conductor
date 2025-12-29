@@ -5,7 +5,7 @@ This guide shows you how to create custom integrations for any REST API in your 
 ## Quick Example
 
 ```conductor
-connectors:
+integrations:
   my_api:
     base_url: https://api.example.com
     auth:
@@ -35,7 +35,7 @@ steps:
 ### Base Configuration
 
 ```conductor
-connectors:
+integrations:
   my_api:
     base_url: https://api.example.com  # Required for inline integrations
     auth:                              # Optional
@@ -303,7 +303,7 @@ Benefits:
 Protect against API quota exhaustion:
 
 ```conductor
-connectors:
+integrations:
   my_api:
     base_url: https://api.example.com
     rate_limit:
@@ -321,7 +321,7 @@ Uses token bucket algorithm for smooth rate limiting. Requests exceeding the lim
 Apply to all operations:
 
 ```conductor
-connectors:
+integrations:
   my_api:
     base_url: https://api.example.com
     headers:
@@ -362,7 +362,7 @@ Here's a full example for an internal API:
 name: process-feedback
 description: Analyze user feedback and create tickets
 
-connectors:
+integrations:
   helpdesk:
     base_url: https://api.helpdesk.internal
     auth:

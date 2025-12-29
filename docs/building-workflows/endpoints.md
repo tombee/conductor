@@ -18,10 +18,10 @@ The endpoints feature provides:
 
 ### 1. Define an Endpoint
 
-Add endpoints to your daemon configuration (`config.yaml`):
+Add endpoints to your controller configuration (`config.yaml`):
 
 ```conductor
-daemon:
+controller:
   endpoints:
     enabled: true
     endpoints:
@@ -91,7 +91,7 @@ Each endpoint has the following configuration options:
 ### Example Configuration
 
 ```conductor
-daemon:
+controller:
   endpoints:
     enabled: true
     endpoints:
@@ -119,7 +119,7 @@ daemon:
 Endpoints use API key scopes for fine-grained access control:
 
 ```conductor
-daemon:
+controller:
   api_keys:
     - id: bot-key
       name: "Automation Bot"
@@ -359,7 +359,7 @@ X-RateLimit-Reset: 1642252800
 Enable CORS for browser-based applications (disabled by default):
 
 ```conductor
-daemon:
+controller:
   http:
     cors:
       enabled: true

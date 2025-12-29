@@ -1,10 +1,10 @@
-# Daemon Mode
+# Controller
 
 Run Conductor as a long-lived service with API and webhook support.
 
 ## Overview
 
-Daemon mode enables:
+Controller mode enables:
 - **HTTP API** for triggering workflows remotely
 - **Webhooks** from GitHub, Slack, and other services
 - **Scheduled workflows** (cron-style triggers)
@@ -12,19 +12,19 @@ Daemon mode enables:
 
 ## Quick Start
 
-Install and start the daemon:
+Install and start the controller:
 
 ```bash
-# Install conductord
-curl -L https://github.com/tombee/conductor/releases/latest/download/conductord-$(uname -s)-$(uname -m) -o conductord
-chmod +x conductord
-sudo mv conductord /usr/local/bin/
+# Install conductor
+curl -L https://github.com/tombee/conductor/releases/latest/download/conductor-$(uname -s)-$(uname -m) -o conductor
+chmod +x conductor
+sudo mv conductor /usr/local/bin/
 
 # Start with defaults
-conductord
+conductor
 ```
 
-The daemon starts with:
+The controller starts with:
 - Socket listener at `~/.conductor/conductor.sock`
 - TCP listener at `:9000` (disabled by default, enable with `--tcp`)
 - Workflows loaded from `./workflows`
@@ -34,7 +34,7 @@ The daemon starts with:
 ### Command-Line Flags
 
 ```bash
-conductord \
+conductor \
   --tcp=:9000 \
   --workflows-dir=/etc/conductor/workflows \
   --log-level=info
@@ -51,7 +51,7 @@ conductord \
 Create `~/.config/conductor/config.yaml`:
 
 ```conductor
-daemon:
+controller:
   listen:
     tcp: :9000
     socket: ~/.conductor/conductor.sock
@@ -67,7 +67,7 @@ logging:
 
 Start with config file:
 ```bash
-conductord --config ~/.config/conductor/config.yaml
+conductor --config ~/.config/conductor/config.yaml
 ```
 
 ## HTTP API
@@ -150,7 +150,7 @@ http://your-server:9000/webhooks/github/pr-review
 ```
 
 **GitHub webhook settings:**
-- Payload URL: Your daemon URL
+- Payload URL: Your controller URL
 - Content type: `application/json`
 - Events: Pull requests
 - Secret: (optional but recommended)
@@ -227,10 +227,10 @@ steps:
 
 ## Authentication
 
-Secure your daemon with API key authentication:
+Secure your controller with API key authentication:
 
 ```conductor
-daemon:
+controller:
   auth:
     enabled: true
     api_key: your-secret-key-here
@@ -251,13 +251,13 @@ Run as a system service on Linux:
 ```ini
 # /etc/systemd/system/conductor.service
 [Unit]
-Description=Conductor Daemon
+Description=Conductor Controller
 After=network.target
 
 [Service]
 Type=simple
 User=conductor
-ExecStart=/usr/local/bin/conductord --config /etc/conductor/config.yaml
+ExecStart=/usr/local/bin/conductor --config /etc/conductor/config.yaml
 Restart=on-failure
 RestartSec=5s
 
@@ -326,7 +326,7 @@ logging:
 
 **1. Use authentication in production:**
 ```conductor
-daemon:
+controller:
   auth:
     enabled: true
     api_key: ${API_KEY}  # From environment
@@ -341,7 +341,7 @@ trigger:
 
 **3. Set resource limits:**
 ```conductor
-daemon:
+controller:
   max_concurrent_runs: 10
   run_timeout: 30m
 ```
@@ -368,7 +368,7 @@ See [Deployment Guide](../production/deployment.md) for:
 
 ## Troubleshooting
 
-**Daemon won't start:**
+**Controller won't start:**
 
 Check port availability:
 ```bash
@@ -377,7 +377,7 @@ lsof -i :9000
 
 Check configuration:
 ```bash
-conductord --config config.yaml --validate
+conductor --config config.yaml --validate
 ```
 
 **Workflows not loading:**
@@ -385,7 +385,7 @@ conductord --config config.yaml --validate
 Verify workflows directory:
 ```bash
 ls -la ./workflows/*.yaml
-conductord --workflows-dir=./workflows --log-level=debug
+conductor --workflows-dir=./workflows --log-level=debug
 ```
 
 **Webhooks not triggering:**

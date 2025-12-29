@@ -10,7 +10,7 @@ When a user runs `conductor run workflow.yaml`:
 sequenceDiagram
     participant User
     participant CLI as conductor CLI
-    participant Daemon as conductord
+    participant Daemon as conductor
     participant Executor as Workflow Executor
     participant Provider as LLM Provider
     participant Tool as Tool Registry

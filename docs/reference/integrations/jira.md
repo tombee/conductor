@@ -5,7 +5,7 @@ The Jira integration provides integration with Jira Cloud and Jira Server for is
 ## Quick Start
 
 ```conductor
-connectors:
+integrations:
   jira:
     from: integrations/jira
     base_url: https://your-company.atlassian.net

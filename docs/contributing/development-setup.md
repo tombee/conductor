@@ -378,7 +378,7 @@ Understanding the codebase structure:
 conductor/
 ├── cmd/
 │   ├── conductor/       # CLI client entry point
-│   └── conductord/      # Daemon binary entry point
+│   └── conductor/      # Daemon binary entry point
 ├── pkg/                 # Embeddable packages (stable API)
 │   ├── llm/            # Provider abstraction
 │   ├── workflow/       # Workflow orchestration
@@ -430,7 +430,7 @@ golangci-lint run --fix
 go build -o bin/conductor ./cmd/conductor
 
 # Build daemon
-go build -o bin/conductord ./cmd/conductord
+go build -o bin/conductor ./cmd/conductor
 ```
 
 ### Running Examples

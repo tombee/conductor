@@ -2,6 +2,34 @@
 
 This document defines the canonical terminology for Conductor's workflow operations.
 
+## Core Components
+
+### Controller
+
+The **controller** is the long-running service process that manages workflow execution. It provides:
+- HTTP API for triggering workflows
+- Webhook endpoints for external services
+- Workflow state management
+- Execution scheduling
+
+The controller runs as a persistent service (started with `conductor` command) and listens for workflow triggers.
+
+### Trigger
+
+A **trigger** defines how a workflow is invoked. Workflows can have one trigger configuration that specifies:
+- API endpoints
+- Webhook events
+- Scheduled execution (cron)
+
+**Example:**
+```yaml
+name: pr-review
+trigger:
+  github:
+    events: [pull_request]
+    actions: [opened, synchronize]
+```
+
 ## Actions vs Service Integrations
 
 Conductor workflows use two types of non-LLM operations:

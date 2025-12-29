@@ -4,7 +4,7 @@ Complete command-line interface reference for Conductor.
 
 ## Overview
 
-Conductor provides a comprehensive CLI for managing workflows, providers, and daemon processes.
+Conductor provides a comprehensive CLI for managing workflows, providers, and controller processes.
 
 ## Global Flags
 
@@ -137,7 +137,7 @@ conductor run <workflow> [flags]
 | `--dry-run` | | Show execution plan without running |
 | `--quiet` | `-q` | Suppress all warnings |
 | `--verbose` | `-v` | Show detailed execution logs |
-| `--daemon` | `-d` | Submit to daemon for execution |
+| `--daemon` | `-d` | Submit to controller for execution |
 | `--background` | | Run asynchronously, return run ID immediately (implies `--daemon`) |
 
 **Provider Resolution Order:**
@@ -150,8 +150,8 @@ conductor run <workflow> [flags]
 **Execution Modes:**
 
 - **Direct**: Execute workflow immediately in current process
-- **Daemon** (`--daemon`): Submit to `conductord` daemon
-- **Background** (`--background`): Asynchronous execution via daemon
+- **Daemon** (`--daemon`): Submit to `conductor` daemon
+- **Background** (`--background`): Asynchronous execution via controller
 
 **Examples:**
 
@@ -168,7 +168,7 @@ conductor run workflow.yaml -o output.json
 # Dry run to see execution plan
 conductor run workflow.yaml --dry-run
 
-# Run via daemon in background
+# Run via controller in background
 conductor run workflow.yaml --background
 
 # Override provider
@@ -381,12 +381,12 @@ conductor daemon [command]
 
 **Description:**
 
-Commands for managing the conductor daemon (`conductord`). The daemon is the central service that executes workflows. The CLI communicates with the daemon to run workflows, check status, and more.
+Commands for managing the conductor daemon (`conductor`). The controller is the central service that executes workflows. The CLI communicates with the controller to run workflows, check status, and more.
 
 **Subcommands:**
 
 - `status` - Show daemon status and version
-- `ping` - Check if daemon is reachable
+- `ping` - Check if controller is reachable
 
 ---
 
@@ -412,7 +412,7 @@ conductor daemon status
 **Output:**
 
 ```
-Conductor Daemon Status
+Conductor Controller Status
 =======================
 
 Status:     healthy
@@ -432,7 +432,7 @@ Health Checks:
 
 #### conductor daemon ping
 
-Check if daemon is reachable.
+Check if controller is reachable.
 
 ```bash
 conductor daemon ping
@@ -440,7 +440,7 @@ conductor daemon ping
 
 **Description:**
 
-Quickly check if the conductor daemon is running and reachable.
+Quickly check if the conductor controller is running and reachable.
 
 **Examples:**
 

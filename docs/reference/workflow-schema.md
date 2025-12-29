@@ -424,13 +424,13 @@ See examples under `output_type`.
 
 ### Connector Steps (Shorthand Syntax)
 
-Connector steps execute operations on builtin or external connectors. The preferred syntax is **shorthand** where you don't need to specify `type: connector` explicitly.
+Connector steps execute operations on builtin or external integrations. The preferred syntax is **shorthand** where you don't need to specify `type: connector` explicitly.
 
 #### Shorthand Pattern
 
 **Format:** `connector.operation: inputs`
 
-The connector and operation are specified as a single key following the pattern `connector.operation:`. The value becomes the inputs for that operation.
+The integration and operation are specified as a single key following the pattern `connector.operation:`. The value becomes the inputs for that operation.
 
 ```conductor
 # Inline form (simple inputs)
@@ -521,10 +521,10 @@ These connectors work without configuration:
 
 #### External Connectors
 
-External connectors require configuration in the `connectors:` section:
+External connectors require configuration in the `integrations:` section:
 
 ```conductor
-connectors:
+integrations:
   github:
     from: connectors/github
     auth:
@@ -1219,21 +1219,21 @@ triggers:
 
 ```conductor
 # GOOD - Environment variable
-connectors:
+integrations:
   github:
     from: connectors/github
     auth:
       token: ${GITHUB_TOKEN}
 
 # GOOD - Secret reference (when secrets backend is configured)
-connectors:
+integrations:
   slack:
     from: connectors/slack
     auth:
       token: $secret:slack_token
 
 # BAD - Hardcoded credential (will cause validation error)
-connectors:
+integrations:
   github:
     from: connectors/github
     auth:
@@ -1280,7 +1280,7 @@ Be specific with file paths to prevent unauthorized file access:
 External connectors should always include authentication:
 
 ```conductor
-connectors:
+integrations:
   github:
     from: connectors/github
     auth:  # Always configure auth for external services

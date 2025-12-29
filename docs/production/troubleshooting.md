@@ -138,7 +138,7 @@ lsof -i :9000
 
 Kill the process or use a different port:
 ```bash
-conductord --tcp=:9001
+conductor --tcp=:9001
 ```
 
 ### "Workflows not loading"
@@ -153,13 +153,13 @@ ls -la ./workflows/*.yaml
 conductor validate ./workflows/*.yaml
 
 # Enable debug logging
-conductord --workflows-dir=./workflows --log-level=debug
+conductor --workflows-dir=./workflows --log-level=debug
 ```
 
 ### "Webhook not triggering"
 
 **Solutions:**
-1. Verify daemon is accessible:
+1. Verify controller is accessible:
    ```bash
    curl http://your-server:9000/health
    ```
@@ -188,7 +188,7 @@ conductord --workflows-dir=./workflows --log-level=debug
 **Solutions:**
 - Limit concurrent workflows:
   ```yaml
-  daemon:
+  controller:
     max_concurrent_runs: 5
   ```
 - Avoid storing large outputs in variables

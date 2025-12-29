@@ -196,13 +196,13 @@ See [Performance: Token Optimization](building-workflows/performance.md#token-op
 
 ### How do I run workflows automatically?
 
-Use **daemon mode** to run workflows on a schedule or via webhooks:
+Use **controller mode** to run workflows on a schedule or via webhooks:
 
 ```bash
 conductor daemon
 ```
 
-Configure schedules in `conductord.yaml`:
+Configure schedules in `conductor.yaml`:
 
 ```conductor
 schedules:
@@ -232,7 +232,7 @@ See [Deployment Guide](production/deployment.md) for best practices.
 Use environment variables or secure secret management:
 
 ```conductor
-# conductord.yaml
+# conductor.yaml
 providers:
   anthropic:
     api_key: "${ANTHROPIC_API_KEY}"  # From environment
@@ -259,8 +259,8 @@ Conductor provides structured logs and metrics:
 # Run with debug logging
 conductor run workflow.yaml --log-level debug
 
-# Daemon mode logs
-conductord --log-level info
+# Controller mode logs
+conductor --log-level info
 ```
 
 For production monitoring, integrate with:
