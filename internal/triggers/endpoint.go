@@ -31,6 +31,11 @@ func (m *Manager) AddEndpoint(ctx context.Context, req CreateEndpointRequest) er
 	// Enable endpoints if not already configured
 	cfg.Controller.Endpoints.Enabled = true
 
+	// Initialize endpoints section if needed
+	if cfg.Controller.Endpoints.Endpoints == nil {
+		cfg.Controller.Endpoints.Endpoints = []config.EndpointEntry{}
+	}
+
 	// Check for duplicate name
 	for _, endpoint := range cfg.Controller.Endpoints.Endpoints {
 		if endpoint.Name == req.Name {

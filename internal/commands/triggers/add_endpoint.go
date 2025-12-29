@@ -17,7 +17,6 @@ package triggers
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -89,8 +88,7 @@ func runAddEndpoint(cmd *cobra.Command, args []string) error {
 
 	ctx := context.Background()
 	if err := mgr.AddEndpoint(ctx, req); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to add endpoint: %w", err)
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "Endpoint trigger created!\n")

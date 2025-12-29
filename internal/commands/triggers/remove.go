@@ -17,7 +17,6 @@ package triggers
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -65,8 +64,7 @@ func runRemoveWebhook(cmd *cobra.Command, args []string) error {
 
 	ctx := context.Background()
 	if err := mgr.RemoveWebhook(ctx, path); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to remove webhook: %w", err)
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "Webhook trigger removed: %s\n", path)
@@ -100,8 +98,7 @@ func runRemoveSchedule(cmd *cobra.Command, args []string) error {
 
 	ctx := context.Background()
 	if err := mgr.RemoveSchedule(ctx, name); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to remove schedule: %w", err)
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "Schedule trigger removed: %s\n", name)
@@ -135,8 +132,7 @@ func runRemoveEndpoint(cmd *cobra.Command, args []string) error {
 
 	ctx := context.Background()
 	if err := mgr.RemoveEndpoint(ctx, name); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to remove endpoint: %w", err)
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "Endpoint trigger removed: %s\n", name)

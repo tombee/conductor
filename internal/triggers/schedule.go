@@ -58,6 +58,11 @@ func (m *Manager) AddSchedule(ctx context.Context, req CreateScheduleRequest) er
 	// Enable schedules if not already configured
 	cfg.Controller.Schedules.Enabled = true
 
+	// Initialize schedules section if needed
+	if cfg.Controller.Schedules.Schedules == nil {
+		cfg.Controller.Schedules.Schedules = []config.ScheduleEntry{}
+	}
+
 	// Check for duplicate name
 	for _, schedule := range cfg.Controller.Schedules.Schedules {
 		if schedule.Name == req.Name {

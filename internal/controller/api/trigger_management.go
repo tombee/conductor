@@ -15,7 +15,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -44,7 +43,7 @@ func (h *TriggerManagementHandler) HandleCreateWebhook(w http.ResponseWriter, r 
 		return
 	}
 
-	ctx := context.Background()
+	ctx := r.Context()
 	if err := h.manager.AddWebhook(ctx, req); err != nil {
 		if strings.Contains(err.Error(), "already exists") {
 			writeError(w, http.StatusConflict, err.Error())
@@ -62,7 +61,7 @@ func (h *TriggerManagementHandler) HandleCreateWebhook(w http.ResponseWriter, r 
 
 // HandleListWebhooks handles GET /v1/triggers/webhooks.
 func (h *TriggerManagementHandler) HandleListWebhooks(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
+	ctx := r.Context()
 	webhooks, err := h.manager.ListWebhooks(ctx)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to list webhooks")
@@ -84,7 +83,7 @@ func (h *TriggerManagementHandler) HandleDeleteWebhook(w http.ResponseWriter, r 
 	// Reconstruct the full path with slashes
 	path = "/" + path
 
-	ctx := context.Background()
+	ctx := r.Context()
 	if err := h.manager.RemoveWebhook(ctx, path); err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			writeError(w, http.StatusNotFound, err.Error())
@@ -105,7 +104,7 @@ func (h *TriggerManagementHandler) HandleCreateSchedule(w http.ResponseWriter, r
 		return
 	}
 
-	ctx := context.Background()
+	ctx := r.Context()
 	if err := h.manager.AddSchedule(ctx, req); err != nil {
 		if strings.Contains(err.Error(), "already exists") {
 			writeError(w, http.StatusConflict, err.Error())
@@ -122,7 +121,7 @@ func (h *TriggerManagementHandler) HandleCreateSchedule(w http.ResponseWriter, r
 
 // HandleListSchedules handles GET /v1/triggers/schedules.
 func (h *TriggerManagementHandler) HandleListSchedules(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
+	ctx := r.Context()
 	schedules, err := h.manager.ListSchedules(ctx)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to list schedules")
@@ -136,7 +135,7 @@ func (h *TriggerManagementHandler) HandleListSchedules(w http.ResponseWriter, r 
 func (h *TriggerManagementHandler) HandleDeleteSchedule(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 
-	ctx := context.Background()
+	ctx := r.Context()
 	if err := h.manager.RemoveSchedule(ctx, name); err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			writeError(w, http.StatusNotFound, err.Error())
@@ -157,7 +156,7 @@ func (h *TriggerManagementHandler) HandleCreateEndpoint(w http.ResponseWriter, r
 		return
 	}
 
-	ctx := context.Background()
+	ctx := r.Context()
 	if err := h.manager.AddEndpoint(ctx, req); err != nil {
 		if strings.Contains(err.Error(), "already exists") {
 			writeError(w, http.StatusConflict, err.Error())
@@ -175,7 +174,7 @@ func (h *TriggerManagementHandler) HandleCreateEndpoint(w http.ResponseWriter, r
 
 // HandleListEndpoints handles GET /v1/triggers/endpoints.
 func (h *TriggerManagementHandler) HandleListEndpoints(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
+	ctx := r.Context()
 	endpoints, err := h.manager.ListEndpoints(ctx)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to list endpoints")
@@ -189,7 +188,7 @@ func (h *TriggerManagementHandler) HandleListEndpoints(w http.ResponseWriter, r 
 func (h *TriggerManagementHandler) HandleDeleteEndpoint(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 
-	ctx := context.Background()
+	ctx := r.Context()
 	if err := h.manager.RemoveEndpoint(ctx, name); err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			writeError(w, http.StatusNotFound, err.Error())
@@ -204,7 +203,7 @@ func (h *TriggerManagementHandler) HandleDeleteEndpoint(w http.ResponseWriter, r
 
 // HandleListAll handles GET /v1/triggers.
 func (h *TriggerManagementHandler) HandleListAll(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
+	ctx := r.Context()
 
 	webhooks, err := h.manager.ListWebhooks(ctx)
 	if err != nil {

@@ -17,7 +17,6 @@ package triggers
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -131,8 +130,7 @@ func runAddWebhook(cmd *cobra.Command, args []string) error {
 
 	ctx := context.Background()
 	if err := mgr.AddWebhook(ctx, req); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to add webhook: %w", err)
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "Webhook trigger created!\n")

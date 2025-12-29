@@ -17,7 +17,6 @@ package triggers
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/tombee/conductor/internal/triggers"
@@ -128,8 +127,7 @@ func runAddSchedule(cmd *cobra.Command, args []string) error {
 
 	ctx := context.Background()
 	if err := mgr.AddSchedule(ctx, req); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(2)
+		return fmt.Errorf("failed to add schedule: %w", err)
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "Schedule trigger created!\n")

@@ -38,6 +38,11 @@ func (m *Manager) AddWebhook(ctx context.Context, req CreateWebhookRequest) erro
 		return err
 	}
 
+	// Initialize webhooks section if needed
+	if cfg.Controller.Webhooks.Routes == nil {
+		cfg.Controller.Webhooks.Routes = []config.WebhookRoute{}
+	}
+
 	// Check for duplicate path
 	for _, route := range cfg.Controller.Webhooks.Routes {
 		if route.Path == req.Path {
