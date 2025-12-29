@@ -48,6 +48,7 @@ import (
 	"github.com/tombee/conductor/internal/mcp"
 	"github.com/tombee/conductor/internal/tracing"
 	"github.com/tombee/conductor/internal/tracing/audit"
+	"github.com/tombee/conductor/internal/triggers"
 	"github.com/tombee/conductor/pkg/llm/cost"
 	"github.com/tombee/conductor/pkg/security"
 	securityaudit "github.com/tombee/conductor/pkg/security/audit"
@@ -575,6 +576,20 @@ func (c *Controller) Start(ctx context.Context) error {
 	if c.overrideManager != nil {
 		overrideHandler := api.NewOverrideHandler(c.overrideManager)
 		router.SetOverrideHandler(overrideHandler)
+	}
+
+	// Wire up trigger management handler
+	{
+		cfgPath, err := config.ConfigPath()
+		if err != nil {
+			// Fall back to default if config path cannot be determined
+			cfgPath = "~/.config/conductor/config.yaml"
+		}
+		triggerHandler := api.NewTriggerManagementHandler(triggers.NewManager(
+			cfgPath,
+			c.cfg.Controller.WorkflowsDir,
+		))
+		router.SetTriggerManagementHandler(triggerHandler)
 	}
 
 	// Create HTTP server with middleware chain
