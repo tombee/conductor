@@ -292,6 +292,14 @@ See [Error Handling: Recovery Strategies](building-workflows/error-handling.md#r
 
 ## Advanced Topics
 
+### When should I use Conductor vs. building a custom agent?
+
+**Use Conductor** when your workflow can be defined deterministically—steps, tools, and decision points known ahead of time. The tradeoff is intentional: less runtime flexibility, but a security team can audit a YAML file instead of reviewing agent implementations scattered across codebases.
+
+**Build a custom agent** when you need runtime autonomy: dynamic tool creation, unbounded reasoning loops, or custom memory systems. For tighter integration with Conductor's infrastructure, consider using the ConductorSDK.
+
+See the [Vision: Scope](vision.md#scope) section for more details.
+
 ### Can I create custom integrations?
 
 Yes! Conductor supports custom tools written in Go:

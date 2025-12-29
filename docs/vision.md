@@ -57,6 +57,26 @@ Unlike npm or Docker Hub, sharing doesn't require a central registry:
 - Git is the distribution mechanism
 - Optional registry for discovery (future)
 
+## Scope
+
+### What Conductor Is For
+
+AI workflows that can be defined deterministically—where the steps, tools, and decision points are known ahead of time. This enables:
+
+- **Security auditing**: Review YAML to understand exactly what a workflow can do, rather than auditing agent code across multiple codebases
+- **Centralized policy**: Enforce sandboxing, network controls, and cost limits uniformly across all workflows
+- **Predictable execution**: Same workflow definition produces consistent behavior across environments
+
+### When to Use Something Else
+
+Some use cases require agents that decide their own actions at runtime:
+
+- Dynamic tool discovery or creation
+- Unbounded exploration/reasoning loops
+- Custom memory, retrieval, or planning systems
+
+For these, consider the ConductorSDK for tighter integration, or purpose-built agent frameworks that provide the additional flexibility.
+
 ## Success Metrics
 
 ### Adoption Indicators
@@ -85,4 +105,4 @@ Unlike npm or Docker Hub, sharing doesn't require a central registry:
 - "AI agent framework"
 
 ---
-*Last updated: 2025-12-27*
+*Last updated: 2025-12-29*
