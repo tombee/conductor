@@ -13,7 +13,7 @@
 // limitations under the License.
 
 /*
-Package runner provides the workflow execution engine for the daemon.
+Package runner provides the workflow executor for the controller.
 
 The Runner manages the lifecycle of workflow runs, including submission,
 execution, cancellation, and state persistence. It handles concurrency
@@ -70,7 +70,7 @@ Before each step, the runner saves a checkpoint containing:
   - Workflow context (inputs and step outputs)
   - Run metadata
 
-On daemon restart, interrupted runs can be resumed from checkpoints.
+On controller restart, interrupted runs can be resumed from checkpoints.
 
 # Remote Workflows
 

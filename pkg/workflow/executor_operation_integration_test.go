@@ -16,7 +16,7 @@ func TestIntegrationStepIntegration(t *testing.T) {
 				return &mockOperationResult{
 					response: map[string]interface{}{
 						"name":        "conductor",
-						"description": "Workflow orchestration engine",
+						"description": "Workflow orchestrator",
 						"stars":       150,
 					},
 					statusCode: 200,

@@ -1,6 +1,6 @@
 // Package operation provides the shared framework for workflow operations.
 //
-// This package implements the core execution engine for all types of operations:
+// This package implements the core executor for all types of operations:
 //   - Actions: Built-in local operations (file, shell, http, transform, utility)
 //   - Integrations: External service API connections (GitHub, Slack, Jira, etc.)
 //
