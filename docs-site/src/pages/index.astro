@@ -76,7 +76,7 @@ const codeExamples = [
     code: `name: security-review
 description: Review PRs for security issues
 
-listen:
+trigger:
   webhook:
     source: github
     secret: \${GITHUB_WEBHOOK_SECRET}
@@ -86,14 +86,14 @@ listen:
 
 steps:
   - id: get_diff
-    action: github.get_pull_request_diff
-    inputs:
+    github.get_pull_request_diff:
       owner: "{{.payload.repository.owner.login}}"
       repo: "{{.payload.repository.name}}"
       number: "{{.payload.pull_request.number}}"
 
   - id: review
-    model: claude-sonnet
+    type: llm
+    model: balanced
     prompt: |
       Review this diff for security vulnerabilities.
       Flag any issues found with severity and remediation.
@@ -101,10 +101,8 @@ steps:
       {{.steps.get_diff.content}}
 
   - id: comment
-    action: github.create_comment
-    inputs:
-      body: "{{.steps.review.response}}"
-    if: "{{.steps.review.response | contains 'issue'}}"`,
+    github.create_comment:
+      body: "{{.steps.review.response}}"`,
   },
   {
     id: 'iac-review',
@@ -122,7 +120,8 @@ steps:
     type: parallel
     steps:
       - id: risk
-        model: claude-sonnet
+        type: llm
+        model: balanced
         prompt: |
           Summarize the RISK of these infrastructure changes.
           Flag any security concerns, cost increases, or breaking changes.
@@ -130,7 +129,8 @@ steps:
           {{.steps.plan.stdout}}
 
       - id: network
-        model: claude-sonnet
+        type: llm
+        model: balanced
         prompt: |
           Summarize the NETWORK OPERATIONS impact of these changes.
           Note any IP changes, security group updates, or routing modifications.
@@ -138,7 +138,8 @@ steps:
           {{.steps.plan.stdout}}
 
   - id: report
-    model: claude-haiku
+    type: llm
+    model: fast
     prompt: |
       Create a brief executive summary combining these analyses:
 
@@ -155,26 +156,28 @@ steps:
     code: `name: incident-response
 description: Triage alerts and suggest remediation
 
-triggers:
-  - event: webhook
+trigger:
+  webhook:
     path: /alerts
+    secret: \${WEBHOOK_SECRET}
 
 steps:
   - id: triage
     type: parallel
     steps:
       - id: logs
-        shell.run: kubectl logs -l app={{.trigger.service}} --tail=50
+        shell.run: kubectl logs -l app={{.payload.service}} --tail=50
 
       - id: changes
         github.list_commits:
-          repo: "{{.trigger.service}}"
+          repo: "{{.payload.service}}"
           since: "24h"
 
   - id: analyze
-    model: claude-sonnet
+    type: llm
+    model: balanced
     prompt: |
-      Alert for {{.trigger.service}}: {{.trigger.message}}
+      Alert for {{.payload.service}}: {{.payload.message}}
 
       Recent logs:
       {{.steps.triage.logs.stdout}}
@@ -187,7 +190,7 @@ steps:
   - id: notify
     slack.post_message:
       channel: "#incidents"
-      text: "🚨 *{{.trigger.service}}*\\n{{.steps.analyze.response}}"`,
+      text: "🚨 *{{.payload.service}}*\\n{{.steps.analyze.response}}"`,
   },
   {
     id: 'oncall-handoff',
@@ -196,8 +199,10 @@ steps:
     code: `name: oncall-handoff
 description: Generate shift handoff summary
 
-triggers:
-  - schedule: "0 9,21 * * *"  # 9am and 9pm daily
+trigger:
+  schedule:
+    cron: "0 9,21 * * *"
+    timezone: "America/New_York"
 
 steps:
   - id: gather
@@ -217,7 +222,8 @@ steps:
           jql: "priority = Critical AND status != Done"
 
   - id: summarize
-    model: claude-sonnet
+    type: llm
+    model: balanced
     prompt: |
       Create a concise on-call handoff:
 
