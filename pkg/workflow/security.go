@@ -18,7 +18,15 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/tombee/conductor/pkg/security"
 )
+
+// SecurityAccessConfig is an alias for security.AccessConfig.
+// This type defines explicit resource access control for workflows,
+// declaring which filesystem paths, network hosts, and shell commands
+// the workflow can access.
+type SecurityAccessConfig = security.AccessConfig
 
 // SecurityWarning represents a security concern found during validation
 type SecurityWarning struct {
