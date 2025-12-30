@@ -196,6 +196,10 @@ type SubmitRequest struct {
 	AllowPaths []string
 	// MCPDev enables MCP development mode
 	MCPDev bool
+	// LogLevel sets the log level for this execution
+	LogLevel string
+	// DebugBreakpoints lists step IDs where execution should pause
+	DebugBreakpoints []string
 }
 
 // Runner manages workflow executions by composing focused components.
