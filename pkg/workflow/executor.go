@@ -328,11 +328,13 @@ func (e *Executor) executeStep(ctx context.Context, step *StepDefinition, workfl
 		return e.executeParallel(ctx, &resolvedStep, inputs, workflowContext)
 	case StepTypeIntegration:
 		return e.executeIntegration(ctx, &resolvedStep, inputs)
+	case StepTypeLoop:
+		return e.executeLoop(ctx, &resolvedStep, inputs, workflowContext)
 	default:
 		return nil, &errors.ValidationError{
 			Field:      "type",
 			Message:    fmt.Sprintf("unsupported step type: %s", step.Type),
-			Suggestion: "use one of: llm, condition, parallel, integration",
+			Suggestion: "use one of: llm, condition, parallel, integration, loop",
 		}
 	}
 }
@@ -342,6 +344,12 @@ func (e *Executor) executeWithRetry(ctx context.Context, step *StepDefinition, w
 	// Don't retry parallel steps - they have their own internal error handling
 	// Retrying a parallel step would re-execute all nested steps unnecessarily
 	if step.Type == StepTypeParallel {
+		return e.executeStep(ctx, step, workflowContext)
+	}
+
+	// Don't retry loop steps - they have their own internal iteration logic
+	// Retrying a loop step would restart from iteration 0, losing history
+	if step.Type == StepTypeLoop {
 		return e.executeStep(ctx, step, workflowContext)
 	}
 

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/tombee/conductor/pkg/errors"
+	"github.com/tombee/conductor/pkg/workflow/expression"
 )
 
 // ValidateExpressionInjection checks for template expressions in expr fields.
@@ -100,6 +101,31 @@ var (
 		},
 	}
 )
+
+// ValidateLoopExpression validates that a loop step's until expression is syntactically valid.
+// This performs compile-time validation without evaluating the expression.
+func ValidateLoopExpression(step *StepDefinition) error {
+	if step.Type != StepTypeLoop {
+		return nil
+	}
+
+	if step.Until == "" {
+		// Empty until is caught by StepDefinition.Validate()
+		return nil
+	}
+
+	// Use the expression evaluator's compile-time validation
+	eval := expression.New()
+	if err := eval.Compile(step.Until); err != nil {
+		return &errors.ValidationError{
+			Field:      "until",
+			Message:    fmt.Sprintf("invalid until expression: %s", err.Error()),
+			Suggestion: "check expression syntax; valid operators: ==, !=, <, >, <=, >=, &&, ||, !, in; functions: has(), includes(), length()",
+		}
+	}
+
+	return nil
+}
 
 // DetectEmbeddedCredentials checks the workflow definition for embedded plaintext credentials.
 // Returns warnings about found credentials. This is a non-blocking warning - workflows with
