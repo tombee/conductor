@@ -33,7 +33,7 @@ import (
 )
 
 // runWorkflowViaDaemon submits a workflow to the daemon for execution
-func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, outputFile string, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun bool, provider, model, timeout, workspace, profile, security string, allowHosts, allowPaths []string) error {
+func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, outputFile string, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun bool, provider, model, timeout, workspace, profile, security string, allowHosts, allowPaths []string, logLevel, step string, breakpoints []string) error {
 	ctx := context.Background()
 
 	// Apply environment variable defaults for workspace and profile
@@ -222,6 +222,15 @@ func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, ou
 	}
 	if mcpDev {
 		params.Add("mcp_dev", "true")
+	}
+	if logLevel != "" {
+		params.Add("log_level", logLevel)
+	}
+	if step != "" {
+		params.Add("debug_step", step)
+	}
+	for _, bp := range breakpoints {
+		params.Add("debug_breakpoint", bp)
 	}
 
 	if len(params) > 0 {

@@ -44,6 +44,9 @@ func NewCommand() *cobra.Command {
 		workspace                     string
 		profile                       string
 		acceptUnenforceablePermissions bool
+		logLevel                      string
+		step                          string
+		breakpoints                   []string
 	)
 
 	cmd := &cobra.Command{
@@ -97,7 +100,7 @@ Verbosity levels:
 			}
 
 			// All execution goes through daemon
-			return runWorkflowViaDaemon(args[0], inputs, inputFile, outputFile, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun, provider, model, timeout, workspace, profile, securityMode, allowHosts, allowPaths)
+			return runWorkflowViaDaemon(args[0], inputs, inputFile, outputFile, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun, provider, model, timeout, workspace, profile, securityMode, allowHosts, allowPaths, logLevel, step, breakpoints)
 		},
 	}
 
@@ -122,6 +125,9 @@ Verbosity levels:
 	cmd.Flags().StringVarP(&workspace, "workspace", "w", "", "Workspace for profile resolution (env: CONDUCTOR_WORKSPACE)")
 	cmd.Flags().StringVarP(&profile, "profile", "p", "", "Profile for binding resolution (env: CONDUCTOR_PROFILE)")
 	cmd.Flags().BoolVar(&acceptUnenforceablePermissions, "accept-unenforceable-permissions", false, "Allow workflow execution even if some permissions cannot be enforced by the provider")
+	cmd.Flags().StringVar(&logLevel, "log-level", "", "Set log level (trace, debug, info, warn, error)")
+	cmd.Flags().StringVar(&step, "step", "", "Pause execution at the specified step ID (debug mode)")
+	cmd.Flags().StringSliceVar(&breakpoints, "breakpoint", nil, "Pause execution at these step IDs (debug mode)")
 
 	// Register flag completions
 	cmd.RegisterFlagCompletionFunc("provider", completion.CompleteProviderNames)
