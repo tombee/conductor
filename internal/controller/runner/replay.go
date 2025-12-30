@@ -15,12 +15,14 @@
 package runner
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/tombee/conductor/internal/controller/backend"
+	"github.com/tombee/conductor/pkg/workflow"
 )
 
 // ValidateReplayConfig validates a replay configuration against business rules.
@@ -168,4 +170,158 @@ func sanitizeArray(arr []any) []any {
 		}
 	}
 	return sanitized
+}
+
+// ValidateCachedOutputs validates that cached step outputs are still compatible
+// with the current workflow definition.
+// Returns an error if the workflow structure has changed (step additions/removals/reordering).
+func ValidateCachedOutputs(
+	ctx context.Context,
+	stepStore backend.StepResultStore,
+	parentRunID string,
+	currentWorkflow *workflow.Definition,
+) error {
+	if stepStore == nil {
+		return fmt.Errorf("step store not available")
+	}
+
+	// Get all step results from parent run
+	parentResults, err := stepStore.ListStepResults(ctx, parentRunID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch parent run step results: %w", err)
+	}
+
+	// Build map of parent step IDs for quick lookup
+	parentStepIDs := make(map[string]int) // stepID -> index
+	for _, result := range parentResults {
+		parentStepIDs[result.StepID] = result.StepIndex
+	}
+
+	// Build map of current workflow step IDs
+	currentStepIDs := make(map[string]int) // stepID -> index
+	for i, step := range currentWorkflow.Steps {
+		currentStepIDs[step.ID] = i
+	}
+
+	// Check for structural changes
+	// 1. Step addition/removal
+	if len(parentStepIDs) != len(currentStepIDs) {
+		return fmt.Errorf("workflow structure changed: parent had %d steps, current has %d steps (replay blocked)",
+			len(parentStepIDs), len(currentStepIDs))
+	}
+
+	// 2. Step reordering or ID changes
+	for stepID, parentIdx := range parentStepIDs {
+		currentIdx, exists := currentStepIDs[stepID]
+		if !exists {
+			return fmt.Errorf("workflow structure changed: step %q no longer exists (replay blocked)", stepID)
+		}
+		if currentIdx != parentIdx {
+			return fmt.Errorf("workflow structure changed: step %q moved from index %d to %d (replay blocked)",
+				stepID, parentIdx, currentIdx)
+		}
+	}
+
+	return nil
+}
+
+// ReplayCostEstimate represents the estimated cost breakdown for a replay.
+type ReplayCostEstimate struct {
+	// TotalCost is the estimated total cost in USD
+	TotalCost float64 `json:"total_cost"`
+
+	// SkippedCost is the cost saved by using cached outputs
+	SkippedCost float64 `json:"skipped_cost"`
+
+	// NewCost is the estimated cost of steps that will be re-executed
+	NewCost float64 `json:"new_cost"`
+
+	// StepBreakdown is a per-step cost breakdown (only if detailed=true)
+	StepBreakdown []StepCostBreakdown `json:"step_breakdown,omitempty"`
+}
+
+// StepCostBreakdown represents cost information for a single step.
+type StepCostBreakdown struct {
+	StepID    string  `json:"step_id"`
+	StepIndex int     `json:"step_index"`
+	Cached    bool    `json:"cached"`
+	CostUSD   float64 `json:"cost_usd"`
+}
+
+// EstimateReplayCost calculates the estimated cost of replaying a workflow.
+// It uses cached step costs from the parent run to estimate savings.
+func EstimateReplayCost(
+	ctx context.Context,
+	stepStore backend.StepResultStore,
+	config *backend.ReplayConfig,
+	detailed bool,
+) (*ReplayCostEstimate, error) {
+	if stepStore == nil {
+		return nil, fmt.Errorf("step store not available")
+	}
+
+	// Get all step results from parent run
+	parentResults, err := stepStore.ListStepResults(ctx, config.ParentRunID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch parent run step results: %w", err)
+	}
+
+	estimate := &ReplayCostEstimate{}
+	if detailed {
+		estimate.StepBreakdown = make([]StepCostBreakdown, 0, len(parentResults))
+	}
+
+	// Track which step to resume from
+	fromStepIndex := -1
+	if config.FromStepID != "" {
+		for _, result := range parentResults {
+			if result.StepID == config.FromStepID {
+				fromStepIndex = result.StepIndex
+				break
+			}
+		}
+		if fromStepIndex == -1 {
+			return nil, fmt.Errorf("from_step_id %q not found in parent run", config.FromStepID)
+		}
+	}
+
+	// Calculate costs per step
+	for _, result := range parentResults {
+		stepCost := result.CostUSD
+		cached := false
+
+		// Determine if this step will be cached
+		if fromStepIndex >= 0 {
+			// If resuming from a specific step, cache all steps before it
+			cached = result.StepIndex < fromStepIndex
+		}
+
+		// Check if step has an override (overrides are assumed zero cost)
+		if config.OverrideSteps != nil {
+			if _, hasOverride := config.OverrideSteps[result.StepID]; hasOverride {
+				stepCost = 0
+				cached = false // Override means re-execution, but at zero cost
+			}
+		}
+
+		// Accumulate costs
+		if cached {
+			estimate.SkippedCost += stepCost
+		} else {
+			estimate.NewCost += stepCost
+		}
+		estimate.TotalCost += stepCost
+
+		// Add to breakdown if requested
+		if detailed {
+			estimate.StepBreakdown = append(estimate.StepBreakdown, StepCostBreakdown{
+				StepID:    result.StepID,
+				StepIndex: result.StepIndex,
+				Cached:    cached,
+				CostUSD:   stepCost,
+			})
+		}
+	}
+
+	return estimate, nil
 }
