@@ -211,8 +211,9 @@ func (p *Provider) executeWithTools(ctx context.Context, req llm.CompletionReque
 		// Add tool result messages
 		for _, result := range toolResults {
 			messages = append(messages, llm.Message{
-				Role:    llm.MessageRoleTool,
-				Content: result.Content,
+				Role:       llm.MessageRoleTool,
+				Content:    result.Content,
+				ToolCallID: result.ID,
 			})
 		}
 	}
@@ -358,6 +359,8 @@ func (p *Provider) buildPrompt(messages []llm.Message) string {
 			parts = append(parts, fmt.Sprintf("User: %s", msg.Content))
 		case llm.MessageRoleAssistant:
 			parts = append(parts, fmt.Sprintf("Assistant: %s", msg.Content))
+		case llm.MessageRoleTool:
+			parts = append(parts, fmt.Sprintf("Tool Result: %s", msg.Content))
 		}
 	}
 
