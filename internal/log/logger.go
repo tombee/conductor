@@ -31,6 +31,13 @@ const (
 	FormatText Format = "text"
 )
 
+// Custom log levels extending slog's standard levels.
+const (
+	// LevelTrace is more verbose than Debug, used for detailed tracing
+	// (e.g., HTTP request/response bodies, LLM prompts/responses).
+	LevelTrace = slog.Level(-8)
+)
+
 // Standard field keys for structured logging.
 // These constants ensure consistent field naming across the codebase.
 const (
@@ -146,6 +153,8 @@ func New(cfg *Config) *slog.Logger {
 // parseLevel converts a string level to slog.Level.
 func parseLevel(level string) slog.Level {
 	switch strings.ToLower(level) {
+	case "trace":
+		return LevelTrace
 	case "debug":
 		return slog.LevelDebug
 	case "info":
@@ -253,4 +262,13 @@ func SanitizeAPIKey(key string) string {
 // This should be used for any sensitive data that should never appear in logs.
 func SanitizeSecret(secret string) string {
 	return "[REDACTED]"
+}
+
+// Trace logs a message at trace level with optional attributes.
+// This is used for highly verbose debugging output like HTTP bodies and LLM prompts.
+func Trace(logger *slog.Logger, msg string, attrs ...slog.Attr) {
+	if !logger.Enabled(nil, LevelTrace) {
+		return
+	}
+	logger.LogAttrs(nil, LevelTrace, msg, attrs...)
 }
