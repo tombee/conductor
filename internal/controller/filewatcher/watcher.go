@@ -108,6 +108,19 @@ func (w *Watcher) Stop() error {
 	return w.watcher.Close()
 }
 
+// AddPath adds an additional path to watch (for recursive watching).
+func (w *Watcher) AddPath(path string) error {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path: %w", err)
+	}
+	if err := w.watcher.Add(absPath); err != nil {
+		return fmt.Errorf("failed to add path to watcher: %w", err)
+	}
+	w.logger.Debug("added path to watcher", "path", absPath)
+	return nil
+}
+
 // Events returns a channel that receives file event contexts.
 func (w *Watcher) Events() <-chan *Context {
 	return w.eventChan

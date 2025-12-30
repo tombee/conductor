@@ -63,6 +63,12 @@ type WatchConfig struct {
 	// Zero means no limit
 	MaxTriggersPerMinute int
 
+	// Recursive enables recursive directory watching
+	Recursive bool
+
+	// MaxDepth limits recursive watching depth (0 = default 10 levels)
+	MaxDepth int
+
 	// Inputs are passed to the workflow along with the file context
 	Inputs map[string]any
 }
@@ -162,20 +168,42 @@ func (s *Service) AddWatcher(config WatchConfig) error {
 
 	path := config.Paths[0]
 
-	// Expand path (handle ~ and env vars would go here in future phases)
-	absPath, err := filepath.Abs(path)
+	// Normalize and validate path (expands ~, env vars, resolves symlinks, validates security)
+	normalizedPath, err := NormalizePath(path)
 	if err != nil {
 		return fmt.Errorf("invalid path: %w", err)
 	}
 
-	// Create watcher
-	w, err := NewWatcher(absPath, config.Events)
+	// Create watcher for the root path
+	w, err := NewWatcher(normalizedPath, config.Events)
 	if err != nil {
 		return fmt.Errorf("failed to create watcher: %w", err)
 	}
 
+	// Handle recursive watching by adding subdirectories
+	if config.Recursive {
+		maxDepth := config.MaxDepth
+		if maxDepth == 0 {
+			maxDepth = 10 // Default max depth to prevent runaway recursion
+		}
+		pathsToWatch, err := WalkDirectory(normalizedPath, maxDepth)
+		if err != nil {
+			w.Stop()
+			return fmt.Errorf("failed to walk directory: %w", err)
+		}
+		// Add all subdirectories to the watcher (skip first which is root, already added)
+		for i := 1; i < len(pathsToWatch); i++ {
+			if err := w.AddPath(pathsToWatch[i]); err != nil {
+				s.logger.Warn("failed to add subdirectory to watcher",
+					"path", pathsToWatch[i],
+					"error", err)
+			}
+		}
+	}
+
 	// Start watcher
 	if err := w.Start(s.ctx); err != nil {
+		w.Stop()
 		return fmt.Errorf("failed to start watcher: %w", err)
 	}
 
@@ -211,7 +239,9 @@ func (s *Service) AddWatcher(config WatchConfig) error {
 
 	s.logger.Info("file watcher added",
 		"name", config.Name,
-		"path", absPath,
+		"path", normalizedPath,
+		"recursive", config.Recursive,
+		"max_depth", config.MaxDepth,
 		"debounce", config.DebounceWindow,
 		"batch_mode", config.BatchMode,
 		"rate_limit", config.MaxTriggersPerMinute)
@@ -268,6 +298,18 @@ func (s *Service) handleEvents(entry *watcherEntry) {
 
 	// Process events from watcher
 	for ctx := range entry.watcher.Events() {
+		// Re-resolve symlinks for TOCTOU safety (prevent symlink attack between watch and trigger)
+		resolvedPath, err := ResolveSymlink(ctx.Path)
+		if err != nil {
+			s.logger.Warn("failed to resolve symlink, skipping event",
+				"path", ctx.Path,
+				"watcher", config.Name,
+				"error", err)
+			continue
+		}
+		// Update context with resolved path
+		ctx.Path = resolvedPath
+
 		// Apply pattern matching if configured
 		if entry.patternMatcher != nil {
 			if !entry.patternMatcher.Match(ctx.Path) {

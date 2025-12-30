@@ -727,6 +727,8 @@ func (c *Controller) Start(ctx context.Context) error {
 					DebounceWindow:       debounceWindow,
 					BatchMode:            t.Trigger.File.BatchMode,
 					MaxTriggersPerMinute: t.Trigger.File.MaxTriggersPerMinute,
+					Recursive:            t.Trigger.File.Recursive,
+					MaxDepth:             t.Trigger.File.MaxDepth,
 					Inputs:               t.Trigger.File.Inputs,
 				}
 				if err := c.fileWatcher.AddWatcher(config); err != nil {
