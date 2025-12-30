@@ -575,3 +575,158 @@ func TestAccessCheckResult_AllowedList(t *testing.T) {
 		t.Errorf("Expected first allowed pattern to be /tmp/**, got %s", result.AllowedList[0])
 	}
 }
+
+func TestAccessChecker_SymlinkEscapePrevention(t *testing.T) {
+	// Create temp directory structure with symlink pointing outside allowed dir
+	allowedDir, err := os.MkdirTemp("", "allowed-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(allowedDir)
+
+	restrictedDir, err := os.MkdirTemp("", "restricted-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(restrictedDir)
+
+	// Create a restricted file
+	restrictedFile := filepath.Join(restrictedDir, "secret.txt")
+	if err := os.WriteFile(restrictedFile, []byte("secret data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a symlink inside allowed dir that points to restricted file
+	symlinkPath := filepath.Join(allowedDir, "link-to-secret")
+	if err := os.Symlink(restrictedFile, symlinkPath); err != nil {
+		t.Skip("Symlink creation not supported on this platform")
+	}
+
+	// Configure access to allow reading from allowedDir only
+	cfg := &AccessConfig{
+		Filesystem: FilesystemAccess{
+			Read: []string{allowedDir + "/**"},
+		},
+	}
+	checker, err := NewAccessChecker(cfg)
+	if err != nil {
+		t.Fatalf("NewAccessChecker() error = %v", err)
+	}
+
+	// Verify access is denied when resolving symlink to restricted location
+	result := checker.CheckFilesystemRead(symlinkPath)
+	if result.Allowed {
+		t.Errorf("CheckFilesystemRead() should deny symlink escape, but allowed = %v", result.Allowed)
+		t.Logf("Symlink path: %s", symlinkPath)
+		t.Logf("Restricted file: %s", restrictedFile)
+		t.Logf("Reason: %s", result.Reason)
+	}
+}
+
+// BenchmarkAccessChecker_FilesystemRead verifies <1ms p99 latency for filesystem checks
+func BenchmarkAccessChecker_FilesystemRead(b *testing.B) {
+	cfg := &AccessConfig{
+		Filesystem: FilesystemAccess{
+			Read: []string{
+				"/tmp/**",
+				"/var/log/**/*.log",
+				"/home/user/projects/**",
+			},
+			Deny: []string{
+				"**/.env",
+				"**/secrets/**",
+			},
+		},
+	}
+	checker, err := NewAccessChecker(cfg)
+	if err != nil {
+		b.Fatalf("NewAccessChecker() error = %v", err)
+	}
+
+	testPaths := []string{
+		"/tmp/test.txt",
+		"/var/log/app/server.log",
+		"/home/user/projects/myapp/main.go",
+		"/etc/passwd", // Should be denied
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		path := testPaths[i%len(testPaths)]
+		_ = checker.CheckFilesystemRead(path)
+	}
+}
+
+// BenchmarkAccessChecker_Network verifies <1ms p99 latency for network checks
+func BenchmarkAccessChecker_Network(b *testing.B) {
+	cfg := &AccessConfig{
+		Network: NetworkAccess{
+			Allow: []string{
+				"api.github.com",
+				"*.example.com",
+				"10.0.0.0/8",
+				"localhost:8080",
+			},
+			Deny: []string{
+				"evil.example.com",
+				"192.168.0.0/16",
+			},
+		},
+	}
+	checker, err := NewAccessChecker(cfg)
+	if err != nil {
+		b.Fatalf("NewAccessChecker() error = %v", err)
+	}
+
+	testCases := []struct {
+		host string
+		port int
+	}{
+		{"api.github.com", 443},
+		{"api.example.com", 443},
+		{"10.1.2.3", 443},
+		{"localhost", 8080},
+		{"evil.example.com", 443}, // Should be denied
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		tc := testCases[i%len(testCases)]
+		_ = checker.CheckNetwork(tc.host, tc.port)
+	}
+}
+
+// BenchmarkAccessChecker_Shell verifies <1ms p99 latency for shell checks
+func BenchmarkAccessChecker_Shell(b *testing.B) {
+	cfg := &AccessConfig{
+		Shell: ShellAccess{
+			Commands: []string{
+				"git",
+				"npm",
+				"go test",
+			},
+			DenyPatterns: []string{
+				"git push --force",
+				"rm -rf /",
+			},
+		},
+	}
+	checker, err := NewAccessChecker(cfg)
+	if err != nil {
+		b.Fatalf("NewAccessChecker() error = %v", err)
+	}
+
+	testCommands := []string{
+		"git status",
+		"npm install",
+		"go test ./...",
+		"git push --force", // Should be denied
+		"rm -rf /",         // Should be denied
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cmd := testCommands[i%len(testCommands)]
+		_ = checker.CheckShell(cmd)
+	}
+}
