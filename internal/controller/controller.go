@@ -309,10 +309,6 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 			mc := otelProvider.MetricsCollector()
 			r.SetMetrics(mc)
 
-			// Wire subscriber and run counters for memory metrics
-			mc.SetSubscriberCounter(r.GetLogAggregator())
-			mc.SetRunCounter(r.GetStateManager())
-
 			// Create retention manager if trace storage is configured and retention is non-zero
 			if otelProvider.GetStore() != nil && tracingCfg.Storage.Retention.Traces > 0 {
 				cleanupInterval := 1 * time.Hour // Default cleanup interval

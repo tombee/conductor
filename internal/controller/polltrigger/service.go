@@ -197,6 +197,11 @@ func (s *Service) RegisterTrigger(reg *PollTriggerRegistration) error {
 		reg.Interval = MinPollInterval
 	}
 
+	// Validate query parameters to prevent injection attacks
+	if err := ValidateQueryParameters(reg.Query); err != nil {
+		return fmt.Errorf("invalid query parameters: %w", err)
+	}
+
 	// Check if integration poller is registered
 	if _, exists := s.pollers[reg.Integration]; !exists {
 		return fmt.Errorf("integration %s not registered", reg.Integration)
@@ -465,12 +470,15 @@ func (s *Service) handlePoll(ctx context.Context, triggerID string) error {
 			}
 		}
 
+		// Strip sensitive fields from event before passing to workflow
+		cleanedEvent := StripSensitiveFields(event, reg.Integration)
+
 		// Fire the workflow
 		triggerContext := &PollTriggerContext{
 			Integration: reg.Integration,
 			TriggerTime: time.Now(),
 			PollTime:    pollTime,
-			Event:       event,
+			Event:       cleanedEvent,
 			Query:       reg.Query,
 		}
 
