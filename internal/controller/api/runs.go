@@ -42,6 +42,8 @@ func (h *RunsHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/runs/{id}", h.handleGet)
 	mux.HandleFunc("GET /v1/runs/{id}/output", h.handleGetOutput)
 	mux.HandleFunc("GET /v1/runs/{id}/logs", h.handleGetLogs)
+	mux.HandleFunc("GET /v1/runs/{id}/steps", h.handleListSteps)
+	mux.HandleFunc("GET /v1/runs/{id}/steps/{step_id}", h.handleGetStep)
 	mux.HandleFunc("DELETE /v1/runs/{id}", h.handleCancel)
 }
 

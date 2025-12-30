@@ -78,6 +78,24 @@ type CheckpointStore interface {
 	GetCheckpoint(ctx context.Context, runID string) (*Checkpoint, error)
 }
 
+// StepResultStore is an optional interface for step result storage.
+// Backends can implement this to support step-level debugging and inspection.
+// Use type assertion to detect if a backend supports this capability:
+//
+//	if stepStore, ok := store.(StepResultStore); ok {
+//	    err := stepStore.SaveStepResult(ctx, result)
+//	}
+type StepResultStore interface {
+	// SaveStepResult saves a step execution result.
+	SaveStepResult(ctx context.Context, result *StepResult) error
+
+	// GetStepResult retrieves a step result by run ID and step ID.
+	GetStepResult(ctx context.Context, runID, stepID string) (*StepResult, error)
+
+	// ListStepResults retrieves all step results for a run.
+	ListStepResults(ctx context.Context, runID string) ([]*StepResult, error)
+}
+
 // Backend defines the full interface for daemon storage.
 // This is a composite interface that embeds all segregated interfaces
 // plus io.Closer for lifecycle management.
@@ -88,6 +106,7 @@ type Backend interface {
 	RunStore
 	RunLister
 	CheckpointStore
+	StepResultStore
 	io.Closer
 }
 
@@ -124,6 +143,19 @@ type Checkpoint struct {
 	StepID    string         `json:"step_id"`
 	StepIndex int            `json:"step_index"`
 	Context   map[string]any `json:"context"`
+	CreatedAt time.Time      `json:"created_at"`
+}
+
+// StepResult represents the result of a single step execution.
+type StepResult struct {
+	RunID     string         `json:"run_id"`
+	StepID    string         `json:"step_id"`
+	StepIndex int            `json:"step_index"`
+	Inputs    map[string]any `json:"inputs,omitempty"`
+	Outputs   map[string]any `json:"outputs,omitempty"`
+	Duration  time.Duration  `json:"duration"`
+	Status    string         `json:"status"`
+	Error     string         `json:"error,omitempty"`
 	CreatedAt time.Time      `json:"created_at"`
 }
 

@@ -31,6 +31,7 @@ var (
 	_ backend.RunStore        = (*Backend)(nil)
 	_ backend.RunLister       = (*Backend)(nil)
 	_ backend.CheckpointStore = (*Backend)(nil)
+	_ backend.StepResultStore = (*Backend)(nil)
 	_ backend.Backend         = (*Backend)(nil)
 	_ backend.ScheduleBackend = (*Backend)(nil)
 )
@@ -142,6 +143,19 @@ func (b *Backend) migrate(ctx context.Context) error {
 			enabled BOOLEAN DEFAULT true,
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		)`,
+		`CREATE TABLE IF NOT EXISTS step_results (
+			run_id VARCHAR(36) NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+			step_id VARCHAR(255) NOT NULL,
+			step_index INTEGER NOT NULL,
+			inputs JSONB,
+			outputs JSONB,
+			duration BIGINT NOT NULL,
+			status VARCHAR(50) NOT NULL,
+			error TEXT,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			PRIMARY KEY (run_id, step_id)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_step_results_run_id ON step_results(run_id)`,
 	}
 
 	for _, migration := range migrations {
@@ -582,4 +596,134 @@ func (b *Backend) DeleteScheduleState(ctx context.Context, name string) error {
 		return fmt.Errorf("failed to delete schedule state: %w", err)
 	}
 	return nil
+}
+
+// SaveStepResult saves a step execution result.
+func (b *Backend) SaveStepResult(ctx context.Context, result *backend.StepResult) error {
+	inputsJSON, err := json.Marshal(result.Inputs)
+	if err != nil {
+		return fmt.Errorf("failed to marshal inputs: %w", err)
+	}
+
+	outputsJSON, err := json.Marshal(result.Outputs)
+	if err != nil {
+		return fmt.Errorf("failed to marshal outputs: %w", err)
+	}
+
+	query := `
+		INSERT INTO step_results (run_id, step_id, step_index, inputs, outputs, duration, status, error, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		ON CONFLICT (run_id, step_id) DO UPDATE SET
+			step_index = EXCLUDED.step_index,
+			inputs = EXCLUDED.inputs,
+			outputs = EXCLUDED.outputs,
+			duration = EXCLUDED.duration,
+			status = EXCLUDED.status,
+			error = EXCLUDED.error,
+			created_at = EXCLUDED.created_at
+	`
+
+	now := time.Now()
+	_, err = b.db.ExecContext(ctx, query,
+		result.RunID, result.StepID, result.StepIndex,
+		inputsJSON, outputsJSON, result.Duration.Nanoseconds(),
+		result.Status, result.Error, now,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to save step result: %w", err)
+	}
+
+	result.CreatedAt = now
+	return nil
+}
+
+// GetStepResult retrieves a step result by run ID and step ID.
+func (b *Backend) GetStepResult(ctx context.Context, runID, stepID string) (*backend.StepResult, error) {
+	query := `
+		SELECT run_id, step_id, step_index, inputs, outputs, duration, status, error, created_at
+		FROM step_results
+		WHERE run_id = $1 AND step_id = $2
+	`
+
+	var result backend.StepResult
+	var inputsJSON, outputsJSON []byte
+	var durationNanos int64
+
+	err := b.db.QueryRowContext(ctx, query, runID, stepID).Scan(
+		&result.RunID, &result.StepID, &result.StepIndex,
+		&inputsJSON, &outputsJSON, &durationNanos,
+		&result.Status, &result.Error, &result.CreatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("step result not found: %s (run: %s)", stepID, runID)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get step result: %w", err)
+	}
+
+	if len(inputsJSON) > 0 {
+		if err := json.Unmarshal(inputsJSON, &result.Inputs); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal inputs: %w", err)
+		}
+	}
+
+	if len(outputsJSON) > 0 {
+		if err := json.Unmarshal(outputsJSON, &result.Outputs); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal outputs: %w", err)
+		}
+	}
+
+	result.Duration = time.Duration(durationNanos)
+
+	return &result, nil
+}
+
+// ListStepResults retrieves all step results for a run.
+func (b *Backend) ListStepResults(ctx context.Context, runID string) ([]*backend.StepResult, error) {
+	query := `
+		SELECT run_id, step_id, step_index, inputs, outputs, duration, status, error, created_at
+		FROM step_results
+		WHERE run_id = $1
+		ORDER BY step_index ASC
+	`
+
+	rows, err := b.db.QueryContext(ctx, query, runID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list step results: %w", err)
+	}
+	defer rows.Close()
+
+	var results []*backend.StepResult
+	for rows.Next() {
+		var result backend.StepResult
+		var inputsJSON, outputsJSON []byte
+		var durationNanos int64
+
+		err := rows.Scan(
+			&result.RunID, &result.StepID, &result.StepIndex,
+			&inputsJSON, &outputsJSON, &durationNanos,
+			&result.Status, &result.Error, &result.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan step result: %w", err)
+		}
+
+		if len(inputsJSON) > 0 {
+			if err := json.Unmarshal(inputsJSON, &result.Inputs); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal inputs: %w", err)
+			}
+		}
+
+		if len(outputsJSON) > 0 {
+			if err := json.Unmarshal(outputsJSON, &result.Outputs); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal outputs: %w", err)
+			}
+		}
+
+		result.Duration = time.Duration(durationNanos)
+
+		results = append(results, &result)
+	}
+
+	return results, nil
 }

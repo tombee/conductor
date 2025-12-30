@@ -480,6 +480,13 @@ func (r *Runner) Subscribe(runID string) (<-chan LogEntry, func()) {
 	return r.logs.Subscribe(runID)
 }
 
+// Backend returns the backend storage instance for direct access.
+// This is used by API handlers to access optional backend capabilities
+// like step result storage.
+func (r *Runner) Backend() backend.Backend {
+	return r.state.backend
+}
+
 // StartDraining puts the runner into draining mode.
 func (r *Runner) StartDraining() {
 	r.draining.Store(true)
