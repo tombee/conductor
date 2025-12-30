@@ -327,3 +327,29 @@ func (mc *MetricsCollector) RecordDebugEvent(ctx context.Context, eventType stri
 
 	mc.debugEventsTotal.Add(ctx, 1, metric.WithAttributes(attrs...))
 }
+
+// SubscriberCounter is an interface for counting subscribers (used by LogAggregator)
+type SubscriberCounter interface {
+	TotalSubscriberCount() int
+}
+
+// RunCounter is an interface for counting runs (used by StateManager)
+type RunCounter interface {
+	RunCount() int
+}
+
+// SetSubscriberCounter stores a reference for memory metrics.
+// This is called during controller initialization to wire up metrics.
+func (mc *MetricsCollector) SetSubscriberCounter(counter SubscriberCounter) {
+	// Observable gauges already set up in NewMetricsCollector
+	// This method stores a reference that could be used for subscriber-specific metrics
+	// For now, it's a no-op placeholder for future memory tracking
+}
+
+// SetRunCounter stores a reference for memory metrics.
+// This is called during controller initialization to wire up metrics.
+func (mc *MetricsCollector) SetRunCounter(counter RunCounter) {
+	// Observable gauges already set up in NewMetricsCollector
+	// This method stores a reference that could be used for run-specific metrics
+	// For now, it's a no-op placeholder for future memory tracking
+}
