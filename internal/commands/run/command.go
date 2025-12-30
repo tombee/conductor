@@ -133,5 +133,8 @@ Verbosity levels:
 	cmd.RegisterFlagCompletionFunc("provider", completion.CompleteProviderNames)
 	cmd.RegisterFlagCompletionFunc("security", completion.CompleteSecurityModes)
 
+	// Add subcommands
+	cmd.AddCommand(newShowCmd())
+
 	return cmd
 }
