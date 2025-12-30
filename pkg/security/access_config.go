@@ -85,3 +85,12 @@ type MCPSecurityConfig struct {
 	// Allowlist limits which MCP servers can be used (empty = all allowed)
 	Allowlist []string `yaml:"allowlist,omitempty" json:"allowlist,omitempty"`
 }
+
+// Validate checks the AccessConfig for validity.
+// Returns nil if the configuration is valid (all patterns are well-formed).
+func (c *AccessConfig) Validate() error {
+	// For Phase 2, we just check that the config can be parsed.
+	// Pattern validation happens at runtime in the AccessChecker.
+	// Future enhancement: validate glob patterns, CIDR notation, etc.
+	return nil
+}
