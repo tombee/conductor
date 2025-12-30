@@ -365,9 +365,21 @@ If `conductor run show` doesn't show step details:
 - `conductor traces timeline` - ASCII timeline visualization
 - `conductor traces show --failed` - Show only failed spans
 
+## Current Limitations
+
+**Phase 1 MVP limitations:**
+
+- **Interactive debugging requires terminal access** - The interactive debugger shell runs in the controller process. When using a background controller (daemon mode), breakpoints are detected but interactive commands won't work. For interactive debugging, start the controller in the foreground or use `conductor run` directly with the controller inline.
+
+- **No remote debugging** - Currently debugging only works when running on the same machine as the controller. Remote debugging will be added in a future release.
+
+- **LLM step details limited** - Step inspection shows inputs and outputs but doesn't yet display full LLM prompts and responses. Use `--log-level trace` for LLM visibility.
+
+These limitations will be addressed in Phase 2 with a proper event streaming protocol between CLI and controller.
+
 ## Future Enhancements
 
-Planned debugging features (see SPEC-195):
+Planned debugging features:
 
 - **Replay** - Resume failed workflows from a specific step
 - **Enhanced Dry-Run** - Deep inspection with template expansion
