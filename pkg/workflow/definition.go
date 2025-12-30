@@ -283,6 +283,15 @@ type StepDefinition struct {
 	// Only valid for type: parallel steps.
 	Foreach string `yaml:"foreach,omitempty" json:"foreach,omitempty"`
 
+	// MaxIterations limits loop iterations (required for type: loop).
+	// Must be between 1 and 100.
+	MaxIterations int `yaml:"max_iterations,omitempty" json:"max_iterations,omitempty"`
+
+	// Until is the termination condition expression (required for type: loop).
+	// Evaluated after each iteration (do-while semantics).
+	// Loop terminates when expression evaluates to true.
+	Until string `yaml:"until,omitempty" json:"until,omitempty"`
+
 	// Permissions define access control at the step level (SPEC-141)
 	// Step-level permissions are intersected with workflow permissions (most restrictive wins)
 	Permissions *PermissionDefinition `yaml:"permissions,omitempty" json:"permissions,omitempty"`
@@ -303,6 +312,10 @@ const (
 
 	// StepTypeIntegration executes a declarative integration operation
 	StepTypeIntegration StepType = "integration"
+
+	// StepTypeLoop executes nested steps repeatedly until a condition is met
+	// or a maximum iteration count is reached
+	StepTypeLoop StepType = "loop"
 )
 
 // ModelTier represents the model capability tier for LLM steps.
@@ -1231,6 +1244,11 @@ func (d *Definition) Validate() error {
 			return fmt.Errorf("invalid step %s: %w", step.ID, err)
 		}
 
+		// Validate loop expression syntax (compile-time validation)
+		if err := ValidateLoopExpression(&step); err != nil {
+			return fmt.Errorf("invalid step %s: %w", step.ID, err)
+		}
+
 		// Validate agent reference exists if specified
 		if step.Agent != "" {
 			if _, exists := d.Agents[step.Agent]; !exists {
@@ -1426,6 +1444,7 @@ func (s *StepDefinition) Validate() error {
 		StepTypeLLM:         true,
 		StepTypeParallel:    true,
 		StepTypeIntegration: true,
+		StepTypeLoop:        true,
 	}
 	if !validTypes[s.Type] {
 		return fmt.Errorf("invalid step type: %s", s.Type)
@@ -1514,6 +1533,41 @@ func (s *StepDefinition) Validate() error {
 			// Check for duplicate IDs within parallel block
 			if nestedIDs[nested.ID] {
 				return fmt.Errorf("parallel step %s has duplicate nested step ID: %s", s.ID, nested.ID)
+			}
+			nestedIDs[nested.ID] = true
+		}
+	}
+
+	// Validate loop step
+	if s.Type == StepTypeLoop {
+		// max_iterations is required and must be 1-100
+		if s.MaxIterations < 1 || s.MaxIterations > 100 {
+			return fmt.Errorf("max_iterations must be between 1 and 100, got %d", s.MaxIterations)
+		}
+		// until expression is required
+		if s.Until == "" {
+			return fmt.Errorf("until expression is required for loop step")
+		}
+		// nested steps are required
+		if len(s.Steps) == 0 {
+			return fmt.Errorf("loop step requires nested steps")
+		}
+		// Validate timeout if specified (minimum 2 seconds)
+		if s.Timeout > 0 && s.Timeout < 2 {
+			return fmt.Errorf("loop timeout must be at least 2 seconds")
+		}
+		// Validate each nested step and check for unique IDs
+		nestedIDs := make(map[string]bool)
+		for i, nested := range s.Steps {
+			// Check for nested loops (not allowed in v1)
+			if nested.Type == StepTypeLoop {
+				return fmt.Errorf("nested loops are not supported")
+			}
+			if err := nested.Validate(); err != nil {
+				return fmt.Errorf("loop step %s, nested step %d (%s): %w", s.ID, i, nested.ID, err)
+			}
+			if nestedIDs[nested.ID] {
+				return fmt.Errorf("loop step %s has duplicate nested step ID: %s", s.ID, nested.ID)
 			}
 			nestedIDs[nested.ID] = true
 		}
