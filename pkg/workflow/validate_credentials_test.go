@@ -167,10 +167,7 @@ func TestRequirementsDefinitionValidate(t *testing.T) {
 		{
 			name: "valid requirements",
 			req: &RequirementsDefinition{
-				Integrations: []IntegrationRequirement{
-					{Name: "github", Capabilities: []string{"issues", "pull_requests"}},
-					{Name: "slack", Optional: true},
-				},
+				Integrations: []string{"github", "slack"},
 				MCPServers: []MCPServerRequirement{
 					{Name: "code-analysis"},
 				},
@@ -180,19 +177,14 @@ func TestRequirementsDefinitionValidate(t *testing.T) {
 		{
 			name: "missing integration name",
 			req: &RequirementsDefinition{
-				Integrations: []IntegrationRequirement{
-					{Name: ""},
-				},
+				Integrations: []string{""},
 			},
 			wantErr: true,
 		},
 		{
 			name: "duplicate integration",
 			req: &RequirementsDefinition{
-				Integrations: []IntegrationRequirement{
-					{Name: "github"},
-					{Name: "github"},
-				},
+				Integrations: []string{"github", "github"},
 			},
 			wantErr: true,
 		},
