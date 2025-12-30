@@ -19,6 +19,7 @@ linters:
     - gosec         # Security checks
     - unconvert     # Remove unnecessary type conversions
     - wrapcheck     # Check that errors are wrapped with context
+    - bodyclose     # Check that HTTP response bodies are closed
 
 linters-settings:
   errcheck:
