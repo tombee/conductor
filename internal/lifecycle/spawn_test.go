@@ -23,11 +23,18 @@ import (
 	"time"
 )
 
+// skipOnSpawnError checks if an error is a spawn permission error and skips if so.
+// Some environments (sandboxed test runners, containers) block fork/exec.
+func skipOnSpawnError(t *testing.T, err error) {
+	t.Helper()
+	if err != nil && strings.Contains(err.Error(), "operation not permitted") {
+		t.Skipf("Skipping: spawn not permitted in this environment: %v", err)
+	}
+}
+
 func TestSpawner_SpawnDetached(t *testing.T) {
-	// Skip on macOS in sandboxed environments (like test runner)
-	// Setsid requires special entitlements on macOS
 	if os.Getenv("SKIP_SPAWN_TESTS") != "" {
-		t.Skip("Skipping spawn tests (set SKIP_SPAWN_TESTS to enable)")
+		t.Skip("Skipping spawn tests (SKIP_SPAWN_TESTS is set)")
 	}
 
 	tmpDir := t.TempDir()
@@ -38,6 +45,7 @@ func TestSpawner_SpawnDetached(t *testing.T) {
 
 		// Spawn a process that writes to stdout and runs for a bit
 		pid, err := spawner.SpawnDetached("sh", []string{"-c", "echo 'test output'; sleep 1"}, logPath)
+		skipOnSpawnError(t, err)
 		if err != nil {
 			t.Fatalf("SpawnDetached() error = %v", err)
 		}
@@ -66,6 +74,7 @@ func TestSpawner_SpawnDetached(t *testing.T) {
 		spawner := NewSpawner()
 
 		pid, err := spawner.SpawnDetached("sh", []string{"-c", "echo 'test'"}, logPath)
+		skipOnSpawnError(t, err)
 		if err != nil {
 			t.Fatalf("SpawnDetached() error = %v", err)
 		}
@@ -91,6 +100,7 @@ func TestSpawner_SpawnDetached(t *testing.T) {
 		spawner := NewSpawner()
 
 		pid, err := spawner.SpawnDetached("sleep", []string{"2"}, logPath)
+		skipOnSpawnError(t, err)
 		if err != nil {
 			t.Fatalf("SpawnDetached() error = %v", err)
 		}
@@ -116,6 +126,7 @@ func TestSpawner_SpawnDetached(t *testing.T) {
 		spawner := NewSpawner()
 
 		pid, err := spawner.SpawnDetached("echo", []string{"test"}, logPath)
+		skipOnSpawnError(t, err)
 		if err != nil {
 			t.Fatalf("SpawnDetached() error = %v", err)
 		}
@@ -144,6 +155,7 @@ func TestSpawner_SpawnDetached(t *testing.T) {
 
 		spawner := NewSpawner()
 		pid, err := spawner.SpawnDetached("echo", []string{"appended"}, logPath)
+		skipOnSpawnError(t, err)
 		if err != nil {
 			t.Fatalf("SpawnDetached() error = %v", err)
 		}
@@ -179,7 +191,7 @@ func TestSpawner_SpawnDetached(t *testing.T) {
 
 func TestSpawner_SpawnDetachedWithFiles(t *testing.T) {
 	if os.Getenv("SKIP_SPAWN_TESTS") != "" {
-		t.Skip("Skipping spawn tests (set SKIP_SPAWN_TESTS to enable)")
+		t.Skip("Skipping spawn tests (SKIP_SPAWN_TESTS is set)")
 	}
 
 	tmpDir := t.TempDir()
@@ -191,6 +203,7 @@ func TestSpawner_SpawnDetachedWithFiles(t *testing.T) {
 
 		// Command that writes to both stdout and stderr
 		pid, err := spawner.SpawnDetachedWithFiles("sh", []string{"-c", "echo 'out'; echo 'err' >&2"}, stdoutPath, stderrPath)
+		skipOnSpawnError(t, err)
 		if err != nil {
 			t.Fatalf("SpawnDetachedWithFiles() error = %v", err)
 		}
@@ -230,6 +243,7 @@ func TestSpawner_SpawnDetachedWithFiles(t *testing.T) {
 		spawner := NewSpawner()
 
 		pid, err := spawner.SpawnDetachedWithFiles("echo", []string{"test"}, stdoutPath, stderrPath)
+		skipOnSpawnError(t, err)
 		if err != nil {
 			t.Fatalf("SpawnDetachedWithFiles() error = %v", err)
 		}
@@ -252,7 +266,7 @@ func TestSpawner_SpawnDetachedWithFiles(t *testing.T) {
 
 func TestSpawner_WithEnv(t *testing.T) {
 	if os.Getenv("SKIP_SPAWN_TESTS") != "" {
-		t.Skip("Skipping spawn tests (set SKIP_SPAWN_TESTS to enable)")
+		t.Skip("Skipping spawn tests (SKIP_SPAWN_TESTS is set)")
 	}
 
 	tmpDir := t.TempDir()
@@ -262,6 +276,7 @@ func TestSpawner_WithEnv(t *testing.T) {
 		spawner := NewSpawner().WithEnv([]string{"TEST_VAR=test_value"})
 
 		pid, err := spawner.SpawnDetached("sh", []string{"-c", "echo $TEST_VAR"}, logPath)
+		skipOnSpawnError(t, err)
 		if err != nil {
 			t.Fatalf("SpawnDetached() error = %v", err)
 		}

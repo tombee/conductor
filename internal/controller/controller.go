@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -39,6 +40,7 @@ import (
 	"github.com/tombee/conductor/internal/controller/github"
 	"github.com/tombee/conductor/internal/controller/leader"
 	"github.com/tombee/conductor/internal/controller/listener"
+	"github.com/tombee/conductor/internal/controller/polltrigger"
 	"github.com/tombee/conductor/internal/controller/publicapi"
 	controllerremote "github.com/tombee/conductor/internal/controller/remote"
 	"github.com/tombee/conductor/internal/controller/runner"
@@ -86,6 +88,7 @@ type Controller struct {
 	otelProvider    *tracing.OTelProvider
 	retentionMgr    *tracing.RetentionManager
 	auditLogger     *audit.Logger
+	pollTriggerService *polltrigger.Service
 
 	// Security components
 	dnsMonitor          *security.DNSQueryMonitor
@@ -317,10 +320,6 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 			mc := otelProvider.MetricsCollector()
 			r.SetMetrics(mc)
 
-			// Wire subscriber and run counters for memory metrics
-			mc.SetSubscriberCounter(r.GetLogAggregator())
-			mc.SetRunCounter(r.GetStateManager())
-
 			// Create retention manager if trace storage is configured and retention is non-zero
 			if otelProvider.GetStore() != nil && tracingCfg.Storage.Retention.Traces > 0 {
 				cleanupInterval := 1 * time.Hour // Default cleanup interval
@@ -426,26 +425,66 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 		Logger:          logger,
 	})
 
+	// Create poll trigger service
+	var pollTriggerSvc *polltrigger.Service
+	pollTriggerSvc, err = polltrigger.NewService(polltrigger.ServiceConfig{
+		Logger: logger,
+		WorkflowFirer: func(ctx context.Context, workflowPath string, triggerContext *polltrigger.PollTriggerContext) error {
+			// Fire workflow via runner
+			// Read workflow YAML
+			workflowYAML, err := os.ReadFile(workflowPath)
+			if err != nil {
+				return fmt.Errorf("failed to read workflow: %w", err)
+			}
+
+			// Convert trigger context to workflow inputs
+			inputs := make(map[string]interface{})
+			inputs["trigger"] = triggerContext
+
+			// Execute workflow
+			_, err = r.Submit(ctx, runner.SubmitRequest{
+				WorkflowYAML: workflowYAML,
+				Inputs:       inputs,
+			})
+			return err
+		},
+	})
+	if err != nil {
+		logger.Warn("failed to create poll trigger service",
+			internallog.Error(err))
+		logger.Warn("poll triggers will not be available")
+	} else {
+		// Register PagerDuty poller if token is configured
+		pagerdutyToken := os.Getenv("PAGERDUTY_TOKEN")
+		if pagerdutyToken != "" {
+			pdPoller := polltrigger.NewPagerDutyPoller(pagerdutyToken)
+			if err := pollTriggerSvc.RegisterPoller(pdPoller); err != nil {
+				logger.Warn("failed to register PagerDuty poller",
+					internallog.Error(err))
+			}
+		}
+	}
 
 	return &Controller{
-		cfg:             cfg,
-		opts:            opts,
-		logger:          logger,
-		runner:          r,
-		backend:         be,
-		checkpoints:     cm,
-		scheduler:       sched,
-		fileWatcher:     fileWatcherSvc,
-		endpointHandler: endpointHandler,
-		authMw:          authMw,
-		leader:          elector,
-		mcpRegistry:     mcpRegistry,
-		mcpLogCapture:   mcpLogCapture,
-		otelProvider:    otelProvider,
-		retentionMgr:    retentionMgr,
-		auditLogger:     auditLogger,
-		lastActivity:    time.Now(),
-		autoStarted:     autoStarted,
+		cfg:                cfg,
+		opts:               opts,
+		logger:             logger,
+		runner:             r,
+		backend:            be,
+		checkpoints:        cm,
+		scheduler:          sched,
+		fileWatcher:        fileWatcherSvc,
+		endpointHandler:    endpointHandler,
+		authMw:             authMw,
+		leader:             elector,
+		mcpRegistry:        mcpRegistry,
+		mcpLogCapture:      mcpLogCapture,
+		otelProvider:       otelProvider,
+		retentionMgr:       retentionMgr,
+		auditLogger:        auditLogger,
+		pollTriggerService: pollTriggerSvc,
+		lastActivity:       time.Now(),
+		autoStarted:        autoStarted,
 
 		// Security components
 		dnsMonitor:          dnsMonitor,
@@ -763,6 +802,18 @@ func (c *Controller) Start(ctx context.Context) error {
 		}
 	}
 
+	// Start poll trigger service and scan workflows
+	if c.pollTriggerService != nil {
+		if err := c.pollTriggerService.Start(ctx); err != nil {
+			c.logger.Warn("poll trigger service start error",
+				internallog.Error(err))
+		} else {
+			c.logger.Info("poll trigger service started")
+			// Scan workflows directory for poll triggers
+			go c.scanAndRegisterPollTriggers(ctx)
+		}
+	}
+
 	// Start trace retention manager if configured
 	if c.retentionMgr != nil {
 		c.retentionMgr.Start()
@@ -894,6 +945,18 @@ func (c *Controller) Shutdown(ctx context.Context) error {
 		if err := c.mcpRegistry.Stop(); err != nil {
 			c.logger.Error("MCP registry shutdown error",
 				internallog.Error(err))
+		}
+	}
+
+	// Stop poll trigger service
+	if c.pollTriggerService != nil {
+		shutdownCtx, shutdownCancel := context.WithTimeout(ctx, 5*time.Second)
+		defer shutdownCancel()
+		if err := c.pollTriggerService.Stop(shutdownCtx); err != nil {
+			c.logger.Error("poll trigger service shutdown error",
+				internallog.Error(err))
+		} else {
+			c.logger.Info("poll trigger service stopped")
 		}
 	}
 
@@ -1285,4 +1348,64 @@ func convertRedactionPatterns(patterns []config.RedactionPattern) []tracing.Reda
 		}
 	}
 	return result
+}
+
+// scanAndRegisterPollTriggers scans the workflows directory and registers poll triggers.
+func (c *Controller) scanAndRegisterPollTriggers(ctx context.Context) {
+	workflowsDir := c.cfg.Controller.WorkflowsDir
+	if workflowsDir == "" {
+		return
+	}
+
+	// Read directory
+	entries, err := os.ReadDir(workflowsDir)
+	if err != nil {
+		c.logger.Warn("failed to read workflows directory for poll triggers",
+			internallog.Error(err),
+			slog.String("dir", workflowsDir))
+		return
+	}
+
+	registeredCount := 0
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".yaml") && !strings.HasSuffix(entry.Name(), ".yml") {
+			continue
+		}
+
+		workflowPath := filepath.Join(workflowsDir, entry.Name())
+
+		// Load workflow
+		data, err := os.ReadFile(workflowPath)
+		if err != nil {
+			c.logger.Warn("failed to read workflow file for poll trigger scan",
+				internallog.Error(err),
+				slog.String("workflow", workflowPath))
+			continue
+		}
+
+		wf, err := workflow.ParseDefinition(data)
+		if err != nil {
+			c.logger.Warn("failed to parse workflow for poll trigger scan",
+				internallog.Error(err),
+				slog.String("workflow", workflowPath))
+			continue
+		}
+
+		// Register poll triggers if present
+		if err := c.pollTriggerService.RegisterWorkflowTriggers(workflowPath, wf); err != nil {
+			c.logger.Warn("failed to register poll trigger",
+				internallog.Error(err),
+				slog.String("workflow", workflowPath))
+		} else if wf.Trigger != nil && wf.Trigger.Poll != nil {
+			registeredCount++
+			c.logger.Info("registered poll trigger from workflow",
+				slog.String("workflow", entry.Name()),
+				slog.String("integration", wf.Trigger.Poll.Integration))
+		}
+	}
+
+	if registeredCount > 0 {
+		c.logger.Info("poll trigger scan complete",
+			slog.Int("registered", registeredCount))
+	}
 }

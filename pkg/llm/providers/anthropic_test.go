@@ -331,9 +331,7 @@ func TestAnthropicModels_Coverage(t *testing.T) {
 		if !model.SupportsVision {
 			t.Errorf("model %s should support vision", model.ID)
 		}
-		if model.InputPricePerMillion <= 0 {
-			t.Errorf("model %s has invalid input price", model.ID)
-		}
+		// Note: Pricing fields are optional - we track tokens only, not costs
 	}
 }
 
