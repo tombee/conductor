@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/tombee/conductor/internal/commands/completion"
@@ -25,6 +26,7 @@ import (
 	"github.com/tombee/conductor/internal/output"
 	"github.com/tombee/conductor/internal/permissions"
 	"github.com/tombee/conductor/pkg/workflow"
+	"github.com/tombee/conductor/pkg/workflow/subworkflow"
 	workflowschema "github.com/tombee/conductor/pkg/workflow/schema"
 	"gopkg.in/yaml.v3"
 )
@@ -180,7 +182,16 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, workspace
 		}
 	}
 
-	// Step 5: Run permission validation if requested (SPEC-141)
+	// Step 5: Validate sub-workflow references (if semantic validation passed)
+	var subworkflowCount int
+	if len(validationErrors) == 0 && def != nil {
+		workflowDir := filepath.Dir(workflowPath)
+		subworkflowErrors := validateSubworkflows(workflowDir, def)
+		validationErrors = append(validationErrors, subworkflowErrors...)
+		subworkflowCount = countSubworkflows(def)
+	}
+
+	// Step 6: Run permission validation if requested
 	var permissionResult *permissions.ValidationResult
 	if checkPermissions && def != nil && def.Permissions != nil {
 		// Merge workflow-level permissions to create effective context
@@ -333,6 +344,9 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, workspace
 		cmd.Println("  [OK] Syntax valid")
 		cmd.Println("  [OK] Schema valid")
 		cmd.Println("  [OK] All step references resolve correctly")
+		if subworkflowCount > 0 {
+			cmd.Printf("  [OK] All sub-workflow references valid (%d sub-workflow(s))\n", subworkflowCount)
+		}
 
 		// Show profile information if specified
 		if workspace != "" || profile != "" {
@@ -547,4 +561,87 @@ func validateAgainstSchema(data interface{}, schemaPath string) []output.JSONErr
 	}
 
 	return errors
+}
+
+// validateSubworkflows validates all sub-workflow references recursively
+func validateSubworkflows(parentDir string, def *workflow.Definition) []output.JSONError {
+	var errors []output.JSONError
+
+	// Create a subworkflow loader
+	loader := subworkflow.NewLoader()
+
+	// Track which workflows we've already validated to avoid duplicates
+	validated := make(map[string]bool)
+
+	// Recursively validate sub-workflows
+	errors = append(errors, validateSubworkflowsRecursive(parentDir, def, loader, validated, "")...)
+
+	return errors
+}
+
+// validateSubworkflowsRecursive recursively validates sub-workflow references
+func validateSubworkflowsRecursive(workflowDir string, def *workflow.Definition, loader *subworkflow.Loader, validated map[string]bool, parentPath string) []output.JSONError {
+	var errors []output.JSONError
+
+	for _, step := range def.Steps {
+		if step.Type == workflow.StepTypeWorkflow && step.Workflow != "" {
+			// Resolve absolute path for deduplication
+			absPath := filepath.Join(workflowDir, step.Workflow)
+			absPath, err := filepath.Abs(absPath)
+			if err != nil {
+				errors = append(errors, output.JSONError{
+					Code:       shared.ErrorCodeSchemaViolation,
+					Message:    fmt.Sprintf("[%s] Failed to resolve sub-workflow path %s: %v", step.ID, step.Workflow, err),
+					Suggestion: "Check that the workflow path is valid",
+				})
+				continue
+			}
+
+			// Skip if already validated
+			if validated[absPath] {
+				continue
+			}
+
+			// Try to load the sub-workflow
+			subDef, err := loader.Load(workflowDir, step.Workflow, nil)
+			if err != nil {
+				// Format breadcrumb trail for error
+				breadcrumb := step.ID
+				if parentPath != "" {
+					breadcrumb = parentPath + " → " + step.ID
+				}
+
+				errors = append(errors, output.JSONError{
+					Code:       shared.ErrorCodeSchemaViolation,
+					Message:    fmt.Sprintf("[%s] Failed to load sub-workflow %s: %v", breadcrumb, step.Workflow, err),
+					Suggestion: "Ensure the sub-workflow file exists and is valid",
+				})
+				continue
+			}
+
+			// Mark as validated
+			validated[absPath] = true
+
+			// Recursively validate the sub-workflow's own sub-workflows
+			subWorkflowDir := filepath.Join(workflowDir, filepath.Dir(step.Workflow))
+			newParentPath := step.ID
+			if parentPath != "" {
+				newParentPath = parentPath + " → " + step.ID
+			}
+			errors = append(errors, validateSubworkflowsRecursive(subWorkflowDir, subDef, loader, validated, newParentPath)...)
+		}
+	}
+
+	return errors
+}
+
+// countSubworkflows counts the total number of sub-workflow references in a workflow definition
+func countSubworkflows(def *workflow.Definition) int {
+	count := 0
+	for _, step := range def.Steps {
+		if step.Type == workflow.StepTypeWorkflow {
+			count++
+		}
+	}
+	return count
 }

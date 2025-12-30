@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -173,4 +174,50 @@ func DetectEmbeddedCredentials(def *Definition) []string {
 	}
 
 	return warnings
+}
+
+// ValidateWorkflowPath validates that a sub-workflow path is safe to load.
+// Rejects:
+// - Absolute paths (must be relative to parent workflow)
+// - Paths containing ".." (path traversal attempts)
+// - Paths that would escape the workflow directory after normalization
+func ValidateWorkflowPath(path string) error {
+	// Reject empty paths
+	if path == "" {
+		return &errors.ValidationError{
+			Field:      "workflow",
+			Message:    "workflow path cannot be empty",
+			Suggestion: "provide a relative path to the sub-workflow file",
+		}
+	}
+
+	// Reject absolute paths
+	if filepath.IsAbs(path) {
+		return &errors.ValidationError{
+			Field:      "workflow",
+			Message:    fmt.Sprintf("workflow path must be relative, not absolute: %s", path),
+			Suggestion: "use a relative path like './helpers/workflow.yaml'",
+		}
+	}
+
+	// Reject paths containing ".." to prevent directory traversal
+	if strings.Contains(path, "..") {
+		return &errors.ValidationError{
+			Field:      "workflow",
+			Message:    fmt.Sprintf("workflow path cannot contain '..': %s", path),
+			Suggestion: "use paths relative to the parent workflow directory only",
+		}
+	}
+
+	// Clean the path and verify it doesn't try to escape
+	cleaned := filepath.Clean(path)
+	if strings.HasPrefix(cleaned, "..") {
+		return &errors.ValidationError{
+			Field:      "workflow",
+			Message:    fmt.Sprintf("workflow path attempts to escape parent directory: %s", path),
+			Suggestion: "sub-workflows must be in the same directory tree as the parent",
+		}
+	}
+
+	return nil
 }

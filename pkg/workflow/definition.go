@@ -279,7 +279,7 @@ type StepDefinition struct {
 	// Only valid for type: parallel steps.
 	Foreach string `yaml:"foreach,omitempty" json:"foreach,omitempty"`
 
-	// MaxIterations limits loop iterations (required for type: loop).
+// MaxIterations limits loop iterations (required for type: loop).
 	// Must be between 1 and 100.
 	MaxIterations int `yaml:"max_iterations,omitempty" json:"max_iterations,omitempty"`
 
@@ -309,7 +309,7 @@ const (
 	// StepTypeIntegration executes a declarative integration operation
 	StepTypeIntegration StepType = "integration"
 
-	// StepTypeLoop executes nested steps repeatedly until a condition is met
+// StepTypeLoop executes nested steps repeatedly until a condition is met
 	// or a maximum iteration count is reached
 	StepTypeLoop StepType = "loop"
 
@@ -1473,9 +1473,15 @@ func (s *StepDefinition) Validate() error {
 		if s.Workflow == "" {
 			return fmt.Errorf("workflow step requires 'workflow' field with path to sub-workflow file")
 		}
+
 		// Workflow steps cannot have prompt field
 		if s.Prompt != "" {
 			return fmt.Errorf("workflow step cannot have 'prompt' field (use 'inputs' to pass data)")
+		}
+
+		// Validate workflow path security at definition time
+		if err := ValidateWorkflowPath(s.Workflow); err != nil {
+			return fmt.Errorf("invalid workflow path: %w", err)
 		}
 	}
 
