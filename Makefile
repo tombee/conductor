@@ -1,4 +1,4 @@
-.PHONY: help build test lint clean coverage install release snapshot
+.PHONY: help build test test-integration test-claude-cli lint clean coverage install release snapshot
 
 # Version information
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -16,14 +16,16 @@ INSTALL_DIR ?= /usr/local/bin
 
 help:
 	@echo "Available targets:"
-	@echo "  build      - Build the conductor binary"
-	@echo "  test       - Run all tests"
-	@echo "  lint       - Run golangci-lint"
-	@echo "  clean      - Clean build artifacts"
-	@echo "  coverage   - Generate test coverage report"
-	@echo "  install    - Install conductor binary to $(INSTALL_DIR)"
-	@echo "  release    - Create a new release with GoReleaser"
-	@echo "  snapshot   - Build snapshot release (no publish)"
+	@echo "  build           - Build the conductor binary"
+	@echo "  test            - Run all tests"
+	@echo "  test-integration - Run integration tests (require external services)"
+	@echo "  test-claude-cli - Run Claude Code CLI integration tests"
+	@echo "  lint            - Run golangci-lint"
+	@echo "  clean           - Clean build artifacts"
+	@echo "  coverage        - Generate test coverage report"
+	@echo "  install         - Install conductor binary to $(INSTALL_DIR)"
+	@echo "  release         - Create a new release with GoReleaser"
+	@echo "  snapshot        - Build snapshot release (no publish)"
 	@echo ""
 	@echo "Variables:"
 	@echo "  VERSION=$(VERSION)"
@@ -36,6 +38,16 @@ build:
 
 test:
 	go test -v -race ./...
+
+test-integration:
+	go test -v -race -tags=integration ./...
+
+test-claude-cli:
+	@command -v claude >/dev/null 2>&1 || command -v claude-code >/dev/null 2>&1 || { \
+		echo "Error: Claude CLI not found. Install Claude Code to run these tests."; \
+		exit 1; \
+	}
+	CONDUCTOR_CLAUDE_CLI=1 go test -v -tags=integration ./pkg/llm/providers/claudecode/...
 
 lint:
 	golangci-lint run
