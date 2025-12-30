@@ -135,6 +135,8 @@ Verbosity levels:
 
 	// Add subcommands
 	cmd.AddCommand(newShowCmd())
+	cmd.AddCommand(newReplayCmd())
+	cmd.AddCommand(newDiffCmd())
 
 	return cmd
 }

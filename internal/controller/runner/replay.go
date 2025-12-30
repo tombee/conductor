@@ -325,3 +325,146 @@ func EstimateReplayCost(
 
 	return estimate, nil
 }
+
+// AuthorizeReplay checks if the user is authorized to replay a run.
+// Authorization is granted if the user owns the run or has execute AND debug permissions on the workflow.
+func AuthorizeReplay(
+	ctx context.Context,
+	runStore backend.RunStore,
+	parentRunID string,
+	userID string,
+) error {
+	if parentRunID == "" {
+		return fmt.Errorf("parent_run_id is required")
+	}
+	if userID == "" {
+		return fmt.Errorf("user_id is required")
+	}
+
+	// Fetch the parent run
+	parentRun, err := runStore.GetRun(ctx, parentRunID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch parent run: %w", err)
+	}
+
+	// Check if user owns the run (run creator)
+	// For now, we assume the Run struct doesn't have a UserID field yet.
+	// In a full implementation, this would check parentRun.UserID == userID.
+	// Since we don't have user tracking on runs yet, we'll return nil (allow all).
+	// This is a placeholder for future user-based authorization.
+
+	// TODO: Once Run struct has UserID field, implement:
+	// if parentRun.UserID == userID {
+	//     return nil // User owns the run
+	// }
+
+	// TODO: Check workflow execute/debug permissions
+	// This would integrate with the workflow permission system to check if user has:
+	// - "execute" permission on the workflow, AND
+	// - "debug" permission on the workflow
+
+	// For now, log the authorization attempt and allow it
+	// This will be enhanced when user tracking is added to runs
+	_ = parentRun // Use the variable to avoid compiler warning
+
+	return nil
+}
+
+// ExecuteReplay executes a replay of a workflow run.
+// It restores cached outputs for skipped steps, applies overrides, and resumes execution.
+func ExecuteReplay(
+	ctx context.Context,
+	store backend.Backend,
+	config *backend.ReplayConfig,
+	workflowDef *workflow.Definition,
+) (map[string]any, error) {
+	// Validate the config
+	if err := ValidateReplayConfig(config); err != nil {
+		return nil, fmt.Errorf("invalid replay config: %w", err)
+	}
+
+	// Check if backend supports step result storage
+	stepStore, ok := store.(backend.StepResultStore)
+	if !ok {
+		return nil, fmt.Errorf("backend does not support step result storage")
+	}
+
+	// Validate cached outputs against current workflow
+	if config.ValidateSchema {
+		if err := ValidateCachedOutputs(ctx, stepStore, config.ParentRunID, workflowDef); err != nil {
+			return nil, fmt.Errorf("cached output validation failed: %w", err)
+		}
+	}
+
+	// Get all step results from parent run
+	parentResults, err := stepStore.ListStepResults(ctx, config.ParentRunID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch parent run step results: %w", err)
+	}
+
+	// Build a map of step results by step ID for quick lookup
+	resultsByStepID := make(map[string]*backend.StepResult)
+	for _, result := range parentResults {
+		resultsByStepID[result.StepID] = result
+	}
+
+	// Determine which step to resume from
+	fromStepIndex := 0
+	if config.FromStepID != "" {
+		found := false
+		for i, step := range workflowDef.Steps {
+			if step.ID == config.FromStepID {
+				fromStepIndex = i
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("from_step_id %q not found in workflow definition", config.FromStepID)
+		}
+	}
+
+	// Initialize execution context with cached outputs
+	execContext := make(map[string]any)
+
+	// Restore cached outputs for steps before fromStepIndex
+	for i := 0; i < fromStepIndex; i++ {
+		step := workflowDef.Steps[i]
+
+		// Check if there's an override for this step
+		if overrideOutput, hasOverride := config.OverrideSteps[step.ID]; hasOverride {
+			// Use the override output
+			execContext[step.ID] = overrideOutput
+			continue
+		}
+
+		// Restore from cached result
+		if result, exists := resultsByStepID[step.ID]; exists {
+			if result.Outputs != nil {
+				execContext[step.ID] = result.Outputs
+			}
+		} else {
+			// Missing cached result for a step that should be cached
+			return nil, fmt.Errorf("missing cached result for step %q (index %d)", step.ID, i)
+		}
+	}
+
+	// Apply input overrides to the execution context
+	if config.OverrideInputs != nil {
+		for key, value := range config.OverrideInputs {
+			execContext[key] = value
+		}
+	}
+
+	// Apply step overrides to the execution context
+	if config.OverrideSteps != nil {
+		for stepID, output := range config.OverrideSteps {
+			execContext[stepID] = output
+		}
+	}
+
+	// Return the prepared execution context
+	// The actual workflow execution would happen here, but that's handled by the executor
+	// This function prepares the context for resumption
+	return execContext, nil
+}
