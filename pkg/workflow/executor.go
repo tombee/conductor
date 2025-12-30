@@ -598,10 +598,25 @@ func (e *Executor) executeLLM(ctx context.Context, step *StepDefinition, inputs 
 		return e.executeLLMWithSchema(ctx, prompt, options, step.OutputSchema)
 	}
 
+	// Log prompt at trace level
+	if e.logger != nil && e.logger.Enabled(nil, -8) {
+		e.logger.Log(nil, -8, "LLM prompt",
+			"prompt", prompt,
+			"options", options,
+		)
+	}
+
 	// Standard unstructured LLM call
 	response, err := e.llmProvider.Complete(ctx, prompt, options)
 	if err != nil {
 		return nil, fmt.Errorf("LLM call failed: %w", err)
+	}
+
+	// Log response at trace level
+	if e.logger != nil && e.logger.Enabled(nil, -8) {
+		e.logger.Log(nil, -8, "LLM response",
+			"response", response,
+		)
 	}
 
 	return map[string]interface{}{
@@ -622,6 +637,16 @@ func (e *Executor) executeLLMWithSchema(ctx context.Context, basePrompt string, 
 		// T4.2: Inject schema requirements into prompt
 		prompt := schema.BuildPromptWithSchema(basePrompt, outputSchema, attempt)
 
+		// Log prompt at trace level
+		if e.logger != nil && e.logger.Enabled(nil, -8) {
+			e.logger.Log(nil, -8, "LLM prompt with schema",
+				"prompt", prompt,
+				"options", options,
+				"attempt", attempt+1,
+				"schema", outputSchema,
+			)
+		}
+
 		// Make LLM call
 		response, err := e.llmProvider.Complete(ctx, prompt, options)
 		if err != nil {
@@ -629,6 +654,14 @@ func (e *Executor) executeLLMWithSchema(ctx context.Context, basePrompt string, 
 		}
 
 		lastResponse = response
+
+		// Log response at trace level
+		if e.logger != nil && e.logger.Enabled(nil, -8) {
+			e.logger.Log(nil, -8, "LLM response with schema",
+				"response", response,
+				"attempt", attempt+1,
+			)
+		}
 
 		// T3.2 & T4.3: Extract and parse JSON from response
 		data, err := schema.ExtractJSON(response)
@@ -1185,7 +1218,17 @@ func (e *Executor) resolveInputs(inputs map[string]interface{}, workflowContext 
 	}
 
 	// Use ResolveInputs to resolve all string values
-	return ResolveInputs(inputs, ctx)
+	resolved, err := ResolveInputs(inputs, ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	e.logger.Debug("resolved template inputs",
+		"original", inputs,
+		"resolved", resolved,
+	)
+
+	return resolved, nil
 }
 
 // resolveStepFields resolves template variables in step definition fields (prompt, system).
@@ -1199,20 +1242,30 @@ func (e *Executor) resolveStepFields(step *StepDefinition, workflowContext map[s
 
 	// Resolve prompt field
 	if step.Prompt != "" {
+		original := step.Prompt
 		resolved, err := ResolveTemplate(step.Prompt, ctx)
 		if err != nil {
 			return fmt.Errorf("failed to resolve prompt: %w", err)
 		}
 		step.Prompt = resolved
+		e.logger.Debug("resolved prompt template",
+			"original", original,
+			"resolved", resolved,
+		)
 	}
 
 	// Resolve system field
 	if step.System != "" {
+		original := step.System
 		resolved, err := ResolveTemplate(step.System, ctx)
 		if err != nil {
 			return fmt.Errorf("failed to resolve system prompt: %w", err)
 		}
 		step.System = resolved
+		e.logger.Debug("resolved system prompt template",
+			"original", original,
+			"resolved", resolved,
+		)
 	}
 
 	return nil
