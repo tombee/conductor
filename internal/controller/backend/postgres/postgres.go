@@ -156,6 +156,13 @@ func (b *Backend) migrate(ctx context.Context) error {
 			PRIMARY KEY (run_id, step_id)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_step_results_run_id ON step_results(run_id)`,
+		// Add parent_run_id and replay_config columns to runs table
+		`ALTER TABLE runs ADD COLUMN IF NOT EXISTS parent_run_id VARCHAR(36)`,
+		`ALTER TABLE runs ADD COLUMN IF NOT EXISTS replay_config JSONB`,
+		`ALTER TABLE runs ADD COLUMN IF NOT EXISTS correlation_id VARCHAR(255)`,
+		`CREATE INDEX IF NOT EXISTS idx_runs_parent_run_id ON runs(parent_run_id)`,
+		// Add cost_usd column to step_results table
+		`ALTER TABLE step_results ADD COLUMN IF NOT EXISTS cost_usd DOUBLE PRECISION DEFAULT 0`,
 	}
 
 	for _, migration := range migrations {
@@ -179,17 +186,26 @@ func (b *Backend) CreateRun(ctx context.Context, run *backend.Run) error {
 		return fmt.Errorf("failed to marshal output: %w", err)
 	}
 
+	var replayConfigJSON []byte
+	if run.ReplayConfig != nil {
+		replayConfigJSON, err = json.Marshal(run.ReplayConfig)
+		if err != nil {
+			return fmt.Errorf("failed to marshal replay_config: %w", err)
+		}
+	}
+
 	query := `
-		INSERT INTO runs (id, workflow_id, workflow, status, inputs, output, error,
-			current_step, completed, total, started_at, completed_at, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		INSERT INTO runs (id, workflow_id, workflow, status, correlation_id, inputs, output, error,
+			current_step, completed, total, parent_run_id, replay_config, started_at, completed_at, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 	`
 
 	now := time.Now()
 	_, err = b.db.ExecContext(ctx, query,
-		run.ID, run.WorkflowID, run.Workflow, run.Status,
+		run.ID, run.WorkflowID, run.Workflow, run.Status, run.CorrelationID,
 		inputsJSON, outputJSON, run.Error,
 		run.CurrentStep, run.Completed, run.Total,
+		run.ParentRunID, replayConfigJSON,
 		run.StartedAt, run.CompletedAt, now, now,
 	)
 	if err != nil {
@@ -204,18 +220,21 @@ func (b *Backend) CreateRun(ctx context.Context, run *backend.Run) error {
 // GetRun retrieves a run by ID.
 func (b *Backend) GetRun(ctx context.Context, id string) (*backend.Run, error) {
 	query := `
-		SELECT id, workflow_id, workflow, status, inputs, output, error,
-			current_step, completed, total, started_at, completed_at, created_at, updated_at
+		SELECT id, workflow_id, workflow, status, correlation_id, inputs, output, error,
+			current_step, completed, total, parent_run_id, replay_config,
+			started_at, completed_at, created_at, updated_at
 		FROM runs WHERE id = $1
 	`
 
 	var run backend.Run
-	var inputsJSON, outputJSON []byte
+	var inputsJSON, outputJSON, replayConfigJSON []byte
+	var correlationID, parentRunID sql.NullString
 
 	err := b.db.QueryRowContext(ctx, query, id).Scan(
-		&run.ID, &run.WorkflowID, &run.Workflow, &run.Status,
+		&run.ID, &run.WorkflowID, &run.Workflow, &run.Status, &correlationID,
 		&inputsJSON, &outputJSON, &run.Error,
 		&run.CurrentStep, &run.Completed, &run.Total,
+		&parentRunID, &replayConfigJSON,
 		&run.StartedAt, &run.CompletedAt, &run.CreatedAt, &run.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -225,11 +244,23 @@ func (b *Backend) GetRun(ctx context.Context, id string) (*backend.Run, error) {
 		return nil, fmt.Errorf("failed to get run: %w", err)
 	}
 
+	if correlationID.Valid {
+		run.CorrelationID = correlationID.String
+	}
+	if parentRunID.Valid {
+		run.ParentRunID = parentRunID.String
+	}
 	if len(inputsJSON) > 0 {
 		json.Unmarshal(inputsJSON, &run.Inputs)
 	}
 	if len(outputJSON) > 0 {
 		json.Unmarshal(outputJSON, &run.Output)
+	}
+	if len(replayConfigJSON) > 0 {
+		var replayConfig backend.ReplayConfig
+		if err := json.Unmarshal(replayConfigJSON, &replayConfig); err == nil {
+			run.ReplayConfig = &replayConfig
+		}
 	}
 
 	return &run, nil
@@ -247,19 +278,28 @@ func (b *Backend) UpdateRun(ctx context.Context, run *backend.Run) error {
 		return fmt.Errorf("failed to marshal output: %w", err)
 	}
 
+	var replayConfigJSON []byte
+	if run.ReplayConfig != nil {
+		replayConfigJSON, err = json.Marshal(run.ReplayConfig)
+		if err != nil {
+			return fmt.Errorf("failed to marshal replay_config: %w", err)
+		}
+	}
+
 	query := `
 		UPDATE runs SET
-			workflow_id = $2, workflow = $3, status = $4, inputs = $5, output = $6,
-			error = $7, current_step = $8, completed = $9, total = $10,
-			started_at = $11, completed_at = $12, updated_at = $13
+			workflow_id = $2, workflow = $3, status = $4, correlation_id = $5,
+			inputs = $6, output = $7, error = $8, current_step = $9,
+			completed = $10, total = $11, parent_run_id = $12, replay_config = $13,
+			started_at = $14, completed_at = $15, updated_at = $16
 		WHERE id = $1
 	`
 
 	now := time.Now()
 	result, err := b.db.ExecContext(ctx, query,
-		run.ID, run.WorkflowID, run.Workflow, run.Status,
-		inputsJSON, outputJSON, run.Error,
-		run.CurrentStep, run.Completed, run.Total,
+		run.ID, run.WorkflowID, run.Workflow, run.Status, run.CorrelationID,
+		inputsJSON, outputJSON, run.Error, run.CurrentStep,
+		run.Completed, run.Total, run.ParentRunID, replayConfigJSON,
 		run.StartedAt, run.CompletedAt, now,
 	)
 	if err != nil {
@@ -278,8 +318,9 @@ func (b *Backend) UpdateRun(ctx context.Context, run *backend.Run) error {
 // ListRuns lists runs with optional filtering.
 func (b *Backend) ListRuns(ctx context.Context, filter backend.RunFilter) ([]*backend.Run, error) {
 	query := `
-		SELECT id, workflow_id, workflow, status, inputs, output, error,
-			current_step, completed, total, started_at, completed_at, created_at, updated_at
+		SELECT id, workflow_id, workflow, status, correlation_id, inputs, output, error,
+			current_step, completed, total, parent_run_id, replay_config,
+			started_at, completed_at, created_at, updated_at
 		FROM runs WHERE 1=1
 	`
 	args := []any{}
@@ -317,23 +358,37 @@ func (b *Backend) ListRuns(ctx context.Context, filter backend.RunFilter) ([]*ba
 	var runs []*backend.Run
 	for rows.Next() {
 		var run backend.Run
-		var inputsJSON, outputJSON []byte
+		var inputsJSON, outputJSON, replayConfigJSON []byte
+		var correlationID, parentRunID sql.NullString
 
 		err := rows.Scan(
-			&run.ID, &run.WorkflowID, &run.Workflow, &run.Status,
+			&run.ID, &run.WorkflowID, &run.Workflow, &run.Status, &correlationID,
 			&inputsJSON, &outputJSON, &run.Error,
 			&run.CurrentStep, &run.Completed, &run.Total,
+			&parentRunID, &replayConfigJSON,
 			&run.StartedAt, &run.CompletedAt, &run.CreatedAt, &run.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan run: %w", err)
 		}
 
+		if correlationID.Valid {
+			run.CorrelationID = correlationID.String
+		}
+		if parentRunID.Valid {
+			run.ParentRunID = parentRunID.String
+		}
 		if len(inputsJSON) > 0 {
 			json.Unmarshal(inputsJSON, &run.Inputs)
 		}
 		if len(outputJSON) > 0 {
 			json.Unmarshal(outputJSON, &run.Output)
+		}
+		if len(replayConfigJSON) > 0 {
+			var replayConfig backend.ReplayConfig
+			if err := json.Unmarshal(replayConfigJSON, &replayConfig); err == nil {
+				run.ReplayConfig = &replayConfig
+			}
 		}
 
 		runs = append(runs, &run)
@@ -611,8 +666,8 @@ func (b *Backend) SaveStepResult(ctx context.Context, result *backend.StepResult
 	}
 
 	query := `
-		INSERT INTO step_results (run_id, step_id, step_index, inputs, outputs, duration, status, error, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO step_results (run_id, step_id, step_index, inputs, outputs, duration, status, error, cost_usd, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (run_id, step_id) DO UPDATE SET
 			step_index = EXCLUDED.step_index,
 			inputs = EXCLUDED.inputs,
@@ -620,6 +675,7 @@ func (b *Backend) SaveStepResult(ctx context.Context, result *backend.StepResult
 			duration = EXCLUDED.duration,
 			status = EXCLUDED.status,
 			error = EXCLUDED.error,
+			cost_usd = EXCLUDED.cost_usd,
 			created_at = EXCLUDED.created_at
 	`
 
@@ -627,7 +683,7 @@ func (b *Backend) SaveStepResult(ctx context.Context, result *backend.StepResult
 	_, err = b.db.ExecContext(ctx, query,
 		result.RunID, result.StepID, result.StepIndex,
 		inputsJSON, outputsJSON, result.Duration.Nanoseconds(),
-		result.Status, result.Error, now,
+		result.Status, result.Error, result.CostUSD, now,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to save step result: %w", err)
@@ -640,7 +696,7 @@ func (b *Backend) SaveStepResult(ctx context.Context, result *backend.StepResult
 // GetStepResult retrieves a step result by run ID and step ID.
 func (b *Backend) GetStepResult(ctx context.Context, runID, stepID string) (*backend.StepResult, error) {
 	query := `
-		SELECT run_id, step_id, step_index, inputs, outputs, duration, status, error, created_at
+		SELECT run_id, step_id, step_index, inputs, outputs, duration, status, error, cost_usd, created_at
 		FROM step_results
 		WHERE run_id = $1 AND step_id = $2
 	`
@@ -652,7 +708,7 @@ func (b *Backend) GetStepResult(ctx context.Context, runID, stepID string) (*bac
 	err := b.db.QueryRowContext(ctx, query, runID, stepID).Scan(
 		&result.RunID, &result.StepID, &result.StepIndex,
 		&inputsJSON, &outputsJSON, &durationNanos,
-		&result.Status, &result.Error, &result.CreatedAt,
+		&result.Status, &result.Error, &result.CostUSD, &result.CreatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("step result not found: %s (run: %s)", stepID, runID)
@@ -681,7 +737,7 @@ func (b *Backend) GetStepResult(ctx context.Context, runID, stepID string) (*bac
 // ListStepResults retrieves all step results for a run.
 func (b *Backend) ListStepResults(ctx context.Context, runID string) ([]*backend.StepResult, error) {
 	query := `
-		SELECT run_id, step_id, step_index, inputs, outputs, duration, status, error, created_at
+		SELECT run_id, step_id, step_index, inputs, outputs, duration, status, error, cost_usd, created_at
 		FROM step_results
 		WHERE run_id = $1
 		ORDER BY step_index ASC
@@ -702,7 +758,7 @@ func (b *Backend) ListStepResults(ctx context.Context, runID string) ([]*backend
 		err := rows.Scan(
 			&result.RunID, &result.StepID, &result.StepIndex,
 			&inputsJSON, &outputsJSON, &durationNanos,
-			&result.Status, &result.Error, &result.CreatedAt,
+			&result.Status, &result.Error, &result.CostUSD, &result.CreatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan step result: %w", err)

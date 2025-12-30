@@ -23,6 +23,7 @@ import (
 	"github.com/tombee/conductor/internal/commands/completion"
 	"github.com/tombee/conductor/internal/commands/config"
 	"github.com/tombee/conductor/internal/commands/daemon"
+	"github.com/tombee/conductor/internal/commands/debug"
 	"github.com/tombee/conductor/internal/commands/diagnostics"
 	"github.com/tombee/conductor/internal/commands/docs"
 	"github.com/tombee/conductor/internal/commands/endpoint"
@@ -121,6 +122,9 @@ func main() {
 	rootCmd.AddCommand(management.NewCacheCommand())
 	rootCmd.AddCommand(endpoint.NewCommand())
 	rootCmd.AddCommand(triggers.NewTriggersCommand())
+
+	// Debug commands
+	rootCmd.AddCommand(debug.NewDebugCommand())
 
 	// Configuration and security
 	rootCmd.AddCommand(config.NewConfigCommand())

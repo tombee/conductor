@@ -84,26 +84,6 @@ Verbosity levels:
   --verbose  Show full provider/model info for each step
   (default)  Show minimal progress updates
   --quiet    Suppress non-error output`,
-		Example: `  # Run a local workflow
-  conductor run workflow.yaml
-
-  # Run with inputs
-  conductor run workflow.yaml --input name=value --input count=5
-
-  # Run from GitHub
-  conductor run github:user/repo
-
-  # Run with a specific provider
-  conductor run workflow.yaml --provider openai
-
-  # Preview execution without running
-  conductor run workflow.yaml --dry-run
-
-  # Run in background mode
-  conductor run workflow.yaml --background
-
-  # Get JSON output for scripting
-  conductor run workflow.yaml --json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// --json implies --no-interactive
@@ -155,6 +135,8 @@ Verbosity levels:
 
 	// Add subcommands
 	cmd.AddCommand(newShowCmd())
+	cmd.AddCommand(newReplayCmd())
+	cmd.AddCommand(newDiffCmd())
 
 	return cmd
 }

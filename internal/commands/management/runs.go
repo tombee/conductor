@@ -55,6 +55,7 @@ Runs are workflow executions managed by the conductor daemon.`,
 func newRunsListCommand() *cobra.Command {
 	var status string
 	var workflow string
+	var failed bool
 
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -71,20 +72,30 @@ See also: conductor runs show, conductor run, conductor daemon status`,
   # Example 3: Filter by workflow name
   conductor runs list --workflow my-workflow
 
-  # Example 4: Get runs as JSON for monitoring
+  # Example 4: List failed runs (shorthand)
+  conductor runs list --failed
+
+  # Example 5: Get runs as JSON for monitoring
   conductor runs list --json | jq '.runs[] | select(.status=="failed")'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// If --failed flag is set, override status to "failed"
+			if failed {
+				status = "failed"
+			}
 			return runsList(status, workflow)
 		},
 	}
 
 	cmd.Flags().StringVar(&status, "status", "", "Filter by status (pending, running, completed, failed, cancelled)")
 	cmd.Flags().StringVar(&workflow, "workflow", "", "Filter by workflow name")
+	cmd.Flags().BoolVar(&failed, "failed", false, "Show only failed runs (shorthand for --status failed)")
 
 	return cmd
 }
 
 func newRunsShowCommand() *cobra.Command {
+	var failed bool
+
 	cmd := &cobra.Command{
 		Use:   "show <run-id>",
 		Short: "Show run details",
@@ -101,13 +112,19 @@ See also: conductor runs list, conductor runs logs, conductor runs output`,
   conductor runs show abc123 --json | jq -r '.status'
 
   # Example 4: Check if run is complete
-  conductor runs show abc123 --json | jq -e '.status == "completed"'`,
+  conductor runs show abc123 --json | jq -e '.status == "completed"'
+
+  # Example 5: Show failure details with suggested replay command
+  conductor runs show abc123 --failed`,
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completion.CompleteRunIDs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runsShow(args[0])
+			return runsShow(args[0], failed)
 		},
 	}
+
+	cmd.Flags().BoolVar(&failed, "failed", false, "Show failure point details and suggest replay command")
+
 	return cmd
 }
 
@@ -216,7 +233,7 @@ func runsList(status, workflow string) error {
 	return nil
 }
 
-func runsShow(id string) error {
+func runsShow(id string, showFailureDetails bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -263,6 +280,46 @@ func runsShow(id string) error {
 			fmt.Printf(" (current: %s)", current)
 		}
 		fmt.Println()
+	}
+
+	// If --failed flag is set and the run failed, show failure details
+	if showFailureDetails {
+		status, _ := resp["status"].(string)
+		if status == "failed" {
+			fmt.Println("\n--- Failure Details ---")
+
+			// Show error message
+			if errorMsg, ok := resp["error"].(string); ok && errorMsg != "" {
+				fmt.Printf("Error Message: %s\n", errorMsg)
+			}
+
+			// Show the step that failed (from progress.current_step)
+			var failedStep string
+			if progress, ok := resp["progress"].(map[string]any); ok {
+				if current, ok := progress["current_step"].(string); ok && current != "" {
+					failedStep = current
+					fmt.Printf("Failed At:     %s\n", failedStep)
+				}
+			}
+
+			// Suggest replay command
+			fmt.Println("\n--- Suggested Replay Command ---")
+			if failedStep != "" {
+				fmt.Printf("conductor run replay %s --from %s\n", id, failedStep)
+			} else {
+				fmt.Printf("conductor run replay %s\n", id)
+			}
+
+			// Show cost estimation command
+			fmt.Println("\nTo estimate replay cost:")
+			if failedStep != "" {
+				fmt.Printf("conductor run replay %s --from %s --estimate\n", id, failedStep)
+			} else {
+				fmt.Printf("conductor run replay %s --estimate\n", id)
+			}
+		} else {
+			fmt.Printf("\nNote: Run status is '%s', not 'failed'. Use --failed only with failed runs.\n", status)
+		}
 	}
 
 	return nil

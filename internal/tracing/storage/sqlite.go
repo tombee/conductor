@@ -175,6 +175,27 @@ func (s *SQLiteStore) migrate(ctx context.Context) error {
 		`CREATE INDEX IF NOT EXISTS idx_traces_status ON traces(status_code)`,
 		// Index for time-based trace queries
 		`CREATE INDEX IF NOT EXISTS idx_traces_start_time ON traces(start_time)`,
+
+		// Debug sessions table stores interactive debugging sessions
+		`CREATE TABLE IF NOT EXISTS debug_sessions (
+			session_id TEXT PRIMARY KEY,
+			run_id TEXT NOT NULL,
+			current_step_id TEXT,
+			state TEXT NOT NULL,
+			breakpoints TEXT,
+			event_buffer TEXT,
+			last_activity INTEGER NOT NULL,
+			created_at INTEGER NOT NULL,
+			expires_at INTEGER NOT NULL
+		)`,
+		// Index for finding sessions by run ID
+		`CREATE INDEX IF NOT EXISTS idx_debug_sessions_run_id ON debug_sessions(run_id)`,
+		// Index for finding sessions by state
+		`CREATE INDEX IF NOT EXISTS idx_debug_sessions_state ON debug_sessions(state)`,
+		// Index for cleanup of expired sessions
+		`CREATE INDEX IF NOT EXISTS idx_debug_sessions_expires_at ON debug_sessions(expires_at)`,
+		// Index for finding active sessions
+		`CREATE INDEX IF NOT EXISTS idx_debug_sessions_last_activity ON debug_sessions(last_activity)`,
 	}
 
 	for _, migration := range migrations {

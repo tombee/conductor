@@ -2,7 +2,6 @@ package tracing
 
 import (
 	"context"
-	"runtime"
 	"sync"
 	"time"
 
@@ -10,26 +9,18 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
-// SubscriberCounter provides subscriber count metrics.
-type SubscriberCounter interface {
-	TotalSubscriberCount() int
-	SubscriberMapKeyCount() int
-}
-
-// RunCounter provides run count metrics.
-type RunCounter interface {
-	RunCount() int
-}
-
 // MetricsCollector collects Prometheus-compatible metrics for workflow execution
 type MetricsCollector struct {
 	meter metric.Meter
 
 	// Counters
-	runsTotal         metric.Int64Counter
-	stepsTotal        metric.Int64Counter
-	llmRequestsTotal  metric.Int64Counter
-	tokensTotal       metric.Int64Counter
+	runsTotal          metric.Int64Counter
+	stepsTotal         metric.Int64Counter
+	llmRequestsTotal   metric.Int64Counter
+	tokensTotal        metric.Int64Counter
+	replayTotal        metric.Int64Counter
+	replayCostSavedUSD metric.Float64Counter
+	debugEventsTotal   metric.Int64Counter
 
 	// Histograms
 	runDuration  metric.Float64Histogram
@@ -37,18 +28,14 @@ type MetricsCollector struct {
 	llmLatency   metric.Float64Histogram
 
 	// Gauges (using observable gauges)
-	activeRuns    map[string]bool // Track active run IDs
-	activeRunsMu  sync.RWMutex
-	queueDepth    int64 // Track pending runs in queue
-	queueDepthMu  sync.RWMutex
-	totalCostUSD  float64
-	totalCostMu   sync.RWMutex
-
-	// Memory metrics sources
-	subscriberCounter SubscriberCounter
-	runCounter        RunCounter
-	subscriberMu      sync.RWMutex
-	runCounterMu      sync.RWMutex
+	activeRuns          map[string]bool // Track active run IDs
+	activeRunsMu        sync.RWMutex
+	queueDepth          int64 // Track pending runs in queue
+	queueDepthMu        sync.RWMutex
+	totalCostUSD        float64
+	totalCostMu         sync.RWMutex
+	debugSessionsActive int64 // Track active debug sessions
+	debugSessionsMu     sync.RWMutex
 }
 
 // NewMetricsCollector creates a new metrics collector using the given meter provider
@@ -94,6 +81,33 @@ func NewMetricsCollector(meterProvider metric.MeterProvider) (*MetricsCollector,
 		"conductor_tokens_total",
 		metric.WithDescription("Total number of tokens processed"),
 		metric.WithUnit("{token}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	mc.replayTotal, err = meter.Int64Counter(
+		"conductor_replay_total",
+		metric.WithDescription("Total number of workflow replays"),
+		metric.WithUnit("{replay}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	mc.replayCostSavedUSD, err = meter.Float64Counter(
+		"conductor_replay_cost_saved_usd",
+		metric.WithDescription("Total cost saved through replay (USD)"),
+		metric.WithUnit("USD"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	mc.debugEventsTotal, err = meter.Int64Counter(
+		"conductor_debug_events_total",
+		metric.WithDescription("Total number of debug events emitted"),
+		metric.WithUnit("{event}"),
 	)
 	if err != nil {
 		return nil, err
@@ -176,82 +190,15 @@ func NewMetricsCollector(meterProvider metric.MeterProvider) (*MetricsCollector,
 		return nil, err
 	}
 
-	// Memory metrics
 	_, err = meter.Int64ObservableGauge(
-		"conductor_sse_subscribers",
-		metric.WithDescription("Number of active SSE subscribers across all runs"),
-		metric.WithUnit("{subscriber}"),
+		"conductor_debug_sessions_active",
+		metric.WithDescription("Number of active debug sessions"),
+		metric.WithUnit("{session}"),
 		metric.WithInt64Callback(func(ctx context.Context, observer metric.Int64Observer) error {
-			mc.subscriberMu.RLock()
-			counter := mc.subscriberCounter
-			mc.subscriberMu.RUnlock()
-			if counter != nil {
-				observer.Observe(int64(counter.TotalSubscriberCount()))
-			}
-			return nil
-		}),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = meter.Int64ObservableGauge(
-		"conductor_log_aggregator_runs",
-		metric.WithDescription("Number of runID keys in subscriber map"),
-		metric.WithUnit("{run}"),
-		metric.WithInt64Callback(func(ctx context.Context, observer metric.Int64Observer) error {
-			mc.subscriberMu.RLock()
-			counter := mc.subscriberCounter
-			mc.subscriberMu.RUnlock()
-			if counter != nil {
-				observer.Observe(int64(counter.SubscriberMapKeyCount()))
-			}
-			return nil
-		}),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = meter.Int64ObservableGauge(
-		"conductor_goroutines",
-		metric.WithDescription("Number of active goroutines"),
-		metric.WithUnit("{goroutine}"),
-		metric.WithInt64Callback(func(ctx context.Context, observer metric.Int64Observer) error {
-			observer.Observe(int64(runtime.NumGoroutine()))
-			return nil
-		}),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = meter.Int64ObservableGauge(
-		"conductor_runs_in_memory",
-		metric.WithDescription("Number of runs in memory cache"),
-		metric.WithUnit("{run}"),
-		metric.WithInt64Callback(func(ctx context.Context, observer metric.Int64Observer) error {
-			mc.runCounterMu.RLock()
-			counter := mc.runCounter
-			mc.runCounterMu.RUnlock()
-			if counter != nil {
-				observer.Observe(int64(counter.RunCount()))
-			}
-			return nil
-		}),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = meter.Int64ObservableGauge(
-		"conductor_heap_bytes",
-		metric.WithDescription("Current heap allocation in bytes"),
-		metric.WithUnit("By"),
-		metric.WithInt64Callback(func(ctx context.Context, observer metric.Int64Observer) error {
-			var m runtime.MemStats
-			runtime.ReadMemStats(&m)
-			observer.Observe(int64(m.HeapAlloc))
+			mc.debugSessionsMu.RLock()
+			count := mc.debugSessionsActive
+			mc.debugSessionsMu.RUnlock()
+			observer.Observe(count)
 			return nil
 		}),
 	)
@@ -342,16 +289,41 @@ func (mc *MetricsCollector) DecrementQueueDepth() {
 	mc.queueDepthMu.Unlock()
 }
 
-// SetSubscriberCounter sets the subscriber counter for memory metrics.
-func (mc *MetricsCollector) SetSubscriberCounter(counter SubscriberCounter) {
-	mc.subscriberMu.Lock()
-	mc.subscriberCounter = counter
-	mc.subscriberMu.Unlock()
+// RecordReplay records a workflow replay completion
+func (mc *MetricsCollector) RecordReplay(ctx context.Context, workflowID, status string, costSavedUSD float64) {
+	attrs := []attribute.KeyValue{
+		attribute.String("workflow", workflowID),
+		attribute.String("status", status),
+	}
+
+	mc.replayTotal.Add(ctx, 1, metric.WithAttributes(attrs...))
+
+	if costSavedUSD > 0 {
+		mc.replayCostSavedUSD.Add(ctx, costSavedUSD, metric.WithAttributes(attrs...))
+	}
 }
 
-// SetRunCounter sets the run counter for memory metrics.
-func (mc *MetricsCollector) SetRunCounter(counter RunCounter) {
-	mc.runCounterMu.Lock()
-	mc.runCounter = counter
-	mc.runCounterMu.Unlock()
+// RecordDebugSessionStart increments the active debug sessions gauge
+func (mc *MetricsCollector) RecordDebugSessionStart() {
+	mc.debugSessionsMu.Lock()
+	mc.debugSessionsActive++
+	mc.debugSessionsMu.Unlock()
+}
+
+// RecordDebugSessionEnd decrements the active debug sessions gauge
+func (mc *MetricsCollector) RecordDebugSessionEnd() {
+	mc.debugSessionsMu.Lock()
+	if mc.debugSessionsActive > 0 {
+		mc.debugSessionsActive--
+	}
+	mc.debugSessionsMu.Unlock()
+}
+
+// RecordDebugEvent records a debug event emission
+func (mc *MetricsCollector) RecordDebugEvent(ctx context.Context, eventType string) {
+	attrs := []attribute.KeyValue{
+		attribute.String("event_type", eventType),
+	}
+
+	mc.debugEventsTotal.Add(ctx, 1, metric.WithAttributes(attrs...))
 }

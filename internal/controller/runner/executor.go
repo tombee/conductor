@@ -31,7 +31,7 @@ import (
 // execute runs the workflow.
 func (r *Runner) execute(run *Run) {
 	// Track this goroutine for clean shutdown
-	// Note: wg.Add(1) is called BEFORE spawning this goroutine to avoid race condition
+	r.wg.Add(1)
 	defer r.wg.Done()
 
 	// Check if cancelled before even starting
@@ -262,6 +262,7 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 							Duration:  result.Duration,
 							Status:    string(result.Status),
 							Error:     errorToString(err),
+							CostUSD:   result.CostUSD,
 							CreatedAt: time.Now(),
 						}
 						// Use context.Background() to ensure step result persists
