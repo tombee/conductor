@@ -303,7 +303,12 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 				slog.String("service_name", tracingCfg.ServiceName),
 				slog.String("service_version", tracingCfg.ServiceVersion))
 			// Wire metrics collector to runner
-			r.SetMetrics(otelProvider.MetricsCollector())
+			mc := otelProvider.MetricsCollector()
+			r.SetMetrics(mc)
+
+			// Wire subscriber and run counters for memory metrics
+			mc.SetSubscriberCounter(r.GetLogAggregator())
+			mc.SetRunCounter(r.GetStateManager())
 
 			// Create retention manager if trace storage is configured and retention is non-zero
 			if otelProvider.GetStore() != nil && tracingCfg.Storage.Retention.Traces > 0 {
@@ -667,6 +672,15 @@ func (c *Controller) Start(ctx context.Context) error {
 		c.retentionMgr.Start()
 		c.logger.Info("trace retention manager started")
 	}
+
+	// Start run cleanup loop for memory management
+	runRetention := c.cfg.Controller.RunRetention
+	if runRetention == 0 {
+		runRetention = 24 * time.Hour // Default to 24 hours
+	}
+	go c.runner.GetStateManager().StartCleanupLoop(ctx, runRetention, c.logger)
+	c.logger.Info("run cleanup loop started",
+		slog.Duration("retention", runRetention))
 
 	// Start OverrideManager cleanup goroutine
 	if c.overrideManager != nil {

@@ -298,6 +298,16 @@ func (r *Runner) SetWorkflowTracer(tracer trace.Tracer) {
 	r.workflowTracer = tracer
 }
 
+// GetLogAggregator returns the LogAggregator for metrics wiring.
+func (r *Runner) GetLogAggregator() *LogAggregator {
+	return r.logs
+}
+
+// GetStateManager returns the StateManager for metrics wiring and cleanup loop.
+func (r *Runner) GetStateManager() *StateManager {
+	return r.state
+}
+
 // Submit submits a workflow for execution and returns an immutable snapshot.
 func (r *Runner) Submit(ctx context.Context, req SubmitRequest) (*RunSnapshot, error) {
 	// Handle dry-run requests separately
