@@ -586,6 +586,186 @@ steps:
 	}
 }
 
+func TestPollTriggerValidation(t *testing.T) {
+	tests := []struct {
+		name       string
+		definition string
+		wantErr    bool
+		errMsg     string
+	}{
+		{
+			name: "valid poll trigger",
+			definition: `
+name: test-workflow
+listen:
+  poll:
+    integration: pagerduty
+    query:
+      user_id: PUSER123
+    interval: 30s
+steps:
+  - id: process
+    type: llm
+    prompt: test
+`,
+			wantErr: false,
+		},
+		{
+			name: "missing integration",
+			definition: `
+name: test-workflow
+listen:
+  poll:
+    query:
+      user_id: PUSER123
+steps:
+  - id: process
+    type: llm
+    prompt: test
+`,
+			wantErr: true,
+			errMsg:  "integration is required",
+		},
+		{
+			name: "invalid integration",
+			definition: `
+name: test-workflow
+listen:
+  poll:
+    integration: invalid
+    query:
+      user_id: PUSER123
+steps:
+  - id: process
+    type: llm
+    prompt: test
+`,
+			wantErr: true,
+			errMsg:  "unsupported integration: invalid",
+		},
+		{
+			name: "missing query",
+			definition: `
+name: test-workflow
+listen:
+  poll:
+    integration: pagerduty
+steps:
+  - id: process
+    type: llm
+    prompt: test
+`,
+			wantErr: true,
+			errMsg:  "query parameters are required",
+		},
+		{
+			name: "interval too small",
+			definition: `
+name: test-workflow
+listen:
+  poll:
+    integration: pagerduty
+    query:
+      user_id: PUSER123
+    interval: 5s
+steps:
+  - id: process
+    type: llm
+    prompt: test
+`,
+			wantErr: true,
+			errMsg:  "interval must be at least 10s",
+		},
+		{
+			name: "invalid startup mode",
+			definition: `
+name: test-workflow
+listen:
+  poll:
+    integration: pagerduty
+    query:
+      user_id: PUSER123
+    startup: invalid
+steps:
+  - id: process
+    type: llm
+    prompt: test
+`,
+			wantErr: true,
+			errMsg:  "invalid startup mode",
+		},
+		{
+			name: "backfill without duration",
+			definition: `
+name: test-workflow
+listen:
+  poll:
+    integration: pagerduty
+    query:
+      user_id: PUSER123
+    startup: backfill
+steps:
+  - id: process
+    type: llm
+    prompt: test
+`,
+			wantErr: true,
+			errMsg:  "backfill duration is required",
+		},
+		{
+			name: "backfill exceeds 24h",
+			definition: `
+name: test-workflow
+listen:
+  poll:
+    integration: pagerduty
+    query:
+      user_id: PUSER123
+    startup: backfill
+    backfill: 48h
+steps:
+  - id: process
+    type: llm
+    prompt: test
+`,
+			wantErr: true,
+			errMsg:  "backfill duration cannot exceed 24h",
+		},
+		{
+			name: "invalid query parameter pattern",
+			definition: `
+name: test-workflow
+listen:
+  poll:
+    integration: pagerduty
+    query:
+      user_id: "PUSER123; DROP TABLE"
+steps:
+  - id: process
+    type: llm
+    prompt: test
+`,
+			wantErr: true,
+			errMsg:  "invalid query parameter value",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseDefinition([]byte(tt.definition))
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseDefinition() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil && tt.errMsg != "" {
+				if !contains(err.Error(), tt.errMsg) {
+					t.Errorf("ParseDefinition() error = %v, want error containing %q", err, tt.errMsg)
+				}
+			}
+		})
+	}
+}
+
 func TestPollTriggerUnmarshal(t *testing.T) {
 	tests := []struct {
 		name       string

@@ -185,6 +185,193 @@ type PollTriggerConfig struct {
 	InputMapping map[string]string `yaml:"input_mapping,omitempty" json:"input_mapping,omitempty"`
 }
 
+// Validate checks the trigger configuration for errors.
+func (t *TriggerConfig) Validate() error {
+	// Check that only one trigger type is configured
+	triggerCount := 0
+	if t.Webhook != nil {
+		triggerCount++
+	}
+	if t.API != nil {
+		triggerCount++
+	}
+	if t.Schedule != nil {
+		triggerCount++
+	}
+	if t.Poll != nil {
+		triggerCount++
+	}
+
+	if triggerCount == 0 {
+		return &errors.ValidationError{
+			Field:      "listen",
+			Message:    "at least one trigger type must be configured",
+			Suggestion: "add one of: webhook, api, schedule, or poll",
+		}
+	}
+
+	if triggerCount > 1 {
+		return &errors.ValidationError{
+			Field:      "listen",
+			Message:    "only one trigger type can be configured per workflow",
+			Suggestion: "remove all but one trigger type (webhook, api, schedule, or poll)",
+		}
+	}
+
+	// Validate poll trigger if present
+	if t.Poll != nil {
+		if err := t.Poll.Validate(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Validate checks the poll trigger configuration for errors.
+func (p *PollTriggerConfig) Validate() error {
+	// Validate integration is specified
+	if p.Integration == "" {
+		return &errors.ValidationError{
+			Field:      "integration",
+			Message:    "integration is required for poll triggers",
+			Suggestion: "specify one of: slack, pagerduty, jira, datadog",
+		}
+	}
+
+	// Validate integration is a supported type
+	validIntegrations := map[string]bool{
+		"slack":     true,
+		"pagerduty": true,
+		"jira":      true,
+		"datadog":   true,
+	}
+	if !validIntegrations[p.Integration] {
+		return &errors.ValidationError{
+			Field:      "integration",
+			Message:    fmt.Sprintf("unsupported integration: %s", p.Integration),
+			Suggestion: "use one of: slack, pagerduty, jira, datadog",
+		}
+	}
+
+	// Validate query is provided
+	if len(p.Query) == 0 {
+		return &errors.ValidationError{
+			Field:      "query",
+			Message:    "query parameters are required for poll triggers",
+			Suggestion: "add query parameters specific to the integration (e.g., user_id, mentions, assignee, tags)",
+		}
+	}
+
+	// Validate interval if specified
+	if p.Interval != "" {
+		duration, err := parseDuration(p.Interval)
+		if err != nil {
+			return &errors.ValidationError{
+				Field:      "interval",
+				Message:    fmt.Sprintf("invalid interval format: %s", p.Interval),
+				Suggestion: "use duration format like '30s', '1m', '5m'",
+			}
+		}
+		if duration < 10 {
+			return &errors.ValidationError{
+				Field:      "interval",
+				Message:    fmt.Sprintf("interval must be at least 10s, got: %s", p.Interval),
+				Suggestion: "increase interval to at least 10s to avoid excessive API calls",
+			}
+		}
+	}
+
+	// Validate startup if specified
+	if p.Startup != "" {
+		validStartup := map[string]bool{
+			"since_last":         true,
+			"ignore_historical":  true,
+			"backfill":           true,
+		}
+		if !validStartup[p.Startup] {
+			return &errors.ValidationError{
+				Field:      "startup",
+				Message:    fmt.Sprintf("invalid startup mode: %s", p.Startup),
+				Suggestion: "use one of: since_last, ignore_historical, backfill",
+			}
+		}
+
+		// If startup is backfill, validate backfill duration
+		if p.Startup == "backfill" {
+			if p.Backfill == "" {
+				return &errors.ValidationError{
+					Field:      "backfill",
+					Message:    "backfill duration is required when startup is 'backfill'",
+					Suggestion: "specify backfill duration like '1h', '4h', '24h'",
+				}
+			}
+			duration, err := parseDuration(p.Backfill)
+			if err != nil {
+				return &errors.ValidationError{
+					Field:      "backfill",
+					Message:    fmt.Sprintf("invalid backfill duration format: %s", p.Backfill),
+					Suggestion: "use duration format like '1h', '4h', '24h'",
+				}
+			}
+			// Maximum 24 hours
+			if duration > 24*3600 {
+				return &errors.ValidationError{
+					Field:      "backfill",
+					Message:    fmt.Sprintf("backfill duration cannot exceed 24h, got: %s", p.Backfill),
+					Suggestion: "reduce backfill duration to at most 24h",
+				}
+			}
+		}
+	}
+
+	// Validate query parameters match expected pattern (alphanumeric, underscore, hyphen)
+	validPattern := regexp.MustCompile(`^[a-zA-Z0-9_@.-]+$`)
+	for key, value := range p.Query {
+		// Skip validation for array/object values
+		if strValue, ok := value.(string); ok {
+			if !validPattern.MatchString(strValue) {
+				return &errors.ValidationError{
+					Field:      fmt.Sprintf("query.%s", key),
+					Message:    fmt.Sprintf("invalid query parameter value: %s", strValue),
+					Suggestion: "query values must contain only alphanumeric characters, underscores, hyphens, @ and dots",
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// parseDuration parses a duration string like "30s", "1m", "1h" and returns seconds.
+func parseDuration(s string) (int, error) {
+	if len(s) < 2 {
+		return 0, fmt.Errorf("invalid duration format")
+	}
+
+	var multiplier int
+	unit := s[len(s)-1]
+	switch unit {
+	case 's':
+		multiplier = 1
+	case 'm':
+		multiplier = 60
+	case 'h':
+		multiplier = 3600
+	default:
+		return 0, fmt.Errorf("invalid duration unit: %c (must be s, m, or h)", unit)
+	}
+
+	valueStr := s[:len(s)-1]
+	var value int
+	_, err := fmt.Sscanf(valueStr, "%d", &value)
+	if err != nil {
+		return 0, fmt.Errorf("invalid duration value: %s", valueStr)
+	}
+
+	return value * multiplier, nil
+}
+
 // InputDefinition describes a workflow input parameter.
 type InputDefinition struct {
 	// Name is the input parameter identifier
@@ -1409,6 +1596,13 @@ func (d *Definition) Validate() error {
 	if d.Security != nil {
 		if err := d.Security.Validate(); err != nil {
 			return fmt.Errorf("invalid security configuration: %w", err)
+		}
+	}
+
+	// Validate trigger configuration
+	if d.Trigger != nil {
+		if err := d.Trigger.Validate(); err != nil {
+			return fmt.Errorf("invalid trigger configuration: %w", err)
 		}
 	}
 
