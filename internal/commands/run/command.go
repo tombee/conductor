@@ -43,6 +43,7 @@ func NewCommand() *cobra.Command {
 		allowPaths                    []string
 		workspace                     string
 		profile                       string
+		bindIntegrations              []string
 		acceptUnenforceablePermissions bool
 		logLevel                      string
 		step                          string
@@ -73,6 +74,12 @@ Profile Selection:
 
   Selection Precedence: CLI flag > environment variable > default
 
+Integration Binding:
+  --bind-integration <alias>=<name>   Bind workflow requirement to specific integration
+                                       Can be specified multiple times for multiple bindings
+                                       Example: --bind-integration github=work
+                                       Example: --bind-integration source=personal --bind-integration target=work
+
 Remote Workflows:
   conductor run github:user/repo              Run from GitHub repo
   conductor run github:user/repo@v1.0         Pin to specific tag
@@ -100,7 +107,7 @@ Verbosity levels:
 			}
 
 			// All execution goes through daemon
-			return runWorkflowViaDaemon(args[0], inputs, inputFile, outputFile, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun, provider, model, timeout, workspace, profile, securityMode, allowHosts, allowPaths, logLevel, step, breakpoints)
+			return runWorkflowViaDaemon(args[0], inputs, inputFile, outputFile, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun, provider, model, timeout, workspace, profile, bindIntegrations, securityMode, allowHosts, allowPaths, logLevel, step, breakpoints)
 		},
 	}
 
@@ -124,6 +131,7 @@ Verbosity levels:
 	cmd.Flags().StringSliceVar(&allowPaths, "allow-paths", nil, "Additional allowed filesystem paths")
 	cmd.Flags().StringVarP(&workspace, "workspace", "w", "", "Workspace for profile resolution (env: CONDUCTOR_WORKSPACE)")
 	cmd.Flags().StringVarP(&profile, "profile", "p", "", "Profile for binding resolution (env: CONDUCTOR_PROFILE)")
+	cmd.Flags().StringSliceVar(&bindIntegrations, "bind-integration", nil, "Bind workflow requirement to specific integration (format: requirement=integration)")
 	cmd.Flags().BoolVar(&acceptUnenforceablePermissions, "accept-unenforceable-permissions", false, "Allow workflow execution even if some permissions cannot be enforced by the provider")
 	cmd.Flags().StringVar(&logLevel, "log-level", "", "Set log level (trace, debug, info, warn, error)")
 	cmd.Flags().StringVar(&step, "step", "", "Pause execution at the specified step ID (debug mode)")

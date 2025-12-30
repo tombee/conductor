@@ -33,7 +33,7 @@ import (
 )
 
 // runWorkflowViaDaemon submits a workflow to the daemon for execution
-func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, outputFile string, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun bool, provider, model, timeout, workspace, profile, security string, allowHosts, allowPaths []string, logLevel, step string, breakpoints []string) error {
+func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, outputFile string, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun bool, provider, model, timeout, workspace, profile string, bindIntegrations []string, security string, allowHosts, allowPaths []string, logLevel, step string, breakpoints []string) error {
 	ctx := context.Background()
 
 	// Apply environment variable defaults for workspace and profile
@@ -196,6 +196,11 @@ func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, ou
 	}
 	if profile != "" {
 		params.Add("profile", profile)
+	}
+
+	// Add integration bindings
+	for _, binding := range bindIntegrations {
+		params.Add("bind_integration", binding)
 	}
 
 	// Add runtime override parameters
