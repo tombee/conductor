@@ -68,6 +68,11 @@ type Definition struct {
 	// This enables portable workflow definitions that don't embed credentials.
 	// Runtime bindings are provided by execution profiles.
 	Requires *RequirementsDefinition `yaml:"requires,omitempty" json:"requires,omitempty"`
+
+	// Security defines explicit resource access control for this workflow.
+	// Declares which filesystem paths, network hosts, and shell commands
+	// the workflow can access. Empty or omitted means no access (secure by default).
+	Security *SecurityAccessConfig `yaml:"security,omitempty" json:"security,omitempty"`
 }
 
 // ListenConfig defines how a workflow can be invoked.
@@ -1347,6 +1352,13 @@ func (d *Definition) Validate() error {
 	if d.Permissions != nil {
 		if err := d.Permissions.Validate(); err != nil {
 			return fmt.Errorf("invalid workflow permissions: %w", err)
+		}
+	}
+
+	// Validate security access configuration
+	if d.Security != nil {
+		if err := d.Security.Validate(); err != nil {
+			return fmt.Errorf("invalid security configuration: %w", err)
 		}
 	}
 
