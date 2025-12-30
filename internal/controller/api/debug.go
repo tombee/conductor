@@ -15,12 +15,15 @@
 package api
 
 import (
+	"crypto/sha256"
 	"crypto/tls"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/tombee/conductor/internal/controller/debug"
@@ -36,8 +39,9 @@ const (
 
 // DebugHandler handles debug-related API requests.
 type DebugHandler struct {
-	sessionManager  *debug.SessionManager
+	sessionManager       *debug.SessionManager
 	activeSSEConnections int
+	mu                   sync.Mutex
 }
 
 // NewDebugHandler creates a new debug handler.
@@ -98,13 +102,16 @@ func (h *DebugHandler) handleDebugEvents(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Check if we've reached the connection limit
+	h.mu.Lock()
 	if h.activeSSEConnections >= maxSSEConnections {
+		h.mu.Unlock()
 		writeError(w, http.StatusServiceUnavailable, "maximum SSE connections reached")
 		return
 	}
+	h.mu.Unlock()
 
-	// Generate observer ID from token (in real implementation, decode JWT)
-	observerID := fmt.Sprintf("observer-%s", token[:8])
+	// Generate observer ID from token using cryptographic hash
+	observerID := generateObserverID(token)
 
 	// Check if observer already exists
 	isExisting, isOwner := h.sessionManager.IsObserver(sessionID, observerID)
@@ -138,9 +145,13 @@ func (h *DebugHandler) handleDebugEvents(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Increment active connections
+	h.mu.Lock()
 	h.activeSSEConnections++
+	h.mu.Unlock()
 	defer func() {
+		h.mu.Lock()
 		h.activeSSEConnections--
+		h.mu.Unlock()
 		h.sessionManager.RemoveObserver(sessionID, observerID)
 	}()
 
@@ -258,8 +269,8 @@ func (h *DebugHandler) handleDebugCommand(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Generate observer ID from token
-	observerID := fmt.Sprintf("observer-%s", token[:8])
+	// Generate observer ID from token using cryptographic hash
+	observerID := generateObserverID(token)
 
 	// Check if user is the session owner
 	isObserver, isOwner := h.sessionManager.IsObserver(sessionID, observerID)
@@ -377,4 +388,11 @@ func isTLS(r *http.Request) bool {
 // Helper function to get TLS state
 func getTLSState(r *http.Request) *tls.ConnectionState {
 	return r.TLS
+}
+
+// generateObserverID creates a cryptographic hash fingerprint of the token.
+// This prevents token leakage while providing a stable observer identifier.
+func generateObserverID(token string) string {
+	hash := sha256.Sum256([]byte(token))
+	return "observer-" + hex.EncodeToString(hash[:8])
 }

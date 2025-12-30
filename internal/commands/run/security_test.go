@@ -42,20 +42,10 @@ func TestValidateSecurityMode(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "strict profile",
-			mode:    "strict",
-			wantErr: false,
-		},
-		{
-			name:    "air-gapped profile",
-			mode:    "air-gapped",
-			wantErr: false,
-		},
-		{
 			name:    "invalid profile",
 			mode:    "invalid-profile",
 			wantErr: true,
-			errMsg:  "invalid security profile 'invalid-profile', valid: unrestricted, standard, strict, air-gapped",
+			errMsg:  "invalid security profile 'invalid-profile', valid: unrestricted, standard",
 		},
 	}
 
@@ -270,7 +260,7 @@ func TestBuildSecurityProfile(t *testing.T) {
 		{
 			name: "profile with additional paths",
 			opts: SecurityOptions{
-				Mode:       "strict",
+				Mode:       "standard",
 				AllowPaths: []string{"/tmp/custom"},
 			},
 			wantNil: false,

@@ -193,9 +193,15 @@ func fetchAndDisplayCostEstimate(runID, fromStep string, overrideInputs, overrid
 	fmt.Fprintf(os.Stdout, "Total Cost:   $%.4f\n", estimate.TotalCost)
 	fmt.Fprintf(os.Stdout, "Skipped Cost: $%.4f (cached)\n", estimate.SkippedCost)
 	fmt.Fprintf(os.Stdout, "New Cost:     $%.4f (to be executed)\n", estimate.NewCost)
+
+	// Calculate savings percentage, avoiding division by zero
+	savingsPercent := 0.0
+	if estimate.TotalCost > 0 {
+		savingsPercent = (estimate.SkippedCost / estimate.TotalCost) * 100
+	}
 	fmt.Fprintf(os.Stdout, "Savings:      $%.4f (%.1f%%)\n",
 		estimate.SkippedCost,
-		(estimate.SkippedCost/estimate.TotalCost)*100)
+		savingsPercent)
 
 	// Display detailed breakdown if requested
 	if detailed && len(estimate.StepBreakdown) > 0 {

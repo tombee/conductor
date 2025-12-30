@@ -83,8 +83,42 @@ func validateOverrideInputs(inputs map[string]any) error {
 				return fmt.Errorf("in input '%s': %w", key, err)
 			}
 		}
+
+		// Recursively validate arrays
+		if arr, ok := value.([]any); ok {
+			if err := validateArrayElements(arr, key, templatePattern); err != nil {
+				return err
+			}
+		}
 	}
 
+	return nil
+}
+
+// validateArrayElements validates elements in an array recursively.
+func validateArrayElements(arr []any, key string, templatePattern *regexp.Regexp) error {
+	for i, elem := range arr {
+		// Check string values for template injection
+		if str, ok := elem.(string); ok {
+			if templatePattern.MatchString(str) {
+				return fmt.Errorf("input '%s[%d]' contains template expressions, which are not allowed in overrides", key, i)
+			}
+		}
+
+		// Recursively validate nested maps
+		if nested, ok := elem.(map[string]any); ok {
+			if err := validateOverrideInputs(nested); err != nil {
+				return fmt.Errorf("in input '%s[%d]': %w", key, i, err)
+			}
+		}
+
+		// Recursively validate nested arrays
+		if nestedArr, ok := elem.([]any); ok {
+			if err := validateArrayElements(nestedArr, fmt.Sprintf("%s[%d]", key, i), templatePattern); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
