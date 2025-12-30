@@ -65,12 +65,12 @@ if err := s.RegisterTool(tool); err != nil {
 }
 ```
 
-## Cost Tracking
+## Token Usage Tracking
 
-Track token usage and estimated costs per step:
+Track token consumption per step (requires API providers):
 
 ```go
-// Cost tracking requires API providers (Anthropic, OpenAI)
+// Token tracking requires API providers (Anthropic, OpenAI)
 // Note: Claude Code CLI doesn't report token usage
 s, err := sdk.New(
     sdk.WithAnthropicProvider(os.Getenv("ANTHROPIC_API_KEY")),
@@ -81,14 +81,10 @@ if err != nil {
     return err
 }
 
-// Check token usage and estimated cost
-fmt.Printf("Tokens: %d input, %d output\n",
-    result.Cost.InputTokens, result.Cost.OutputTokens)
-fmt.Printf("Estimated cost: $%.4f\n", result.Cost.EstimatedCost)
-
-for stepID, cost := range result.Cost.ByStep {
-    fmt.Printf("  %s: $%.4f\n", stepID, cost)
-}
+fmt.Printf("Tokens: %d input, %d output, %d total\n",
+    result.Cost.InputTokens,
+    result.Cost.OutputTokens,
+    result.Cost.TotalTokens)
 ```
 
 ## Error Handling

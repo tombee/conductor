@@ -82,7 +82,7 @@ func newSDK() (*sdk.SDK, error) {
 
 **Event Streaming** — React to step completions in real-time for progress updates and logging.
 
-**Cost Tracking** — Per-step token usage and estimated cost breakdown (with API providers).
+**Token Tracking** — Per-step token usage breakdown (with API providers).
 
 **YAML Loading** — Load platform workflows and extend them programmatically.
 
