@@ -104,9 +104,14 @@ func TestEventFiltering(t *testing.T) {
 	}
 
 	// Modify the file (should trigger)
-	time.Sleep(100 * time.Millisecond) // Small delay to ensure file is created
+	time.Sleep(200 * time.Millisecond) // Delay to ensure file is fully created
 	if err := os.WriteFile(testFile, []byte("hello world"), 0644); err != nil {
 		t.Fatalf("failed to modify test file: %v", err)
+	}
+	// Sync to ensure write is flushed
+	if f, err := os.OpenFile(testFile, os.O_RDWR, 0644); err == nil {
+		f.Sync()
+		f.Close()
 	}
 
 	// Wait for event

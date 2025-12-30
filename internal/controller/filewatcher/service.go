@@ -22,8 +22,10 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/tombee/conductor/internal/controller/runner"
+	"golang.org/x/time/rate"
 )
 
 // WatchConfig defines configuration for a single file watcher.
@@ -40,6 +42,26 @@ type WatchConfig struct {
 	// Events are the event types to watch (created, modified, deleted, renamed)
 	// If empty, defaults to all event types
 	Events []string
+
+	// IncludePatterns are glob patterns for files to include
+	// If empty, all files are included
+	IncludePatterns []string
+
+	// ExcludePatterns are glob patterns for files to exclude
+	// Applied after include patterns
+	ExcludePatterns []string
+
+	// DebounceWindow is the duration to wait for additional events before triggering
+	// Zero disables debouncing
+	DebounceWindow time.Duration
+
+	// BatchMode determines if events during debounce window are batched together
+	// If false, only the last event is delivered
+	BatchMode bool
+
+	// MaxTriggersPerMinute limits the rate of workflow triggers
+	// Zero means no limit
+	MaxTriggersPerMinute int
 
 	// Inputs are passed to the workflow along with the file context
 	Inputs map[string]any
@@ -58,9 +80,12 @@ type Service struct {
 
 // watcherEntry tracks a watcher and its configuration.
 type watcherEntry struct {
-	config  WatchConfig
-	watcher *Watcher
-	stopCh  chan struct{}
+	config         WatchConfig
+	watcher        *Watcher
+	patternMatcher *PatternMatcher
+	debouncer      *Debouncer
+	rateLimiter    *rate.Limiter
+	stopCh         chan struct{}
 }
 
 // NewService creates a new file watcher service.
@@ -94,6 +119,11 @@ func (s *Service) Stop() error {
 
 	// Stop all watchers
 	for name, entry := range s.watchers {
+		// Stop debouncer first to flush pending events
+		if entry.debouncer != nil {
+			entry.debouncer.Stop()
+		}
+
 		if err := entry.watcher.Stop(); err != nil {
 			s.logger.Error("failed to stop watcher", "name", name, "error", err)
 		}
@@ -149,19 +179,42 @@ func (s *Service) AddWatcher(config WatchConfig) error {
 		return fmt.Errorf("failed to start watcher: %w", err)
 	}
 
+	// Create pattern matcher if patterns specified
+	var pm *PatternMatcher
+	if len(config.IncludePatterns) > 0 || len(config.ExcludePatterns) > 0 {
+		pm, err = NewPatternMatcher(config.IncludePatterns, config.ExcludePatterns)
+		if err != nil {
+			w.Stop()
+			return fmt.Errorf("failed to create pattern matcher: %w", err)
+		}
+	}
+
 	// Create entry
 	entry := &watcherEntry{
-		config:  config,
-		watcher: w,
-		stopCh:  make(chan struct{}),
+		config:         config,
+		watcher:        w,
+		patternMatcher: pm,
+		stopCh:         make(chan struct{}),
+	}
+
+	// Setup rate limiter if configured
+	if config.MaxTriggersPerMinute > 0 {
+		// Convert triggers per minute to tokens per second
+		tokensPerSecond := float64(config.MaxTriggersPerMinute) / 60.0
+		entry.rateLimiter = rate.NewLimiter(rate.Limit(tokensPerSecond), 1)
 	}
 
 	s.watchers[config.Name] = entry
 
 	// Start event handler
-	go s.handleEvents(config, w)
+	go s.handleEvents(entry)
 
-	s.logger.Info("file watcher added", "name", config.Name, "path", absPath)
+	s.logger.Info("file watcher added",
+		"name", config.Name,
+		"path", absPath,
+		"debounce", config.DebounceWindow,
+		"batch_mode", config.BatchMode,
+		"rate_limit", config.MaxTriggersPerMinute)
 	return nil
 }
 
@@ -173,6 +226,11 @@ func (s *Service) RemoveWatcher(name string) error {
 	entry, exists := s.watchers[name]
 	if !exists {
 		return fmt.Errorf("watcher %s not found", name)
+	}
+
+	// Stop debouncer if present
+	if entry.debouncer != nil {
+		entry.debouncer.Stop()
 	}
 
 	// Stop watcher
@@ -198,51 +256,119 @@ func (s *Service) ListWatchers() []WatchConfig {
 }
 
 // handleEvents processes file events and triggers workflows.
-func (s *Service) handleEvents(config WatchConfig, w *Watcher) {
-	for ctx := range w.Events() {
-		s.logger.Info("file event triggered workflow",
-			"workflow", config.Name,
-			"event", ctx.Event,
-			"path", ctx.Path)
+func (s *Service) handleEvents(entry *watcherEntry) {
+	config := entry.config
 
-		// Resolve workflow path
-		workflowPath := config.Workflow
-		if !filepath.IsAbs(workflowPath) {
-			workflowPath = filepath.Join(s.workflowsDir, workflowPath)
-		}
-
-		// Read workflow file
-		workflowYAML, err := os.ReadFile(workflowPath)
-		if err != nil {
-			s.logger.Error("failed to read workflow file",
-				"workflow", config.Workflow,
-				"path", workflowPath,
-				"error", err)
-			continue
-		}
-
-		// Build workflow inputs
-		inputs := make(map[string]any)
-
-		// Copy configured inputs
-		for k, v := range config.Inputs {
-			inputs[k] = v
-		}
-
-		// Add trigger context
-		inputs["trigger"] = map[string]any{
-			"file": ctx,
-		}
-
-		// Submit workflow run
-		_, err = s.runner.Submit(s.ctx, runner.SubmitRequest{
-			WorkflowYAML: workflowYAML,
-			Inputs:       inputs,
+	// Setup debouncer if configured
+	if config.DebounceWindow > 0 {
+		entry.debouncer = NewDebouncer(config.DebounceWindow, config.BatchMode, func(events []*Context) {
+			s.triggerWorkflows(entry, events)
 		})
-		if err != nil {
-			s.logger.Error("failed to submit workflow run",
-				"workflow", config.Workflow,
-				"error", err)
+	}
+
+	// Process events from watcher
+	for ctx := range entry.watcher.Events() {
+		// Apply pattern matching if configured
+		if entry.patternMatcher != nil {
+			if !entry.patternMatcher.Match(ctx.Path) {
+				s.logger.Debug("file excluded by pattern",
+					"path", ctx.Path,
+					"watcher", config.Name)
+				continue
+			}
 		}
+
+		// Route through debouncer or trigger directly
+		if entry.debouncer != nil {
+			entry.debouncer.Add(ctx)
+		} else {
+			s.triggerWorkflows(entry, []*Context{ctx})
+		}
+	}
+}
+
+// triggerWorkflows triggers workflow runs for the given file events.
+// It handles rate limiting and batch mode.
+func (s *Service) triggerWorkflows(entry *watcherEntry, events []*Context) {
+	if len(events) == 0 {
+		return
+	}
+
+	config := entry.config
+
+	// Apply rate limiting if configured
+	if entry.rateLimiter != nil {
+		if !entry.rateLimiter.Allow() {
+			s.logger.Warn("rate limit exceeded, dropping events",
+				"watcher", config.Name,
+				"count", len(events))
+			return
+		}
+	}
+
+	// Resolve workflow path
+	workflowPath := config.Workflow
+	if !filepath.IsAbs(workflowPath) {
+		workflowPath = filepath.Join(s.workflowsDir, workflowPath)
+	}
+
+	// Read workflow file
+	workflowYAML, err := os.ReadFile(workflowPath)
+	if err != nil {
+		s.logger.Error("failed to read workflow file",
+			"workflow", config.Workflow,
+			"path", workflowPath,
+			"error", err)
+		return
+	}
+
+	// Build workflow inputs
+	inputs := make(map[string]any)
+
+	// Copy configured inputs
+	for k, v := range config.Inputs {
+		inputs[k] = v
+	}
+
+	// Add trigger context
+	// In batch mode with multiple events, provide both single file context and array
+	if config.BatchMode && len(events) > 1 {
+		// Provide array of all file events
+		fileEvents := make([]any, len(events))
+		for i, evt := range events {
+			fileEvents[i] = evt
+		}
+		inputs["trigger"] = map[string]any{
+			"file":  events[0], // First event for backward compatibility
+			"files": fileEvents,
+			"count": len(events),
+		}
+	} else {
+		// Single event (either non-batch or batch with 1 event)
+		inputs["trigger"] = map[string]any{
+			"file": events[0],
+		}
+	}
+
+	s.logger.Info("file event triggered workflow",
+		"workflow", config.Name,
+		"event_count", len(events),
+		"paths", func() []string {
+			paths := make([]string, len(events))
+			for i, evt := range events {
+				paths[i] = evt.Path
+			}
+			return paths
+		}())
+
+	// Submit workflow run
+	_, err = s.runner.Submit(s.ctx, runner.SubmitRequest{
+		WorkflowYAML: workflowYAML,
+		Inputs:       inputs,
+	})
+	if err != nil {
+		s.logger.Error("failed to submit workflow run",
+			"workflow", config.Workflow,
+			"error", err)
 	}
 }
