@@ -23,11 +23,11 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tombee/conductor/internal/commands/completion"
+	"github.com/tombee/conductor/internal/commands/shared"
 )
+
 // newMCPStatusCommand creates the 'mcp status' command.
 func newMCPStatusCommand() *cobra.Command {
-	var jsonOutput bool
-
 	cmd := &cobra.Command{
 		Use:   "status <name>",
 		Short: "Show detailed status of an MCP server",
@@ -40,16 +40,14 @@ Examples:
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completion.CompleteMCPServerNames,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runMCPStatus(args[0], jsonOutput)
+			return runMCPStatus(args[0])
 		},
 	}
-
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 
 	return cmd
 }
 
-func runMCPStatus(name string, jsonOutput bool) error {
+func runMCPStatus(name string) error {
 	client := newMCPAPIClient()
 	ctx := context.Background()
 
@@ -58,7 +56,7 @@ func runMCPStatus(name string, jsonOutput bool) error {
 		return err
 	}
 
-	if jsonOutput {
+	if shared.GetJSON() {
 		fmt.Println(string(data))
 		return nil
 	}

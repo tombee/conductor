@@ -70,8 +70,6 @@ type ProviderStatus struct {
 }
 
 func newProvidersListCmd() *cobra.Command {
-	var jsonOutput bool
-
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List configured providers",
@@ -89,8 +87,7 @@ func newProvidersListCmd() *cobra.Command {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
 
-			// Check global --json flag in addition to local flag
-			useJSON := shared.GetJSON() || jsonOutput
+			useJSON := shared.GetJSON()
 
 			// Check if no providers configured
 			if len(cfg.Providers) == 0 {
@@ -169,8 +166,6 @@ func newProvidersListCmd() *cobra.Command {
 			return nil
 		},
 	}
-
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 
 	return cmd
 }
@@ -447,10 +442,7 @@ func newProvidersRemoveCmd() *cobra.Command {
 }
 
 func newProvidersTestCmd() *cobra.Command {
-	var (
-		jsonOutput bool
-		testAll    bool
-	)
+	var testAll bool
 
 	cmd := &cobra.Command{
 		Use:               "test [name]",
@@ -505,8 +497,7 @@ See also: conductor providers list, conductor doctor, conductor providers add`,
 				}
 			}
 
-			// Check global --json flag in addition to local flag
-			useJSON := shared.GetJSON() || jsonOutput
+			useJSON := shared.GetJSON()
 
 			// Test each provider
 			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -566,7 +557,6 @@ See also: conductor providers list, conductor doctor, conductor providers add`,
 		},
 	}
 
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 	cmd.Flags().BoolVar(&testAll, "all", false, "Test all configured providers")
 
 	return cmd

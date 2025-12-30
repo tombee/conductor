@@ -43,8 +43,6 @@ They demonstrate common workflow patterns and best practices.`,
 }
 
 func newExamplesListCmd() *cobra.Command {
-	var jsonOutput bool
-
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List available example workflows",
@@ -68,10 +66,7 @@ See also: conductor examples show, conductor examples run`,
 				return fmt.Errorf("failed to list examples: %w", err)
 			}
 
-			// Check global --json flag in addition to local flag
-			useJSON := shared.GetJSON() || jsonOutput
-
-			if useJSON {
+			if shared.GetJSON() {
 				enc := json.NewEncoder(os.Stdout)
 				enc.SetIndent("", "  ")
 				return enc.Encode(examplesList)
@@ -94,8 +89,6 @@ See also: conductor examples show, conductor examples run`,
 			return nil
 		},
 	}
-
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 
 	return cmd
 }
