@@ -19,7 +19,9 @@ package claudecode
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"os/exec"
 	"strings"
 	"time"
@@ -33,7 +35,6 @@ type Provider struct {
 	cliCommand string // The CLI command to use ("claude" or "claude-code")
 	cliPath    string // Full path to the CLI binary
 	models     config.ModelTierMap
-	registry   OperationRegistry // Operation registry for tool execution
 }
 
 // New creates a new Claude Code CLI provider
@@ -47,14 +48,6 @@ func New() *Provider {
 func NewWithModels(models config.ModelTierMap) *Provider {
 	return &Provider{
 		models: models,
-	}
-}
-
-// NewWithRegistry creates a new Claude Code CLI provider with an operation registry for tool execution
-func NewWithRegistry(registry OperationRegistry) *Provider {
-	return &Provider{
-		models:   defaultModelTiers(),
-		registry: registry,
 	}
 }
 
@@ -115,12 +108,7 @@ func (p *Provider) Complete(ctx context.Context, req llm.CompletionRequest) (*ll
 		}
 	}
 
-	// If tools are specified, use the tool-enabled execution path
-	if len(req.Tools) > 0 {
-		return p.executeWithTools(ctx, req)
-	}
-
-	// No tools - use simple execution path (backward compatible)
+	// Use simple execution path - Claude CLI handles tool execution internally via MCP
 	return p.executeSimple(ctx, req)
 }
 
@@ -136,7 +124,6 @@ func (p *Provider) executeSimple(ctx context.Context, req llm.CompletionRequest)
 
 	startTime := time.Now()
 	err := cmd.Run()
-	duration := time.Since(startTime)
 
 	if err != nil {
 		return nil, fmt.Errorf("claude CLI failed: %w (stderr: %s)", err, stderr.String())
@@ -152,73 +139,7 @@ func (p *Provider) executeSimple(ctx context.Context, req llm.CompletionRequest)
 		Usage: llm.TokenUsage{},
 	}
 
-	_ = duration // Could be used for logging/metrics
-
 	return response, nil
-}
-
-// executeWithTools executes a completion request with tool support
-// This involves a multi-turn conversation loop until Claude returns a final response
-func (p *Provider) executeWithTools(ctx context.Context, req llm.CompletionRequest) (*llm.CompletionResponse, error) {
-	const maxIterations = 10
-
-	messages := req.Messages
-	startTime := time.Now()
-
-	for i := 0; i < maxIterations; i++ {
-		// Build request with current messages
-		currentReq := req
-		currentReq.Messages = messages
-
-		// Call Claude CLI
-		args := p.buildCLIArgs(currentReq)
-		cmd := exec.CommandContext(ctx, p.cliCommand, args...)
-		var stdout, stderr bytes.Buffer
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
-
-		if err := cmd.Run(); err != nil {
-			return nil, fmt.Errorf("claude CLI failed: %w (stderr: %s)", err, stderr.String())
-		}
-
-		// Parse response for tool calls
-		toolCalls, textContent, err := p.parseToolCalls(stdout.Bytes())
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse Claude response: %w", err)
-		}
-
-		// If no tool calls, we're done - return the final response
-		if len(toolCalls) == 0 {
-			return &llm.CompletionResponse{
-				Content:      textContent,
-				FinishReason: llm.FinishReasonStop,
-				Model:        req.Model,
-				Created:      startTime,
-				Usage:        llm.TokenUsage{},
-			}, nil
-		}
-
-		// Execute tools
-		toolResults := p.executeTools(ctx, toolCalls)
-
-		// Build messages for next turn
-		// Add assistant message with tool calls
-		messages = append(messages, llm.Message{
-			Role:    llm.MessageRoleAssistant,
-			Content: textContent,
-		})
-
-		// Add tool result messages
-		for _, result := range toolResults {
-			messages = append(messages, llm.Message{
-				Role:       llm.MessageRoleTool,
-				Content:    result.Content,
-				ToolCallID: result.ID,
-			})
-		}
-	}
-
-	return nil, fmt.Errorf("tool loop exceeded maximum iterations (%d)", maxIterations)
 }
 
 // Stream sends a streaming completion request via the Claude CLI
@@ -258,6 +179,17 @@ func (p *Provider) Stream(ctx context.Context, req llm.CompletionRequest) (<-cha
 
 		buf := make([]byte, 4096)
 		for {
+			select {
+			case <-ctx.Done():
+				// Context cancelled, stop reading
+				chunks <- llm.StreamChunk{
+					Error:        ctx.Err(),
+					FinishReason: llm.FinishReasonError,
+				}
+				return
+			default:
+			}
+
 			n, err := stdout.Read(buf)
 			if n > 0 {
 				chunks <- llm.StreamChunk{
@@ -269,8 +201,7 @@ func (p *Provider) Stream(ctx context.Context, req llm.CompletionRequest) (<-cha
 			if err != nil {
 				// Check for errors from stderr
 				var stderrBuf bytes.Buffer
-				stderrBuf.ReadFrom(stderr)
-				if stderrBuf.Len() > 0 {
+				if _, copyErr := io.Copy(&stderrBuf, stderr); copyErr == nil && stderrBuf.Len() > 0 {
 					chunks <- llm.StreamChunk{
 						Error:        fmt.Errorf("claude CLI error: %s", stderrBuf.String()),
 						FinishReason: llm.FinishReasonError,
@@ -309,17 +240,39 @@ func (p *Provider) buildCLIArgs(req llm.CompletionRequest) []string {
 		args = append(args, "--max-tokens", fmt.Sprintf("%d", *req.MaxTokens))
 	}
 
-	// When tools are specified, disable Claude's built-in tools and use JSON output
+	// When tools are specified, configure Conductor MCP server for tool execution
 	if len(req.Tools) > 0 {
-		args = append(args, "--tools", "")
-		args = append(args, "--output-format", "json")
+		mcpConfig := p.buildMCPConfig()
+		args = append(args, "--mcp-config", mcpConfig)
 	}
 
 	// Build the prompt from messages
-	prompt := p.buildPrompt(req.Messages)
+	prompt := p.buildPrompt(req.Messages, nil)
 	args = append(args, "-p", prompt)
 
 	return args
+}
+
+// buildMCPConfig returns the MCP configuration JSON for Conductor tools
+func (p *Provider) buildMCPConfig() string {
+	// Configure Conductor MCP server to expose Conductor tools
+	// Claude CLI will start this as a subprocess and connect via stdio
+	config := map[string]interface{}{
+		"mcpServers": map[string]interface{}{
+			"conductor": map[string]interface{}{
+				"command": "conductor",
+				"args":    []string{"mcp-server"},
+			},
+		},
+	}
+
+	data, err := json.Marshal(config)
+	if err != nil {
+		// Fallback to hardcoded JSON if marshal fails (shouldn't happen)
+		return `{"mcpServers":{"conductor":{"command":"conductor","args":["mcp-server"]}}}`
+	}
+
+	return string(data)
 }
 
 // resolveModel resolves a model tier to a specific model ID
@@ -348,7 +301,7 @@ func (p *Provider) resolveModel(model string) string {
 }
 
 // buildPrompt constructs a prompt string from messages
-func (p *Provider) buildPrompt(messages []llm.Message) string {
+func (p *Provider) buildPrompt(messages []llm.Message, _ []llm.Tool) string {
 	var parts []string
 
 	for _, msg := range messages {

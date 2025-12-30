@@ -44,6 +44,10 @@ type ServerConfig struct {
 
 	// LogLevel controls logging verbosity (debug, info, warn, error)
 	LogLevel string
+
+	// OperationRegistry optionally provides operation registry actions as tools.
+	// If set, builtin actions (file, shell, etc.) will be exposed as MCP tools.
+	OperationRegistry OperationRegistry
 }
 
 // createLogger creates a logger with the specified log level.
@@ -100,9 +104,16 @@ func NewServer(config ServerConfig) (*Server, error) {
 		logger:      logger,
 	}
 
-	// Register tools
+	// Register Conductor workflow tools (validate, run, etc.)
 	if err := s.registerTools(); err != nil {
 		return nil, fmt.Errorf("failed to register tools: %w", err)
+	}
+
+	// Register operation registry tools if provided
+	if config.OperationRegistry != nil {
+		if err := s.registerOperationTools(config.OperationRegistry); err != nil {
+			return nil, fmt.Errorf("failed to register operation tools: %w", err)
+		}
 	}
 
 	return s, nil
