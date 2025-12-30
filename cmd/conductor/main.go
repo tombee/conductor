@@ -33,6 +33,7 @@ import (
 	"github.com/tombee/conductor/internal/commands/run"
 	"github.com/tombee/conductor/internal/commands/secrets"
 	"github.com/tombee/conductor/internal/commands/security"
+	"github.com/tombee/conductor/internal/commands/test"
 	"github.com/tombee/conductor/internal/commands/triggers"
 	"github.com/tombee/conductor/internal/commands/validate"
 	versioncmd "github.com/tombee/conductor/internal/commands/version"
@@ -97,6 +98,7 @@ func main() {
 	// Core workflow commands
 	rootCmd.AddCommand(run.NewCommand())
 	rootCmd.AddCommand(validate.NewCommand())
+	rootCmd.AddCommand(test.NewCommand())
 
 	// Workflow management commands
 	rootCmd.AddCommand(workflow.NewInitCommand())
