@@ -741,7 +741,7 @@ Defines how a workflow can be triggered.
 
 #### type (required)
 **Type:** `string`
-**Values:** `webhook`, `schedule`, `manual`
+**Values:** `webhook`, `schedule`, `poll`, `manual`
 
 Trigger type.
 
@@ -777,6 +777,22 @@ schedule:
 ```
 
 See [Schedule Trigger](#schedule-trigger) for details.
+
+#### poll
+**Type:** Poll object
+
+Configuration for poll triggers (when type is `poll`).
+
+```conductor
+poll:
+  integration: pagerduty
+  query:
+    user_id: "PUSER123"
+    statuses: [triggered, acknowledged]
+  interval: 30s
+```
+
+See [Poll Trigger](#poll-trigger) for details.
 
 ---
 
@@ -873,6 +889,116 @@ inputs:
   environment: production
   notify: true
 ```
+
+---
+
+### Poll Trigger
+
+Poll triggers periodically query external service APIs for events and fire workflows for new events. This enables personal automation without webhooks or public endpoints.
+
+#### integration (required)
+**Type:** `string`
+**Values:** `pagerduty`, `slack`, `jira`, `datadog`
+
+Which integration to poll.
+
+```conductor
+integration: pagerduty
+```
+
+#### query (required)
+**Type:** `object`
+
+Integration-specific query parameters. The structure varies by integration.
+
+**PagerDuty Example:**
+```conductor
+query:
+  user_id: "PUSER123"           # Your PagerDuty user ID
+  services: ["PSVC001", "PSVC002"]  # Services you care about
+  statuses: [triggered, acknowledged]
+  urgencies: [high]
+```
+
+**Slack Example:**
+```conductor
+query:
+  mentions: "@jsmith"           # Your Slack username
+  channels: [engineering, oncall]
+  include_threads: true
+  exclude_bots: true
+```
+
+**Jira Example:**
+```conductor
+query:
+  assignee: "jsmith"            # Your Jira username
+  project: MYTEAM
+  issue_types: [Bug, Story]
+  statuses: ["In Progress", "To Do"]
+```
+
+**Datadog Example:**
+```conductor
+query:
+  tags: ["service:api", "team:platform"]  # Services you own
+  monitor_ids: [12345, 67890]
+  statuses: [triggered, warn]
+```
+
+#### interval
+**Type:** `string` (duration)
+**Default:** `"30s"`
+**Minimum:** `"10s"`
+
+How often to poll the integration.
+
+```conductor
+interval: 60s  # Poll every minute
+```
+
+#### startup
+**Type:** `string`
+**Values:** `since_last`, `ignore_historical`, `backfill`
+**Default:** `"since_last"`
+
+Behavior on controller start:
+- `since_last`: Process events since last poll time (default)
+- `ignore_historical`: Only process events from now forward
+- `backfill`: Process events from specified duration ago
+
+```conductor
+startup: since_last
+```
+
+#### backfill
+**Type:** `string` (duration)
+**Max:** `"24h"`
+
+When `startup: backfill`, how far back to process events.
+
+```conductor
+startup: backfill
+backfill: 4h  # Process last 4 hours of events on startup
+```
+
+#### input_mapping
+**Type:** `object`
+
+Maps event fields to workflow inputs using template syntax.
+
+```conductor
+input_mapping:
+  incident_id: "{{.trigger.event.id}}"
+  incident_title: "{{.trigger.event.title}}"
+  urgency: "{{.trigger.event.urgency}}"
+```
+
+**Available Template Context:**
+- `{{.trigger.event.*}}` - Event data from the integration
+- `{{.trigger.integration}}` - Integration name (e.g., "pagerduty")
+- `{{.trigger.poll_time}}` - When the poll executed
+- `{{.trigger.query.*}}` - Query parameters for debugging
 
 ---
 
