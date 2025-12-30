@@ -22,11 +22,11 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/tombee/conductor/internal/commands/shared"
 )
 
 // newMCPListCommand creates the 'mcp list' command.
 func newMCPListCommand() *cobra.Command {
-	var jsonOutput bool
 	var showAll bool
 
 	cmd := &cobra.Command{
@@ -34,7 +34,7 @@ func newMCPListCommand() *cobra.Command {
 		Short: "List all registered MCP servers",
 		Long: `List all registered MCP servers with their status.
 
-See also: conductor mcp add, conductor mcp status, conductor daemon status`,
+See also: conductor mcp add, conductor mcp status, conductor controller status`,
 		Example: `  # Example 1: List registered MCP servers
   conductor mcp list
 
@@ -47,17 +47,16 @@ See also: conductor mcp add, conductor mcp status, conductor daemon status`,
   # Example 4: Extract server names for scripting
   conductor mcp list --json | jq -r '.servers[].name'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runMCPList(jsonOutput, showAll)
+			return runMCPList(showAll)
 		},
 	}
 
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	cmd.Flags().BoolVar(&showAll, "all", false, "Include workflow-scoped servers")
 
 	return cmd
 }
 
-func runMCPList(jsonOutput, showAll bool) error {
+func runMCPList(showAll bool) error {
 	client := newMCPAPIClient()
 	ctx := context.Background()
 
@@ -81,7 +80,7 @@ func runMCPList(jsonOutput, showAll bool) error {
 		return fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	if jsonOutput {
+	if shared.GetJSON() {
 		fmt.Println(string(data))
 		return nil
 	}

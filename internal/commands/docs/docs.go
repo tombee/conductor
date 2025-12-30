@@ -39,8 +39,6 @@ type DocsResponse struct {
 
 // NewDocsCommand creates the docs command
 func NewDocsCommand() *cobra.Command {
-	var jsonOutput bool
-
 	cmd := &cobra.Command{
 		Use:   "docs",
 		Annotations: map[string]string{
@@ -55,8 +53,7 @@ Use subcommands to get specific documentation sections:
   conductor docs config     - Configuration file documentation
   conductor docs workflows  - Workflow examples and guides`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Check global --json flag in addition to local flag
-			useJSON := shared.GetJSON() || jsonOutput
+			useJSON := shared.GetJSON()
 			out := cmd.OutOrStdout()
 
 			resources := []DocResource{
@@ -116,8 +113,6 @@ Use subcommands to get specific documentation sections:
 		},
 	}
 
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-
 	// Add subcommands
 	cmd.AddCommand(newDocsCLICmd())
 	cmd.AddCommand(newDocsSchemaCmd())
@@ -128,14 +123,12 @@ Use subcommands to get specific documentation sections:
 }
 
 func newDocsCLICmd() *cobra.Command {
-	var jsonOutput bool
-
 	cmd := &cobra.Command{
 		Use:   "cli",
 		Short: "Show CLI reference documentation URL",
 		Long:  "Display the URL for the complete CLI command reference documentation.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			useJSON := shared.GetJSON() || jsonOutput
+			useJSON := shared.GetJSON()
 			out := cmd.OutOrStdout()
 
 			resource := DocResource{
@@ -168,20 +161,16 @@ func newDocsCLICmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-
 	return cmd
 }
 
 func newDocsSchemaCmd() *cobra.Command {
-	var jsonOutput bool
-
 	cmd := &cobra.Command{
 		Use:   "schema",
 		Short: "Show workflow schema documentation URL",
 		Long:  "Display the URL for workflow YAML schema documentation.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			useJSON := shared.GetJSON() || jsonOutput
+			useJSON := shared.GetJSON()
 			out := cmd.OutOrStdout()
 
 			resource := DocResource{
@@ -214,20 +203,16 @@ func newDocsSchemaCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-
 	return cmd
 }
 
 func newDocsConfigCmd() *cobra.Command {
-	var jsonOutput bool
-
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Show configuration documentation URL",
 		Long:  "Display the URL for configuration file format and options documentation.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			useJSON := shared.GetJSON() || jsonOutput
+			useJSON := shared.GetJSON()
 			out := cmd.OutOrStdout()
 
 			resource := DocResource{
@@ -260,20 +245,16 @@ func newDocsConfigCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-
 	return cmd
 }
 
 func newDocsWorkflowsCmd() *cobra.Command {
-	var jsonOutput bool
-
 	cmd := &cobra.Command{
 		Use:   "workflows",
 		Short: "Show workflow examples documentation URL",
 		Long:  "Display the URL for workflow examples and patterns documentation.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			useJSON := shared.GetJSON() || jsonOutput
+			useJSON := shared.GetJSON()
 			out := cmd.OutOrStdout()
 
 			resource := DocResource{
@@ -305,8 +286,6 @@ func newDocsWorkflowsCmd() *cobra.Command {
 			return nil
 		},
 	}
-
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 
 	return cmd
 }

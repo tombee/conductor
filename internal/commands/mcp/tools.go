@@ -22,11 +22,11 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tombee/conductor/internal/commands/completion"
+	"github.com/tombee/conductor/internal/commands/shared"
 )
+
 // newMCPToolsCommand creates the 'mcp tools' command.
 func newMCPToolsCommand() *cobra.Command {
-	var jsonOutput bool
-
 	cmd := &cobra.Command{
 		Use:   "tools <name>",
 		Short: "List tools available from an MCP server",
@@ -40,16 +40,14 @@ Examples:
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completion.CompleteMCPServerNames,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runMCPTools(args[0], jsonOutput)
+			return runMCPTools(args[0])
 		},
 	}
-
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output full schema as JSON")
 
 	return cmd
 }
 
-func runMCPTools(name string, jsonOutput bool) error {
+func runMCPTools(name string) error {
 	client := newMCPAPIClient()
 	ctx := context.Background()
 
@@ -58,7 +56,7 @@ func runMCPTools(name string, jsonOutput bool) error {
 		return err
 	}
 
-	if jsonOutput {
+	if shared.GetJSON() {
 		fmt.Println(string(data))
 		return nil
 	}
