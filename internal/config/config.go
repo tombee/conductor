@@ -360,12 +360,24 @@ type FileWatcherEntry struct {
 	// Paths are the filesystem paths to watch.
 	Paths []string `yaml:"paths"`
 
-	// Patterns are glob patterns to filter files (optional).
-	Patterns []string `yaml:"patterns,omitempty"`
+	// IncludePatterns are glob patterns for files to include (optional).
+	IncludePatterns []string `yaml:"include_patterns,omitempty"`
+
+	// ExcludePatterns are glob patterns for files to exclude (optional).
+	ExcludePatterns []string `yaml:"exclude_patterns,omitempty"`
 
 	// Events are the event types to watch (created, modified, deleted, renamed).
 	// Defaults to ["created"] if not specified.
 	Events []string `yaml:"events,omitempty"`
+
+	// DebounceWindow is the duration to wait for additional events (e.g., "1s", "500ms").
+	DebounceWindow string `yaml:"debounce_window,omitempty"`
+
+	// BatchMode enables batching of events during debounce window.
+	BatchMode bool `yaml:"batch_mode,omitempty"`
+
+	// MaxTriggersPerMinute limits the rate of workflow triggers (0 = unlimited).
+	MaxTriggersPerMinute int `yaml:"max_triggers_per_minute,omitempty"`
 
 	// Inputs are default inputs passed to the workflow.
 	Inputs map[string]any `yaml:"inputs,omitempty"`

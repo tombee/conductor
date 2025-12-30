@@ -66,3 +66,31 @@ type CreateEndpointRequest struct {
 	RateLimit   string         `json:"rate_limit,omitempty"`
 	Timeout     time.Duration  `json:"timeout,omitempty"`
 }
+
+// FileWatcherTrigger represents a file watcher trigger configuration.
+type FileWatcherTrigger struct {
+	Name                 string         `json:"name"`
+	Path                 string         `json:"path"`
+	Workflow             string         `json:"workflow"`
+	Events               []string       `json:"events,omitempty"`
+	IncludePatterns      []string       `json:"include_patterns,omitempty"`
+	ExcludePatterns      []string       `json:"exclude_patterns,omitempty"`
+	DebounceWindow       time.Duration  `json:"debounce_window,omitempty"`
+	BatchMode            bool           `json:"batch_mode,omitempty"`
+	MaxTriggersPerMinute int            `json:"max_triggers_per_minute,omitempty"`
+	Inputs               map[string]any `json:"inputs,omitempty"`
+	Enabled              bool           `json:"enabled"`
+}
+
+// CreateFileWatcherRequest is the request to create a file watcher trigger.
+type CreateFileWatcherRequest struct {
+	Workflow             string         `json:"workflow"`
+	Path                 string         `json:"path"`
+	Events               []string       `json:"events,omitempty"`
+	IncludePatterns      []string       `json:"include_patterns,omitempty"`
+	ExcludePatterns      []string       `json:"exclude_patterns,omitempty"`
+	DebounceWindow       time.Duration  `json:"debounce_window,omitempty"`
+	BatchMode            bool           `json:"batch_mode,omitempty"`
+	MaxTriggersPerMinute int            `json:"max_triggers_per_minute,omitempty"`
+	Inputs               map[string]any `json:"inputs,omitempty"`
+}

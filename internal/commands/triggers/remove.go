@@ -30,12 +30,14 @@ func newRemoveCommand() *cobra.Command {
 Subcommands:
   webhook   - Remove a webhook trigger
   schedule  - Remove a schedule trigger
-  endpoint  - Remove an API endpoint trigger`,
+  endpoint  - Remove an API endpoint trigger
+  file      - Remove a file watcher trigger`,
 	}
 
 	cmd.AddCommand(newRemoveWebhookCommand())
 	cmd.AddCommand(newRemoveScheduleCommand())
 	cmd.AddCommand(newRemoveEndpointCommand())
+	cmd.AddCommand(newRemoveFileCommand())
 
 	return cmd
 }
@@ -136,6 +138,40 @@ func runRemoveEndpoint(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "Endpoint trigger removed: %s\n", name)
+	fmt.Fprintf(cmd.OutOrStdout(), "\nRestart the controller for changes to take effect:\n")
+	fmt.Fprintf(cmd.OutOrStdout(), "  conductor controller restart\n")
+
+	return nil
+}
+
+func newRemoveFileCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "file NAME",
+		Short: "Remove a file watcher trigger",
+		Long:  `Remove a file watcher trigger by its name.`,
+		Example: `  # Remove file watcher
+  conductor triggers remove file file-abc12345`,
+		Args: cobra.ExactArgs(1),
+		RunE: runRemoveFile,
+	}
+
+	return cmd
+}
+
+func runRemoveFile(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	mgr, err := getManager()
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	if err := mgr.RemoveFileWatcher(ctx, name); err != nil {
+		return fmt.Errorf("failed to remove file watcher: %w", err)
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "File watcher trigger removed: %s\n", name)
 	fmt.Fprintf(cmd.OutOrStdout(), "\nRestart the controller for changes to take effect:\n")
 	fmt.Fprintf(cmd.OutOrStdout(), "  conductor controller restart\n")
 
