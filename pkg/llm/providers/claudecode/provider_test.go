@@ -131,7 +131,7 @@ func TestProvider_BuildPrompt(t *testing.T) {
 		{Role: llm.MessageRoleUser, Content: "How are you?"},
 	}
 
-	prompt := p.buildPrompt(messages)
+	prompt := p.buildPrompt(messages, nil)
 
 	// Verify all messages are included
 	if prompt == "" {
@@ -241,13 +241,12 @@ func TestProvider_BuildCLIArgs_WithTools(t *testing.T) {
 	p := New()
 
 	tests := []struct {
-		name         string
-		req          llm.CompletionRequest
-		wantTools    bool
-		wantJSON     bool
+		name          string
+		req           llm.CompletionRequest
+		wantMCPConfig bool
 	}{
 		{
-			name: "with tools - should disable built-in and enable JSON",
+			name: "with tools - should add MCP config",
 			req: llm.CompletionRequest{
 				Model: "claude-sonnet-4-20250514",
 				Messages: []llm.Message{
@@ -258,11 +257,10 @@ func TestProvider_BuildCLIArgs_WithTools(t *testing.T) {
 					{Name: "shell.run"},
 				},
 			},
-			wantTools: true,
-			wantJSON:  true,
+			wantMCPConfig: true,
 		},
 		{
-			name: "nil tools - no tool flags",
+			name: "nil tools - no MCP config",
 			req: llm.CompletionRequest{
 				Model: "claude-sonnet-4-20250514",
 				Messages: []llm.Message{
@@ -270,11 +268,10 @@ func TestProvider_BuildCLIArgs_WithTools(t *testing.T) {
 				},
 				Tools: nil,
 			},
-			wantTools: false,
-			wantJSON:  false,
+			wantMCPConfig: false,
 		},
 		{
-			name: "empty tools slice - no tool flags",
+			name: "empty tools slice - no MCP config",
 			req: llm.CompletionRequest{
 				Model: "claude-sonnet-4-20250514",
 				Messages: []llm.Message{
@@ -282,8 +279,7 @@ func TestProvider_BuildCLIArgs_WithTools(t *testing.T) {
 				},
 				Tools: []llm.Tool{},
 			},
-			wantTools: false,
-			wantJSON:  false,
+			wantMCPConfig: false,
 		},
 	}
 
@@ -291,32 +287,23 @@ func TestProvider_BuildCLIArgs_WithTools(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			args := p.buildCLIArgs(tt.req)
 
-			hasToolsFlag := false
-			hasJSONFlag := false
+			hasMCPConfig := false
 
 			for i, arg := range args {
-				if arg == "--tools" {
-					hasToolsFlag = true
-					// Check that next arg is empty string
-					if i+1 < len(args) && args[i+1] != "" {
-						t.Errorf("--tools flag should be followed by empty string, got %q", args[i+1])
-					}
-				}
-				if arg == "--output-format" {
-					hasJSONFlag = true
-					// Check that next arg is "json"
-					if i+1 < len(args) && args[i+1] != "json" {
-						t.Errorf("--output-format should be followed by 'json', got %q", args[i+1])
+				if arg == "--mcp-config" {
+					hasMCPConfig = true
+					// Check that next arg is a JSON config containing conductor MCP server
+					if i+1 < len(args) {
+						config := args[i+1]
+						if !contains(config, "conductor") || !contains(config, "mcp-server") {
+							t.Errorf("--mcp-config should contain conductor mcp-server config, got %q", config)
+						}
 					}
 				}
 			}
 
-			if hasToolsFlag != tt.wantTools {
-				t.Errorf("--tools flag presence = %v, want %v", hasToolsFlag, tt.wantTools)
-			}
-
-			if hasJSONFlag != tt.wantJSON {
-				t.Errorf("--output-format json presence = %v, want %v", hasJSONFlag, tt.wantJSON)
+			if hasMCPConfig != tt.wantMCPConfig {
+				t.Errorf("--mcp-config presence = %v, want %v", hasMCPConfig, tt.wantMCPConfig)
 			}
 		})
 	}
