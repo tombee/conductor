@@ -34,6 +34,13 @@ curl http://localhost:9000/metrics
 - `conductor_llm_requests_total` — LLM API calls by provider/model
 - `conductor_llm_tokens_total` — Token usage by provider
 
+**Memory metrics:**
+- `conductor_sse_subscribers` — Active SSE subscribers across all runs
+- `conductor_log_aggregator_runs` — Number of runID keys in subscriber map
+- `conductor_goroutines` — Active goroutine count
+- `conductor_runs_in_memory` — Runs cached in memory
+- `conductor_heap_bytes` — Current heap allocation in bytes
+
 ## Logs
 
 ### Structured Logging
@@ -202,6 +209,84 @@ Set up alerts for:
 - Long execution times (p95 > threshold)
 - Controller health check failures
 - High error rates
+
+### Memory Alerts
+
+Monitor memory metrics to detect leaks and resource exhaustion:
+
+**Recommended alert thresholds:**
+
+| Metric | Warning | Critical | Notes |
+|--------|---------|----------|-------|
+| `conductor_goroutines` | >baseline+100 | >baseline+500 | Baseline varies by load; measure during normal operation |
+| `conductor_heap_bytes` | >15% growth/hour | >50% growth/hour | Indicates potential memory leak |
+| `conductor_runs_in_memory` | >1000 | >5000 | May need to reduce retention period |
+| `conductor_sse_subscribers` | >100 | >500 | May indicate clients not disconnecting properly |
+| `conductor_log_aggregator_runs` | >1000 | >5000 | Should match runs_in_memory; higher value indicates subscriber leak |
+
+**Example Prometheus alerting rules:**
+
+```yaml
+# prometheus-alerts.yml
+groups:
+  - name: conductor_memory
+    interval: 1m
+    rules:
+      - alert: ConductorGoroutineLeakWarning
+        expr: conductor_goroutines > (conductor_goroutines offset 1h) + 100
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Conductor goroutine count increasing"
+          description: "Goroutines have increased by >100 in the last hour (current: {{ $value }})"
+
+      - alert: ConductorHeapGrowthWarning
+        expr: |
+          (conductor_heap_bytes - (conductor_heap_bytes offset 1h))
+          / (conductor_heap_bytes offset 1h) > 0.15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Conductor heap growing rapidly"
+          description: "Heap size increased by >15% in the last hour (current: {{ $value | humanize1024 }})"
+
+      - alert: ConductorSubscriberLeak
+        expr: conductor_log_aggregator_runs > conductor_runs_in_memory * 1.2
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Log aggregator subscriber leak detected"
+          description: "Subscriber map has more entries ({{ $value }}) than active runs, indicating a memory leak"
+```
+
+**Troubleshooting high memory usage:**
+
+1. Check goroutine count:
+   ```bash
+   curl http://localhost:9000/metrics | grep conductor_goroutines
+   ```
+
+2. Get heap profile:
+   ```bash
+   curl http://localhost:9000/debug/pprof/heap > heap.prof
+   go tool pprof heap.prof
+   ```
+
+3. Check run retention:
+   ```yaml
+   # config.yaml
+   controller:
+     run_retention: 12h  # Reduce from default 24h if needed
+   ```
+
+4. Verify subscriber cleanup:
+   ```bash
+   curl http://localhost:9000/metrics | grep conductor_log_aggregator_runs
+   # Should be close to conductor_runs_in_memory
+   ```
 
 ## Best Practices
 

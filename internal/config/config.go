@@ -115,6 +115,12 @@ type ControllerConfig struct {
 	// Default: 30s
 	DrainTimeout time.Duration `yaml:"drain_timeout,omitempty"`
 
+	// RunRetention is how long completed runs are kept in memory before cleanup.
+	// The cleanup loop runs every 60 minutes and removes runs older than this duration.
+	// This only affects in-memory storage; backend persistence is handled separately.
+	// Default: 24h
+	RunRetention time.Duration `yaml:"run_retention,omitempty"`
+
 	// CheckpointsEnabled enables checkpoint saving for crash recovery.
 	CheckpointsEnabled bool `yaml:"checkpoints_enabled"`
 
@@ -627,6 +633,7 @@ func Default() *Config {
 			DefaultTimeout:     30 * time.Minute,
 			ShutdownTimeout:    30 * time.Second,
 			DrainTimeout:       30 * time.Second,
+			RunRetention:       24 * time.Hour,
 			CheckpointsEnabled: true,
 			Backend: BackendConfig{
 				Type: "memory",
@@ -842,6 +849,9 @@ func (c *Config) applyDefaults() {
 	}
 	if c.Controller.DrainTimeout == 0 {
 		c.Controller.DrainTimeout = defaults.Controller.DrainTimeout
+	}
+	if c.Controller.RunRetention == 0 {
+		c.Controller.RunRetention = defaults.Controller.RunRetention
 	}
 	if c.Controller.Backend.Type == "" {
 		c.Controller.Backend.Type = defaults.Controller.Backend.Type

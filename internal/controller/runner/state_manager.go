@@ -319,6 +319,50 @@ func (s *StateManager) toBackendRun(run *Run) *backend.Run {
 	return beRun
 }
 
+// DeleteRun removes a run from memory.
+// This only affects in-memory storage; backend persistence is not modified.
+func (s *StateManager) DeleteRun(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.runs, id)
+}
+
+// CleanupCompletedRuns removes completed runs older than the retention period.
+// Returns the number of runs deleted.
+func (s *StateManager) CleanupCompletedRuns(retention time.Duration) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cutoff := time.Now().Add(-retention)
+	deleted := 0
+
+	for id, run := range s.runs {
+		// Only delete completed runs (completed, failed, or cancelled)
+		if run.Status != RunStatusCompleted && run.Status != RunStatusFailed && run.Status != RunStatusCancelled {
+			continue
+		}
+
+		// Check if run is older than retention period
+		run.mu.RLock()
+		completedAt := run.CompletedAt
+		run.mu.RUnlock()
+
+		if completedAt != nil && completedAt.Before(cutoff) {
+			delete(s.runs, id)
+			deleted++
+		}
+	}
+
+	return deleted
+}
+
+// RunCount returns the total number of runs in memory.
+func (s *StateManager) RunCount() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.runs)
+}
+
 // stepOutputToMap converts a workflow.StepOutput to a map for run.Output.
 func stepOutputToMap(output workflow.StepOutput) map[string]any {
 	result := make(map[string]any)
