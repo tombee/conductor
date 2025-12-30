@@ -1,6 +1,4 @@
----
-title: "Build with ConductorSDK"
----
+# Build with ConductorSDK
 
 ConductorSDK is an embeddable Go library that brings Conductor's workflow executor and multi-provider LLM abstraction directly into your application.
 
@@ -27,25 +25,20 @@ import (
     "os"
 
     "github.com/tombee/conductor/sdk"
+    "github.com/tombee/conductor/pkg/llm/providers/claudecode"
 )
 
 func main() {
-    // Create SDK with an LLM provider
-    // Get a key from console.anthropic.com (or use OpenAI, Ollama)
-    s, err := sdk.New(
-        sdk.WithAnthropicProvider(os.Getenv("ANTHROPIC_API_KEY")),
-        sdk.WithCostLimit(1.0), // $1 max
-    )
+    s, err := newSDK()
     if err != nil {
         panic(err)
     }
     defer s.Close()
 
-    // Define workflow
     wf, err := s.NewWorkflow("greet").
         Input("name", sdk.TypeString).
         Step("greet").LLM().
-            Model("claude-sonnet-4-20250514").
+            Model("balanced").
             Prompt("Say hello to {{.inputs.name}}").
             Done().
         Build()
@@ -53,7 +46,6 @@ func main() {
         panic(err)
     }
 
-    // Run workflow
     result, err := s.Run(context.Background(), wf, map[string]any{
         "name": "World",
     })
@@ -63,13 +55,30 @@ func main() {
 
     fmt.Println(result.Steps["greet"].Output)
 }
+
+// newSDK creates an SDK with the best available provider.
+// Tries Claude Code CLI first (zero-config), then Anthropic API key.
+func newSDK() (*sdk.SDK, error) {
+    // Try Claude Code CLI first (works if `claude` command is installed)
+    cc := claudecode.New()
+    if found, _ := cc.Detect(); found {
+        return sdk.New(sdk.WithProvider("claude-code", cc))
+    }
+
+    // Fall back to Anthropic API key
+    if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
+        return sdk.New(sdk.WithAnthropicProvider(key))
+    }
+
+    return nil, fmt.Errorf("no LLM provider available: install Claude Code CLI or set ANTHROPIC_API_KEY")
+}
 ```
 
 ## Key Features
 
 **Fluent Workflow Builder** — Type-safe, IDE-friendly workflow definition with compile-time validation.
 
-**Multi-Provider LLM** — Anthropic, OpenAI, Google, and local models through a unified interface.
+**Multi-Provider LLM** — Claude Code CLI, Anthropic, OpenAI, and local models through a unified interface.
 
 **Event Streaming** — React to step completions in real-time for progress updates and logging.
 

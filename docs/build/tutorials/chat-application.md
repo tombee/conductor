@@ -1,15 +1,13 @@
----
-title: "Chat Application"
----
+# Chat Application with File Access
 
-Build a streaming chat interface that displays tokens as they arrive.
+Build a chat assistant that can read and write files on your behalf.
 
 ## What You'll Build
 
-A terminal-based chat application that:
+A terminal-based chat that:
+- Uses built-in file and shell actions as tools
 - Streams LLM responses token-by-token
-- Maintains conversation history
-- Shows cost per message
+- Lets the AI perform file operations when asked
 
 ## Setup
 
@@ -24,12 +22,11 @@ import (
     "strings"
 
     "github.com/tombee/conductor/sdk"
+    "github.com/tombee/conductor/pkg/llm/providers/claudecode"
 )
 
 func main() {
-    s, err := sdk.New(
-        sdk.WithAnthropicProvider(os.Getenv("ANTHROPIC_API_KEY")),
-    )
+    s, err := newSDK()
     if err != nil {
         panic(err)
     }
@@ -42,19 +39,37 @@ func main() {
 
     chat(s)
 }
+
+func newSDK() (*sdk.SDK, error) {
+    cc := claudecode.New()
+    if found, _ := cc.Detect(); found {
+        return sdk.New(
+            sdk.WithProvider("claude-code", cc),
+            sdk.WithBuiltinActions(), // Enable file, shell tools
+        )
+    }
+    if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
+        return sdk.New(
+            sdk.WithAnthropicProvider(key),
+            sdk.WithBuiltinActions(),
+        )
+    }
+    return nil, fmt.Errorf("no provider available")
+}
 ```
 
-## Building the Chat Loop
+## Building the Agent Chat Loop
 
 ```go
 func chat(s *sdk.SDK) {
-    var history []sdk.Message
     reader := bufio.NewReader(os.Stdin)
+    ctx := context.Background()
 
-    fmt.Println("Chat started. Type 'quit' to exit.")
+    fmt.Println("File Assistant ready. Try: 'List files in the current directory'")
+    fmt.Println("Type 'quit' to exit.\n")
 
     for {
-        fmt.Print("\nYou: ")
+        fmt.Print("You: ")
         input, _ := reader.ReadString('\n')
         input = strings.TrimSpace(input)
 
@@ -62,37 +77,26 @@ func chat(s *sdk.SDK) {
             break
         }
 
-        // Add user message to history
-        history = append(history, sdk.Message{
-            Role:    "user",
-            Content: input,
-        })
-
-        // Build workflow with conversation history
-        wf, _ := s.NewWorkflow("chat").
-            Step("respond").LLM().
-                Model("fast").
-                System("You are a helpful assistant.").
-                Messages(history).
-                Done().
-            Build()
-
         fmt.Print("Assistant: ")
-        result, err := s.Run(context.Background(), wf, nil)
+
+        // Run as an agent - the LLM can use file/shell tools
+        result, err := s.RunAgent(ctx,
+            `You are a helpful file assistant. You can:
+            - List files using shell.run
+            - Read file contents using file.read
+            - Create files using file.write
+            Be concise in responses.`,
+            input,
+        )
+
         if err != nil {
             fmt.Printf("\nError: %v\n", err)
             continue
         }
+
         fmt.Println() // newline after streamed response
-
-        // Add assistant response to history
-        response := result.Steps["respond"].Output.(string)
-        history = append(history, sdk.Message{
-            Role:    "assistant",
-            Content: response,
-        })
-
-        fmt.Printf("(Cost: $%.4f)\n", result.Cost.Total)
+        fmt.Printf("(Iterations: %d, Cost: $%.4f)\n\n",
+            result.Iterations, result.Cost.Total)
     }
 }
 ```
@@ -100,32 +104,43 @@ func chat(s *sdk.SDK) {
 ## Run It
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
 go run main.go
 ```
 
 ```
-Chat started. Type 'quit' to exit.
+File Assistant ready. Try: 'List files in the current directory'
+Type 'quit' to exit.
 
-You: What's the capital of France?
-Assistant: The capital of France is Paris.
-(Cost: $0.0008)
+You: List all Go files in the current directory
+Assistant: I'll list the Go files for you.
 
-You: What's its population?
-Assistant: Paris has a population of approximately 2.1 million in the city proper...
-(Cost: $0.0012)
+Found these Go files:
+- main.go
+- sdk_test.go
+- config.go
+(Iterations: 2, Cost: $0.0023)
+
+You: What's in main.go?
+Assistant: Here's the content of main.go:
+
+[displays file contents]
+(Iterations: 2, Cost: $0.0018)
+
+You: Create a file called notes.txt with "Hello from the SDK"
+Assistant: I've created notes.txt with your message.
+(Iterations: 2, Cost: $0.0015)
 ```
 
 ## Key Concepts
 
-**Event Streaming**: The `OnEvent(sdk.EventToken, ...)` callback fires for each token, enabling real-time display.
+**Built-in Actions**: `WithBuiltinActions()` enables file, shell, http, and transform tools that the agent can use.
 
-**Conversation History**: The `Messages()` builder method accepts prior messages, giving the LLM context for follow-up questions.
+**RunAgent**: Unlike `Run()`, `RunAgent()` loops until the LLM stops calling tools, enabling autonomous multi-step operations.
 
-**Cost Tracking**: Each `result.Cost.Total` shows the actual API cost for that exchange.
+**Iterations**: The agent may call multiple tools before responding. `result.Iterations` shows how many tool calls were made.
 
 ## Next Steps
 
-- Add system prompts for different personas
-- Implement `/clear` command to reset history
-- Add cost budgeting with `sdk.WithCostLimit()`
+- Add `sdk.WithCostLimit()` to prevent runaway spending
+- Add more tools with `sdk.FuncTool()` for custom operations
+- Try with `sdk.WithBuiltinIntegrations()` for GitHub/Slack access

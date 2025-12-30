@@ -1,6 +1,4 @@
----
-title: "Code Review Bot"
----
+# Code Review Bot
 
 Build a multi-step workflow that analyzes code and generates structured feedback.
 
@@ -9,7 +7,7 @@ Build a multi-step workflow that analyzes code and generates structured feedback
 A code review bot that:
 - Analyzes code for issues in multiple categories
 - Generates structured JSON feedback
-- Provides an overall summary
+- Uses different model tiers for cost efficiency
 
 ## The Workflow
 
@@ -23,12 +21,11 @@ import (
     "os"
 
     "github.com/tombee/conductor/sdk"
+    "github.com/tombee/conductor/pkg/llm/providers/claudecode"
 )
 
 func main() {
-    s, err := sdk.New(
-        sdk.WithAnthropicProvider(os.Getenv("ANTHROPIC_API_KEY")),
-    )
+    s, err := newSDK()
     if err != nil {
         panic(err)
     }
@@ -38,7 +35,7 @@ func main() {
         Input("code", sdk.TypeString).
         Input("language", sdk.TypeString).
 
-        // Step 1: Analyze for bugs
+        // Step 1: Analyze for bugs (use balanced model for accuracy)
         Step("bugs").LLM().
             Model("balanced").
             System("You are a code reviewer focused on finding bugs.").
@@ -49,7 +46,7 @@ func main() {
 Return JSON: {"bugs": [{"line": N, "issue": "...", "severity": "high|medium|low"}]}`).
             Done().
 
-        // Step 2: Analyze for style issues
+        // Step 2: Analyze for style issues (fast model is sufficient)
         Step("style").LLM().
             Model("fast").
             System("You are a code style reviewer.").
@@ -91,6 +88,17 @@ Write a brief 2-3 sentence summary.`).
 
     printReview(result)
 }
+
+func newSDK() (*sdk.SDK, error) {
+    cc := claudecode.New()
+    if found, _ := cc.Detect(); found {
+        return sdk.New(sdk.WithProvider("claude-code", cc))
+    }
+    if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
+        return sdk.New(sdk.WithAnthropicProvider(key))
+    }
+    return nil, fmt.Errorf("no provider available")
+}
 ```
 
 ## Processing the Results
@@ -105,7 +113,6 @@ type BugReport struct {
 }
 
 func printReview(result *sdk.Result) {
-    // Parse structured output from bugs step
     var bugs BugReport
     bugsJSON := result.Steps["bugs"].Output.(string)
     json.Unmarshal([]byte(bugsJSON), &bugs)
@@ -118,7 +125,12 @@ func printReview(result *sdk.Result) {
     }
 
     fmt.Printf("\nSummary:\n%s\n", result.Steps["summary"].Output)
-    fmt.Printf("\nTotal cost: $%.4f\n", result.Cost.Total)
+
+    fmt.Printf("\nCost breakdown:\n")
+    for step, cost := range result.Cost.ByStep {
+        fmt.Printf("  %s: $%.4f\n", step, cost)
+    }
+    fmt.Printf("  Total: $%.4f\n", result.Cost.Total)
 }
 ```
 
@@ -139,19 +151,25 @@ The code contains a critical bug on line 2 where an assignment operator is
 used instead of a comparison in the if statement. Style-wise, the code is
 reasonably clean but could benefit from more descriptive variable names.
 
-Total cost: $0.0089
+Cost breakdown:
+  bugs: $0.0045
+  style: $0.0022
+  summary: $0.0012
+  Total: $0.0079
 ```
 
 ## Key Concepts
 
-**Multi-Step Workflows**: Each step runs in sequence. Later steps can reference earlier step outputs via `{{.steps.stepId.response}}`.
+**Multi-Step Workflows**: Each step runs in sequence. Later steps reference earlier outputs via `{{.steps.stepId.response}}`.
 
 **Model Tiers**: Use `"balanced"` for complex analysis and `"fast"` for simpler tasks to optimize cost.
 
 **Structured Output**: Prompt the LLM to return JSON, then parse it in Go for programmatic use.
 
+**Cost Breakdown**: `result.Cost.ByStep` shows per-step costs for optimization.
+
 ## Next Steps
 
 - Add security analysis as a parallel step
-- Implement severity-based filtering
-- Integrate with GitHub PR webhooks
+- Integrate with GitHub using `sdk.WithBuiltinIntegrations()`
+- Add file reading with `sdk.WithBuiltinActions()` to review local files

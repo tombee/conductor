@@ -1,6 +1,4 @@
----
-title: "Advanced Usage"
----
+# Advanced Usage
 
 Deep integration patterns for complex use cases.
 
@@ -18,7 +16,17 @@ ConductorSDK wraps these internal packages:
 Register and select between multiple providers:
 
 ```go
+import (
+    "github.com/tombee/conductor/sdk"
+    "github.com/tombee/conductor/pkg/llm/providers/claudecode"
+)
+
+// Register multiple providers
+cc := claudecode.New()
+cc.Detect()
+
 s, err := sdk.New(
+    sdk.WithProvider("claude-code", cc),
     sdk.WithAnthropicProvider(os.Getenv("ANTHROPIC_API_KEY")),
     sdk.WithOpenAIProvider(os.Getenv("OPENAI_API_KEY")),
 )
@@ -26,11 +34,11 @@ s, err := sdk.New(
 
 Use model tiers for automatic model selection:
 
-| Tier | Anthropic | OpenAI |
-|------|-----------|--------|
-| `fast` | Claude 3.5 Haiku | GPT-4o mini |
-| `balanced` | Claude 3.5 Sonnet | GPT-4o |
-| `powerful` | Claude 3 Opus | GPT-4 |
+| Tier | Claude Code | Anthropic | OpenAI |
+|------|-------------|-----------|--------|
+| `fast` | Claude 3.5 Haiku | Claude 3.5 Haiku | GPT-4o mini |
+| `balanced` | Claude Sonnet 4 | Claude Sonnet 4 | GPT-4o |
+| `strategic` | Claude Opus 4 | Claude Opus 4 | GPT-4 |
 
 ## Agent Loop Integration
 
@@ -38,7 +46,7 @@ Run autonomous agents with tool access:
 
 ```go
 s, err := sdk.New(
-    sdk.WithAnthropicProvider(apiKey),
+    sdk.WithProvider("claude-code", cc),
     sdk.WithBuiltinActions(), // file, shell, http tools
 )
 

@@ -1,16 +1,15 @@
----
-title: "Quick Start"
----
+# Quick Start
 
 Get ConductorSDK running in 5 minutes.
 
 ## Prerequisites
 
 - Go 1.22+
-- An LLM API key:
-  - **Anthropic:** Get a key at [console.anthropic.com](https://console.anthropic.com)
-  - **OpenAI:** Get a key at [platform.openai.com](https://platform.openai.com)
-  - **Ollama:** No key needed (runs locally)
+- One of these LLM options:
+  - **Claude Code CLI** (recommended) — Install from [claude.ai/code](https://claude.ai/code)
+  - **Anthropic API key** — Get from [console.anthropic.com](https://console.anthropic.com)
+  - **OpenAI API key** — Get from [platform.openai.com](https://platform.openai.com)
+  - **Ollama** — Runs locally, no key needed
 
 ## Install
 
@@ -31,12 +30,11 @@ import (
     "os"
 
     "github.com/tombee/conductor/sdk"
+    "github.com/tombee/conductor/pkg/llm/providers/claudecode"
 )
 
 func main() {
-    s, err := sdk.New(
-        sdk.WithAnthropicProvider(os.Getenv("ANTHROPIC_API_KEY")),
-    )
+    s, err := newSDK()
     if err != nil {
         panic(err)
     }
@@ -57,12 +55,30 @@ func main() {
     fmt.Println(result.Steps["explain"].Output)
     fmt.Printf("Cost: $%.4f\n", result.Cost.Total)
 }
+
+// newSDK creates an SDK with the best available provider.
+func newSDK() (*sdk.SDK, error) {
+    // Try Claude Code CLI first (zero-config if installed)
+    cc := claudecode.New()
+    if found, _ := cc.Detect(); found {
+        return sdk.New(sdk.WithProvider("claude-code", cc))
+    }
+
+    // Fall back to API keys
+    if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
+        return sdk.New(sdk.WithAnthropicProvider(key))
+    }
+    if key := os.Getenv("OPENAI_API_KEY"); key != "" {
+        return sdk.New(sdk.WithOpenAIProvider(key))
+    }
+
+    return nil, fmt.Errorf("no provider: install Claude Code CLI or set ANTHROPIC_API_KEY")
+}
 ```
 
 ## Run
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
 go run main.go
 ```
 
@@ -97,6 +113,6 @@ result, err := s.Run(ctx, wf, inputs)
 
 ## Next Steps
 
-- **[Chat Application Tutorial](./tutorials/chat-application/)** — Build a streaming chat interface
-- **[Code Review Bot Tutorial](./tutorials/code-review-bot/)** — Multi-step workflow with GitHub
+- **[Chat with File Access](./tutorials/chat-application/)** — Build a chat assistant with built-in actions
+- **[Code Review Bot Tutorial](./tutorials/code-review-bot/)** — Multi-step workflow with structured output
 - **[Recipes](./recipes/)** — Common patterns and solutions

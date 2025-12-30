@@ -1,12 +1,10 @@
----
-title: "YAML Workflows"
----
+# YAML Workflows
 
-Load and extend platform YAML workflows programmatically.
+Load and run platform YAML workflows programmatically.
 
 ## What You'll Build
 
-A tool that loads existing YAML workflows and runs them with custom inputs.
+A tool that loads existing YAML workflows and runs them with the SDK.
 
 ## Loading a YAML Workflow
 
@@ -23,11 +21,9 @@ inputs:
 
 steps:
   - id: review
-    type: llm
     model: balanced
     prompt: |
       Review this code and provide feedback:
-
       {{.inputs.code}}
 
 output: "{{.steps.review.response}}"
@@ -44,18 +40,16 @@ import (
     "os"
 
     "github.com/tombee/conductor/sdk"
+    "github.com/tombee/conductor/pkg/llm/providers/claudecode"
 )
 
 func main() {
-    s, err := sdk.New(
-        sdk.WithAnthropicProvider(os.Getenv("ANTHROPIC_API_KEY")),
-    )
+    s, err := newSDK()
     if err != nil {
         panic(err)
     }
     defer s.Close()
 
-    // Load from file
     wf, err := s.LoadWorkflowFile("./review.yaml")
     if err != nil {
         panic(err)
@@ -70,6 +64,17 @@ func main() {
 
     fmt.Println(result.Output)
 }
+
+func newSDK() (*sdk.SDK, error) {
+    cc := claudecode.New()
+    if found, _ := cc.Detect(); found {
+        return sdk.New(sdk.WithProvider("claude-code", cc))
+    }
+    if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
+        return sdk.New(sdk.WithAnthropicProvider(key))
+    }
+    return nil, fmt.Errorf("no provider available")
+}
 ```
 
 ## Embedding Workflows
@@ -82,6 +87,7 @@ import (
     _ "embed"
 
     "github.com/tombee/conductor/sdk"
+    "github.com/tombee/conductor/pkg/llm/providers/claudecode"
 )
 
 //go:embed workflows/review.yaml
@@ -91,7 +97,7 @@ var reviewWorkflow []byte
 var summarizeWorkflow []byte
 
 func main() {
-    s, _ := sdk.New(sdk.WithAnthropicProvider(apiKey))
+    s, _ := newSDK()
     defer s.Close()
 
     // Load from embedded bytes
@@ -107,7 +113,6 @@ Check workflows before running:
 ```go
 wf, err := s.LoadWorkflowFile("./workflow.yaml")
 if err != nil {
-    // Parse or validation error
     var validErr *sdk.ValidationError
     if errors.As(err, &validErr) {
         fmt.Printf("Validation failed: %s at %s\n",
@@ -154,4 +159,4 @@ func loadWorkflows(s *sdk.SDK) (map[string]*sdk.Workflow, error) {
 
 - Combine YAML base workflows with programmatic extensions
 - Build a workflow selection CLI
-- Add workflow caching for repeated executions
+- Add event streaming with `s.OnEvent()` for progress tracking

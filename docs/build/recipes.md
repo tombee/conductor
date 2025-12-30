@@ -1,8 +1,36 @@
----
-title: "Recipes"
----
+# Recipes
 
 Copy-paste patterns for common SDK tasks.
+
+## Provider Auto-Detection
+
+Use the best available provider automatically:
+
+```go
+import (
+    "os"
+    "github.com/tombee/conductor/sdk"
+    "github.com/tombee/conductor/pkg/llm/providers/claudecode"
+)
+
+func newSDK() (*sdk.SDK, error) {
+    // Try Claude Code CLI first (zero-config if installed)
+    cc := claudecode.New()
+    if found, _ := cc.Detect(); found {
+        return sdk.New(sdk.WithProvider("claude-code", cc))
+    }
+
+    // Fall back to API keys from environment
+    if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
+        return sdk.New(sdk.WithAnthropicProvider(key))
+    }
+    if key := os.Getenv("OPENAI_API_KEY"); key != "" {
+        return sdk.New(sdk.WithOpenAIProvider(key))
+    }
+
+    return nil, fmt.Errorf("no provider: install Claude Code CLI or set API key")
+}
+```
 
 ## Custom Tool Registration
 
@@ -42,8 +70,10 @@ if err := s.RegisterTool(tool); err != nil {
 Limit spending per workflow run:
 
 ```go
-s, err := sdk.New(
-    sdk.WithAnthropicProvider(apiKey),
+s, err := newSDK()
+// Add cost limit option
+s, err = sdk.New(
+    sdk.WithProvider("claude-code", cc),
     sdk.WithCostLimit(5.0), // $5 max per run
 )
 
@@ -103,7 +133,7 @@ import (
 var reviewWorkflow []byte
 
 func main() {
-    s, _ := sdk.New(sdk.WithAnthropicProvider(apiKey))
+    s, _ := newSDK()
     defer s.Close()
 
     wf, _ := s.LoadWorkflow(reviewWorkflow)
