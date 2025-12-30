@@ -123,6 +123,8 @@ type Run struct {
 	CurrentStep   string         `json:"current_step,omitempty"`
 	Completed     int            `json:"completed"`
 	Total         int            `json:"total"`
+	ParentRunID   string         `json:"parent_run_id,omitempty"`   // ID of the parent run for replay runs
+	ReplayConfig  *ReplayConfig  `json:"replay_config,omitempty"`   // Configuration for replay execution
 	StartedAt     *time.Time     `json:"started_at,omitempty"`
 	CompletedAt   *time.Time     `json:"completed_at,omitempty"`
 	CreatedAt     time.Time      `json:"created_at"`
@@ -156,7 +158,18 @@ type StepResult struct {
 	Duration  time.Duration  `json:"duration"`
 	Status    string         `json:"status"`
 	Error     string         `json:"error,omitempty"`
+	CostUSD   float64        `json:"cost_usd,omitempty"` // Cost of this step in USD
 	CreatedAt time.Time      `json:"created_at"`
+}
+
+// ReplayConfig represents the configuration for a replay execution.
+type ReplayConfig struct {
+	ParentRunID    string            `json:"parent_run_id"`              // Original run to replay from
+	FromStepID     string            `json:"from_step_id,omitempty"`     // Step to resume from (empty = start)
+	OverrideInputs map[string]any    `json:"override_inputs,omitempty"`  // Input overrides
+	OverrideSteps  map[string]any    `json:"override_steps,omitempty"`   // Step output overrides
+	MaxCost        float64           `json:"max_cost,omitempty"`         // Cost limit in USD (0 = no limit)
+	ValidateSchema bool              `json:"validate_schema"`            // Validate cached outputs
 }
 
 // ScheduleState represents the persistent state of a schedule.

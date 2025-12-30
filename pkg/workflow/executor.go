@@ -55,6 +55,9 @@ type StepResult struct {
 
 	// Attempts is the number of execution attempts (for retry logic)
 	Attempts int
+
+	// CostUSD is the cost incurred by this step in USD
+	CostUSD float64
 }
 
 // DefaultParallelConcurrency is the default maximum number of concurrent parallel steps.

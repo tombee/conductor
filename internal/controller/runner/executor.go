@@ -262,6 +262,7 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 							Duration:  result.Duration,
 							Status:    string(result.Status),
 							Error:     errorToString(err),
+							CostUSD:   result.CostUSD,
 							CreatedAt: time.Now(),
 						}
 						// Use context.Background() to ensure step result persists
