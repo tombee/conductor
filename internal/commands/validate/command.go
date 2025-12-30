@@ -237,6 +237,16 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, workspace
 			}
 		}
 
+		type securityConfig struct {
+			HasFilesystem bool     `json:"has_filesystem"`
+			HasNetwork    bool     `json:"has_network"`
+			HasShell      bool     `json:"has_shell"`
+			ReadPaths     []string `json:"read_paths,omitempty"`
+			WritePaths    []string `json:"write_paths,omitempty"`
+			AllowedHosts  []string `json:"allowed_hosts,omitempty"`
+			AllowedCmds   []string `json:"allowed_commands,omitempty"`
+		}
+
 		type workflowMetadata struct {
 			Name             string              `json:"name"`
 			Steps            int                 `json:"steps"`
@@ -244,6 +254,7 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, workspace
 			Inputs           []string            `json:"inputs"`
 			Outputs          []string            `json:"outputs"`
 			Integrations     []string            `json:"integrations,omitempty"`
+			Security         *securityConfig     `json:"security,omitempty"`
 			SecurityWarnings []map[string]string `json:"security_warnings,omitempty"`
 		}
 
@@ -282,6 +293,20 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, workspace
 			}
 		}
 
+		// Extract security configuration
+		var securityCfg *securityConfig
+		if def.Security != nil {
+			securityCfg = &securityConfig{
+				HasFilesystem: len(def.Security.Filesystem.Read) > 0 || len(def.Security.Filesystem.Write) > 0,
+				HasNetwork:    len(def.Security.Network.Allow) > 0,
+				HasShell:      len(def.Security.Shell.Commands) > 0,
+				ReadPaths:     def.Security.Filesystem.Read,
+				WritePaths:    def.Security.Filesystem.Write,
+				AllowedHosts:  def.Security.Network.Allow,
+				AllowedCmds:   def.Security.Shell.Commands,
+			}
+		}
+
 		resp := validateResponse{
 			JSONResponse: output.JSONResponse{
 				Version: "1.0",
@@ -295,6 +320,7 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, workspace
 				Inputs:           inputs,
 				Outputs:          outputs,
 				Integrations:     extractIntegrationNames(def),
+				Security:         securityCfg,
 				SecurityWarnings: securityWarnings,
 			},
 			Profile:     profileData,
@@ -362,6 +388,47 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, workspace
 		integrations := extractIntegrationNames(def)
 		if len(integrations) > 0 {
 			cmd.Printf("\nIntegrations defined: %v\n", integrations)
+		}
+
+		// Show security configuration
+		if def.Security != nil {
+			cmd.Println("\nSecurity Configuration:")
+
+			// Filesystem access
+			if len(def.Security.Filesystem.Read) > 0 || len(def.Security.Filesystem.Write) > 0 || len(def.Security.Filesystem.Deny) > 0 {
+				cmd.Println("  Filesystem:")
+				if len(def.Security.Filesystem.Read) > 0 {
+					cmd.Printf("    Read:  %v\n", def.Security.Filesystem.Read)
+				}
+				if len(def.Security.Filesystem.Write) > 0 {
+					cmd.Printf("    Write: %v\n", def.Security.Filesystem.Write)
+				}
+				if len(def.Security.Filesystem.Deny) > 0 {
+					cmd.Printf("    Deny:  %v\n", def.Security.Filesystem.Deny)
+				}
+			}
+
+			// Network access
+			if len(def.Security.Network.Allow) > 0 || len(def.Security.Network.Deny) > 0 {
+				cmd.Println("  Network:")
+				if len(def.Security.Network.Allow) > 0 {
+					cmd.Printf("    Allow: %v\n", def.Security.Network.Allow)
+				}
+				if len(def.Security.Network.Deny) > 0 {
+					cmd.Printf("    Deny:  %v\n", def.Security.Network.Deny)
+				}
+			}
+
+			// Shell access
+			if len(def.Security.Shell.Commands) > 0 || len(def.Security.Shell.DenyPatterns) > 0 {
+				cmd.Println("  Shell:")
+				if len(def.Security.Shell.Commands) > 0 {
+					cmd.Printf("    Commands: %v\n", def.Security.Shell.Commands)
+				}
+				if len(def.Security.Shell.DenyPatterns) > 0 {
+					cmd.Printf("    Deny:     %v\n", def.Security.Shell.DenyPatterns)
+				}
+			}
 		}
 	}
 
