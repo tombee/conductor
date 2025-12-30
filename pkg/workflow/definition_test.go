@@ -586,6 +586,112 @@ steps:
 	}
 }
 
+func TestPollTriggerUnmarshal(t *testing.T) {
+	tests := []struct {
+		name       string
+		definition string
+		wantErr    bool
+		validate   func(t *testing.T, def *Definition)
+	}{
+		{
+			name: "valid poll trigger with all fields",
+			definition: `
+name: test-workflow
+version: "1.0"
+
+listen:
+  poll:
+    integration: pagerduty
+    query:
+      user_id: PUSER123
+      statuses: [triggered, acknowledged]
+    interval: 30s
+    startup: since_last
+    backfill: 1h
+    input_mapping:
+      incident_id: "{{.trigger.event.id}}"
+      incident_title: "{{.trigger.event.title}}"
+
+steps:
+  - id: process
+    type: llm
+    prompt: Process incident
+`,
+			wantErr: false,
+			validate: func(t *testing.T, def *Definition) {
+				if def.Trigger == nil {
+					t.Fatal("Trigger is nil")
+				}
+				if def.Trigger.Poll == nil {
+					t.Fatal("Poll trigger is nil")
+				}
+				if def.Trigger.Poll.Integration != "pagerduty" {
+					t.Errorf("Integration = %v, want pagerduty", def.Trigger.Poll.Integration)
+				}
+				if def.Trigger.Poll.Interval != "30s" {
+					t.Errorf("Interval = %v, want 30s", def.Trigger.Poll.Interval)
+				}
+				if def.Trigger.Poll.Startup != "since_last" {
+					t.Errorf("Startup = %v, want since_last", def.Trigger.Poll.Startup)
+				}
+				if def.Trigger.Poll.Backfill != "1h" {
+					t.Errorf("Backfill = %v, want 1h", def.Trigger.Poll.Backfill)
+				}
+				if len(def.Trigger.Poll.Query) == 0 {
+					t.Error("Query is empty")
+				}
+				if len(def.Trigger.Poll.InputMapping) != 2 {
+					t.Errorf("InputMapping length = %v, want 2", len(def.Trigger.Poll.InputMapping))
+				}
+			},
+		},
+		{
+			name: "valid poll trigger with minimal fields",
+			definition: `
+name: test-workflow
+version: "1.0"
+
+listen:
+  poll:
+    integration: slack
+    query:
+      mentions: "@jsmith"
+      channels: [engineering]
+
+steps:
+  - id: process
+    type: llm
+    prompt: Process mention
+`,
+			wantErr: false,
+			validate: func(t *testing.T, def *Definition) {
+				if def.Trigger == nil || def.Trigger.Poll == nil {
+					t.Fatal("Poll trigger is nil")
+				}
+				if def.Trigger.Poll.Integration != "slack" {
+					t.Errorf("Integration = %v, want slack", def.Trigger.Poll.Integration)
+				}
+				if def.Trigger.Poll.Interval != "" {
+					t.Errorf("Interval should be empty (use default), got %v", def.Trigger.Poll.Interval)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			def, err := ParseDefinition([]byte(tt.definition))
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseDefinition() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err == nil && tt.validate != nil {
+				tt.validate(t, def)
+			}
+		})
+	}
+}
+
 // contains checks if s contains substr
 func contains(s, substr string) bool {
 	for i := 0; i <= len(s)-len(substr); i++ {

@@ -86,6 +86,9 @@ type TriggerConfig struct {
 
 	// Schedule configures scheduled execution
 	Schedule *ScheduleTrigger `yaml:"schedule,omitempty" json:"schedule,omitempty"`
+
+	// Poll configures poll-based triggers for external service events
+	Poll *PollTriggerConfig `yaml:"poll,omitempty" json:"poll,omitempty"`
 }
 
 // APIListenerConfig defines API endpoint authentication configuration.
@@ -151,6 +154,35 @@ type ScheduleTrigger struct {
 
 	// Inputs are the static inputs to pass when scheduled
 	Inputs map[string]any `yaml:"inputs,omitempty" json:"inputs,omitempty"`
+}
+
+// PollTriggerConfig defines poll-based trigger configuration for external service events.
+// Poll triggers periodically query external APIs (PagerDuty, Slack, Jira, Datadog) for
+// events relevant to the user and fire workflows for new events.
+type PollTriggerConfig struct {
+	// Integration specifies which integration to poll (slack, pagerduty, jira, datadog)
+	Integration string `yaml:"integration" json:"integration"`
+
+	// Query contains integration-specific query parameters for filtering events
+	Query map[string]interface{} `yaml:"query" json:"query"`
+
+	// Interval is the polling interval (e.g., "30s", "1m")
+	// Minimum: 10s, Default: 30s
+	Interval string `yaml:"interval,omitempty" json:"interval,omitempty"`
+
+	// Startup defines behavior on controller start
+	// - "since_last" (default): Process events since last poll time
+	// - "ignore_historical": Only process events from now forward
+	// - "backfill": Process events from specified duration ago
+	Startup string `yaml:"startup,omitempty" json:"startup,omitempty"`
+
+	// Backfill duration for startup backfill mode (e.g., "1h", "4h")
+	// Only used when Startup is "backfill". Maximum: 24h
+	Backfill string `yaml:"backfill,omitempty" json:"backfill,omitempty"`
+
+	// InputMapping maps trigger event fields to workflow inputs
+	// Example: incident_id: "{{.trigger.event.id}}"
+	InputMapping map[string]string `yaml:"input_mapping,omitempty" json:"input_mapping,omitempty"`
 }
 
 // InputDefinition describes a workflow input parameter.
