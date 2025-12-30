@@ -33,6 +33,8 @@ const (
 	ActionEventsRead   Action = "events:read"
 	ActionEventsStream Action = "events:stream"
 	ActionExportersCfg Action = "exporters:configure"
+	ActionReplayCreate Action = "replay:create"
+	ActionReplayExec   Action = "replay:execute"
 )
 
 // Result represents the outcome of an audited action
@@ -56,6 +58,13 @@ type Entry struct {
 	IPAddress string    `json:"ip_address,omitempty"`
 	UserAgent string    `json:"user_agent,omitempty"`
 	Error     string    `json:"error,omitempty"`
+
+	// Replay-specific metadata
+	ParentRunID    string  `json:"parent_run_id,omitempty"`
+	FromStep       string  `json:"from_step,omitempty"`
+	OverrideKeys   []string `json:"override_keys,omitempty"`   // Keys of overridden inputs (not values)
+	CostUSD        float64 `json:"cost_usd,omitempty"`
+	CostSavedUSD   float64 `json:"cost_saved_usd,omitempty"`
 }
 
 // Logger writes audit log entries to an append-only log
@@ -178,6 +187,45 @@ func (l *Logger) LogEventStream(userID, filters, ipAddress string, result Result
 		Resource:  filters,
 		Result:    result,
 		IPAddress: ipAddress,
+	}
+
+	return l.Log(entry)
+}
+
+// LogReplayCreate logs the creation of a replay operation
+func (l *Logger) LogReplayCreate(userID, parentRunID, fromStep string, overrideKeys []string, ipAddress string, result Result, err error) error {
+	entry := Entry{
+		UserID:       userID,
+		Action:       ActionReplayCreate,
+		Resource:     parentRunID,
+		Result:       result,
+		IPAddress:    ipAddress,
+		ParentRunID:  parentRunID,
+		FromStep:     fromStep,
+		OverrideKeys: overrideKeys,
+	}
+
+	if err != nil {
+		entry.Error = err.Error()
+	}
+
+	return l.Log(entry)
+}
+
+// LogReplayExecution logs the completion of a replay operation
+func (l *Logger) LogReplayExecution(userID, parentRunID string, costUSD, costSavedUSD float64, result Result, err error) error {
+	entry := Entry{
+		UserID:       userID,
+		Action:       ActionReplayExec,
+		Resource:     parentRunID,
+		Result:       result,
+		ParentRunID:  parentRunID,
+		CostUSD:      costUSD,
+		CostSavedUSD: costSavedUSD,
+	}
+
+	if err != nil {
+		entry.Error = err.Error()
 	}
 
 	return l.Log(entry)

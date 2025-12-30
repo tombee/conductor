@@ -459,6 +459,54 @@ func (m *SessionManager) CleanupExpiredSessions(ctx context.Context) (int, error
 	return count, nil
 }
 
+// CleanupCompletedSessions removes sessions that completed more than 24 hours ago.
+// This is run periodically to reclaim storage space.
+func (m *SessionManager) CleanupCompletedSessions(ctx context.Context) (int, error) {
+	// Find completed sessions older than 24 hours
+	cutoff := time.Now().Add(-24 * time.Hour)
+
+	query := `
+		DELETE FROM debug_sessions
+		WHERE state IN (?, ?, ?, ?)
+		AND created_at < ?
+	`
+
+	result, err := m.store.DB().ExecContext(ctx, query,
+		string(SessionStateCompleted),
+		string(SessionStateFailed),
+		string(SessionStateTimeout),
+		string(SessionStateKilled),
+		cutoff.UnixNano(),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to cleanup completed sessions: %w", err)
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get cleanup count: %w", err)
+	}
+
+	// Also remove from memory cache if present
+	m.mu.Lock()
+	for sessionID, session := range m.sessions {
+		if session.CreatedAt.Before(cutoff) &&
+			(session.State == SessionStateCompleted ||
+				session.State == SessionStateFailed ||
+				session.State == SessionStateTimeout ||
+				session.State == SessionStateKilled) {
+			delete(m.sessions, sessionID)
+			if ch, exists := m.commandChannels[sessionID]; exists {
+				close(ch)
+				delete(m.commandChannels, sessionID)
+			}
+		}
+	}
+	m.mu.Unlock()
+
+	return int(count), nil
+}
+
 // DeleteSession deletes a session from memory and database.
 func (m *SessionManager) DeleteSession(ctx context.Context, sessionID string) error {
 	m.mu.Lock()

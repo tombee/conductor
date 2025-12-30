@@ -14,10 +14,13 @@ type MetricsCollector struct {
 	meter metric.Meter
 
 	// Counters
-	runsTotal         metric.Int64Counter
-	stepsTotal        metric.Int64Counter
-	llmRequestsTotal  metric.Int64Counter
-	tokensTotal       metric.Int64Counter
+	runsTotal          metric.Int64Counter
+	stepsTotal         metric.Int64Counter
+	llmRequestsTotal   metric.Int64Counter
+	tokensTotal        metric.Int64Counter
+	replayTotal        metric.Int64Counter
+	replayCostSavedUSD metric.Float64Counter
+	debugEventsTotal   metric.Int64Counter
 
 	// Histograms
 	runDuration  metric.Float64Histogram
@@ -25,12 +28,14 @@ type MetricsCollector struct {
 	llmLatency   metric.Float64Histogram
 
 	// Gauges (using observable gauges)
-	activeRuns    map[string]bool // Track active run IDs
-	activeRunsMu  sync.RWMutex
-	queueDepth    int64 // Track pending runs in queue
-	queueDepthMu  sync.RWMutex
-	totalCostUSD  float64
-	totalCostMu   sync.RWMutex
+	activeRuns          map[string]bool // Track active run IDs
+	activeRunsMu        sync.RWMutex
+	queueDepth          int64 // Track pending runs in queue
+	queueDepthMu        sync.RWMutex
+	totalCostUSD        float64
+	totalCostMu         sync.RWMutex
+	debugSessionsActive int64 // Track active debug sessions
+	debugSessionsMu     sync.RWMutex
 }
 
 // NewMetricsCollector creates a new metrics collector using the given meter provider
@@ -76,6 +81,33 @@ func NewMetricsCollector(meterProvider metric.MeterProvider) (*MetricsCollector,
 		"conductor_tokens_total",
 		metric.WithDescription("Total number of tokens processed"),
 		metric.WithUnit("{token}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	mc.replayTotal, err = meter.Int64Counter(
+		"conductor_replay_total",
+		metric.WithDescription("Total number of workflow replays"),
+		metric.WithUnit("{replay}"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	mc.replayCostSavedUSD, err = meter.Float64Counter(
+		"conductor_replay_cost_saved_usd",
+		metric.WithDescription("Total cost saved through replay (USD)"),
+		metric.WithUnit("USD"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	mc.debugEventsTotal, err = meter.Int64Counter(
+		"conductor_debug_events_total",
+		metric.WithDescription("Total number of debug events emitted"),
+		metric.WithUnit("{event}"),
 	)
 	if err != nil {
 		return nil, err
@@ -151,6 +183,22 @@ func NewMetricsCollector(meterProvider metric.MeterProvider) (*MetricsCollector,
 			depth := mc.queueDepth
 			mc.queueDepthMu.RUnlock()
 			observer.Observe(depth)
+			return nil
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = meter.Int64ObservableGauge(
+		"conductor_debug_sessions_active",
+		metric.WithDescription("Number of active debug sessions"),
+		metric.WithUnit("{session}"),
+		metric.WithInt64Callback(func(ctx context.Context, observer metric.Int64Observer) error {
+			mc.debugSessionsMu.RLock()
+			count := mc.debugSessionsActive
+			mc.debugSessionsMu.RUnlock()
+			observer.Observe(count)
 			return nil
 		}),
 	)
@@ -239,4 +287,43 @@ func (mc *MetricsCollector) DecrementQueueDepth() {
 		mc.queueDepth--
 	}
 	mc.queueDepthMu.Unlock()
+}
+
+// RecordReplay records a workflow replay completion
+func (mc *MetricsCollector) RecordReplay(ctx context.Context, workflowID, status string, costSavedUSD float64) {
+	attrs := []attribute.KeyValue{
+		attribute.String("workflow", workflowID),
+		attribute.String("status", status),
+	}
+
+	mc.replayTotal.Add(ctx, 1, metric.WithAttributes(attrs...))
+
+	if costSavedUSD > 0 {
+		mc.replayCostSavedUSD.Add(ctx, costSavedUSD, metric.WithAttributes(attrs...))
+	}
+}
+
+// RecordDebugSessionStart increments the active debug sessions gauge
+func (mc *MetricsCollector) RecordDebugSessionStart() {
+	mc.debugSessionsMu.Lock()
+	mc.debugSessionsActive++
+	mc.debugSessionsMu.Unlock()
+}
+
+// RecordDebugSessionEnd decrements the active debug sessions gauge
+func (mc *MetricsCollector) RecordDebugSessionEnd() {
+	mc.debugSessionsMu.Lock()
+	if mc.debugSessionsActive > 0 {
+		mc.debugSessionsActive--
+	}
+	mc.debugSessionsMu.Unlock()
+}
+
+// RecordDebugEvent records a debug event emission
+func (mc *MetricsCollector) RecordDebugEvent(ctx context.Context, eventType string) {
+	attrs := []attribute.KeyValue{
+		attribute.String("event_type", eventType),
+	}
+
+	mc.debugEventsTotal.Add(ctx, 1, metric.WithAttributes(attrs...))
 }
