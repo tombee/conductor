@@ -20,6 +20,9 @@ type TemplateContext struct {
 
 	// Tool results accessible as {{.tools.tool_name}}
 	Tools map[string]interface{}
+
+	// Loop context accessible as {{.loop.iteration}}, {{.loop.max_iterations}}, {{.loop.history}}
+	Loop map[string]interface{}
 }
 
 // NewTemplateContext creates a new template context with empty maps.
@@ -47,12 +50,23 @@ func (tc *TemplateContext) SetToolResult(toolName string, result interface{}) {
 	tc.Tools[toolName] = result
 }
 
+// SetLoopContext sets the loop context for loop step execution.
+// This provides access to loop.iteration, loop.max_iterations, and loop.history.
+func (tc *TemplateContext) SetLoopContext(iteration, maxIterations int, history interface{}) {
+	tc.Loop = map[string]interface{}{
+		"iteration":      iteration,
+		"max_iterations": maxIterations,
+		"history":        history,
+	}
+}
+
 // ToMap converts the context to a flat map for template execution.
 // Input variables are available both at the top level ({{.input_name}}) and
 // under "inputs" ({{.inputs.input_name}}) for compatibility with workflow definitions.
 // Step outputs are under "steps": {{.steps.step_id.response}}
 // Environment variables are under "env": {{.env.VAR_NAME}}
 // Tool results are under "tools": {{.tools.tool_name}}
+// Loop context is under "loop": {{.loop.iteration}}, {{.loop.max_iterations}}, {{.loop.history}}
 func (tc *TemplateContext) ToMap() map[string]interface{} {
 	data := make(map[string]interface{})
 
@@ -72,6 +86,11 @@ func (tc *TemplateContext) ToMap() map[string]interface{} {
 
 	// Add tool results under "tools" key
 	data["tools"] = tc.Tools
+
+	// Add loop context under "loop" key if present
+	if tc.Loop != nil {
+		data["loop"] = tc.Loop
+	}
 
 	return data
 }
