@@ -28,7 +28,7 @@ func newListCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all configured triggers",
-		Long: `List all configured triggers (webhooks, schedules, and API endpoints).
+		Long: `List all configured triggers (webhooks, schedules, API endpoints, and file watchers).
 
 Shows triggers currently defined in the config file. Note that changes require
 a controller restart to take effect.`,
@@ -67,11 +67,17 @@ func runList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to list endpoints: %w", err)
 	}
 
+	fileWatchers, err := mgr.ListFileWatchers(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list file watchers: %w", err)
+	}
+
 	if shared.GetJSON() {
 		output := map[string]any{
-			"webhooks":  webhooks,
-			"schedules": schedules,
-			"endpoints": endpoints,
+			"webhooks":      webhooks,
+			"schedules":     schedules,
+			"endpoints":     endpoints,
+			"file_watchers": fileWatchers,
 		}
 		enc := json.NewEncoder(cmd.OutOrStdout())
 		enc.SetIndent("", "  ")
@@ -124,6 +130,29 @@ func runList(cmd *cobra.Command, args []string) error {
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "  %s -> %s: %s\n",
 				ep.Name, ep.Workflow, desc)
+		}
+	}
+
+	fmt.Fprintln(cmd.OutOrStdout())
+	fmt.Fprintln(cmd.OutOrStdout(), "File Watchers:")
+	if len(fileWatchers) == 0 {
+		fmt.Fprintln(cmd.OutOrStdout(), "  (none)")
+	} else {
+		for _, fw := range fileWatchers {
+			events := "(all)"
+			if len(fw.Events) > 0 {
+				events = strings.Join(fw.Events, ", ")
+			}
+			status := "enabled"
+			if !fw.Enabled {
+				status = "disabled"
+			}
+			path := fw.Path
+			if len(fw.IncludePatterns) > 0 {
+				path = fmt.Sprintf("%s [include: %s]", path, strings.Join(fw.IncludePatterns, ", "))
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "  %s: %s -> %s events=%s [%s]\n",
+				fw.Name, path, fw.Workflow, events, status)
 		}
 	}
 

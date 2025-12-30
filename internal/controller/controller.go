@@ -35,6 +35,7 @@ import (
 	"github.com/tombee/conductor/internal/controller/backend/postgres"
 	"github.com/tombee/conductor/internal/controller/checkpoint"
 	"github.com/tombee/conductor/internal/controller/endpoint"
+	"github.com/tombee/conductor/internal/controller/filewatcher"
 	"github.com/tombee/conductor/internal/controller/github"
 	"github.com/tombee/conductor/internal/controller/leader"
 	"github.com/tombee/conductor/internal/controller/listener"
@@ -42,6 +43,7 @@ import (
 	controllerremote "github.com/tombee/conductor/internal/controller/remote"
 	"github.com/tombee/conductor/internal/controller/runner"
 	"github.com/tombee/conductor/internal/controller/scheduler"
+	"github.com/tombee/conductor/internal/controller/trigger"
 	"github.com/tombee/conductor/internal/controller/webhook"
 	internalllm "github.com/tombee/conductor/internal/llm"
 	internallog "github.com/tombee/conductor/internal/log"
@@ -75,6 +77,7 @@ type Controller struct {
 	backend         backend.Backend
 	checkpoints     *checkpoint.Manager
 	scheduler       *scheduler.Scheduler
+	fileWatcher     *filewatcher.Service
 	endpointHandler *endpoint.Handler
 	authMw          *auth.Middleware
 	leader          *leader.Elector
@@ -225,6 +228,14 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create scheduler: %w", err)
 		}
+	}
+
+	// Create file watcher service if enabled
+	var fileWatcherSvc *filewatcher.Service
+	if cfg.Controller.FileWatchers.Enabled {
+		fileWatcherSvc = filewatcher.NewService(cfg.Controller.WorkflowsDir, r)
+		logger.Info("file watcher service created",
+			slog.Int("watcher_count", len(cfg.Controller.FileWatchers.Watchers)))
 	}
 
 	// Create endpoint handler if enabled
@@ -424,6 +435,7 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 		backend:         be,
 		checkpoints:     cm,
 		scheduler:       sched,
+		fileWatcher:     fileWatcherSvc,
 		endpointHandler: endpointHandler,
 		authMw:          authMw,
 		leader:          elector,
@@ -654,6 +666,90 @@ func (c *Controller) Start(ctx context.Context) error {
 			slog.Int("schedule_count", len(c.cfg.Controller.Schedules.Schedules)))
 	}
 
+	// Start file watcher service if configured
+	if c.fileWatcher != nil {
+		if err := c.fileWatcher.Start(ctx); err != nil {
+			return fmt.Errorf("failed to start file watcher service: %w", err)
+		}
+
+		// Add configured watchers
+		for _, w := range c.cfg.Controller.FileWatchers.Watchers {
+			if !w.Enabled {
+				continue
+			}
+			config := filewatcher.WatchConfig{
+				Name:     w.Name,
+				Workflow: w.Workflow,
+				Paths:    w.Paths,
+				Events:   w.Events,
+				Inputs:   w.Inputs,
+			}
+			if err := c.fileWatcher.AddWatcher(config); err != nil {
+				c.logger.Error("failed to add file watcher",
+					slog.String("name", w.Name),
+					internallog.Error(err))
+			}
+		}
+
+		// Scan workflow files for file triggers
+		scanner := trigger.NewScanner(c.cfg.Controller.WorkflowsDir)
+		scanResult, err := scanner.Scan()
+		if err != nil {
+			c.logger.Warn("failed to scan workflows for file triggers",
+				internallog.Error(err))
+		} else {
+			// Add file triggers from workflow definitions
+			for _, t := range scanResult.FileTriggers {
+				if t.Trigger.File == nil {
+					continue
+				}
+
+				// Parse debounce duration if specified
+				var debounceWindow time.Duration
+				if t.Trigger.File.Debounce != "" {
+					debounceWindow, err = time.ParseDuration(t.Trigger.File.Debounce)
+					if err != nil {
+						c.logger.Error("invalid debounce duration in workflow file trigger",
+							slog.String("workflow", t.WorkflowName),
+							slog.String("debounce", t.Trigger.File.Debounce),
+							internallog.Error(err))
+						continue
+					}
+				}
+
+				config := filewatcher.WatchConfig{
+					Name:                 fmt.Sprintf("workflow:%s", t.WorkflowName),
+					Workflow:             t.WorkflowPath,
+					Paths:                t.Trigger.File.Paths,
+					Events:               t.Trigger.File.Events,
+					IncludePatterns:      t.Trigger.File.IncludePatterns,
+					ExcludePatterns:      t.Trigger.File.ExcludePatterns,
+					DebounceWindow:       debounceWindow,
+					BatchMode:            t.Trigger.File.BatchMode,
+					MaxTriggersPerMinute: t.Trigger.File.MaxTriggersPerMinute,
+					Recursive:            t.Trigger.File.Recursive,
+					MaxDepth:             t.Trigger.File.MaxDepth,
+					Inputs:               t.Trigger.File.Inputs,
+				}
+				if err := c.fileWatcher.AddWatcher(config); err != nil {
+					c.logger.Error("failed to add workflow file trigger",
+						slog.String("workflow", t.WorkflowName),
+						internallog.Error(err))
+				} else {
+					c.logger.Info("registered file trigger from workflow",
+						slog.String("workflow", t.WorkflowName),
+						slog.Int("path_count", len(t.Trigger.File.Paths)))
+				}
+			}
+
+			// Log any errors from scanning
+			for _, scanErr := range scanResult.Errors {
+				c.logger.Warn("error scanning workflow for triggers",
+					internallog.Error(scanErr))
+			}
+		}
+	}
+
 	// Start MCP registry (auto-starts configured servers)
 	if c.mcpRegistry != nil {
 		if err := c.mcpRegistry.Start(ctx); err != nil {
@@ -784,6 +880,13 @@ func (c *Controller) Shutdown(ctx context.Context) error {
 	// Stop scheduler
 	if c.scheduler != nil {
 		c.scheduler.Stop()
+	}
+
+	// Stop file watcher service
+	if c.fileWatcher != nil {
+		if err := c.fileWatcher.Stop(); err != nil {
+			c.logger.Error("failed to stop file watcher service", internallog.Error(err))
+		}
 	}
 
 	// Stop MCP registry

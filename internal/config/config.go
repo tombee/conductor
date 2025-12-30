@@ -133,6 +133,9 @@ type ControllerConfig struct {
 	// Endpoints configures named API endpoints (controller-specific).
 	Endpoints EndpointsConfig `yaml:"endpoints,omitempty"`
 
+	// FileWatchers configures file system watchers (controller-specific).
+	FileWatchers FileWatchersConfig `yaml:"file_watchers,omitempty"`
+
 	// ControllerAuth configures controller authentication (different from CLI auth).
 	ControllerAuth ControllerAuthConfig `yaml:"controller_auth,omitempty"`
 
@@ -335,6 +338,52 @@ type EndpointEntry struct {
 
 	// Public indicates this endpoint requires no authentication.
 	Public bool `yaml:"public,omitempty"`
+}
+
+// FileWatchersConfig configures file system watchers.
+type FileWatchersConfig struct {
+	// Enabled controls whether file watchers are active.
+	Enabled bool `yaml:"enabled"`
+
+	// Watchers defines the configured file watchers.
+	Watchers []FileWatcherEntry `yaml:"watchers,omitempty"`
+}
+
+// FileWatcherEntry defines a file system watcher.
+type FileWatcherEntry struct {
+	// Name is the unique watcher identifier.
+	Name string `yaml:"name"`
+
+	// Workflow is the workflow file to execute when events occur.
+	Workflow string `yaml:"workflow"`
+
+	// Paths are the filesystem paths to watch.
+	Paths []string `yaml:"paths"`
+
+	// IncludePatterns are glob patterns for files to include (optional).
+	IncludePatterns []string `yaml:"include_patterns,omitempty"`
+
+	// ExcludePatterns are glob patterns for files to exclude (optional).
+	ExcludePatterns []string `yaml:"exclude_patterns,omitempty"`
+
+	// Events are the event types to watch (created, modified, deleted, renamed).
+	// Defaults to ["created"] if not specified.
+	Events []string `yaml:"events,omitempty"`
+
+	// DebounceWindow is the duration to wait for additional events (e.g., "1s", "500ms").
+	DebounceWindow string `yaml:"debounce_window,omitempty"`
+
+	// BatchMode enables batching of events during debounce window.
+	BatchMode bool `yaml:"batch_mode,omitempty"`
+
+	// MaxTriggersPerMinute limits the rate of workflow triggers (0 = unlimited).
+	MaxTriggersPerMinute int `yaml:"max_triggers_per_minute,omitempty"`
+
+	// Inputs are default inputs passed to the workflow.
+	Inputs map[string]any `yaml:"inputs,omitempty"`
+
+	// Enabled controls if this watcher is active.
+	Enabled bool `yaml:"enabled"`
 }
 
 // ObservabilityConfig configures tracing and observability.

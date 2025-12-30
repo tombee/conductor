@@ -44,6 +44,9 @@ type ScanResult struct {
 	// ScheduleTriggers are all schedule triggers found
 	ScheduleTriggers []WorkflowTrigger
 
+	// FileTriggers are all file watcher triggers found
+	FileTriggers []WorkflowTrigger
+
 	// Errors are any errors encountered while scanning
 	Errors []error
 }
@@ -65,6 +68,7 @@ func (s *Scanner) Scan() (*ScanResult, error) {
 	result := &ScanResult{
 		WebhookTriggers:  make([]WorkflowTrigger, 0),
 		ScheduleTriggers: make([]WorkflowTrigger, 0),
+		FileTriggers:     make([]WorkflowTrigger, 0),
 		Errors:           make([]error, 0),
 	}
 
@@ -100,6 +104,8 @@ func (s *Scanner) Scan() (*ScanResult, error) {
 				result.WebhookTriggers = append(result.WebhookTriggers, t)
 			case workflow.TriggerTypeSchedule:
 				result.ScheduleTriggers = append(result.ScheduleTriggers, t)
+			case workflow.TriggerTypeFile:
+				result.FileTriggers = append(result.FileTriggers, t)
 			}
 		}
 
@@ -152,6 +158,23 @@ func (s *Scanner) scanWorkflow(path string) ([]WorkflowTrigger, error) {
 			Trigger: workflow.TriggerDefinition{
 				Type:     workflow.TriggerTypeSchedule,
 				Schedule: def.Trigger.Schedule,
+			},
+		})
+	}
+
+	// Convert file listener to trigger
+	if def.Trigger.File != nil {
+		// Validate file trigger configuration
+		if err := workflow.ValidateFileTrigger(def.Trigger.File); err != nil {
+			return nil, fmt.Errorf("invalid file trigger: %w", err)
+		}
+
+		triggers = append(triggers, WorkflowTrigger{
+			WorkflowPath: path,
+			WorkflowName: def.Name,
+			Trigger: workflow.TriggerDefinition{
+				Type: workflow.TriggerTypeFile,
+				File: def.Trigger.File,
 			},
 		})
 	}

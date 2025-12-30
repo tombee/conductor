@@ -405,6 +405,7 @@ func TestScanResult_Fields(t *testing.T) {
 	result := &ScanResult{
 		WebhookTriggers:  make([]WorkflowTrigger, 0),
 		ScheduleTriggers: make([]WorkflowTrigger, 0),
+		FileTriggers:     make([]WorkflowTrigger, 0),
 		Errors:           make([]error, 0),
 	}
 
@@ -414,7 +415,82 @@ func TestScanResult_Fields(t *testing.T) {
 	if result.ScheduleTriggers == nil {
 		t.Error("ScheduleTriggers should not be nil")
 	}
+	if result.FileTriggers == nil {
+		t.Error("FileTriggers should not be nil")
+	}
 	if result.Errors == nil {
 		t.Error("Errors should not be nil")
+	}
+}
+
+func TestScanner_Scan_WorkflowWithFileTrigger(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a workflow with a file trigger
+	workflowContent := `
+name: file-watcher
+description: Handles file events
+
+listen:
+  file:
+    paths:
+      - /tmp/watch
+    events:
+      - created
+      - modified
+    include_patterns:
+      - "*.txt"
+    exclude_patterns:
+      - "*.log"
+    debounce: 500ms
+    batch_mode: true
+    max_triggers_per_minute: 60
+
+steps:
+  - id: process
+    type: llm
+    prompt: "Process file: {{.trigger.file.path}}"
+`
+	err := os.WriteFile(filepath.Join(tmpDir, "file-watcher.yaml"), []byte(workflowContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write workflow: %v", err)
+	}
+
+	s := NewScanner(tmpDir)
+	result, err := s.Scan()
+	if err != nil {
+		t.Fatalf("Scan() error = %v", err)
+	}
+
+	if len(result.FileTriggers) != 1 {
+		t.Errorf("FileTriggers = %d, want 1", len(result.FileTriggers))
+	}
+	if len(result.WebhookTriggers) != 0 {
+		t.Errorf("WebhookTriggers = %d, want 0", len(result.WebhookTriggers))
+	}
+	if len(result.ScheduleTriggers) != 0 {
+		t.Errorf("ScheduleTriggers = %d, want 0", len(result.ScheduleTriggers))
+	}
+
+	if len(result.FileTriggers) > 0 {
+		trigger := result.FileTriggers[0]
+		if trigger.WorkflowName != "file-watcher" {
+			t.Errorf("WorkflowName = %v, want file-watcher", trigger.WorkflowName)
+		}
+		if trigger.Trigger.File == nil {
+			t.Fatal("File trigger is nil")
+		}
+		if len(trigger.Trigger.File.Paths) != 1 || trigger.Trigger.File.Paths[0] != "/tmp/watch" {
+			t.Errorf("Paths = %v, want [/tmp/watch]", trigger.Trigger.File.Paths)
+		}
+		if trigger.Trigger.File.Debounce != "500ms" {
+			t.Errorf("Debounce = %v, want 500ms", trigger.Trigger.File.Debounce)
+		}
+		if !trigger.Trigger.File.BatchMode {
+			t.Error("BatchMode should be true")
+		}
+		if trigger.Trigger.File.MaxTriggersPerMinute != 60 {
+			t.Errorf("MaxTriggersPerMinute = %d, want 60", trigger.Trigger.File.MaxTriggersPerMinute)
+		}
 	}
 }
