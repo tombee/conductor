@@ -57,9 +57,6 @@ type Definition struct {
 	// Integrations define declarative HTTP/SSH integrations for external services
 	Integrations map[string]IntegrationDefinition `yaml:"integrations,omitempty" json:"integrations,omitempty"`
 
-	// CostLimits define cost constraints at the workflow level
-	CostLimits *CostLimits `yaml:"cost_limits,omitempty" json:"cost_limits,omitempty"`
-
 	// Permissions define access control at the workflow level (SPEC-141)
 	// Step-level permissions are intersected with these (most restrictive wins)
 	Permissions *PermissionDefinition `yaml:"permissions,omitempty" json:"permissions,omitempty"`
@@ -238,6 +235,11 @@ type StepDefinition struct {
 	// Only valid for type: integration steps when using builtin actions
 	Action string `yaml:"action,omitempty" json:"action,omitempty"`
 
+	// Workflow specifies the path to a sub-workflow YAML file to invoke
+	// Only valid for type: workflow steps
+	// Path must be relative to the parent workflow file (e.g., "./helpers/util.yaml")
+	Workflow string `yaml:"workflow,omitempty" json:"workflow,omitempty"`
+
 	// Operation specifies the operation to invoke on the action or integration
 	// Only valid for type: integration steps
 	Operation string `yaml:"operation,omitempty" json:"operation,omitempty"`
@@ -254,14 +256,8 @@ type StepDefinition struct {
 	// Retry configures retry behavior for this step
 	Retry *RetryDefinition `yaml:"retry,omitempty" json:"retry,omitempty"`
 
-	// MaxCost sets the maximum cost for this step in USD
-	MaxCost *float64 `yaml:"max_cost,omitempty" json:"max_cost,omitempty"`
-
 	// MaxTokens sets the maximum token count for this step
 	MaxTokens *int `yaml:"max_tokens,omitempty" json:"max_tokens,omitempty"`
-
-	// OnLimit specifies what to do when cost limits are exceeded
-	OnLimit LimitBehavior `yaml:"on_limit,omitempty" json:"on_limit,omitempty"`
 
 	// Steps contains nested steps for parallel execution (type: parallel)
 	// Each nested step executes concurrently and results are aggregated
@@ -316,6 +312,9 @@ const (
 	// StepTypeLoop executes nested steps repeatedly until a condition is met
 	// or a maximum iteration count is reached
 	StepTypeLoop StepType = "loop"
+
+	// StepTypeWorkflow invokes another workflow file as a sub-workflow
+	StepTypeWorkflow StepType = "workflow"
 )
 
 // ModelTier represents the model capability tier for LLM steps.
@@ -918,35 +917,6 @@ func validateToolPattern(pattern string) error {
 	return nil
 }
 
-// CostLimits defines cost constraints for a workflow or step.
-type CostLimits struct {
-	// MaxCost is the maximum total cost in USD
-	MaxCost *float64 `yaml:"max_cost,omitempty" json:"max_cost,omitempty"`
-
-	// MaxTokens is the maximum total token count
-	MaxTokens *int `yaml:"max_tokens,omitempty" json:"max_tokens,omitempty"`
-
-	// PerStep defines cost limits for individual steps
-	PerStep *CostLimits `yaml:"per_step,omitempty" json:"per_step,omitempty"`
-
-	// OnLimit specifies what to do when limits are exceeded
-	OnLimit LimitBehavior `yaml:"on_limit,omitempty" json:"on_limit,omitempty"`
-}
-
-// LimitBehavior defines what happens when cost limits are exceeded.
-type LimitBehavior string
-
-const (
-	// LimitBehaviorAbort stops execution and returns an error
-	LimitBehaviorAbort LimitBehavior = "abort"
-
-	// LimitBehaviorWarn logs a warning but continues execution
-	LimitBehaviorWarn LimitBehavior = "warn"
-
-	// LimitBehaviorContinue continues execution silently
-	LimitBehaviorContinue LimitBehavior = "continue"
-)
-
 // RequirementsDefinition declares abstract service dependencies for a workflow.
 // This enables portable workflow definitions that don't embed credentials.
 // Runtime bindings are provided by execution profiles.
@@ -1445,6 +1415,7 @@ func (s *StepDefinition) Validate() error {
 		StepTypeParallel:    true,
 		StepTypeIntegration: true,
 		StepTypeLoop:        true,
+		StepTypeWorkflow:    true,
 	}
 	if !validTypes[s.Type] {
 		return fmt.Errorf("invalid step type: %s", s.Type)
@@ -1495,6 +1466,17 @@ func (s *StepDefinition) Validate() error {
 			}
 		}
 		// Format validation for integration field happens at workflow level where we can check against defined integrations
+	}
+
+	// Validate workflow field for workflow steps
+	if s.Type == StepTypeWorkflow {
+		if s.Workflow == "" {
+			return fmt.Errorf("workflow step requires 'workflow' field with path to sub-workflow file")
+		}
+		// Workflow steps cannot have prompt field
+		if s.Prompt != "" {
+			return fmt.Errorf("workflow step cannot have 'prompt' field (use 'inputs' to pass data)")
+		}
 	}
 
 	// Validate error handling

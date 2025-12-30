@@ -602,33 +602,31 @@ Only add resources to allowed lists if you trust them. Security restrictions pro
 :::
 
 
-## Cost Limit Errors
+## Token Limit Errors
 
-Cost limit errors occur when workflow execution exceeds configured spending limits.
+Token limit errors occur when workflow execution exceeds configured token limits.
 
-### Cost Limit Exceeded Error
+### Token Limit Exceeded Error
 
 ```json
 {
-  "error": "CostLimitExceededError",
-  "scope": "workflow",
-  "reason": "Workflow cost $5.23 exceeds limit $5.00",
-  "actual": 5.23,
-  "limit": 5.00
+  "error": "TokenLimitExceededError",
+  "message": "token limit exceeded: 50000 > 10000 tokens",
+  "actual": 50000,
+  "limit": 10000
 }
 ```
 
 **Resolution steps:**
 
-1. Review cost breakdown: `conductor costs show --workflow-id <id>`
-2. Increase limit in workflow or config:
-   ```yaml
-   limits:
-     max_cost_per_workflow: 10.00
+1. Review token usage: `conductor runs show <run-id>`
+2. Increase limit in SDK configuration:
+   ```go
+   sdk.New(sdk.WithTokenLimit(100000))
    ```
 3. Optimize prompts to reduce token usage
-4. Use cheaper model tiers for non-critical steps
-5. Implement cost controls per step
+4. Use more efficient model tiers for non-critical steps
+5. Split workflows into smaller chunks
 
 ## Troubleshooting Tips
 

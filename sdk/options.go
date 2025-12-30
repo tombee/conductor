@@ -124,22 +124,22 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
-// WithCostLimit sets a maximum cost limit for workflow execution.
+// WithTokenLimit sets a maximum token limit for workflow execution.
 // The limit is enforced per workflow run. Set to 0 for no limit.
-// Can be overridden per-run with WithRunCostLimit().
+// Can be overridden per-run with WithRunTokenLimit().
 //
 // Example:
 //
 //	s, err := sdk.New(
 //		sdk.WithAnthropicProvider(apiKey),
-//		sdk.WithCostLimit(10.0), // $10 max per workflow
+//		sdk.WithTokenLimit(100000), // 100k tokens max per workflow
 //	)
-func WithCostLimit(maxCost float64) Option {
+func WithTokenLimit(maxTokens int) Option {
 	return func(s *SDK) error {
-		if maxCost < 0 {
-			return fmt.Errorf("cost limit cannot be negative: %f", maxCost)
+		if maxTokens < 0 {
+			return fmt.Errorf("token limit cannot be negative: %d", maxTokens)
 		}
-		s.costLimit = maxCost
+		s.tokenLimit = maxTokens
 		return nil
 	}
 }

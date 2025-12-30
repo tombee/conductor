@@ -21,7 +21,7 @@ const (
 	EventLLMToolCall       EventType = "llm.tool_call"   // Tool invocation
 	EventLLMToolResult     EventType = "llm.tool_result" // Tool result
 	EventAgentIteration    EventType = "agent.iteration" // Agent loop iteration
-	EventCostUpdate        EventType = "cost.update"     // Cost tracking update
+	EventTokenUpdate       EventType = "token.update"    // Token usage update
 )
 
 // Event represents a workflow event.

@@ -26,8 +26,8 @@ type SDK struct {
 	// Logger for structured logging
 	logger *slog.Logger
 
-	// Cost limit for workflow execution (0 = no limit)
-	costLimit float64
+	// Token limit for workflow execution (0 = no limit)
+	tokenLimit int
 
 	// Store for workflow state persistence
 	store Store
@@ -57,7 +57,7 @@ type SDK struct {
 //	s, err := sdk.New(
 //		sdk.WithAnthropicProvider(os.Getenv("ANTHROPIC_API_KEY")),
 //		sdk.WithLogger(slog.Default()),
-//		sdk.WithCostLimit(10.0),
+//		sdk.WithTokenLimit(100000),
 //	)
 //	if err != nil {
 //		return err
@@ -68,7 +68,7 @@ func New(opts ...Option) (*SDK, error) {
 		providers:     llm.NewRegistry(),
 		toolRegistry:  tools.NewRegistry(),
 		logger:        slog.Default(),
-		costLimit:     0, // No limit by default
+		tokenLimit:    0, // No limit by default
 		store:         newInMemoryStore(),
 		eventHandlers: make(map[EventType][]EventHandler),
 		mcpServers:    make(map[string]MCPConfig),

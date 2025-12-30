@@ -5,10 +5,10 @@ type RunOption func(*runConfig)
 
 // runConfig holds per-run configuration.
 type runConfig struct {
-	credentials  map[string]string
-	mcpServers   []string
-	costLimit    float64
-	hasCostLimit bool
+	credentials   map[string]string
+	mcpServers    []string
+	tokenLimit    int
+	hasTokenLimit bool
 }
 
 // WithCredentials provides credentials for integrations.
@@ -77,16 +77,16 @@ func WithMCPServers(names ...string) RunOption {
 	}
 }
 
-// WithRunCostLimit overrides the SDK-level cost limit for this run.
+// WithRunTokenLimit overrides the SDK-level token limit for this run.
 //
 // Example:
 //
 //	result, err := s.Run(ctx, wf, inputs,
-//		sdk.WithRunCostLimit(5.0), // $5 max for this run
+//		sdk.WithRunTokenLimit(50000), // 50k tokens max for this run
 //	)
-func WithRunCostLimit(maxCost float64) RunOption {
+func WithRunTokenLimit(maxTokens int) RunOption {
 	return func(rc *runConfig) {
-		rc.costLimit = maxCost
-		rc.hasCostLimit = true
+		rc.tokenLimit = maxTokens
+		rc.hasTokenLimit = true
 	}
 }

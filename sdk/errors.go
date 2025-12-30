@@ -5,14 +5,14 @@ import (
 	"strings"
 )
 
-// CostLimitExceededError indicates workflow execution exceeded the cost budget.
-type CostLimitExceededError struct {
-	Limit  float64
-	Actual float64
+// TokenLimitExceededError indicates workflow execution exceeded the token limit.
+type TokenLimitExceededError struct {
+	Limit  int
+	Actual int
 }
 
-func (e *CostLimitExceededError) Error() string {
-	return fmt.Sprintf("cost limit exceeded: $%.4f > $%.4f", e.Actual, e.Limit)
+func (e *TokenLimitExceededError) Error() string {
+	return fmt.Sprintf("token limit exceeded: %d > %d tokens", e.Actual, e.Limit)
 }
 
 // ValidationError indicates the workflow definition is invalid.

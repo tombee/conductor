@@ -96,15 +96,15 @@ result, err := s.Run(ctx, wf, inputs)
 if err != nil {
     var validErr *sdk.ValidationError
     var stepErr *sdk.StepExecutionError
-    var costErr *sdk.CostLimitExceededError
+    var tokenErr *sdk.TokenLimitExceededError
 
     switch {
     case errors.As(err, &validErr):
         fmt.Printf("Invalid input %s: %s\n", validErr.Field, validErr.Message)
     case errors.As(err, &stepErr):
         fmt.Printf("Step %s failed: %s\n", stepErr.StepID, stepErr.Cause)
-    case errors.As(err, &costErr):
-        fmt.Printf("Cost limit: spent $%.2f\n", costErr.Spent)
+    case errors.As(err, &tokenErr):
+        fmt.Printf("Token limit exceeded: %d > %d tokens\n", tokenErr.Actual, tokenErr.Limit)
     default:
         return fmt.Errorf("workflow failed: %w", err)
     }

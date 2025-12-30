@@ -25,16 +25,16 @@ func TestNew(t *testing.T) {
 			wantErr: true, // logger cannot be nil
 		},
 		{
-			name: "with cost limit",
+			name: "with token limit",
 			opts: []Option{
-				WithCostLimit(10.0),
+				WithTokenLimit(100000),
 			},
 			wantErr: false,
 		},
 		{
-			name: "negative cost limit",
+			name: "negative token limit",
 			opts: []Option{
-				WithCostLimit(-1.0),
+				WithTokenLimit(-1),
 			},
 			wantErr: true,
 		},
@@ -236,16 +236,16 @@ func TestValidateInputs(t *testing.T) {
 	}
 }
 
-func TestRun_CostLimitExceeded(t *testing.T) {
+func TestRun_TokenLimitExceeded(t *testing.T) {
 	sdk, err := New(
-		WithCostLimit(0.001), // Very low limit to trigger error
+		WithTokenLimit(10), // Very low limit to trigger error
 	)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
 	defer sdk.Close()
 
-	// Create a workflow with multiple steps that would exceed cost limit
+	// Create a workflow with multiple steps that would exceed token limit
 	wf, err := sdk.NewWorkflow("expensive-workflow").
 		Input("text", TypeString).
 		Step("step1").LLM().
@@ -263,9 +263,9 @@ func TestRun_CostLimitExceeded(t *testing.T) {
 		t.Fatalf("Build() error = %v", err)
 	}
 
-	// Note: This test validates the cost limit enforcement structure
-	// Actual cost tracking requires LLM provider integration
-	// For now, we verify the cost limit parameter is passed through correctly
+	// Note: This test validates the token limit enforcement structure
+	// Actual token tracking requires LLM provider integration
+	// For now, we verify the token limit parameter is passed through correctly
 	_ = wf
 }
 

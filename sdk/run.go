@@ -24,7 +24,7 @@ import (
 //	if err != nil {
 //		return err
 //	}
-//	fmt.Printf("Result: %v\nCost: $%.4f\n", result.Output, result.Cost.EstimatedCost)
+//	fmt.Printf("Result: %v\nTokens: %d\n", result.Output, result.Usage.TotalTokens)
 func (s *SDK) Run(ctx context.Context, wf *Workflow, inputs map[string]any, opts ...RunOption) (*Result, error) {
 	if s.closed {
 		return nil, fmt.Errorf("SDK is closed")
@@ -43,10 +43,10 @@ func (s *SDK) Run(ctx context.Context, wf *Workflow, inputs map[string]any, opts
 		opt(cfg)
 	}
 
-	// Determine cost limit for this run
-	costLimit := s.costLimit
-	if cfg.hasCostLimit {
-		costLimit = cfg.costLimit
+	// Determine token limit for this run
+	tokenLimit := s.tokenLimit
+	if cfg.hasTokenLimit {
+		tokenLimit = cfg.tokenLimit
 	}
 
 	// Validate inputs
@@ -84,15 +84,15 @@ func (s *SDK) Run(ctx context.Context, wf *Workflow, inputs map[string]any, opts
 		WorkflowID: workflowID,
 		Success:    false,
 		Steps:      make(map[string]*StepResult),
-		Cost: CostSummary{
-			ByStep: make(map[string]float64),
+		Usage: UsageStats{
+			ByStep: make(map[string]int),
 		},
 	}
 
 	startTime := time.Now()
 
-	// Execute the workflow with cost limit enforcement
-	err := s.executeWorkflow(ctx, wf, inputs, cfg, result, costLimit)
+	// Execute the workflow with token limit enforcement
+	err := s.executeWorkflow(ctx, wf, inputs, cfg, result, tokenLimit)
 
 	result.Duration = time.Since(startTime)
 
@@ -191,8 +191,8 @@ func (s *SDK) RunAgent(ctx context.Context, systemPrompt, userPrompt string) (*A
 	return result, nil
 }
 
-// executeWorkflow executes the workflow steps with cost tracking and enforcement
-func (s *SDK) executeWorkflow(ctx context.Context, wf *Workflow, inputs map[string]any, cfg *runConfig, result *Result, costLimit float64) error {
+// executeWorkflow executes the workflow steps with token tracking and enforcement
+func (s *SDK) executeWorkflow(ctx context.Context, wf *Workflow, inputs map[string]any, cfg *runConfig, result *Result, tokenLimit int) error {
 	// Build workflow context with inputs and step outputs
 	workflowContext := make(map[string]any)
 	workflowContext["inputs"] = inputs
@@ -208,11 +208,11 @@ func (s *SDK) executeWorkflow(ctx context.Context, wf *Workflow, inputs map[stri
 		default:
 		}
 
-		// Check cost limit before executing next step
-		if costLimit > 0 && result.Cost.EstimatedCost > costLimit {
-			return &CostLimitExceededError{
-				Limit:  costLimit,
-				Actual: result.Cost.EstimatedCost,
+		// Check token limit before executing next step
+		if tokenLimit > 0 && result.Usage.TotalTokens > tokenLimit {
+			return &TokenLimitExceededError{
+				Limit:  tokenLimit,
+				Actual: result.Usage.TotalTokens,
 			}
 		}
 
@@ -272,29 +272,25 @@ func (s *SDK) executeWorkflow(ctx context.Context, wf *Workflow, inputs map[stri
 			"output": stepResult.Output,
 		}
 
-		// Track costs from step execution (when available)
-		// Note: Token tracking will be added to pkg/workflow.StepResult in a future update
-		// For now, emit cost update event with zero cost for non-LLM steps
-		stepCost := 0.0
-		if stepDef.stepType == "llm" || stepDef.stepType == "agent" {
-			// Cost tracking will be fully implemented when pkg/workflow.StepResult
-			// includes token usage information
-			stepCost = 0.0 // Placeholder for now
-		}
+		// Track tokens from step execution
+		stepTokens := sdkStepResult.Tokens.TotalTokens
+		result.Usage.ByStep[stepDef.id] = stepTokens
+		result.Usage.TotalTokens += stepTokens
+		result.Usage.InputTokens += sdkStepResult.Tokens.PromptTokens
+		result.Usage.OutputTokens += sdkStepResult.Tokens.CompletionTokens
+		result.Usage.CacheReadTokens += sdkStepResult.Tokens.CacheReadTokens
+		result.Usage.CacheWriteTokens += sdkStepResult.Tokens.CacheCreationTokens
 
-		result.Cost.ByStep[stepDef.id] = stepCost
-		result.Cost.EstimatedCost += stepCost
-
-		// Emit cost update event
+		// Emit token update event
 		s.emitEvent(ctx, &Event{
-			Type:       EventCostUpdate,
+			Type:       EventTokenUpdate,
 			Timestamp:  time.Now(),
 			WorkflowID: wf.name,
 			StepID:     stepDef.id,
 			Data: map[string]any{
-				"step_cost":      stepCost,
-				"total_cost":     result.Cost.EstimatedCost,
-				"cost_remaining": costLimit - result.Cost.EstimatedCost,
+				"step_tokens":       stepTokens,
+				"total_tokens":      result.Usage.TotalTokens,
+				"tokens_remaining":  tokenLimit - result.Usage.TotalTokens,
 			},
 		})
 

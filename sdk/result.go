@@ -11,7 +11,7 @@ type Result struct {
 	Output     map[string]any         // Final workflow output
 	Steps      map[string]*StepResult // Per-step results
 	Duration   time.Duration
-	Cost       CostSummary
+	Usage      UsageStats
 	Error      error
 }
 
@@ -36,15 +36,14 @@ const (
 	StepStatusSkipped  StepStatus = "skipped"
 )
 
-// CostSummary tracks execution costs.
-type CostSummary struct {
+// UsageStats tracks token usage across workflow execution.
+type UsageStats struct {
 	TotalTokens      int
 	InputTokens      int
 	OutputTokens     int
 	CacheReadTokens  int
 	CacheWriteTokens int
-	EstimatedCost    float64 // USD
-	ByStep           map[string]float64
+	ByStep           map[string]int // Token usage per step
 }
 
 // AgentResult contains the outcome of agent execution.
