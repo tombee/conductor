@@ -27,6 +27,7 @@ import (
 	"github.com/tombee/conductor/internal/commands/diagnostics"
 	"github.com/tombee/conductor/internal/commands/docs"
 	"github.com/tombee/conductor/internal/commands/endpoint"
+	"github.com/tombee/conductor/internal/commands/integrations"
 	"github.com/tombee/conductor/internal/commands/management"
 	"github.com/tombee/conductor/internal/commands/mcp"
 	"github.com/tombee/conductor/internal/commands/mcpserver"
@@ -128,6 +129,7 @@ func main() {
 
 	// Configuration and security
 	rootCmd.AddCommand(config.NewConfigCommand())
+	rootCmd.AddCommand(integrations.NewCommand())
 	rootCmd.AddCommand(secrets.NewCommand())
 	rootCmd.AddCommand(security.NewCommand())
 	rootCmd.AddCommand(override.NewCommand())
