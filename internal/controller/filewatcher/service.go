@@ -234,6 +234,9 @@ func (s *Service) AddWatcher(config WatchConfig) error {
 
 	s.watchers[config.Name] = entry
 
+	// Update active watchers metric
+	fileWatcherActive.Set(float64(len(s.watchers)))
+
 	// Start event handler
 	go s.handleEvents(entry)
 
@@ -269,6 +272,10 @@ func (s *Service) RemoveWatcher(name string) error {
 	}
 
 	delete(s.watchers, name)
+
+	// Update active watchers metric
+	fileWatcherActive.Set(float64(len(s.watchers)))
+
 	s.logger.Info("file watcher removed", "name", name)
 	return nil
 }
@@ -285,6 +292,35 @@ func (s *Service) ListWatchers() []WatchConfig {
 	return configs
 }
 
+// WatcherStatus represents the status of a file watcher.
+type WatcherStatus struct {
+	Name      string   `json:"name"`
+	Paths     []string `json:"paths"`
+	Events    []string `json:"events"`
+	Recursive bool     `json:"recursive"`
+	MaxDepth  int      `json:"max_depth,omitempty"`
+	Workflow  string   `json:"workflow"`
+}
+
+// Status returns the status of all file watchers.
+func (s *Service) Status() []WatcherStatus {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	status := make([]WatcherStatus, 0, len(s.watchers))
+	for _, entry := range s.watchers {
+		status = append(status, WatcherStatus{
+			Name:      entry.config.Name,
+			Paths:     entry.config.Paths,
+			Events:    entry.config.Events,
+			Recursive: entry.config.Recursive,
+			MaxDepth:  entry.config.MaxDepth,
+			Workflow:  entry.config.Workflow,
+		})
+	}
+	return status
+}
+
 // handleEvents processes file events and triggers workflows.
 func (s *Service) handleEvents(entry *watcherEntry) {
 	config := entry.config
@@ -298,9 +334,13 @@ func (s *Service) handleEvents(entry *watcherEntry) {
 
 	// Process events from watcher
 	for ctx := range entry.watcher.Events() {
+		// Record event
+		recordEvent(config.Name, ctx.Event)
+
 		// Re-resolve symlinks for TOCTOU safety (prevent symlink attack between watch and trigger)
 		resolvedPath, err := ResolveSymlink(ctx.Path)
 		if err != nil {
+			recordError(config.Name, "symlink_resolution")
 			s.logger.Warn("failed to resolve symlink, skipping event",
 				"path", ctx.Path,
 				"watcher", config.Name,
@@ -313,6 +353,7 @@ func (s *Service) handleEvents(entry *watcherEntry) {
 		// Apply pattern matching if configured
 		if entry.patternMatcher != nil {
 			if !entry.patternMatcher.Match(ctx.Path) {
+				recordPatternExcluded(config.Name)
 				s.logger.Debug("file excluded by pattern",
 					"path", ctx.Path,
 					"watcher", config.Name)
@@ -341,12 +382,16 @@ func (s *Service) triggerWorkflows(entry *watcherEntry, events []*Context) {
 	// Apply rate limiting if configured
 	if entry.rateLimiter != nil {
 		if !entry.rateLimiter.Allow() {
+			recordRateLimited(config.Name)
 			s.logger.Warn("rate limit exceeded, dropping events",
 				"watcher", config.Name,
 				"count", len(events))
 			return
 		}
 	}
+
+	// Record trigger
+	recordTrigger(config.Name)
 
 	// Resolve workflow path
 	workflowPath := config.Workflow
@@ -357,6 +402,7 @@ func (s *Service) triggerWorkflows(entry *watcherEntry, events []*Context) {
 	// Read workflow file
 	workflowYAML, err := os.ReadFile(workflowPath)
 	if err != nil {
+		recordError(config.Name, "workflow_read")
 		s.logger.Error("failed to read workflow file",
 			"workflow", config.Workflow,
 			"path", workflowPath,
@@ -409,6 +455,7 @@ func (s *Service) triggerWorkflows(entry *watcherEntry, events []*Context) {
 		Inputs:       inputs,
 	})
 	if err != nil {
+		recordError(config.Name, "workflow_submit")
 		s.logger.Error("failed to submit workflow run",
 			"workflow", config.Workflow,
 			"error", err)
