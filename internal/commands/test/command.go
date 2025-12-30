@@ -15,6 +15,9 @@
 package test
 
 import (
+	"errors"
+	"os"
+
 	"github.com/spf13/cobra"
 	"github.com/tombee/conductor/internal/commands/shared"
 )
@@ -80,7 +83,12 @@ Examples:
 				JSON:       shared.GetJSON(),
 			}
 
-			return runTests(opts)
+			err := runTests(opts)
+			if errors.Is(err, ErrTestsFailed) {
+				// Test failures already printed, just exit with code 1
+				os.Exit(1)
+			}
+			return err
 		},
 	}
 

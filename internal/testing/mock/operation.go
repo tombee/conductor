@@ -59,9 +59,9 @@ func (m *OperationRegistry) Execute(ctx context.Context, reference string, input
 	// Route to appropriate mock handler based on type
 	switch {
 	case operationType == "http":
-		return m.executeHTTPMock(stepID, operationName, inputs)
+		return m.executeHTTPMock(ctx, stepID, operationName, inputs)
 	case isIntegrationType(operationType):
-		return m.executeIntegrationMock(stepID, operationType, operationName, inputs)
+		return m.executeIntegrationMock(ctx, stepID, operationType, operationName, inputs)
 	default:
 		// Unknown operation type - try real registry if available
 		if m.realRegistry != nil {
@@ -73,14 +73,14 @@ func (m *OperationRegistry) Execute(ctx context.Context, reference string, input
 }
 
 // executeHTTPMock executes a mock HTTP action.
-func (m *OperationRegistry) executeHTTPMock(stepID, operation string, inputs map[string]interface{}) (workflow.OperationResult, error) {
+func (m *OperationRegistry) executeHTTPMock(ctx context.Context, stepID, operation string, inputs map[string]interface{}) (workflow.OperationResult, error) {
 	// Load HTTP fixture
 	fixtureData, err := m.fixtureLoader.LoadHTTPFixture(stepID)
 	if err != nil {
 		// If no fixture found and we have a real registry, fall back to it
 		if m.realRegistry != nil {
 			m.logger.Debug("[MOCK] No HTTP fixture found, using real registry", "step_id", stepID, "error", err)
-			return m.realRegistry.Execute(context.Background(), "http."+operation, inputs)
+			return m.realRegistry.Execute(ctx, "http."+operation, inputs)
 		}
 		return nil, fmt.Errorf("mock mode: %w", err)
 	}
@@ -105,14 +105,14 @@ func (m *OperationRegistry) executeHTTPMock(stepID, operation string, inputs map
 }
 
 // executeIntegrationMock executes a mock integration.
-func (m *OperationRegistry) executeIntegrationMock(stepID, integrationType, operation string, inputs map[string]interface{}) (workflow.OperationResult, error) {
+func (m *OperationRegistry) executeIntegrationMock(ctx context.Context, stepID, integrationType, operation string, inputs map[string]interface{}) (workflow.OperationResult, error) {
 	// Load integration fixture
 	fixtureData, err := m.fixtureLoader.LoadIntegrationFixture(stepID, integrationType)
 	if err != nil {
 		// If no fixture found and we have a real registry, fall back to it
 		if m.realRegistry != nil {
 			m.logger.Debug("[MOCK] No integration fixture found, using real registry", "step_id", stepID, "type", integrationType, "error", err)
-			return m.realRegistry.Execute(context.Background(), integrationType+"."+operation, inputs)
+			return m.realRegistry.Execute(ctx, integrationType+"."+operation, inputs)
 		}
 		return nil, fmt.Errorf("mock mode: %w", err)
 	}
@@ -270,10 +270,13 @@ func matchPattern(pattern, value string) bool {
 	return pattern == value
 }
 
-// isIntegrationType checks if the operation type is an integration.
+// KnownIntegrations is the list of integration types that can be mocked.
+// Add new integrations here when they are added to the platform.
+var KnownIntegrations = []string{"github", "slack", "jira", "linear", "discord", "jenkins"}
+
+// isIntegrationType checks if the operation type is a known integration.
 func isIntegrationType(opType string) bool {
-	integrations := []string{"github", "slack", "jira", "linear"}
-	for _, integration := range integrations {
+	for _, integration := range KnownIntegrations {
 		if opType == integration {
 			return true
 		}
