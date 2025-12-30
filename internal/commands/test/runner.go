@@ -15,6 +15,7 @@
 package test
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -22,6 +23,9 @@ import (
 	"github.com/tombee/conductor/internal/testing/assert"
 	"github.com/tombee/conductor/pkg/workflow"
 )
+
+// ErrTestsFailed is returned when one or more tests fail.
+var ErrTestsFailed = errors.New("one or more tests failed")
 
 // runTests discovers and executes all tests
 func runTests(opts RunOptions) error {
@@ -66,9 +70,9 @@ func runTests(opts RunOptions) error {
 		return err
 	}
 
-	// Exit with appropriate code
+	// Return error if any tests failed
 	if summary.Failed > 0 || summary.Errors > 0 {
-		os.Exit(1)
+		return ErrTestsFailed
 	}
 
 	return nil
