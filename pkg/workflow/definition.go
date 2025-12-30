@@ -278,6 +278,10 @@ type StepDefinition struct {
 	// Only valid for type: parallel steps.
 	Foreach string `yaml:"foreach,omitempty" json:"foreach,omitempty"`
 
+	// Workflow specifies the path to a sub-workflow YAML file (relative to parent workflow)
+	// Only valid for type: workflow steps
+	Workflow string `yaml:"workflow,omitempty" json:"workflow,omitempty"`
+
 	// Permissions define access control at the step level (SPEC-141)
 	// Step-level permissions are intersected with workflow permissions (most restrictive wins)
 	Permissions *PermissionDefinition `yaml:"permissions,omitempty" json:"permissions,omitempty"`
@@ -298,6 +302,9 @@ const (
 
 	// StepTypeIntegration executes a declarative integration operation
 	StepTypeIntegration StepType = "integration"
+
+	// StepTypeWorkflow invokes another workflow file as a sub-workflow
+	StepTypeWorkflow StepType = "workflow"
 )
 
 // ModelTier represents the model capability tier for LLM steps.
@@ -1414,6 +1421,7 @@ func (s *StepDefinition) Validate() error {
 		StepTypeLLM:         true,
 		StepTypeParallel:    true,
 		StepTypeIntegration: true,
+		StepTypeWorkflow:    true,
 	}
 	if !validTypes[s.Type] {
 		return fmt.Errorf("invalid step type: %s", s.Type)
@@ -1464,6 +1472,23 @@ func (s *StepDefinition) Validate() error {
 			}
 		}
 		// Format validation for integration field happens at workflow level where we can check against defined integrations
+	}
+
+	// Validate workflow field for workflow steps
+	if s.Type == StepTypeWorkflow {
+		if s.Workflow == "" {
+			return fmt.Errorf("workflow step requires 'workflow' field with path to sub-workflow file")
+		}
+
+		// Workflow steps cannot have prompt field
+		if s.Prompt != "" {
+			return fmt.Errorf("workflow step cannot have 'prompt' field")
+		}
+
+		// Validate workflow path security at definition time
+		if err := ValidateWorkflowPath(s.Workflow); err != nil {
+			return fmt.Errorf("invalid workflow path: %w", err)
+		}
 	}
 
 	// Validate error handling

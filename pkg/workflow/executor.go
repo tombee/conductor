@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/tombee/conductor/pkg/errors"
 	"github.com/tombee/conductor/pkg/security"
 	"github.com/tombee/conductor/pkg/workflow/expression"
@@ -55,6 +57,10 @@ type StepResult struct {
 
 	// Attempts is the number of execution attempts (for retry logic)
 	Attempts int
+
+	// ChildTraceID is the trace ID of a sub-workflow execution (for observability)
+	// This field is only populated for type: workflow steps
+	ChildTraceID string
 }
 
 // DefaultParallelConcurrency is the default maximum number of concurrent parallel steps.
@@ -84,6 +90,18 @@ type Executor struct {
 
 	// securityProfile defines security restrictions for workflow execution
 	securityProfile *security.SecurityProfile
+
+	// workflowDir is the directory containing the current workflow file (for sub-workflow resolution)
+	workflowDir string
+
+	// subworkflowLoader loads sub-workflow definitions (lazily initialized)
+	subworkflowLoader SubworkflowLoader
+}
+
+// SubworkflowLoader defines the interface for loading sub-workflow definitions.
+type SubworkflowLoader interface {
+	// Load loads a sub-workflow definition from the given path relative to parentDir
+	Load(parentDir string, path string, ctx interface{}) (*Definition, error)
 }
 
 // ToolRegistry defines the interface for tool lookup and execution.
@@ -182,11 +200,19 @@ func (e *Executor) WithParallelConcurrency(max int) *Executor {
 // This allows the executor to be independent of the internal/operation package.
 type ActionRegistryFactory func(workflowDir string) (OperationRegistry, error)
 
+// SubworkflowLoaderFactory is a function that creates a SubworkflowLoader.
+// This allows the executor to be independent of the subworkflow package (avoiding import cycles).
+type SubworkflowLoaderFactory func() SubworkflowLoader
+
 var (
 	// defaultActionRegistryFactory is set by the operation package during init.
 	defaultActionRegistryFactory ActionRegistryFactory
+	// defaultSubworkflowLoaderFactory is set by the subworkflow package during init.
+	defaultSubworkflowLoaderFactory SubworkflowLoaderFactory
 	// factoryOnce ensures the factory is set exactly once for thread-safe initialization.
 	factoryOnce sync.Once
+	// loaderFactoryOnce ensures the loader factory is set exactly once for thread-safe initialization.
+	loaderFactoryOnce sync.Once
 )
 
 // SetDefaultActionRegistryFactory sets the factory used by WithWorkflowDir.
@@ -198,9 +224,21 @@ func SetDefaultActionRegistryFactory(factory ActionRegistryFactory) {
 	})
 }
 
+// SetDefaultSubworkflowLoaderFactory sets the factory used for creating subworkflow loaders.
+// This is called by the subworkflow package during initialization.
+// The factory can only be set once; subsequent calls are ignored.
+func SetDefaultSubworkflowLoaderFactory(factory SubworkflowLoaderFactory) {
+	loaderFactoryOnce.Do(func() {
+		defaultSubworkflowLoaderFactory = factory
+	})
+}
+
 // WithWorkflowDir sets the workflow directory and initializes the builtin action registry.
 // Actions like file.read and shell.run will resolve paths relative to this directory.
+// Also stores the directory for sub-workflow resolution.
 func (e *Executor) WithWorkflowDir(workflowDir string) *Executor {
+	e.workflowDir = workflowDir
+
 	if defaultActionRegistryFactory == nil {
 		e.logger.Warn("action registry factory not configured, actions will not be available")
 		return e
@@ -288,6 +326,15 @@ func (e *Executor) Execute(ctx context.Context, step *StepDefinition, workflowCo
 	result.CompletedAt = time.Now()
 	result.Duration = result.CompletedAt.Sub(result.StartedAt)
 
+	// Extract child_trace_id from output for sub-workflow steps
+	if step.Type == StepTypeWorkflow && result.Output != nil {
+		if childTraceID, ok := result.Output["_child_trace_id"].(string); ok {
+			result.ChildTraceID = childTraceID
+			// Remove internal metadata from output
+			delete(result.Output, "_child_trace_id")
+		}
+	}
+
 	if err != nil {
 		result.Status = StepStatusFailed
 		result.Error = err.Error()
@@ -328,11 +375,13 @@ func (e *Executor) executeStep(ctx context.Context, step *StepDefinition, workfl
 		return e.executeParallel(ctx, &resolvedStep, inputs, workflowContext)
 	case StepTypeIntegration:
 		return e.executeIntegration(ctx, &resolvedStep, inputs)
+	case StepTypeWorkflow:
+		return e.executeWorkflow(ctx, &resolvedStep, inputs, workflowContext)
 	default:
 		return nil, &errors.ValidationError{
 			Field:      "type",
 			Message:    fmt.Sprintf("unsupported step type: %s", step.Type),
-			Suggestion: "use one of: llm, condition, parallel, integration",
+			Suggestion: "use one of: llm, condition, parallel, integration, workflow",
 		}
 	}
 }
@@ -527,6 +576,214 @@ func stringContains(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// executeWorkflow executes a sub-workflow step.
+// It loads the sub-workflow definition, creates a new executor with strict input isolation,
+// executes the workflow, and maps outputs back to the parent context.
+func (e *Executor) executeWorkflow(ctx context.Context, step *StepDefinition, inputs map[string]interface{}, parentContext map[string]interface{}) (map[string]interface{}, error) {
+	if e.workflowDir == "" {
+		return nil, &errors.ConfigError{
+			Key:    "workflow_dir",
+			Reason: "workflow directory not configured for sub-workflow execution",
+		}
+	}
+
+	// Lazily initialize the subworkflow loader
+	if e.subworkflowLoader == nil {
+		if defaultSubworkflowLoaderFactory != nil {
+			e.subworkflowLoader = defaultSubworkflowLoaderFactory()
+		} else {
+			return nil, &errors.ConfigError{
+				Key:    "subworkflow_loader",
+				Reason: "subworkflow loader factory not configured",
+			}
+		}
+	}
+
+	// Generate a child trace ID for observability
+	childTraceID := uuid.New().String()
+
+	// Load the sub-workflow definition
+	e.logger.Info("loading sub-workflow",
+		"step_id", step.ID,
+		"workflow_path", step.Workflow,
+		"parent_dir", e.workflowDir,
+		"child_trace_id", childTraceID,
+	)
+
+	subDef, err := e.subworkflowLoader.Load(e.workflowDir, step.Workflow, nil)
+	if err != nil {
+		return nil, fmt.Errorf("sub-workflow %s: failed to load: %w", step.Workflow, err)
+	}
+
+	// Build the sub-workflow context with strict input isolation
+	// Only the declared inputs from the parent's inputs are visible
+	subContext, err := e.buildSubworkflowContext(subDef, inputs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build sub-workflow context: %w", err)
+	}
+
+	// Create a new executor for the sub-workflow
+	// This ensures complete isolation and independent state
+	subExecutor := NewExecutor(e.toolRegistry, e.llmProvider)
+	subExecutor.WithLogger(e.logger)
+	subExecutor.WithParallelConcurrency(cap(e.parallelSem))
+
+	// Set the sub-workflow's directory for nested sub-workflow resolution
+	subWorkflowDir := e.workflowDir
+	if step.Workflow != "." && step.Workflow != "./" {
+		// If the workflow is in a subdirectory, update the base directory
+		subWorkflowDir = filepath.Join(e.workflowDir, filepath.Dir(step.Workflow))
+	}
+	subExecutor.WithWorkflowDir(subWorkflowDir)
+
+	// Propagate security profile to sub-workflow
+	if e.securityProfile != nil {
+		subExecutor.WithSecurity(e.securityProfile)
+	}
+
+	// Propagate operation registry to sub-workflow
+	if e.operationRegistry != nil {
+		subExecutor.WithOperationRegistry(e.operationRegistry)
+	}
+
+	// Execute the sub-workflow steps sequentially
+	e.logger.Info("executing sub-workflow",
+		"step_id", step.ID,
+		"workflow_name", subDef.Name,
+		"workflow_path", step.Workflow,
+		"child_trace_id", childTraceID,
+		"breadcrumb", fmt.Sprintf("%s → %s", step.ID, subDef.Name),
+	)
+
+	// Build the workflow context for step execution
+	// Start with inputs as the base context
+	workflowContext := make(map[string]interface{})
+	for k, v := range subContext {
+		workflowContext[k] = v
+	}
+
+	// Track step results for output extraction
+	stepResults := make(map[string]map[string]interface{})
+
+	// Execute each step in sequence
+	for i, subStep := range subDef.Steps {
+		// Add step outputs to context
+		workflowContext["steps"] = stepResults
+
+		// Log step execution with breadcrumb trail
+		e.logger.Debug("executing sub-workflow step",
+			"parent_step_id", step.ID,
+			"workflow_name", subDef.Name,
+			"step_id", subStep.ID,
+			"step_index", i+1,
+			"child_trace_id", childTraceID,
+			"breadcrumb", fmt.Sprintf("%s → %s → %s", step.ID, subDef.Name, subStep.ID),
+		)
+
+		// Execute the step
+		result, err := subExecutor.Execute(ctx, &subStep, workflowContext)
+		if err != nil {
+			// Add breadcrumb trail to error with trace ID
+			return nil, fmt.Errorf("%s → %s → %s (trace: %s): %w", step.ID, subDef.Name, subStep.ID, childTraceID, err)
+		}
+
+		// Store step result for later reference
+		stepResults[subStep.ID] = result.Output
+	}
+
+	// Extract outputs from the sub-workflow execution
+	outputs := e.extractSubworkflowOutputs(subDef, stepResults)
+
+	// Include the child trace ID in outputs for observability
+	outputs["_child_trace_id"] = childTraceID
+
+	e.logger.Info("sub-workflow completed",
+		"step_id", step.ID,
+		"workflow_name", subDef.Name,
+		"workflow_path", step.Workflow,
+		"child_trace_id", childTraceID,
+	)
+
+	return outputs, nil
+}
+
+// buildSubworkflowContext builds the input context for a sub-workflow.
+// It validates that the provided inputs match the sub-workflow's input schema.
+func (e *Executor) buildSubworkflowContext(subDef *Definition, inputs map[string]interface{}) (map[string]interface{}, error) {
+	context := make(map[string]interface{})
+
+	// Process each declared input
+	for _, inputDef := range subDef.Inputs {
+		value, exists := inputs[inputDef.Name]
+
+		// Check if input is required and missing
+		if !exists {
+			if inputDef.Required {
+				return nil, &errors.ValidationError{
+					Field:      inputDef.Name,
+					Message:    fmt.Sprintf("required input %q not provided to sub-workflow", inputDef.Name),
+					Suggestion: "provide the required input in the workflow step",
+				}
+			}
+			// Use default value if provided
+			if inputDef.Default != nil {
+				value = inputDef.Default
+			} else {
+				// Skip this input (not required, no default)
+				continue
+			}
+		}
+
+		// TODO: Add type validation against inputDef.Type
+		// For now, we just pass the value through
+		context[inputDef.Name] = value
+	}
+
+	return context, nil
+}
+
+// extractSubworkflowOutputs extracts the declared outputs from a sub-workflow execution result.
+func (e *Executor) extractSubworkflowOutputs(subDef *Definition, stepResults map[string]map[string]interface{}) map[string]interface{} {
+	outputs := make(map[string]interface{})
+
+	// If no outputs are declared, return all step outputs as a flat map
+	if len(subDef.Outputs) == 0 {
+		for stepID, stepOutput := range stepResults {
+			outputs[stepID] = stepOutput
+		}
+		return outputs
+	}
+
+	// Extract declared outputs using template evaluation
+	// Build template context
+	templateCtx := NewTemplateContext()
+	for stepID, stepOutput := range stepResults {
+		templateCtx.SetStepOutput(stepID, stepOutput)
+	}
+
+	for _, outputDef := range subDef.Outputs {
+		// Wrap the value expression in template syntax if needed
+		expr := outputDef.Value
+		if !strings.Contains(expr, "{{") {
+			expr = "{{" + expr + "}}"
+		}
+
+		// Evaluate the output value expression
+		value, err := ResolveTemplate(expr, templateCtx)
+		if err != nil {
+			e.logger.Warn("failed to evaluate output expression",
+				"output", outputDef.Name,
+				"expression", outputDef.Value,
+				"error", err,
+			)
+			continue
+		}
+		outputs[outputDef.Name] = value
+	}
+
+	return outputs
 }
 
 // executeLLM executes an LLM step by making an LLM API call.
