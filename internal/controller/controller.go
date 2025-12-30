@@ -43,6 +43,7 @@ import (
 	controllerremote "github.com/tombee/conductor/internal/controller/remote"
 	"github.com/tombee/conductor/internal/controller/runner"
 	"github.com/tombee/conductor/internal/controller/scheduler"
+	"github.com/tombee/conductor/internal/controller/trigger"
 	"github.com/tombee/conductor/internal/controller/webhook"
 	internalllm "github.com/tombee/conductor/internal/llm"
 	internallog "github.com/tombee/conductor/internal/log"
@@ -687,6 +688,62 @@ func (c *Controller) Start(ctx context.Context) error {
 				c.logger.Error("failed to add file watcher",
 					slog.String("name", w.Name),
 					internallog.Error(err))
+			}
+		}
+
+		// Scan workflow files for file triggers
+		scanner := trigger.NewScanner(c.cfg.Controller.WorkflowsDir)
+		scanResult, err := scanner.Scan()
+		if err != nil {
+			c.logger.Warn("failed to scan workflows for file triggers",
+				internallog.Error(err))
+		} else {
+			// Add file triggers from workflow definitions
+			for _, t := range scanResult.FileTriggers {
+				if t.Trigger.File == nil {
+					continue
+				}
+
+				// Parse debounce duration if specified
+				var debounceWindow time.Duration
+				if t.Trigger.File.Debounce != "" {
+					debounceWindow, err = time.ParseDuration(t.Trigger.File.Debounce)
+					if err != nil {
+						c.logger.Error("invalid debounce duration in workflow file trigger",
+							slog.String("workflow", t.WorkflowName),
+							slog.String("debounce", t.Trigger.File.Debounce),
+							internallog.Error(err))
+						continue
+					}
+				}
+
+				config := filewatcher.WatchConfig{
+					Name:                 fmt.Sprintf("workflow:%s", t.WorkflowName),
+					Workflow:             t.WorkflowPath,
+					Paths:                t.Trigger.File.Paths,
+					Events:               t.Trigger.File.Events,
+					IncludePatterns:      t.Trigger.File.IncludePatterns,
+					ExcludePatterns:      t.Trigger.File.ExcludePatterns,
+					DebounceWindow:       debounceWindow,
+					BatchMode:            t.Trigger.File.BatchMode,
+					MaxTriggersPerMinute: t.Trigger.File.MaxTriggersPerMinute,
+					Inputs:               t.Trigger.File.Inputs,
+				}
+				if err := c.fileWatcher.AddWatcher(config); err != nil {
+					c.logger.Error("failed to add workflow file trigger",
+						slog.String("workflow", t.WorkflowName),
+						internallog.Error(err))
+				} else {
+					c.logger.Info("registered file trigger from workflow",
+						slog.String("workflow", t.WorkflowName),
+						slog.Int("path_count", len(t.Trigger.File.Paths)))
+				}
+			}
+
+			// Log any errors from scanning
+			for _, scanErr := range scanResult.Errors {
+				c.logger.Warn("error scanning workflow for triggers",
+					internallog.Error(scanErr))
 			}
 		}
 	}

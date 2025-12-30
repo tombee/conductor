@@ -86,6 +86,9 @@ type TriggerConfig struct {
 
 	// Schedule configures scheduled execution
 	Schedule *ScheduleTrigger `yaml:"schedule,omitempty" json:"schedule,omitempty"`
+
+	// File configures file watcher listeners
+	File *FileTriggerConfig `yaml:"file,omitempty" json:"file,omitempty"`
 }
 
 // APIListenerConfig defines API endpoint authentication configuration.
@@ -101,7 +104,7 @@ type APITriggerConfig struct {
 // DEPRECATED: Use TriggerConfig instead. This type is kept for backward compatibility
 // during migration, but parsing will return an error if triggers: is used.
 type TriggerDefinition struct {
-	// Type is the trigger type (webhook, schedule, manual)
+	// Type is the trigger type (webhook, schedule, file, manual)
 	Type TriggerType `yaml:"type" json:"type"`
 
 	// Webhook configuration (for webhook triggers)
@@ -109,6 +112,9 @@ type TriggerDefinition struct {
 
 	// Schedule configuration (for schedule triggers)
 	Schedule *ScheduleTrigger `yaml:"schedule,omitempty" json:"schedule,omitempty"`
+
+	// File configuration (for file watcher triggers)
+	File *FileTriggerConfig `yaml:"file,omitempty" json:"file,omitempty"`
 }
 
 // TriggerType represents the type of trigger.
@@ -117,6 +123,7 @@ type TriggerType string
 const (
 	TriggerTypeWebhook  TriggerType = "webhook"
 	TriggerTypeSchedule TriggerType = "schedule"
+	TriggerTypeFile     TriggerType = "file"
 	TriggerTypeManual   TriggerType = "manual"
 )
 
@@ -150,6 +157,45 @@ type ScheduleTrigger struct {
 	Enabled *bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
 
 	// Inputs are the static inputs to pass when scheduled
+	Inputs map[string]any `yaml:"inputs,omitempty" json:"inputs,omitempty"`
+}
+
+// FileTriggerConfig defines file watcher trigger configuration.
+type FileTriggerConfig struct {
+	// Paths are the filesystem paths to watch
+	Paths []string `yaml:"paths" json:"paths"`
+
+	// Events are the event types to watch (created, modified, deleted, renamed)
+	// If empty, defaults to all event types
+	Events []string `yaml:"events,omitempty" json:"events,omitempty"`
+
+	// IncludePatterns are glob patterns for files to include
+	// If empty, all files are included
+	IncludePatterns []string `yaml:"include_patterns,omitempty" json:"include_patterns,omitempty"`
+
+	// ExcludePatterns are glob patterns for files to exclude
+	// Applied after include patterns
+	ExcludePatterns []string `yaml:"exclude_patterns,omitempty" json:"exclude_patterns,omitempty"`
+
+	// Debounce is the duration string to wait for additional events before triggering (e.g., "500ms", "1s")
+	// Zero or empty disables debouncing
+	Debounce string `yaml:"debounce,omitempty" json:"debounce,omitempty"`
+
+	// BatchMode determines if events during debounce window are batched together
+	// If false, only the last event is delivered
+	BatchMode bool `yaml:"batch_mode,omitempty" json:"batch_mode,omitempty"`
+
+	// MaxTriggersPerMinute limits the rate of workflow triggers
+	// Zero means no limit
+	MaxTriggersPerMinute int `yaml:"max_triggers_per_minute,omitempty" json:"max_triggers_per_minute,omitempty"`
+
+	// Recursive enables watching subdirectories
+	Recursive bool `yaml:"recursive,omitempty" json:"recursive,omitempty"`
+
+	// MaxDepth limits recursive watching depth (0 = unlimited)
+	MaxDepth int `yaml:"max_depth,omitempty" json:"max_depth,omitempty"`
+
+	// Inputs are the static inputs to pass when triggered
 	Inputs map[string]any `yaml:"inputs,omitempty" json:"inputs,omitempty"`
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/tombee/conductor/pkg/errors"
 	"github.com/tombee/conductor/pkg/workflow/expression"
@@ -173,4 +174,68 @@ func DetectEmbeddedCredentials(def *Definition) []string {
 	}
 
 	return warnings
+}
+
+// ValidateFileTrigger validates file trigger configuration.
+func ValidateFileTrigger(trigger *FileTriggerConfig) error {
+	if trigger == nil {
+		return nil
+	}
+
+	// Validate paths
+	if len(trigger.Paths) == 0 {
+		return &errors.ValidationError{
+			Field:      "listen.file.paths",
+			Message:    "at least one path is required",
+			Suggestion: "specify one or more filesystem paths to watch",
+		}
+	}
+
+	// Validate events
+	validEvents := map[string]bool{
+		"created":  true,
+		"modified": true,
+		"deleted":  true,
+		"renamed":  true,
+	}
+	for _, event := range trigger.Events {
+		if !validEvents[event] {
+			return &errors.ValidationError{
+				Field:      "listen.file.events",
+				Message:    fmt.Sprintf("invalid event type: %s", event),
+				Suggestion: "valid events are: created, modified, deleted, renamed",
+			}
+		}
+	}
+
+	// Validate debounce duration if specified
+	if trigger.Debounce != "" {
+		if _, err := time.ParseDuration(trigger.Debounce); err != nil {
+			return &errors.ValidationError{
+				Field:      "listen.file.debounce",
+				Message:    fmt.Sprintf("invalid debounce duration: %s", trigger.Debounce),
+				Suggestion: "use Go duration format (e.g., '500ms', '1s', '2m')",
+			}
+		}
+	}
+
+	// Validate max_depth
+	if trigger.MaxDepth < 0 {
+		return &errors.ValidationError{
+			Field:      "listen.file.max_depth",
+			Message:    "max_depth cannot be negative",
+			Suggestion: "use 0 for unlimited depth or positive integer for limit",
+		}
+	}
+
+	// Validate max_triggers_per_minute
+	if trigger.MaxTriggersPerMinute < 0 {
+		return &errors.ValidationError{
+			Field:      "listen.file.max_triggers_per_minute",
+			Message:    "max_triggers_per_minute cannot be negative",
+			Suggestion: "use 0 for no limit or positive integer for rate limit",
+		}
+	}
+
+	return nil
 }
