@@ -282,8 +282,8 @@
         },
         "type": {
           "type": "string",
-          "enum": ["llm", "parallel", "condition", "integration"],
-          "description": "Step type: 'llm' for LLM calls, 'parallel' for concurrent execution, 'condition' for branching, 'integration' for actions and integrations. Usually auto-detected from shorthand syntax (action.operation: or integration.operation:)."
+          "enum": ["llm", "parallel", "condition", "integration", "loop"],
+          "description": "Step type: 'llm' for LLM calls, 'parallel' for concurrent execution, 'condition' for branching, 'integration' for actions and integrations, 'loop' for iterative refinement. Usually auto-detected from shorthand syntax (action.operation: or integration.operation:)."
         },
         "agent": {
           "type": "string",
@@ -399,6 +399,22 @@
           "default": 3,
           "minimum": 1,
           "examples": [1, 3, 5]
+        },
+        "max_iterations": {
+          "type": "integer",
+          "description": "Maximum number of loop iterations. Required for type 'loop'. Prevents infinite loops. Must be between 1 and 100.",
+          "minimum": 1,
+          "maximum": 100,
+          "examples": [3, 5, 10]
+        },
+        "until": {
+          "type": "string",
+          "description": "Termination condition expression for loop steps. Required for type 'loop'. Evaluated after each iteration (do-while semantics). Loop terminates when expression evaluates to true. Can reference loop context (loop.iteration, loop.history) and step outputs.",
+          "examples": [
+            "steps.review.approved == true",
+            "steps.validate.score >= 8",
+            "loop.iteration >= 2 && steps.check.passed"
+          ]
         }
       },
       "allOf": [
@@ -451,6 +467,18 @@
               {"required": ["integration"]},
               {"required": ["action", "operation"]}
             ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "loop"
+              }
+            }
+          },
+          "then": {
+            "required": ["id", "max_iterations", "until", "steps"]
           }
         }
       ],

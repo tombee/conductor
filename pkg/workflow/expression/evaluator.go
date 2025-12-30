@@ -120,6 +120,17 @@ func (e *Evaluator) compile(expression string) (*vm.Program, error) {
 	return prog, nil
 }
 
+// Compile validates an expression at parse time without evaluating it.
+// Returns an error if the expression syntax is invalid.
+// This is useful for early validation during workflow loading.
+func (e *Evaluator) Compile(expression string) error {
+	if expression == "" {
+		return nil // Empty expression is valid (will default to true at runtime)
+	}
+	_, err := e.compile(expression)
+	return err
+}
+
 // ClearCache clears the expression cache.
 // This is mainly useful for testing.
 func (e *Evaluator) ClearCache() {

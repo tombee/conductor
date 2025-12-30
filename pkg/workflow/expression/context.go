@@ -6,6 +6,7 @@ package expression
 //   - "_templateContext": *TemplateContext (internal)
 //   - "inputs": workflow input values
 //   - "steps": map of step results
+//   - "loop": loop context (iteration, max_iterations, history) for loop steps
 //
 // This function extracts the relevant fields into a flat map structure
 // suitable for expression evaluation:
@@ -15,6 +16,11 @@ package expression
 //	    "steps": {
 //	        "step_id": {"content": "...", "status": "success"},
 //	        ...
+//	    },
+//	    "loop": {
+//	        "iteration": 0,
+//	        "max_iterations": 10,
+//	        "history": [...]
 //	    }
 //	}
 func BuildContext(workflowContext map[string]interface{}) map[string]interface{} {
@@ -32,6 +38,11 @@ func BuildContext(workflowContext map[string]interface{}) map[string]interface{}
 		ctx["steps"] = steps
 	} else {
 		ctx["steps"] = make(map[string]interface{})
+	}
+
+	// Extract loop context (for loop steps)
+	if loop, ok := workflowContext["loop"]; ok {
+		ctx["loop"] = loop
 	}
 
 	// Also expose at top level for convenience (allows both $.inputs.x and inputs.x)
