@@ -30,6 +30,7 @@ var (
 	_ backend.RunStore        = (*Backend)(nil)
 	_ backend.RunLister       = (*Backend)(nil)
 	_ backend.CheckpointStore = (*Backend)(nil)
+	_ backend.StepResultStore = (*Backend)(nil)
 	_ backend.Backend         = (*Backend)(nil)
 	_ backend.ScheduleBackend = (*Backend)(nil)
 )
@@ -39,6 +40,7 @@ type Backend struct {
 	mu          sync.RWMutex
 	runs        map[string]*backend.Run
 	checkpoints map[string]*backend.Checkpoint
+	stepResults map[string]map[string]*backend.StepResult // runID -> stepID -> result
 	schedules   map[string]*backend.ScheduleState
 }
 
@@ -47,6 +49,7 @@ func New() *Backend {
 	return &Backend{
 		runs:        make(map[string]*backend.Run),
 		checkpoints: make(map[string]*backend.Checkpoint),
+		stepResults: make(map[string]map[string]*backend.StepResult),
 		schedules:   make(map[string]*backend.ScheduleState),
 	}
 }
@@ -123,6 +126,7 @@ func (b *Backend) DeleteRun(ctx context.Context, id string) error {
 
 	delete(b.runs, id)
 	delete(b.checkpoints, id)
+	delete(b.stepResults, id)
 	return nil
 }
 
@@ -195,4 +199,58 @@ func (b *Backend) DeleteScheduleState(ctx context.Context, name string) error {
 
 	delete(b.schedules, name)
 	return nil
+}
+
+// SaveStepResult saves a step execution result.
+func (b *Backend) SaveStepResult(ctx context.Context, result *backend.StepResult) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	result.CreatedAt = time.Now()
+
+	// Initialize the run's step results map if it doesn't exist
+	if b.stepResults[result.RunID] == nil {
+		b.stepResults[result.RunID] = make(map[string]*backend.StepResult)
+	}
+
+	b.stepResults[result.RunID][result.StepID] = result
+	return nil
+}
+
+// GetStepResult retrieves a step result by run ID and step ID.
+func (b *Backend) GetStepResult(ctx context.Context, runID, stepID string) (*backend.StepResult, error) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	runResults, exists := b.stepResults[runID]
+	if !exists {
+		return nil, fmt.Errorf("no step results found for run: %s", runID)
+	}
+
+	result, exists := runResults[stepID]
+	if !exists {
+		return nil, fmt.Errorf("step result not found: %s (run: %s)", stepID, runID)
+	}
+
+	return result, nil
+}
+
+// ListStepResults retrieves all step results for a run.
+func (b *Backend) ListStepResults(ctx context.Context, runID string) ([]*backend.StepResult, error) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	runResults, exists := b.stepResults[runID]
+	if !exists {
+		// Return empty slice instead of error if no results yet
+		return []*backend.StepResult{}, nil
+	}
+
+	// Convert map to slice
+	results := make([]*backend.StepResult, 0, len(runResults))
+	for _, result := range runResults {
+		results = append(results, result)
+	}
+
+	return results, nil
 }

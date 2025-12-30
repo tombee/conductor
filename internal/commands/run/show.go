@@ -156,7 +156,74 @@ func displayRunDetails(run *RunDetails, stepID string) error {
 
 	// If step ID is specified, fetch and display step details
 	if stepID != "" {
-		fmt.Fprintf(os.Stdout, "\nStep details for '%s' not yet implemented (T30-T32)\n", stepID)
+		return displayStepDetails(run.ID, stepID)
+	}
+
+	return nil
+}
+
+// StepResult represents a step execution result from the API.
+type StepResult struct {
+	RunID     string         `json:"run_id"`
+	StepID    string         `json:"step_id"`
+	StepIndex int            `json:"step_index"`
+	Inputs    map[string]any `json:"inputs,omitempty"`
+	Outputs   map[string]any `json:"outputs,omitempty"`
+	Duration  int64          `json:"duration"` // nanoseconds
+	Status    string         `json:"status"`
+	Error     string         `json:"error,omitempty"`
+	CreatedAt time.Time      `json:"created_at"`
+}
+
+// fetchStepDetails fetches step details from the controller API.
+func fetchStepDetails(runID, stepID string) (*StepResult, error) {
+	url := shared.BuildAPIURL(fmt.Sprintf("/v1/runs/%s/steps/%s", runID, stepID), nil)
+
+	respBody, err := shared.MakeAPIRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch step details: %w", err)
+	}
+
+	var step StepResult
+	if err := json.Unmarshal(respBody, &step); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &step, nil
+}
+
+// displayStepDetails displays formatted step details.
+func displayStepDetails(runID, stepID string) error {
+	step, err := fetchStepDetails(runID, stepID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(os.Stdout, "\nStep: %s\n", step.StepID)
+	fmt.Fprintf(os.Stdout, "Index: %d\n", step.StepIndex)
+	fmt.Fprintf(os.Stdout, "Status: %s\n", step.Status)
+	fmt.Fprintf(os.Stdout, "Duration: %s\n", time.Duration(step.Duration).Round(time.Millisecond))
+
+	if step.Error != "" {
+		fmt.Fprintf(os.Stdout, "Error: %s\n", step.Error)
+	}
+
+	// Display inputs if present
+	if len(step.Inputs) > 0 {
+		fmt.Fprintf(os.Stdout, "\nInputs:\n")
+		inputsJSON, err := json.MarshalIndent(step.Inputs, "  ", "  ")
+		if err == nil {
+			fmt.Fprintf(os.Stdout, "  %s\n", inputsJSON)
+		}
+	}
+
+	// Display outputs if present
+	if len(step.Outputs) > 0 {
+		fmt.Fprintf(os.Stdout, "\nOutputs:\n")
+		outputsJSON, err := json.MarshalIndent(step.Outputs, "  ", "  ")
+		if err == nil {
+			fmt.Fprintf(os.Stdout, "  %s\n", outputsJSON)
+		}
 	}
 
 	return nil
