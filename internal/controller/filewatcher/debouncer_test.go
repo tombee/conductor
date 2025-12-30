@@ -15,6 +15,7 @@
 package filewatcher
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -23,8 +24,11 @@ import (
 )
 
 func TestDebouncer_SingleEvent(t *testing.T) {
+	var mu sync.Mutex
 	var flushed []*Context
 	debouncer := NewDebouncer(50*time.Millisecond, false, func(events []*Context) {
+		mu.Lock()
+		defer mu.Unlock()
 		flushed = append(flushed, events...)
 	})
 	defer debouncer.Stop()
@@ -35,14 +39,19 @@ func TestDebouncer_SingleEvent(t *testing.T) {
 	// Wait for debounce window
 	time.Sleep(100 * time.Millisecond)
 
+	mu.Lock()
+	defer mu.Unlock()
 	require.Len(t, flushed, 1)
 	assert.Equal(t, "/tmp/test.txt", flushed[0].Path)
 	assert.Equal(t, "modified", flushed[0].Event)
 }
 
 func TestDebouncer_MultipleEventsNonBatch(t *testing.T) {
+	var mu sync.Mutex
 	var flushed []*Context
 	debouncer := NewDebouncer(50*time.Millisecond, false, func(events []*Context) {
+		mu.Lock()
+		defer mu.Unlock()
 		flushed = append(flushed, events...)
 	})
 	defer debouncer.Stop()
@@ -62,13 +71,18 @@ func TestDebouncer_MultipleEventsNonBatch(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Should only get the last event in non-batch mode
+	mu.Lock()
+	defer mu.Unlock()
 	require.Len(t, flushed, 1)
 	assert.Equal(t, int64(300), flushed[0].Size)
 }
 
 func TestDebouncer_MultipleEventsBatch(t *testing.T) {
+	var mu sync.Mutex
 	var flushed []*Context
 	debouncer := NewDebouncer(50*time.Millisecond, true, func(events []*Context) {
+		mu.Lock()
+		defer mu.Unlock()
 		flushed = append(flushed, events...)
 	})
 	defer debouncer.Stop()
@@ -88,6 +102,8 @@ func TestDebouncer_MultipleEventsBatch(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Should get all events in batch mode
+	mu.Lock()
+	defer mu.Unlock()
 	require.Len(t, flushed, 3)
 	assert.Equal(t, int64(100), flushed[0].Size)
 	assert.Equal(t, int64(200), flushed[1].Size)
@@ -95,8 +111,11 @@ func TestDebouncer_MultipleEventsBatch(t *testing.T) {
 }
 
 func TestDebouncer_MultiplePaths(t *testing.T) {
+	var mu sync.Mutex
 	var flushed []*Context
 	debouncer := NewDebouncer(50*time.Millisecond, false, func(events []*Context) {
+		mu.Lock()
+		defer mu.Unlock()
 		flushed = append(flushed, events...)
 	})
 	defer debouncer.Stop()
@@ -112,6 +131,8 @@ func TestDebouncer_MultiplePaths(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Should get both events (different paths have independent timers)
+	mu.Lock()
+	defer mu.Unlock()
 	require.Len(t, flushed, 2)
 	paths := map[string]bool{
 		flushed[0].Path: true,
@@ -122,8 +143,11 @@ func TestDebouncer_MultiplePaths(t *testing.T) {
 }
 
 func TestDebouncer_Stop(t *testing.T) {
+	var mu sync.Mutex
 	var flushed []*Context
 	debouncer := NewDebouncer(100*time.Millisecond, false, func(events []*Context) {
+		mu.Lock()
+		defer mu.Unlock()
 		flushed = append(flushed, events...)
 	})
 
@@ -135,13 +159,18 @@ func TestDebouncer_Stop(t *testing.T) {
 	debouncer.Stop()
 
 	// Should flush pending event on stop
+	mu.Lock()
+	defer mu.Unlock()
 	require.Len(t, flushed, 1)
 	assert.Equal(t, "/tmp/test.txt", flushed[0].Path)
 }
 
 func TestDebouncer_StopFlushesAllPending(t *testing.T) {
+	var mu sync.Mutex
 	var flushed []*Context
 	debouncer := NewDebouncer(100*time.Millisecond, true, func(events []*Context) {
+		mu.Lock()
+		defer mu.Unlock()
 		flushed = append(flushed, events...)
 	})
 
@@ -160,12 +189,17 @@ func TestDebouncer_StopFlushesAllPending(t *testing.T) {
 	debouncer.Stop()
 
 	// Should flush all pending events in batch mode
+	mu.Lock()
+	defer mu.Unlock()
 	require.Len(t, flushed, 3)
 }
 
 func TestDebouncer_NoEventsAfterStop(t *testing.T) {
+	var mu sync.Mutex
 	var flushed []*Context
 	debouncer := NewDebouncer(50*time.Millisecond, false, func(events []*Context) {
+		mu.Lock()
+		defer mu.Unlock()
 		flushed = append(flushed, events...)
 	})
 
@@ -178,6 +212,8 @@ func TestDebouncer_NoEventsAfterStop(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Should not receive any events after stop
+	mu.Lock()
+	defer mu.Unlock()
 	assert.Empty(t, flushed)
 }
 
@@ -202,8 +238,11 @@ func TestDebouncer_Pending(t *testing.T) {
 }
 
 func TestDebouncer_ResetTimer(t *testing.T) {
+	var mu sync.Mutex
 	var flushed []*Context
 	debouncer := NewDebouncer(100*time.Millisecond, false, func(events []*Context) {
+		mu.Lock()
+		defer mu.Unlock()
 		flushed = append(flushed, events...)
 	})
 	defer debouncer.Stop()
@@ -223,12 +262,16 @@ func TestDebouncer_ResetTimer(t *testing.T) {
 	time.Sleep(70 * time.Millisecond)
 
 	// Should not have flushed yet because timer was reset
+	mu.Lock()
 	assert.Empty(t, flushed)
+	mu.Unlock()
 
 	// Wait for remaining debounce window
 	time.Sleep(50 * time.Millisecond)
 
 	// Now should have flushed with the second event
+	mu.Lock()
+	defer mu.Unlock()
 	require.Len(t, flushed, 1)
 	assert.Equal(t, int64(200), flushed[0].Size)
 }
