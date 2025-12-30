@@ -476,6 +476,18 @@ func (m *mockBackend) GetCheckpoint(ctx context.Context, runID string) (*backend
 	return nil, nil
 }
 
+func (m *mockBackend) SaveStepResult(ctx context.Context, result *backend.StepResult) error {
+	return nil
+}
+
+func (m *mockBackend) GetStepResult(ctx context.Context, runID, stepID string) (*backend.StepResult, error) {
+	return nil, nil
+}
+
+func (m *mockBackend) ListStepResults(ctx context.Context, runID string) ([]*backend.StepResult, error) {
+	return nil, nil
+}
+
 func (m *mockBackend) SaveScheduleState(ctx context.Context, state *backend.ScheduleState) error {
 	return nil
 }
