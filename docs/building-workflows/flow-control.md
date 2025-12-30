@@ -97,6 +97,258 @@ Route to different steps based on classification:
     prompt: "Feature analysis: {{.inputs.ticket}}"
 ```
 
+## Iterative Loops
+
+Execute steps repeatedly until a condition is met or a maximum iteration count is reached. Loops use do-while semantics: execute at least once, then check the condition.
+
+### Basic Loop
+
+```conductor
+steps:
+  - id: refine_code
+    type: loop
+    max_iterations: 5
+    until: 'steps.review.response contains "approved"'
+    steps:
+      - id: improve
+        model: balanced
+        prompt: |
+          Improve this code based on feedback:
+          Code: {{.steps.refine_code.step_outputs.improve.response}}
+          Feedback: {{.steps.refine_code.step_outputs.review.response}}
+
+      - id: review
+        model: strategic
+        prompt: |
+          Review this code. Output "approved" if ready, otherwise provide feedback.
+          Code: {{.steps.improve.response}}
+```
+
+### Loop Context Variables
+
+Inside a loop, you have access to:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `{{.loop.iteration}}` | Current iteration (0-indexed) | `0`, `1`, `2`, ... |
+| `{{.loop.max_iterations}}` | Maximum iterations | `5` |
+| `{{.loop.history}}` | Array of previous iteration results | See below |
+
+```conductor
+  - id: iterative_task
+    type: loop
+    max_iterations: 3
+    until: 'steps.check.response contains "done"'
+    steps:
+      - id: process
+        model: balanced
+        prompt: |
+          Iteration {{.loop.iteration}} of {{.loop.max_iterations}}
+          Previous attempts: {{.loop.history | len}}
+
+      - id: check
+        model: fast
+        prompt: "Is the task complete? Output: done or continue"
+```
+
+### Skip Steps on First Iteration
+
+Use conditions to skip steps on specific iterations:
+
+```conductor
+  - id: refinement_loop
+    type: loop
+    max_iterations: 3
+    until: 'steps.review.response contains "approved"'
+    steps:
+      # Skip apply_feedback on first iteration (no feedback yet)
+      - id: apply_feedback
+        condition: 'loop.iteration > 0'
+        model: balanced
+        prompt: |
+          Apply this feedback to the code:
+          {{.steps.review.response}}
+
+      - id: review
+        model: strategic
+        prompt: |
+          Review the code. If good, output "approved".
+          Otherwise provide specific feedback.
+```
+
+### Accessing Loop History
+
+The `loop.history` array contains results from all previous iterations:
+
+```conductor
+  - id: iterative_review
+    type: loop
+    max_iterations: 5
+    until: 'steps.decision.response == "final"'
+    steps:
+      - id: analyze
+        model: balanced
+        prompt: |
+          Analyze the current state.
+          Previous analyses:
+          {{range .loop.history}}
+          - Iteration {{.iteration}}: {{index .steps "analyze" "response"}}
+          {{end}}
+
+      - id: decision
+        model: fast
+        prompt: "Based on all history, is this final? Output: final or continue"
+```
+
+### Loop Output Structure
+
+When a loop completes, results are accessible at:
+
+| Field | Description |
+|-------|-------------|
+| `.step_outputs` | Final iteration's step results |
+| `.iteration_count` | Total iterations executed |
+| `.terminated_by` | `"condition"`, `"max_iterations"`, `"timeout"`, or `"error"` |
+| `.history` | Array of all iteration records |
+
+```conductor
+  - id: summarize
+    model: balanced
+    prompt: |
+      Loop completed after {{.steps.my_loop.iteration_count}} iterations.
+      Termination reason: {{.steps.my_loop.terminated_by}}
+      Final result: {{.steps.my_loop.step_outputs.final_step.response}}
+```
+
+### Error Handling in Loops
+
+Control what happens when a step fails:
+
+```conductor
+  - id: resilient_loop
+    type: loop
+    max_iterations: 5
+    until: 'steps.check.response == "done"'
+    on_error:
+      strategy: ignore  # Continue to next iteration on error
+    steps:
+      - id: risky_step
+        model: balanced
+        prompt: "Attempt risky operation"
+        on_error:
+          strategy: ignore  # Continue to next step on error
+
+      - id: check
+        model: fast
+        prompt: "Check status"
+```
+
+**Error strategies:**
+
+| Strategy | Behavior |
+|----------|----------|
+| `fail` (default) | Stop loop immediately on first failure |
+| `ignore` | Continue to next step/iteration, record error in history |
+
+### Loop Timeout
+
+Set a timeout for the entire loop:
+
+```conductor
+  - id: time_limited_loop
+    type: loop
+    max_iterations: 100
+    timeout: 60  # Maximum 60 seconds total
+    until: 'steps.check.response == "done"'
+    steps:
+      - id: process
+        model: fast
+        prompt: "Quick processing step"
+
+      - id: check
+        model: fast
+        prompt: "Check if done"
+```
+
+### Loop vs Foreach
+
+| Feature | Loop | Foreach |
+|---------|------|---------|
+| Use case | Iterative refinement until condition | Process each item in array |
+| Iterations | Unknown, condition-based | Known, one per array item |
+| Execution | Sequential iterations | Parallel by default |
+| Context | `loop.iteration`, `loop.history` | `item`, `index`, `total` |
+| Termination | Condition, max_iterations, timeout | All items processed |
+
+**When to use loop:**
+- Iterative code review/refinement
+- Retry with learning from failures
+- Convergence algorithms
+- Chat-like multi-turn conversations
+
+**When to use foreach:**
+- Process list of files
+- Analyze multiple PRs
+- Batch API calls
+
+### Example: Iterative Code Review
+
+```conductor
+name: iterative-code-review
+description: Review and refine code until approved
+
+inputs:
+  - name: code
+    type: string
+
+steps:
+  - id: code_review_loop
+    type: loop
+    max_iterations: 3
+    until: 'steps.review.response contains "APPROVED"'
+    steps:
+      # Skip on first iteration - no feedback yet
+      - id: apply_changes
+        condition: 'loop.iteration > 0'
+        model: balanced
+        prompt: |
+          Apply the following changes to improve the code:
+
+          Original code:
+          {{.inputs.code}}
+
+          Feedback from review:
+          {{.steps.review.response}}
+
+          Output ONLY the improved code.
+
+      - id: review
+        model: strategic
+        prompt: |
+          Review this code for quality, security, and best practices.
+
+          Code to review:
+          {{if eq .loop.iteration 0}}
+          {{.inputs.code}}
+          {{else}}
+          {{.steps.apply_changes.response}}
+          {{end}}
+
+          Previous feedback history:
+          {{range .loop.history}}
+          Round {{.iteration}}: {{index .steps "review" "response" | truncate 200}}
+          {{end}}
+
+          If the code is production-ready, output "APPROVED".
+          Otherwise, provide specific actionable feedback.
+
+outputs:
+  - name: final_code
+    value: "{{.steps.code_review_loop.step_outputs.apply_changes.response}}"
+  - name: iterations
+    value: "{{.steps.code_review_loop.iteration_count}}"
+```
+
 ## Workflow Composition
 
 Break complex workflows into reusable components:
@@ -361,3 +613,4 @@ Prepare arrays for foreach with transform operations:
 - [Workflows and Steps](../learn/concepts/workflows-steps.md) - Step fundamentals
 - [Error Handling](error-handling.md) - Retries and fallbacks
 - [Transform Action](../reference/actions/transform.md) - Prepare data for iteration
+- [Expression Reference](../reference/expressions.md) - Condition expressions
