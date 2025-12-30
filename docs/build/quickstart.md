@@ -53,7 +53,6 @@ func main() {
     })
 
     fmt.Println(result.Steps["explain"].Output)
-    fmt.Printf("Cost: $%.4f\n", result.Cost.Total)
 }
 
 // newSDK creates an SDK with the best available provider.
@@ -85,7 +84,6 @@ go run main.go
 Output:
 ```
 Recursion is when a function calls itself to solve smaller instances of the same problem until reaching a base case.
-Cost: $0.0012
 ```
 
 ## Add Event Streaming

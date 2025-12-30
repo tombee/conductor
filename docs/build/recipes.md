@@ -65,30 +65,27 @@ if err := s.RegisterTool(tool); err != nil {
 }
 ```
 
-## Cost Budgeting
+## Cost Tracking
 
-Limit spending per workflow run:
+Track token usage and estimated costs per step:
 
 ```go
-s, err := newSDK()
-// Add cost limit option
-s, err = sdk.New(
-    sdk.WithProvider("claude-code", cc),
-    sdk.WithCostLimit(5.0), // $5 max per run
+// Cost tracking requires API providers (Anthropic, OpenAI)
+// Note: Claude Code CLI doesn't report token usage
+s, err := sdk.New(
+    sdk.WithAnthropicProvider(os.Getenv("ANTHROPIC_API_KEY")),
 )
 
 result, err := s.Run(ctx, wf, inputs)
 if err != nil {
-    var costErr *sdk.CostLimitExceededError
-    if errors.As(err, &costErr) {
-        fmt.Printf("Budget exceeded: spent $%.2f of $%.2f limit\n",
-            costErr.Spent, costErr.Limit)
-    }
     return err
 }
 
-// Check actual cost
-fmt.Printf("Total cost: $%.4f\n", result.Cost.Total)
+// Check token usage and estimated cost
+fmt.Printf("Tokens: %d input, %d output\n",
+    result.Cost.InputTokens, result.Cost.OutputTokens)
+fmt.Printf("Estimated cost: $%.4f\n", result.Cost.EstimatedCost)
+
 for stepID, cost := range result.Cost.ByStep {
     fmt.Printf("  %s: $%.4f\n", stepID, cost)
 }

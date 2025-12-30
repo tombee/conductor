@@ -95,8 +95,7 @@ func chat(s *sdk.SDK) {
         }
 
         fmt.Println() // newline after streamed response
-        fmt.Printf("(Iterations: %d, Cost: $%.4f)\n\n",
-            result.Iterations, result.Cost.Total)
+        fmt.Printf("(Iterations: %d)\n\n", result.Iterations)
     }
 }
 ```
@@ -118,17 +117,17 @@ Found these Go files:
 - main.go
 - sdk_test.go
 - config.go
-(Iterations: 2, Cost: $0.0023)
+(Iterations: 2)
 
 You: What's in main.go?
 Assistant: Here's the content of main.go:
 
 [displays file contents]
-(Iterations: 2, Cost: $0.0018)
+(Iterations: 2)
 
 You: Create a file called notes.txt with "Hello from the SDK"
 Assistant: I've created notes.txt with your message.
-(Iterations: 2, Cost: $0.0015)
+(Iterations: 2)
 ```
 
 ## Key Concepts
@@ -141,6 +140,6 @@ Assistant: I've created notes.txt with your message.
 
 ## Next Steps
 
-- Add `sdk.WithCostLimit()` to prevent runaway spending
 - Add more tools with `sdk.FuncTool()` for custom operations
 - Try with `sdk.WithBuiltinIntegrations()` for GitHub/Slack access
+- Use API providers for token usage tracking

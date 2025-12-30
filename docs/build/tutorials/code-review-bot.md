@@ -125,12 +125,6 @@ func printReview(result *sdk.Result) {
     }
 
     fmt.Printf("\nSummary:\n%s\n", result.Steps["summary"].Output)
-
-    fmt.Printf("\nCost breakdown:\n")
-    for step, cost := range result.Cost.ByStep {
-        fmt.Printf("  %s: $%.4f\n", step, cost)
-    }
-    fmt.Printf("  Total: $%.4f\n", result.Cost.Total)
 }
 ```
 
@@ -150,23 +144,15 @@ Summary:
 The code contains a critical bug on line 2 where an assignment operator is
 used instead of a comparison in the if statement. Style-wise, the code is
 reasonably clean but could benefit from more descriptive variable names.
-
-Cost breakdown:
-  bugs: $0.0045
-  style: $0.0022
-  summary: $0.0012
-  Total: $0.0079
 ```
 
 ## Key Concepts
 
 **Multi-Step Workflows**: Each step runs in sequence. Later steps reference earlier outputs via `{{.steps.stepId.response}}`.
 
-**Model Tiers**: Use `"balanced"` for complex analysis and `"fast"` for simpler tasks to optimize cost.
+**Model Tiers**: Use `"balanced"` for complex analysis and `"fast"` for simpler tasks.
 
 **Structured Output**: Prompt the LLM to return JSON, then parse it in Go for programmatic use.
-
-**Cost Breakdown**: `result.Cost.ByStep` shows per-step costs for optimization.
 
 ## Next Steps
 
