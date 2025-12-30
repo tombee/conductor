@@ -2,20 +2,26 @@ package workspace
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
+	"github.com/tombee/conductor/pkg/profile"
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
 // BindingResolver resolves workflow integration requirements to workspace integrations.
 type BindingResolver struct {
-	storage Storage
+	storage        Storage
+	secretRegistry profile.SecretProviderRegistry
 }
 
 // NewBindingResolver creates a new binding resolver.
-func NewBindingResolver(storage Storage) *BindingResolver {
+// The secretRegistry is used to resolve secret references in integration auth fields.
+func NewBindingResolver(storage Storage, secretRegistry profile.SecretProviderRegistry) *BindingResolver {
 	return &BindingResolver{
-		storage: storage,
+		storage:        storage,
+		secretRegistry: secretRegistry,
 	}
 }
 
@@ -226,4 +232,155 @@ func toUpperSnakeCase(s string) string {
 		}
 	}
 	return result
+}
+
+// ResolveSecrets resolves secret references in an integration's auth configuration.
+// This is called at binding time (not at configuration time) to resolve secrets
+// from their references (env:, file:, keychain:, ${VAR}) to actual values.
+//
+// Resolution occurs for:
+//   - AuthConfig.Token (for token auth)
+//   - AuthConfig.Password (for basic auth)
+//   - AuthConfig.APIKeyValue (for api-key auth)
+//
+// Returns a new Integration with resolved secrets (original is not modified).
+func (r *BindingResolver) ResolveSecrets(ctx context.Context, integration *Integration) (*Integration, error) {
+	if r.secretRegistry == nil {
+		// No secret registry configured - return integration as-is
+		// This can happen in test scenarios or when secrets aren't needed
+		return integration, nil
+	}
+
+	// Create a copy to avoid modifying the original
+	resolved := *integration
+	resolved.Auth = integration.Auth
+
+	// Resolve token if present
+	if resolved.Auth.Token != "" {
+		value, err := r.resolveSecretValue(ctx, resolved.Auth.Token, integration.Name, "token")
+		if err != nil {
+			return nil, err
+		}
+		resolved.Auth.Token = value
+	}
+
+	// Resolve password if present
+	if resolved.Auth.Password != "" {
+		value, err := r.resolveSecretValue(ctx, resolved.Auth.Password, integration.Name, "password")
+		if err != nil {
+			return nil, err
+		}
+		resolved.Auth.Password = value
+	}
+
+	// Resolve API key value if present
+	if resolved.Auth.APIKeyValue != "" {
+		value, err := r.resolveSecretValue(ctx, resolved.Auth.APIKeyValue, integration.Name, "api_key_value")
+		if err != nil {
+			return nil, err
+		}
+		resolved.Auth.APIKeyValue = value
+	}
+
+	return &resolved, nil
+}
+
+// resolveSecretValue resolves a single secret value.
+// If the value is a secret reference (${VAR}, env:, file:, keychain:), it's resolved.
+// Otherwise, the value is returned as-is (literal value).
+func (r *BindingResolver) resolveSecretValue(ctx context.Context, value, integrationName, fieldName string) (string, error) {
+	if !isSecretReference(value) {
+		// Not a reference, return as-is (already a literal value)
+		return value, nil
+	}
+
+	// Resolve the reference
+	resolved, err := r.secretRegistry.Resolve(ctx, value)
+	if err != nil {
+		return "", &SecretResolutionError{
+			IntegrationName: integrationName,
+			Field:           fieldName,
+			Reference:       value,
+			Cause:           err,
+		}
+	}
+
+	return resolved, nil
+}
+
+// isSecretReference checks if a value looks like a secret reference.
+// Returns true for: ${VAR}, env:VAR, file:/path, keychain:name
+func isSecretReference(value string) bool {
+	if strings.HasPrefix(value, "${") && strings.HasSuffix(value, "}") {
+		return true // ${VAR} format
+	}
+	if strings.HasPrefix(value, "env:") {
+		return true // env:VAR format
+	}
+	if strings.HasPrefix(value, "file:") {
+		return true // file:/path format
+	}
+	if strings.HasPrefix(value, "keychain:") {
+		return true // keychain:name format
+	}
+	return false
+}
+
+// SecretResolutionError represents a failure to resolve a secret reference.
+type SecretResolutionError struct {
+	IntegrationName string
+	Field           string
+	Reference       string
+	Cause           error
+}
+
+func (e *SecretResolutionError) Error() string {
+	// Extract the error category from the underlying cause if it's a SecretResolutionError
+	var secretErr *profile.SecretResolutionError
+	category := "UNKNOWN"
+	suggestion := ""
+
+	if errors.As(e.Cause, &secretErr) {
+		category = string(secretErr.Category)
+
+		// Provide helpful suggestions based on error category
+		switch secretErr.Category {
+		case profile.ErrorCategoryNotFound:
+			if strings.HasPrefix(e.Reference, "env:") || strings.HasPrefix(e.Reference, "${") {
+				// Extract var name
+				varName := e.Reference
+				if strings.HasPrefix(varName, "env:") {
+					varName = varName[4:]
+				} else if strings.HasPrefix(varName, "${") && strings.HasSuffix(varName, "}") {
+					varName = varName[2 : len(varName)-1]
+				}
+				suggestion = fmt.Sprintf("\n\nTo fix: export %s=<your-value>", varName)
+			} else if strings.HasPrefix(e.Reference, "file:") {
+				path := e.Reference[5:]
+				suggestion = fmt.Sprintf("\n\nTo fix: Ensure file exists at %s", path)
+			} else if strings.HasPrefix(e.Reference, "keychain:") {
+				key := e.Reference[9:]
+				suggestion = fmt.Sprintf("\n\nTo fix: Add secret to keychain with key %q", key)
+			}
+
+		case profile.ErrorCategoryAccessDenied:
+			suggestion = "\n\nTo fix: Check permissions or unlock the keychain/secret service"
+		}
+	}
+
+	return fmt.Sprintf(
+		"Error: Failed to resolve secret for integration '%s'.\n\n"+
+			"Field: %s\n"+
+			"Reference: %s\n"+
+			"Cause: %s%s",
+		e.IntegrationName,
+		e.Field,
+		e.Reference,
+		category,
+		suggestion,
+	)
+}
+
+func (e *SecretResolutionError) Unwrap() error {
+	return e.Cause
 }

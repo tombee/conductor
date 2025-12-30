@@ -72,6 +72,14 @@ type Storage interface {
 	// Returns ErrWorkspaceHasRuns if the workspace has active workflow runs.
 	DeleteWorkspace(ctx context.Context, name string) error
 
+	// GetCurrentWorkspace returns the name of the current active workspace.
+	// Returns "default" if no workspace is set.
+	GetCurrentWorkspace(ctx context.Context) (string, error)
+
+	// SetCurrentWorkspace sets the current active workspace.
+	// Returns ErrWorkspaceNotFound if the workspace doesn't exist.
+	SetCurrentWorkspace(ctx context.Context, name string) error
+
 	// Integration operations
 
 	// CreateIntegration creates a new integration in a workspace.

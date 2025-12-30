@@ -132,6 +132,12 @@ func (s *SQLiteStorage) migrate(ctx context.Context) error {
 			UNIQUE(workspace_name, name)
 		)`,
 
+		// Config table for storing current workspace and other settings
+		`CREATE TABLE IF NOT EXISTS config (
+			key TEXT PRIMARY KEY,
+			value TEXT NOT NULL
+		)`,
+
 		// Indexes for efficient queries
 		`CREATE INDEX IF NOT EXISTS idx_integrations_workspace
 			ON integrations(workspace_name)`,
@@ -332,6 +338,45 @@ func (s *SQLiteStorage) DeleteWorkspace(ctx context.Context, name string) error 
 
 	if rows == 0 {
 		return ErrWorkspaceNotFound
+	}
+
+	return nil
+}
+
+// GetCurrentWorkspace returns the name of the current active workspace.
+func (s *SQLiteStorage) GetCurrentWorkspace(ctx context.Context) (string, error) {
+	query := `SELECT value FROM config WHERE key = ?`
+
+	var workspaceName string
+	err := s.db.QueryRowContext(ctx, query, "current_workspace").Scan(&workspaceName)
+
+	if err == sql.ErrNoRows {
+		// No current workspace set, return default
+		return "default", nil
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("failed to get current workspace: %w", err)
+	}
+
+	return workspaceName, nil
+}
+
+// SetCurrentWorkspace sets the current active workspace.
+func (s *SQLiteStorage) SetCurrentWorkspace(ctx context.Context, name string) error {
+	// Verify workspace exists
+	_, err := s.GetWorkspace(ctx, name)
+	if err != nil {
+		return err
+	}
+
+	// Upsert current workspace setting
+	query := `INSERT INTO config (key, value) VALUES (?, ?)
+	          ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+
+	_, err = s.db.ExecContext(ctx, query, "current_workspace", name)
+	if err != nil {
+		return fmt.Errorf("failed to set current workspace: %w", err)
 	}
 
 	return nil

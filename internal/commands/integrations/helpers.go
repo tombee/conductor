@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/tombee/conductor/internal/workspace"
 )
@@ -62,8 +63,8 @@ func getStorage(ctx context.Context) (workspace.Storage, error) {
 	return storage, nil
 }
 
-// getWorkspaceName returns the workspace name from flag or environment.
-// Defaults to "default" if not specified.
+// getWorkspaceName returns the workspace name from flag, environment, or current workspace.
+// Priority: flag > environment > current workspace > "default"
 func getWorkspaceName(flagValue string) string {
 	if flagValue != "" {
 		return flagValue
@@ -71,7 +72,86 @@ func getWorkspaceName(flagValue string) string {
 	if envValue := os.Getenv("CONDUCTOR_WORKSPACE"); envValue != "" {
 		return envValue
 	}
+
+	// Try to get current workspace from storage
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	storage, err := getStorage(ctx)
+	if err == nil {
+		defer storage.Close()
+		currentWorkspace, err := storage.GetCurrentWorkspace(ctx)
+		if err == nil && currentWorkspace != "" {
+			return currentWorkspace
+		}
+	}
+
 	return "default"
+}
+
+// getIntegrationBindings parses integration bindings from environment variable.
+// CONDUCTOR_BIND_INTEGRATION format: "github=work,slack=team,source=personal"
+// Returns a map from requirement identifier to integration name.
+func getIntegrationBindings() map[string]string {
+	envValue := os.Getenv("CONDUCTOR_BIND_INTEGRATION")
+	if envValue == "" {
+		return nil
+	}
+
+	bindings := make(map[string]string)
+
+	// Split by comma
+	pairs := splitAndTrim(envValue, ',')
+	for _, pair := range pairs {
+		// Split by equals
+		parts := splitAndTrim(pair, '=')
+		if len(parts) == 2 {
+			bindings[parts[0]] = parts[1]
+		}
+	}
+
+	return bindings
+}
+
+// splitAndTrim splits a string by a separator and trims whitespace from each part.
+func splitAndTrim(s string, sep rune) []string {
+	var parts []string
+	current := ""
+
+	for _, ch := range s {
+		if ch == sep {
+			if trimmed := trimSpace(current); trimmed != "" {
+				parts = append(parts, trimmed)
+			}
+			current = ""
+		} else {
+			current += string(ch)
+		}
+	}
+
+	if trimmed := trimSpace(current); trimmed != "" {
+		parts = append(parts, trimmed)
+	}
+
+	return parts
+}
+
+// trimSpace removes leading and trailing whitespace.
+func trimSpace(s string) string {
+	start := 0
+	end := len(s)
+
+	// Trim leading
+	for start < end && (s[start] == ' ' || s[start] == '\t' || s[start] == '\n' || s[start] == '\r') {
+		start++
+	}
+
+	// Trim trailing
+	for end > start && (s[end-1] == ' ' || s[end-1] == '\t' || s[end-1] == '\n' || s[end-1] == '\r') {
+		end--
+	}
+
+	return s[start:end]
 }
 
 // redactAuth returns a human-readable description of auth without exposing secrets.

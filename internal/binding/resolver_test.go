@@ -49,8 +49,8 @@ func TestResolver_ResolveIntegrationRequirements(t *testing.T) {
 			workflow: &workflow.Definition{
 				Name: "test-workflow",
 				Requires: &workflow.RequirementsDefinition{
-					Integrations: []workflow.IntegrationRequirement{
-						{Name: "github"},
+					Integrations: []string{
+						  "github",
 					},
 				},
 				Integrations: map[string]workflow.IntegrationDefinition{
@@ -73,8 +73,8 @@ func TestResolver_ResolveIntegrationRequirements(t *testing.T) {
 			workflow: &workflow.Definition{
 				Name: "test-workflow",
 				Requires: &workflow.RequirementsDefinition{
-					Integrations: []workflow.IntegrationRequirement{
-						{Name: "github"},
+					Integrations: []string{
+						  "github",
 					},
 				},
 				Integrations: map[string]workflow.IntegrationDefinition{
@@ -97,8 +97,8 @@ func TestResolver_ResolveIntegrationRequirements(t *testing.T) {
 			workflow: &workflow.Definition{
 				Name: "test-workflow",
 				Requires: &workflow.RequirementsDefinition{
-					Integrations: []workflow.IntegrationRequirement{
-						{Name: "github"},
+					Integrations: []string{
+						  "github",
 					},
 				},
 			},
@@ -113,9 +113,7 @@ func TestResolver_ResolveIntegrationRequirements(t *testing.T) {
 			workflow: &workflow.Definition{
 				Name: "test-workflow",
 				Requires: &workflow.RequirementsDefinition{
-					Integrations: []workflow.IntegrationRequirement{
-						{Name: "github", Optional: true},
-					},
+					Integrations: []string{},
 				},
 			},
 			wantErr:     false,

@@ -203,30 +203,34 @@ func (r *Resolver) resolveIntegrationRequirements(ctx context.Context, resCtx *R
 		return nil
 	}
 
-	for _, req := range resCtx.Workflow.Requires.Integrations {
-		binding, source, err := r.resolveIntegrationBinding(ctx, resCtx, req.Name)
+	for _, reqStr := range resCtx.Workflow.Requires.Integrations {
+		// Parse the requirement string (handles "github" and "github as source" formats)
+		parsed := workflow.ParseIntegrationRequirement(reqStr)
+
+		// Determine the key for the binding (alias if present, otherwise type)
+		bindingKey := parsed.Type
+		if parsed.Alias != "" {
+			bindingKey = parsed.Alias
+		}
+
+		binding, source, err := r.resolveIntegrationBinding(ctx, resCtx, bindingKey)
 		if err != nil {
-			if req.Optional {
-				// Optional integration missing - skip with warning
-				// TODO: Add warning logging
-				continue
-			}
 			return profile.NewBindingError(
 				profile.ErrorCategoryNotFound,
-				fmt.Sprintf("integrations.%s", req.Name),
+				fmt.Sprintf("integrations.%s", bindingKey),
 				resCtx.Profile.Name,
-				fmt.Sprintf("workflow requires integration %q but no binding found", req.Name),
+				fmt.Sprintf("workflow requires integration %q but no binding found", reqStr),
 			)
 		}
 
 		// Resolve secrets in the binding
 		resolvedBinding, err := r.resolveIntegrationSecrets(ctx, resCtx, binding)
 		if err != nil {
-			return fmt.Errorf("failed to resolve secrets for integration %q: %w", req.Name, err)
+			return fmt.Errorf("failed to resolve secrets for integration %q: %w", bindingKey, err)
 		}
 
 		resolvedBinding.Source = source
-		resolved.IntegrationBindings[req.Name] = *resolvedBinding
+		resolved.IntegrationBindings[bindingKey] = *resolvedBinding
 	}
 
 	return nil

@@ -51,6 +51,12 @@ func (m *mockStorage) UpdateWorkspace(ctx context.Context, workspace *Workspace)
 func (m *mockStorage) DeleteWorkspace(ctx context.Context, name string) error {
 	return nil
 }
+func (m *mockStorage) GetCurrentWorkspace(ctx context.Context) (string, error) {
+	return "default", nil
+}
+func (m *mockStorage) SetCurrentWorkspace(ctx context.Context, name string) error {
+	return nil
+}
 func (m *mockStorage) CreateIntegration(ctx context.Context, integration *Integration) error {
 	return nil
 }
@@ -235,7 +241,7 @@ func TestBindingResolver_ResolveBindings(t *testing.T) {
 			}
 
 			// Create resolver
-			resolver := NewBindingResolver(storage)
+			resolver := NewBindingResolver(storage, nil)
 
 			// Create workflow with requirements
 			wf := &workflow.Definition{

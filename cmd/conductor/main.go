@@ -40,6 +40,7 @@ import (
 	"github.com/tombee/conductor/internal/commands/validate"
 	versioncmd "github.com/tombee/conductor/internal/commands/version"
 	"github.com/tombee/conductor/internal/commands/workflow"
+	workspacecmd "github.com/tombee/conductor/internal/commands/workspace"
 	daemonpkg "github.com/tombee/conductor/internal/controller"
 )
 
@@ -130,6 +131,7 @@ func main() {
 	// Configuration and security
 	rootCmd.AddCommand(config.NewConfigCommand())
 	rootCmd.AddCommand(integrations.NewCommand())
+	rootCmd.AddCommand(workspacecmd.NewCommand())
 	rootCmd.AddCommand(secrets.NewCommand())
 	rootCmd.AddCommand(security.NewCommand())
 	rootCmd.AddCommand(override.NewCommand())
