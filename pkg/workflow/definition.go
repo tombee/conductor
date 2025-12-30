@@ -10,6 +10,7 @@ package workflow
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/tombee/conductor/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -965,27 +966,27 @@ func validateToolPattern(pattern string) error {
 
 // RequirementsDefinition declares abstract service dependencies for a workflow.
 // This enables portable workflow definitions that don't embed credentials.
-// Runtime bindings are provided by execution profiles.
+// Runtime bindings are provided by workspaces.
 type RequirementsDefinition struct {
-	// Integrations lists required integration dependencies
-	Integrations []IntegrationRequirement `yaml:"integrations,omitempty" json:"integrations,omitempty"`
+	// Integrations lists required integration dependencies.
+	// Supports two formats:
+	//   - Simple: "github" (requires integration of type github)
+	//   - Aliased: "github as source" (requires github, bound to alias "source")
+	Integrations []string `yaml:"integrations,omitempty" json:"integrations,omitempty"`
 
 	// MCPServers lists required MCP server dependencies
 	MCPServers []MCPServerRequirement `yaml:"mcp_servers,omitempty" json:"mcp_servers,omitempty"`
 }
 
-// IntegrationRequirement describes a required integration dependency.
-type IntegrationRequirement struct {
-	// Name is the integration identifier (must match profile binding key)
-	Name string `yaml:"name" json:"name"`
+// ParsedIntegrationRequirement represents a parsed integration requirement.
+// It is derived from the string format in requires.integrations.
+type ParsedIntegrationRequirement struct {
+	// Type is the integration type (e.g., "github", "slack")
+	Type string
 
-	// Capabilities are optional hints about required operations
-	// Example: ["issues", "pull_requests"] for GitHub integration
-	Capabilities []string `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
-
-	// Optional indicates this integration is not required for the workflow to function
-	// Missing optional integrations will cause step-level errors, not submission-time errors
-	Optional bool `yaml:"optional,omitempty" json:"optional,omitempty"`
+	// Alias is the optional alias for this requirement (e.g., "source", "target")
+	// Empty string means no alias (simple requirement)
+	Alias string
 }
 
 // MCPServerRequirement describes a required MCP server dependency.
@@ -1000,15 +1001,32 @@ type MCPServerRequirement struct {
 // Validate checks if the requirements definition is valid.
 func (r *RequirementsDefinition) Validate() error {
 	// Validate integration requirements
-	integrationNames := make(map[string]bool)
-	for i, req := range r.Integrations {
-		if req.Name == "" {
-			return fmt.Errorf("integration requirement %d: name is required", i)
+	seenTypes := make(map[string]bool)
+	seenAliases := make(map[string]bool)
+
+	for i, reqStr := range r.Integrations {
+		if reqStr == "" {
+			return fmt.Errorf("integration requirement %d: cannot be empty", i)
 		}
-		if integrationNames[req.Name] {
-			return fmt.Errorf("duplicate integration requirement: %s", req.Name)
+
+		// Parse the requirement
+		parsed := ParseIntegrationRequirement(reqStr)
+
+		// Check for duplicate types without aliases
+		if parsed.Alias == "" {
+			if seenTypes[parsed.Type] {
+				return fmt.Errorf("duplicate integration requirement: %s", parsed.Type)
+			}
+			seenTypes[parsed.Type] = true
 		}
-		integrationNames[req.Name] = true
+
+		// Check for duplicate aliases
+		if parsed.Alias != "" {
+			if seenAliases[parsed.Alias] {
+				return fmt.Errorf("duplicate integration alias: %s", parsed.Alias)
+			}
+			seenAliases[parsed.Alias] = true
+		}
 	}
 
 	// Validate MCP server requirements
@@ -1024,6 +1042,29 @@ func (r *RequirementsDefinition) Validate() error {
 	}
 
 	return nil
+}
+
+// ParseIntegrationRequirement parses an integration requirement string.
+// Supports two formats:
+//   - Simple: "github" -> type="github", alias=""
+//   - Aliased: "github as source" -> type="github", alias="source"
+func ParseIntegrationRequirement(req string) ParsedIntegrationRequirement {
+	// Check for "as" keyword (case-insensitive wouldn't make sense here, keep it exact)
+	parts := regexp.MustCompile(`\s+as\s+`).Split(req, 2)
+
+	if len(parts) == 2 {
+		// Aliased format: "github as source"
+		return ParsedIntegrationRequirement{
+			Type:  strings.TrimSpace(parts[0]),
+			Alias: strings.TrimSpace(parts[1]),
+		}
+	}
+
+	// Simple format: "github"
+	return ParsedIntegrationRequirement{
+		Type:  strings.TrimSpace(req),
+		Alias: "",
+	}
 }
 
 // UnmarshalYAML implements custom YAML unmarshaling for Definition

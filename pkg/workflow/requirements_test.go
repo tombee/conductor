@@ -25,12 +25,9 @@ func TestRequirementsDefinition_Validate(t *testing.T) {
 		wantError bool
 	}{
 		{
-			name: "valid with integrations and MCP servers",
+			name: "valid simple integrations",
 			requires: RequirementsDefinition{
-				Integrations: []IntegrationRequirement{
-					{Name: "github", Capabilities: []string{"issues", "pull_requests"}},
-					{Name: "slack", Optional: true},
-				},
+				Integrations: []string{"github", "slack"},
 				MCPServers: []MCPServerRequirement{
 					{Name: "code-analysis"},
 				},
@@ -38,21 +35,37 @@ func TestRequirementsDefinition_Validate(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name: "empty integration name",
+			name: "valid aliased integrations",
 			requires: RequirementsDefinition{
-				Integrations: []IntegrationRequirement{
-					{Name: ""},
-				},
+				Integrations: []string{"github as source", "github as target"},
+			},
+			wantError: false,
+		},
+		{
+			name: "valid mixed simple and aliased",
+			requires: RequirementsDefinition{
+				Integrations: []string{"slack", "github as source"},
+			},
+			wantError: false,
+		},
+		{
+			name: "empty integration string",
+			requires: RequirementsDefinition{
+				Integrations: []string{""},
 			},
 			wantError: true,
 		},
 		{
-			name: "duplicate integration names",
+			name: "duplicate simple integration types",
 			requires: RequirementsDefinition{
-				Integrations: []IntegrationRequirement{
-					{Name: "github"},
-					{Name: "github"},
-				},
+				Integrations: []string{"github", "github"},
+			},
+			wantError: true,
+		},
+		{
+			name: "duplicate aliases",
+			requires: RequirementsDefinition{
+				Integrations: []string{"github as source", "slack as source"},
 			},
 			wantError: true,
 		},
@@ -87,17 +100,69 @@ func TestRequirementsDefinition_Validate(t *testing.T) {
 	}
 }
 
+func TestParseIntegrationRequirement(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantType  string
+		wantAlias string
+	}{
+		{
+			name:      "simple requirement",
+			input:     "github",
+			wantType:  "github",
+			wantAlias: "",
+		},
+		{
+			name:      "aliased requirement",
+			input:     "github as source",
+			wantType:  "github",
+			wantAlias: "source",
+		},
+		{
+			name:      "aliased with extra spaces",
+			input:     "  github   as   source  ",
+			wantType:  "github",
+			wantAlias: "source",
+		},
+		{
+			name:      "simple with spaces",
+			input:     "  slack  ",
+			wantType:  "slack",
+			wantAlias: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed := ParseIntegrationRequirement(tt.input)
+			if parsed.Type != tt.wantType {
+				t.Errorf("ParseIntegrationRequirement() Type = %q, want %q", parsed.Type, tt.wantType)
+			}
+			if parsed.Alias != tt.wantAlias {
+				t.Errorf("ParseIntegrationRequirement() Alias = %q, want %q", parsed.Alias, tt.wantAlias)
+			}
+		})
+	}
+}
+
 func TestParseDefinition_WithRequires(t *testing.T) {
-	yaml := `
+	tests := []struct {
+		name     string
+		yaml     string
+		wantIntegrations int
+		wantMCPServers   int
+	}{
+		{
+			name: "simple integrations",
+			yaml: `
 name: test-workflow
 version: "1.0"
 
 requires:
   integrations:
-    - name: github
-      capabilities: [issues, pull_requests]
-    - name: slack
-      optional: true
+    - github
+    - slack
   mcp_servers:
     - name: code-analysis
 
@@ -105,38 +170,73 @@ steps:
   - id: step1
     type: llm
     prompt: "test"
-`
+`,
+			wantIntegrations: 2,
+			wantMCPServers:   1,
+		},
+		{
+			name: "aliased integrations",
+			yaml: `
+name: test-workflow
+version: "1.0"
 
-	def, err := ParseDefinition([]byte(yaml))
-	if err != nil {
-		t.Fatalf("ParseDefinition() error = %v", err)
+requires:
+  integrations:
+    - github as source
+    - github as target
+
+steps:
+  - id: step1
+    type: llm
+    prompt: "test"
+`,
+			wantIntegrations: 2,
+			wantMCPServers:   0,
+		},
+		{
+			name: "mixed simple and aliased",
+			yaml: `
+name: test-workflow
+version: "1.0"
+
+requires:
+  integrations:
+    - slack
+    - github as source
+
+steps:
+  - id: step1
+    type: llm
+    prompt: "test"
+`,
+			wantIntegrations: 2,
+			wantMCPServers:   0,
+		},
 	}
 
-	if def.Requires == nil {
-		t.Fatal("Requires should not be nil")
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			def, err := ParseDefinition([]byte(tt.yaml))
+			if err != nil {
+				t.Fatalf("ParseDefinition() error = %v", err)
+			}
 
-	if len(def.Requires.Integrations) != 2 {
-		t.Errorf("Expected 2 integration requirements, got %d", len(def.Requires.Integrations))
-	}
+			if def.Requires == nil {
+				t.Fatal("Requires should not be nil")
+			}
 
-	if def.Requires.Integrations[0].Name != "github" {
-		t.Errorf("Expected integration name 'github', got %q", def.Requires.Integrations[0].Name)
-	}
+			if len(def.Requires.Integrations) != tt.wantIntegrations {
+				t.Errorf("Expected %d integration requirements, got %d", tt.wantIntegrations, len(def.Requires.Integrations))
+			}
 
-	if len(def.Requires.Integrations[0].Capabilities) != 2 {
-		t.Errorf("Expected 2 capabilities, got %d", len(def.Requires.Integrations[0].Capabilities))
-	}
+			if len(def.Requires.MCPServers) != tt.wantMCPServers {
+				t.Errorf("Expected %d MCP server requirements, got %d", tt.wantMCPServers, len(def.Requires.MCPServers))
+			}
 
-	if !def.Requires.Integrations[1].Optional {
-		t.Error("Second integration should be optional")
-	}
-
-	if len(def.Requires.MCPServers) != 1 {
-		t.Errorf("Expected 1 MCP server requirement, got %d", len(def.Requires.MCPServers))
-	}
-
-	if def.Requires.MCPServers[0].Name != "code-analysis" {
-		t.Errorf("Expected MCP server name 'code-analysis', got %q", def.Requires.MCPServers[0].Name)
+			// Validate the parsed requirements
+			if err := def.Requires.Validate(); err != nil {
+				t.Errorf("Requires.Validate() error = %v", err)
+			}
+		})
 	}
 }
