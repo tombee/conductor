@@ -42,6 +42,8 @@ func (h *RunsHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/runs/{id}", h.handleGet)
 	mux.HandleFunc("GET /v1/runs/{id}/output", h.handleGetOutput)
 	mux.HandleFunc("GET /v1/runs/{id}/logs", h.handleGetLogs)
+	mux.HandleFunc("GET /v1/runs/{id}/steps", h.handleListSteps)
+	mux.HandleFunc("GET /v1/runs/{id}/steps/{step_id}", h.handleGetStep)
 	mux.HandleFunc("DELETE /v1/runs/{id}", h.handleCancel)
 }
 
@@ -77,6 +79,9 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	allowHosts := r.URL.Query()["allow_hosts"]
 	allowPaths := r.URL.Query()["allow_paths"]
 	mcpDev := r.URL.Query().Get("mcp_dev") == "true"
+	logLevel := r.URL.Query().Get("log_level")
+	debugStep := r.URL.Query().Get("debug_step")
+	debugBreakpoints := r.URL.Query()["debug_breakpoint"]
 
 	// Parse and validate timeout if provided
 	var timeout time.Duration
@@ -98,18 +103,21 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		// Remote workflow - ignore body and use ref
 		// Parse inputs from query params (excluding reserved params)
 		reservedParams := map[string]bool{
-			"remote_ref":  true,
-			"no_cache":    true,
-			"workspace":   true,
-			"profile":     true,
-			"provider":    true,
-			"model":       true,
-			"timeout":     true,
-			"dry_run":     true,
-			"security":    true,
-			"allow_hosts": true,
-			"allow_paths": true,
-			"mcp_dev":     true,
+			"remote_ref":        true,
+			"no_cache":          true,
+			"workspace":         true,
+			"profile":           true,
+			"provider":          true,
+			"model":             true,
+			"timeout":           true,
+			"dry_run":           true,
+			"security":          true,
+			"allow_hosts":       true,
+			"allow_paths":       true,
+			"mcp_dev":           true,
+			"log_level":         true,
+			"debug_step":        true,
+			"debug_breakpoint":  true,
 		}
 		inputs := make(map[string]any)
 		for key, values := range r.URL.Query() {
@@ -118,21 +126,30 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		// Combine debug_step with debug_breakpoint
+		var breakpoints []string
+		if debugStep != "" {
+			breakpoints = append(breakpoints, debugStep)
+		}
+		breakpoints = append(breakpoints, debugBreakpoints...)
+
 		// Submit remote workflow run
 		run, err := h.runner.Submit(r.Context(), runner.SubmitRequest{
-			RemoteRef:  remoteRef,
-			NoCache:    noCache,
-			Inputs:     inputs,
-			Workspace:  workspace,
-			Profile:    profile,
-			Provider:   provider,
-			Model:      model,
-			Timeout:    timeout,
-			DryRun:     dryRun,
-			Security:   security,
-			AllowHosts: allowHosts,
-			AllowPaths: allowPaths,
-			MCPDev:     mcpDev,
+			RemoteRef:        remoteRef,
+			NoCache:          noCache,
+			Inputs:           inputs,
+			Workspace:        workspace,
+			Profile:          profile,
+			Provider:         provider,
+			Model:            model,
+			Timeout:          timeout,
+			DryRun:           dryRun,
+			Security:         security,
+			AllowHosts:       allowHosts,
+			AllowPaths:       allowPaths,
+			MCPDev:           mcpDev,
+			LogLevel:         logLevel,
+			DebugBreakpoints: breakpoints,
 		})
 		if err != nil {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("failed to submit run: %v", err))
@@ -220,19 +237,28 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		submitProfile = req.Profile
 	}
 
+	// Combine debug_step with debug_breakpoint
+	var breakpoints []string
+	if debugStep != "" {
+		breakpoints = append(breakpoints, debugStep)
+	}
+	breakpoints = append(breakpoints, debugBreakpoints...)
+
 	run, err := h.runner.Submit(r.Context(), runner.SubmitRequest{
-		WorkflowYAML: workflowYAML,
-		Inputs:       req.Inputs,
-		Workspace:    submitWorkspace,
-		Profile:      submitProfile,
-		Provider:     provider,
-		Model:        model,
-		Timeout:      timeout,
-		DryRun:       dryRun,
-		Security:     security,
-		AllowHosts:   allowHosts,
-		AllowPaths:   allowPaths,
-		MCPDev:       mcpDev,
+		WorkflowYAML:     workflowYAML,
+		Inputs:           req.Inputs,
+		Workspace:        submitWorkspace,
+		Profile:          submitProfile,
+		Provider:         provider,
+		Model:            model,
+		Timeout:          timeout,
+		DryRun:           dryRun,
+		Security:         security,
+		AllowHosts:       allowHosts,
+		AllowPaths:       allowPaths,
+		MCPDev:           mcpDev,
+		LogLevel:         logLevel,
+		DebugBreakpoints: breakpoints,
 	})
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Sprintf("failed to submit run: %v", err))

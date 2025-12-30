@@ -82,6 +82,10 @@ type Run struct {
 	AllowPaths []string      `json:"allow_paths,omitempty"` // Extended allowed paths
 	MCPDev     bool          `json:"mcp_dev,omitempty"`     // MCP development mode
 
+	// Debug configuration
+	LogLevel         string   `json:"log_level,omitempty"`          // Log level override
+	DebugBreakpoints []string `json:"debug_breakpoints,omitempty"` // Step IDs where execution should pause
+
 	// Internal
 	mu         sync.RWMutex // Protects mutable fields (Status, Progress, Output, Error, etc.)
 	ctx        context.Context
@@ -156,13 +160,15 @@ type ListFilter struct {
 
 // RunOverrides contains runtime override parameters for a workflow run.
 type RunOverrides struct {
-	Provider   string
-	Model      string
-	Timeout    time.Duration
-	Security   string
-	AllowHosts []string
-	AllowPaths []string
-	MCPDev     bool
+	Provider         string
+	Model            string
+	Timeout          time.Duration
+	Security         string
+	AllowHosts       []string
+	AllowPaths       []string
+	MCPDev           bool
+	LogLevel         string
+	DebugBreakpoints []string
 }
 
 // SubmitRequest contains the parameters for submitting a workflow run.
@@ -196,6 +202,10 @@ type SubmitRequest struct {
 	AllowPaths []string
 	// MCPDev enables MCP development mode
 	MCPDev bool
+	// LogLevel sets the log level for this execution
+	LogLevel string
+	// DebugBreakpoints lists step IDs where execution should pause
+	DebugBreakpoints []string
 }
 
 // Runner manages workflow executions by composing focused components.
@@ -348,15 +358,18 @@ func (r *Runner) Submit(ctx context.Context, req SubmitRequest) (*RunSnapshot, e
 	// Build runtime overrides from request
 	var overrides *RunOverrides
 	if req.Provider != "" || req.Model != "" || req.Timeout != 0 || req.Security != "" ||
-		len(req.AllowHosts) > 0 || len(req.AllowPaths) > 0 || req.MCPDev {
+		len(req.AllowHosts) > 0 || len(req.AllowPaths) > 0 || req.MCPDev ||
+		req.LogLevel != "" || len(req.DebugBreakpoints) > 0 {
 		overrides = &RunOverrides{
-			Provider:   req.Provider,
-			Model:      req.Model,
-			Timeout:    req.Timeout,
-			Security:   req.Security,
-			AllowHosts: req.AllowHosts,
-			AllowPaths: req.AllowPaths,
-			MCPDev:     req.MCPDev,
+			Provider:         req.Provider,
+			Model:            req.Model,
+			Timeout:          req.Timeout,
+			Security:         req.Security,
+			AllowHosts:       req.AllowHosts,
+			AllowPaths:       req.AllowPaths,
+			MCPDev:           req.MCPDev,
+			LogLevel:         req.LogLevel,
+			DebugBreakpoints: req.DebugBreakpoints,
 		}
 	}
 
@@ -474,6 +487,13 @@ func (r *Runner) Cancel(id string) error {
 // Subscribe returns a channel that receives log entries for a run.
 func (r *Runner) Subscribe(runID string) (<-chan LogEntry, func()) {
 	return r.logs.Subscribe(runID)
+}
+
+// Backend returns the backend storage instance for direct access.
+// This is used by API handlers to access optional backend capabilities
+// like step result storage.
+func (r *Runner) Backend() backend.Backend {
+	return r.state.backend
 }
 
 // StartDraining puts the runner into draining mode.

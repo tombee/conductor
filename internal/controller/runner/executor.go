@@ -20,8 +20,11 @@ package runner
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
+	"github.com/tombee/conductor/internal/controller/backend"
+	"github.com/tombee/conductor/internal/debug"
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
@@ -147,6 +150,61 @@ func (r *Runner) execute(run *Run) {
 
 // executeWithAdapter executes the workflow using the ExecutionAdapter.
 func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
+	// Set up debug adapter if breakpoints are configured
+	var debugAdapter *debug.Adapter
+	var debugShell *debug.Shell
+
+	if len(run.DebugBreakpoints) > 0 {
+		// Create debug configuration
+		debugConfig := debug.New(run.DebugBreakpoints, run.LogLevel)
+
+		// Validate debug configuration against workflow
+		if err := debugConfig.Validate(run.definition); err != nil {
+			r.addLog(run, "error", fmt.Sprintf("Invalid debug configuration: %v", err), "")
+			run.mu.Lock()
+			run.Status = RunStatusFailed
+			run.Error = fmt.Sprintf("Invalid debug configuration: %v", err)
+			completedAt := time.Now()
+			run.CompletedAt = &completedAt
+			run.mu.Unlock()
+			return
+		}
+
+		// Create logger for debug adapter
+		logger := slog.Default()
+		if run.LogLevel != "" {
+			// Parse log level (debug adapter will use this)
+			var level slog.Level
+			switch run.LogLevel {
+			case "trace", "debug":
+				level = slog.LevelDebug
+			case "info":
+				level = slog.LevelInfo
+			case "warn":
+				level = slog.LevelWarn
+			case "error":
+				level = slog.LevelError
+			default:
+				level = slog.LevelInfo
+			}
+			handler := slog.NewTextHandler(nil, &slog.HandlerOptions{Level: level})
+			logger = slog.New(handler)
+		}
+
+		// Create debug adapter and shell
+		debugAdapter = debug.NewAdapter(debugConfig, logger)
+		debugShell = debug.NewShell(debugAdapter)
+
+		// Start debug shell in background
+		go func() {
+			if err := debugShell.Run(run.ctx); err != nil && err != context.Canceled {
+				r.addLog(run, "warn", fmt.Sprintf("Debug shell error: %v", err), "")
+			}
+		}()
+
+		r.addLog(run, "info", fmt.Sprintf("Debug mode enabled with %d breakpoint(s)", len(run.DebugBreakpoints)), "")
+	}
+
 	opts := ExecutionOptions{
 		RunID: run.ID,
 		OnStepStart: func(stepID string, stepIndex int, total int) {
@@ -154,6 +212,16 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 			run.Progress.CurrentStep = stepID
 			run.Progress.Completed = stepIndex
 			run.mu.Unlock()
+
+			// Notify debug adapter if active
+			if debugAdapter != nil {
+				// Create inputs map from workflow context
+				inputs := make(map[string]interface{})
+				inputs["workflow_inputs"] = run.Inputs
+				if err := debugAdapter.OnStepStart(run.ctx, stepID, stepIndex, inputs); err != nil {
+					r.addLog(run, "warn", fmt.Sprintf("Debug adapter error: %v", err), stepID)
+				}
+			}
 
 			// Save checkpoint before step using LifecycleManager.
 			// Use context.Background() to ensure checkpoint persists even if run is cancelled.
@@ -164,6 +232,46 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 			}
 		},
 		OnStepEnd: func(stepID string, result *workflow.StepResult, err error) {
+			// Notify debug adapter if active
+			if debugAdapter != nil {
+				if debugErr := debugAdapter.OnStepEnd(run.ctx, stepID, result, err); debugErr != nil {
+					r.addLog(run, "warn", fmt.Sprintf("Debug adapter error: %v", debugErr), stepID)
+				}
+			}
+
+			// Save step result to backend if available
+			if result != nil {
+				if be := r.getBackend(); be != nil {
+					// Check if backend supports step result storage
+					if stepStore, ok := be.(backend.StepResultStore); ok {
+						// Find step index in workflow definition
+						stepIndex := -1
+						for i, step := range run.definition.Steps {
+							if step.ID == stepID {
+								stepIndex = i
+								break
+							}
+						}
+
+						backendResult := &backend.StepResult{
+							RunID:     run.ID,
+							StepID:    stepID,
+							StepIndex: stepIndex,
+							Inputs:    nil, // Step inputs not available at this level
+							Outputs:   result.Output,
+							Duration:  result.Duration,
+							Status:    string(result.Status),
+							Error:     errorToString(err),
+							CreatedAt: time.Now(),
+						}
+						// Use context.Background() to ensure step result persists
+						if saveErr := stepStore.SaveStepResult(context.Background(), backendResult); saveErr != nil {
+							r.addLog(run, "warn", fmt.Sprintf("Failed to save step result: %v", saveErr), stepID)
+						}
+					}
+				}
+			}
+
 			// Record step metrics
 			r.mu.RLock()
 			metricsCollector := r.metrics
@@ -195,6 +303,14 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 	}
 
 	result, err := adapter.ExecuteWorkflow(run.ctx, run.definition, run.Inputs, opts)
+
+	// Close debug resources if active
+	if debugAdapter != nil {
+		debugAdapter.Close()
+	}
+	if debugShell != nil {
+		debugShell.Close()
+	}
 
 	// Update final status
 	run.mu.Lock()
@@ -248,4 +364,12 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 	}
 
 	r.addLog(run, "info", fmt.Sprintf("Workflow %s: %s", run.Status, run.Workflow), "")
+}
+
+// errorToString converts an error to a string, returning empty string if nil.
+func errorToString(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }

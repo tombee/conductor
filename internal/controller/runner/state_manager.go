@@ -92,6 +92,8 @@ func (s *StateManager) CreateRun(ctx context.Context, def *workflow.Definition, 
 		run.AllowHosts = overrides.AllowHosts
 		run.AllowPaths = overrides.AllowPaths
 		run.MCPDev = overrides.MCPDev
+		run.LogLevel = overrides.LogLevel
+		run.DebugBreakpoints = overrides.DebugBreakpoints
 	}
 
 	s.mu.Lock()
