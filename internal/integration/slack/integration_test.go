@@ -83,8 +83,8 @@ func TestSlackIntegration_Operations(t *testing.T) {
 	sc := integration.(*SlackIntegration)
 	operations := sc.Operations()
 
-	// Verify we have all 10 operations
-	expectedOps := 10
+	// Verify we have all 13 operations
+	expectedOps := 13
 	if len(operations) != expectedOps {
 		t.Errorf("Expected %d operations, got %d", expectedOps, len(operations))
 	}
@@ -100,6 +100,7 @@ func TestSlackIntegration_Operations(t *testing.T) {
 		"upload_file",
 		"list_channels", "create_channel", "invite_to_channel",
 		"list_users", "get_user",
+		"search_messages", "open_conversation", "get_conversation_history",
 	}
 
 	for _, name := range required {
@@ -647,5 +648,273 @@ func TestSlackIntegration_MissingRequiredParameters(t *testing.T) {
 				t.Error("Expected error for missing required parameters, got nil")
 			}
 		})
+	}
+}
+
+func TestSlackIntegration_SearchMessages(t *testing.T) {
+	// Create mock server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify request
+		if r.URL.Path != "/search.messages" {
+			t.Errorf("Expected path '/search.messages', got '%s'", r.URL.Path)
+		}
+
+		if r.Method != "GET" {
+			t.Errorf("Expected GET method, got '%s'", r.Method)
+		}
+
+		// Verify query parameter
+		query := r.URL.Query().Get("query")
+		if query != "test search" {
+			t.Errorf("Expected query 'test search', got '%s'", query)
+		}
+
+		// Return mock response
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(SearchMessagesResponse{
+			SlackResponse: SlackResponse{OK: true},
+			Query:         "test search",
+			Messages: SearchResults{
+				Total: 2,
+				Pagination: SearchPagination{
+					TotalCount: 2,
+					Page:       1,
+					PerPage:    20,
+				},
+				Matches: []SearchMatch{
+					{
+						Type:      "message",
+						Channel:   ChannelInfo{ID: "C123", Name: "general"},
+						User:      "U123",
+						Username:  "testuser",
+						Timestamp: "1234567890.123456",
+						Text:      "test message one",
+						Permalink: "https://test.slack.com/archives/C123/p1234567890123456",
+					},
+					{
+						Type:      "message",
+						Channel:   ChannelInfo{ID: "C456", Name: "random"},
+						User:      "U456",
+						Username:  "otheruser",
+						Timestamp: "1234567891.123456",
+						Text:      "test message two",
+						Permalink: "https://test.slack.com/archives/C456/p1234567891123456",
+					},
+				},
+			},
+		})
+	}))
+	defer server.Close()
+
+	// Create HTTP transport
+	httpTransport, err := transport.NewHTTPTransport(&transport.HTTPTransportConfig{
+		BaseURL: server.URL,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create HTTP transport: %v", err)
+	}
+
+	config := &api.ProviderConfig{
+		Transport: httpTransport,
+		BaseURL:   server.URL,
+		Token:     "test-token",
+	}
+
+	integration, err := NewSlackIntegration(config)
+	if err != nil {
+		t.Fatalf("Failed to create integration: %v", err)
+	}
+
+	// Execute search_messages operation
+	result, err := integration.Execute(context.Background(), "search_messages", map[string]interface{}{
+		"query": "test search",
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to search messages: %v", err)
+	}
+
+	// Verify result
+	response, ok := result.Response.(map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected response to be map[string]interface{}, got %T", result.Response)
+	}
+
+	if response["query"] != "test search" {
+		t.Errorf("Expected query 'test search', got '%v'", response["query"])
+	}
+
+	if response["total"] != 2 {
+		t.Errorf("Expected total 2, got '%v'", response["total"])
+	}
+
+	matches, ok := response["matches"].([]map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected matches to be []map[string]interface{}, got %T", response["matches"])
+	}
+
+	if len(matches) != 2 {
+		t.Errorf("Expected 2 matches, got %d", len(matches))
+	}
+}
+
+func TestSlackIntegration_OpenConversation(t *testing.T) {
+	// Create mock server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify request
+		if r.URL.Path != "/conversations.open" {
+			t.Errorf("Expected path '/conversations.open', got '%s'", r.URL.Path)
+		}
+
+		if r.Method != "POST" {
+			t.Errorf("Expected POST method, got '%s'", r.Method)
+		}
+
+		// Return mock response
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(ConversationsOpenResponse{
+			SlackResponse: SlackResponse{OK: true},
+			Channel: ConversationChannel{
+				ID: "D123456",
+			},
+		})
+	}))
+	defer server.Close()
+
+	// Create HTTP transport
+	httpTransport, err := transport.NewHTTPTransport(&transport.HTTPTransportConfig{
+		BaseURL: server.URL,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create HTTP transport: %v", err)
+	}
+
+	config := &api.ProviderConfig{
+		Transport: httpTransport,
+		BaseURL:   server.URL,
+		Token:     "test-token",
+	}
+
+	integration, err := NewSlackIntegration(config)
+	if err != nil {
+		t.Fatalf("Failed to create integration: %v", err)
+	}
+
+	// Execute open_conversation operation
+	result, err := integration.Execute(context.Background(), "open_conversation", map[string]interface{}{
+		"users": "U123456",
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to open conversation: %v", err)
+	}
+
+	// Verify result
+	response, ok := result.Response.(map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected response to be map[string]interface{}, got %T", result.Response)
+	}
+
+	if response["channel_id"] != "D123456" {
+		t.Errorf("Expected channel_id 'D123456', got '%v'", response["channel_id"])
+	}
+}
+
+func TestSlackIntegration_GetConversationHistory(t *testing.T) {
+	// Create mock server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify request
+		if r.URL.Path != "/conversations.history" {
+			t.Errorf("Expected path '/conversations.history', got '%s'", r.URL.Path)
+		}
+
+		if r.Method != "GET" {
+			t.Errorf("Expected GET method, got '%s'", r.Method)
+		}
+
+		// Verify channel parameter
+		channel := r.URL.Query().Get("channel")
+		if channel != "C123456" {
+			t.Errorf("Expected channel 'C123456', got '%s'", channel)
+		}
+
+		// Return mock response
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(ConversationsHistoryResponse{
+			SlackResponse: SlackResponse{OK: true},
+			Messages: []Message{
+				{
+					Type:      "message",
+					User:      "U123",
+					Text:      "Hello world",
+					Timestamp: "1234567890.123456",
+				},
+				{
+					Type:      "message",
+					User:      "U456",
+					Text:      "Hi there",
+					Timestamp: "1234567891.123456",
+				},
+			},
+			HasMore: true,
+			ResponseMetadata: ResponseMetadata{
+				NextCursor: "bmV4dF90czoxMjM0",
+			},
+		})
+	}))
+	defer server.Close()
+
+	// Create HTTP transport
+	httpTransport, err := transport.NewHTTPTransport(&transport.HTTPTransportConfig{
+		BaseURL: server.URL,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create HTTP transport: %v", err)
+	}
+
+	config := &api.ProviderConfig{
+		Transport: httpTransport,
+		BaseURL:   server.URL,
+		Token:     "test-token",
+	}
+
+	integration, err := NewSlackIntegration(config)
+	if err != nil {
+		t.Fatalf("Failed to create integration: %v", err)
+	}
+
+	// Execute get_conversation_history operation
+	result, err := integration.Execute(context.Background(), "get_conversation_history", map[string]interface{}{
+		"channel": "C123456",
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to get conversation history: %v", err)
+	}
+
+	// Verify result
+	response, ok := result.Response.(map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected response to be map[string]interface{}, got %T", result.Response)
+	}
+
+	messages, ok := response["messages"].([]map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected messages to be []map[string]interface{}, got %T", response["messages"])
+	}
+
+	if len(messages) != 2 {
+		t.Errorf("Expected 2 messages, got %d", len(messages))
+	}
+
+	if response["has_more"] != true {
+		t.Errorf("Expected has_more to be true, got '%v'", response["has_more"])
+	}
+
+	if response["next_cursor"] != "bmV4dF90czoxMjM0" {
+		t.Errorf("Expected next_cursor 'bmV4dF90czoxMjM0', got '%v'", response["next_cursor"])
 	}
 }

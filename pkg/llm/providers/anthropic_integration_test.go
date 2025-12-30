@@ -80,7 +80,7 @@ func TestAnthropicComplete_RealAPI(t *testing.T) {
 		t.Fatalf("Failed to get model info: %v", err)
 	}
 
-	if err := tracker.Record(resp.Usage, *modelInfo); err != nil {
+	if err := tracker.Record(resp.Usage); err != nil {
 		t.Fatalf("Cost tracking failed: %v", err)
 	}
 
@@ -166,7 +166,7 @@ func TestAnthropicStream_RealAPI(t *testing.T) {
 			t.Fatalf("Failed to get model info: %v", err)
 		}
 
-		if err := tracker.Record(*finalUsage, *modelInfo); err != nil {
+		if err := tracker.Record(*finalUsage); err != nil {
 			t.Fatalf("Cost tracking failed: %v", err)
 		}
 
@@ -243,7 +243,7 @@ func TestAnthropicToolCalling_RealAPI(t *testing.T) {
 		t.Fatalf("Failed to get model info: %v", err)
 	}
 
-	if err := tracker.Record(resp.Usage, *modelInfo); err != nil {
+	if err := tracker.Record(resp.Usage); err != nil {
 		t.Fatalf("Cost tracking failed: %v", err)
 	}
 

@@ -272,46 +272,34 @@ func (p *AnthropicProvider) GetModelInfo(modelID string) (*llm.ModelInfo, error)
 // anthropicModels contains metadata for all Claude models.
 var anthropicModels = []llm.ModelInfo{
 	{
-		ID:                           "claude-3-5-haiku-20241022",
-		Name:                         "Claude 3.5 Haiku",
-		Tier:                         llm.ModelTierFast,
-		MaxTokens:                    200000,
-		MaxOutputTokens:              8192,
-		InputPricePerMillion:         1.00,
-		OutputPricePerMillion:        5.00,
-		CacheCreationPricePerMillion: 1.00,  // Same as input price
-		CacheReadPricePerMillion:     0.25,  // 25% of input price
-		SupportsTools:                true,
-		SupportsVision:               true,
-		Description:                  "Fast and cost-effective for simple tasks and high-volume requests.",
+		ID:              "claude-3-5-haiku-20241022",
+		Name:            "Claude 3.5 Haiku",
+		Tier:            llm.ModelTierFast,
+		MaxTokens:       200000,
+		MaxOutputTokens: 8192,
+		SupportsTools:   true,
+		SupportsVision:  true,
+		Description:     "Fast and cost-effective for simple tasks and high-volume requests.",
 	},
 	{
-		ID:                           "claude-3-5-sonnet-20241022",
-		Name:                         "Claude 3.5 Sonnet",
-		Tier:                         llm.ModelTierBalanced,
-		MaxTokens:                    200000,
-		MaxOutputTokens:              8192,
-		InputPricePerMillion:         3.00,
-		OutputPricePerMillion:        15.00,
-		CacheCreationPricePerMillion: 3.00,  // Same as input price
-		CacheReadPricePerMillion:     0.75,  // 25% of input price
-		SupportsTools:                true,
-		SupportsVision:               true,
-		Description:                  "Balanced capability and cost for most general-purpose tasks.",
+		ID:              "claude-3-5-sonnet-20241022",
+		Name:            "Claude 3.5 Sonnet",
+		Tier:            llm.ModelTierBalanced,
+		MaxTokens:       200000,
+		MaxOutputTokens: 8192,
+		SupportsTools:   true,
+		SupportsVision:  true,
+		Description:     "Balanced capability and cost for most general-purpose tasks.",
 	},
 	{
-		ID:                           "claude-3-opus-20240229",
-		Name:                         "Claude 3 Opus",
-		Tier:                         llm.ModelTierStrategic,
-		MaxTokens:                    200000,
-		MaxOutputTokens:              4096,
-		InputPricePerMillion:         15.00,
-		OutputPricePerMillion:        75.00,
-		CacheCreationPricePerMillion: 15.00, // Same as input price
-		CacheReadPricePerMillion:     3.75,  // 25% of input price
-		SupportsTools:                true,
-		SupportsVision:               true,
-		Description:                  "Maximum capability for complex reasoning and expert tasks.",
+		ID:              "claude-3-opus-20240229",
+		Name:            "Claude 3 Opus",
+		Tier:            llm.ModelTierStrategic,
+		MaxTokens:       200000,
+		MaxOutputTokens: 4096,
+		SupportsTools:   true,
+		SupportsVision:  true,
+		Description:     "Maximum capability for complex reasoning and expert tasks.",
 	},
 }
 
@@ -340,9 +328,6 @@ func (m *MockAnthropicProvider) Complete(ctx context.Context, req llm.Completion
 	requestID := uuid.New().String()
 	model := m.resolveModel(req.Model)
 
-	// Get model info for cost calculation
-	modelInfo, _ := m.GetModelInfo(model)
-
 	// Create a simple mock response
 	content := "This is a mock response from Claude."
 	promptTokens := estimateTokens(req.Messages)
@@ -361,11 +346,6 @@ func (m *MockAnthropicProvider) Complete(ctx context.Context, req llm.Completion
 		Model:        model,
 		RequestID:    requestID,
 		Created:      time.Now(),
-	}
-
-	// Calculate cost if model info available
-	if modelInfo != nil {
-		_ = modelInfo.CalculateCost(usage)
 	}
 
 	// Track usage for cost tracking

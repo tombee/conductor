@@ -132,3 +132,63 @@ type GetUserResponse struct {
 type ResponseMetadata struct {
 	NextCursor string `json:"next_cursor,omitempty"`
 }
+
+// SearchMessagesResponse represents the response from searching messages.
+type SearchMessagesResponse struct {
+	SlackResponse
+	Query    string        `json:"query"`
+	Messages SearchResults `json:"messages"`
+}
+
+// SearchResults contains the search results.
+type SearchResults struct {
+	Total      int             `json:"total"`
+	Pagination SearchPagination `json:"pagination,omitempty"`
+	Matches    []SearchMatch   `json:"matches"`
+}
+
+// SearchPagination contains pagination info for search results.
+type SearchPagination struct {
+	TotalCount int `json:"total_count"`
+	Page       int `json:"page"`
+	PerPage    int `json:"per_page"`
+	PageCount  int `json:"page_count"`
+	First      int `json:"first"`
+	Last       int `json:"last"`
+}
+
+// SearchMatch represents a single search result match.
+type SearchMatch struct {
+	Type      string  `json:"type"`
+	Channel   ChannelInfo `json:"channel"`
+	User      string  `json:"user"`
+	Username  string  `json:"username"`
+	Text      string  `json:"text"`
+	Timestamp string  `json:"ts"`
+	Permalink string  `json:"permalink"`
+}
+
+// ChannelInfo contains channel information in search results.
+type ChannelInfo struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// ConversationsOpenResponse represents the response from opening a conversation.
+type ConversationsOpenResponse struct {
+	SlackResponse
+	Channel ConversationChannel `json:"channel"`
+}
+
+// ConversationChannel contains basic channel info for opened conversations.
+type ConversationChannel struct {
+	ID string `json:"id"`
+}
+
+// ConversationsHistoryResponse represents the response from getting conversation history.
+type ConversationsHistoryResponse struct {
+	SlackResponse
+	Messages         []Message        `json:"messages"`
+	HasMore          bool             `json:"has_more"`
+	ResponseMetadata ResponseMetadata `json:"response_metadata,omitempty"`
+}

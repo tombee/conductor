@@ -7,94 +7,90 @@ import (
 	"github.com/tombee/conductor/pkg/llm"
 )
 
-// Default budget limits for integration tests.
+// Default budget limits for integration tests (in tokens).
 const (
-	DefaultTestBudget  = 0.50 // $0.50 per test
-	DefaultSuiteBudget = 25.0 // $25.00 per suite run
+	DefaultTestTokenBudget  = 50000   // 50k tokens per test
+	DefaultSuiteTokenBudget = 1000000 // 1M tokens per suite run
 )
 
-// CostTracker tracks LLM API costs during integration tests with budget enforcement.
-// It wraps the existing llm.CostTracker infrastructure but adds fail-fast budgets.
+// CostTracker tracks LLM token usage during integration tests with budget enforcement.
 type CostTracker struct {
-	mu          sync.Mutex
-	testBudget  float64
-	suiteBudget float64
-	testCost    float64
-	suiteCost   float64
+	mu               sync.Mutex
+	testTokenBudget  int
+	suiteTokenBudget int
+	testTokens       int
+	suiteTokens      int
 }
 
 // NewCostTracker creates a new cost tracker with default budgets.
 func NewCostTracker() *CostTracker {
 	return &CostTracker{
-		testBudget:  DefaultTestBudget,
-		suiteBudget: DefaultSuiteBudget,
+		testTokenBudget:  DefaultTestTokenBudget,
+		suiteTokenBudget: DefaultSuiteTokenBudget,
 	}
 }
 
-// SetTestBudget sets the maximum cost per test (default $0.50).
-func (ct *CostTracker) SetTestBudget(budget float64) {
+// SetTestBudget sets the maximum tokens per test (default 50k).
+func (ct *CostTracker) SetTestBudget(budget int) {
 	ct.mu.Lock()
 	defer ct.mu.Unlock()
-	ct.testBudget = budget
+	ct.testTokenBudget = budget
 }
 
-// SetSuiteBudget sets the maximum cost for the entire test suite (default $25).
-func (ct *CostTracker) SetSuiteBudget(budget float64) {
+// SetSuiteBudget sets the maximum tokens for the entire test suite (default 1M).
+func (ct *CostTracker) SetSuiteBudget(budget int) {
 	ct.mu.Lock()
 	defer ct.mu.Unlock()
-	ct.suiteBudget = budget
+	ct.suiteTokenBudget = budget
 }
 
-// Record records the cost of an API call and checks budgets.
+// Record records the token usage of an API call and checks budgets.
 // Returns an error if either budget is exceeded.
-func (ct *CostTracker) Record(usage llm.TokenUsage, modelInfo llm.ModelInfo) error {
+func (ct *CostTracker) Record(usage llm.TokenUsage) error {
 	ct.mu.Lock()
 	defer ct.mu.Unlock()
-
-	// Calculate cost using existing infrastructure (with cache support)
-	costInfo := modelInfo.CalculateCostWithCache(usage)
 
 	// Update running totals
-	ct.testCost += costInfo.Amount
-	ct.suiteCost += costInfo.Amount
+	ct.testTokens += usage.TotalTokens
+	ct.suiteTokens += usage.TotalTokens
 
 	// Check test budget
-	if ct.testCost > ct.testBudget {
-		return fmt.Errorf("test budget exceeded: $%.4f > $%.2f", ct.testCost, ct.testBudget)
+	if ct.testTokens > ct.testTokenBudget {
+		return fmt.Errorf("test token budget exceeded: %d > %d", ct.testTokens, ct.testTokenBudget)
 	}
 
 	// Check suite budget
-	if ct.suiteCost > ct.suiteBudget {
-		return fmt.Errorf("suite budget exceeded: $%.4f > $%.2f", ct.suiteCost, ct.suiteBudget)
+	if ct.suiteTokens > ct.suiteTokenBudget {
+		return fmt.Errorf("suite token budget exceeded: %d > %d", ct.suiteTokens, ct.suiteTokenBudget)
 	}
 
 	return nil
 }
 
-// ResetTest resets the test-level cost counter (call at start of each test).
+// ResetTest resets the test-level token counter (call at start of each test).
 func (ct *CostTracker) ResetTest() {
 	ct.mu.Lock()
 	defer ct.mu.Unlock()
-	ct.testCost = 0
+	ct.testTokens = 0
 }
 
-// GetTestCost returns the current test cost.
-func (ct *CostTracker) GetTestCost() float64 {
+// GetTestTokens returns the current test token usage.
+func (ct *CostTracker) GetTestTokens() int {
 	ct.mu.Lock()
 	defer ct.mu.Unlock()
-	return ct.testCost
+	return ct.testTokens
 }
 
-// GetSuiteCost returns the total suite cost.
-func (ct *CostTracker) GetSuiteCost() float64 {
+// GetSuiteTokens returns the total suite token usage.
+func (ct *CostTracker) GetSuiteTokens() int {
 	ct.mu.Lock()
 	defer ct.mu.Unlock()
-	return ct.suiteCost
+	return ct.suiteTokens
 }
 
 // GetBudgets returns the current budget limits.
-func (ct *CostTracker) GetBudgets() (testBudget, suiteBudget float64) {
+func (ct *CostTracker) GetBudgets() (testBudget, suiteBudget int) {
 	ct.mu.Lock()
 	defer ct.mu.Unlock()
-	return ct.testBudget, ct.suiteBudget
+	return ct.testTokenBudget, ct.suiteTokenBudget
 }

@@ -81,7 +81,7 @@ func TestOpenAIComplete_RealAPI(t *testing.T) {
 		t.Fatalf("Failed to get model info for: %s", resp.Model)
 	}
 
-	if err := tracker.Record(resp.Usage, *modelInfo); err != nil {
+	if err := tracker.Record(resp.Usage); err != nil {
 		t.Fatalf("Cost tracking failed: %v", err)
 	}
 
@@ -167,7 +167,7 @@ func TestOpenAIStream_RealAPI(t *testing.T) {
 			t.Fatalf("Failed to get model info for: %s", model)
 		}
 
-		if err := tracker.Record(*finalUsage, *modelInfo); err != nil {
+		if err := tracker.Record(*finalUsage); err != nil {
 			t.Fatalf("Cost tracking failed: %v", err)
 		}
 
@@ -245,7 +245,7 @@ func TestOpenAIToolCalling_RealAPI(t *testing.T) {
 		t.Fatalf("Failed to get model info for: %s", resp.Model)
 	}
 
-	if err := tracker.Record(resp.Usage, *modelInfo); err != nil {
+	if err := tracker.Record(resp.Usage); err != nil {
 		t.Fatalf("Cost tracking failed: %v", err)
 	}
 

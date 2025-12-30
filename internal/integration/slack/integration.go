@@ -57,6 +57,16 @@ func (c *SlackIntegration) Execute(ctx context.Context, operation string, inputs
 	case "get_user":
 		return c.getUser(ctx, inputs)
 
+	// Search
+	case "search_messages":
+		return c.searchMessages(ctx, inputs)
+
+	// Conversations
+	case "open_conversation":
+		return c.openConversation(ctx, inputs)
+	case "get_conversation_history":
+		return c.getConversationHistory(ctx, inputs)
+
 	default:
 		return nil, fmt.Errorf("unknown operation: %s", operation)
 	}
@@ -82,6 +92,13 @@ func (c *SlackIntegration) Operations() []api.OperationInfo {
 		// Users
 		{Name: "list_users", Description: "List workspace members", Category: "users", Tags: []string{"read", "paginated"}},
 		{Name: "get_user", Description: "Get user information", Category: "users", Tags: []string{"read"}},
+
+		// Search
+		{Name: "search_messages", Description: "Search for messages matching a query", Category: "search", Tags: []string{"read", "paginated"}},
+
+		// Conversations
+		{Name: "open_conversation", Description: "Open a direct message conversation", Category: "conversations", Tags: []string{"write"}},
+		{Name: "get_conversation_history", Description: "Get messages from a conversation", Category: "conversations", Tags: []string{"read", "paginated"}},
 	}
 }
 
