@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os/exec"
 	"strings"
 	"time"
@@ -34,7 +35,6 @@ type Provider struct {
 	cliCommand string // The CLI command to use ("claude" or "claude-code")
 	cliPath    string // Full path to the CLI binary
 	models     config.ModelTierMap
-	registry   OperationRegistry // Operation registry for tool execution
 }
 
 // New creates a new Claude Code CLI provider
@@ -48,14 +48,6 @@ func New() *Provider {
 func NewWithModels(models config.ModelTierMap) *Provider {
 	return &Provider{
 		models: models,
-	}
-}
-
-// NewWithRegistry creates a new Claude Code CLI provider with an operation registry for tool execution
-func NewWithRegistry(registry OperationRegistry) *Provider {
-	return &Provider{
-		models:   defaultModelTiers(),
-		registry: registry,
 	}
 }
 
@@ -132,7 +124,6 @@ func (p *Provider) executeSimple(ctx context.Context, req llm.CompletionRequest)
 
 	startTime := time.Now()
 	err := cmd.Run()
-	duration := time.Since(startTime)
 
 	if err != nil {
 		return nil, fmt.Errorf("claude CLI failed: %w (stderr: %s)", err, stderr.String())
@@ -147,8 +138,6 @@ func (p *Provider) executeSimple(ctx context.Context, req llm.CompletionRequest)
 		// Note: Claude CLI doesn't provide token usage information
 		Usage: llm.TokenUsage{},
 	}
-
-	_ = duration // Could be used for logging/metrics
 
 	return response, nil
 }
@@ -190,6 +179,17 @@ func (p *Provider) Stream(ctx context.Context, req llm.CompletionRequest) (<-cha
 
 		buf := make([]byte, 4096)
 		for {
+			select {
+			case <-ctx.Done():
+				// Context cancelled, stop reading
+				chunks <- llm.StreamChunk{
+					Error:        ctx.Err(),
+					FinishReason: llm.FinishReasonError,
+				}
+				return
+			default:
+			}
+
 			n, err := stdout.Read(buf)
 			if n > 0 {
 				chunks <- llm.StreamChunk{
@@ -201,8 +201,7 @@ func (p *Provider) Stream(ctx context.Context, req llm.CompletionRequest) (<-cha
 			if err != nil {
 				// Check for errors from stderr
 				var stderrBuf bytes.Buffer
-				stderrBuf.ReadFrom(stderr)
-				if stderrBuf.Len() > 0 {
+				if _, copyErr := io.Copy(&stderrBuf, stderr); copyErr == nil && stderrBuf.Len() > 0 {
 					chunks <- llm.StreamChunk{
 						Error:        fmt.Errorf("claude CLI error: %s", stderrBuf.String()),
 						FinishReason: llm.FinishReasonError,

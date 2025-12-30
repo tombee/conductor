@@ -16,8 +16,10 @@ package claudecode
 
 import (
 	"context"
+	"strings"
 	"testing"
 
+	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/pkg/llm"
 )
 
@@ -146,23 +148,10 @@ func TestProvider_BuildPrompt(t *testing.T) {
 	}
 
 	for _, part := range expectedParts {
-		if !contains(prompt, part) {
+		if !strings.Contains(prompt, part) {
 			t.Errorf("buildPrompt() missing expected part: %q", part)
 		}
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || containsMiddle(s, substr)))
-}
-
-func containsMiddle(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
 
 func TestProvider_Complete_CLINotFound(t *testing.T) {
@@ -182,7 +171,7 @@ func TestProvider_Complete_CLINotFound(t *testing.T) {
 		t.Error("expected error when CLI not found, got nil")
 	}
 
-	if err != nil && !contains(err.Error(), "failed") && !contains(err.Error(), "not found") {
+	if err != nil && !strings.Contains(err.Error(), "failed") && !strings.Contains(err.Error(), "not found") {
 		t.Errorf("expected error about CLI failure, got: %v", err)
 	}
 }
@@ -202,7 +191,7 @@ func TestHealthCheck_AuthenticationFails(t *testing.T) {
 			t.Error("authentication failure should set ErrorStep to Authenticated")
 		}
 
-		if !contains(result.Message, "auth") && !contains(result.Message, "login") {
+		if !strings.Contains(result.Message, "auth") && !strings.Contains(result.Message, "login") {
 			t.Error("authentication failure message should mention auth or login")
 		}
 	}
@@ -294,9 +283,9 @@ func TestProvider_BuildCLIArgs_WithTools(t *testing.T) {
 					hasMCPConfig = true
 					// Check that next arg is a JSON config containing conductor MCP server
 					if i+1 < len(args) {
-						config := args[i+1]
-						if !contains(config, "conductor") || !contains(config, "mcp-server") {
-							t.Errorf("--mcp-config should contain conductor mcp-server config, got %q", config)
+						cfg := args[i+1]
+						if !strings.Contains(cfg, "conductor") || !strings.Contains(cfg, "mcp-server") {
+							t.Errorf("--mcp-config should contain conductor mcp-server config, got %q", cfg)
 						}
 					}
 				}
@@ -306,5 +295,90 @@ func TestProvider_BuildCLIArgs_WithTools(t *testing.T) {
 				t.Errorf("--mcp-config presence = %v, want %v", hasMCPConfig, tt.wantMCPConfig)
 			}
 		})
+	}
+}
+
+func TestProvider_NewWithModels(t *testing.T) {
+	customModels := config.ModelTierMap{
+		Fast:      "claude-custom-fast",
+		Balanced:  "claude-custom-balanced",
+		Strategic: "claude-custom-strategic",
+	}
+
+	p := NewWithModels(customModels)
+
+	tests := []struct {
+		tier     string
+		expected string
+	}{
+		{"fast", "claude-custom-fast"},
+		{"balanced", "claude-custom-balanced"},
+		{"strategic", "claude-custom-strategic"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.tier, func(t *testing.T) {
+			result := p.resolveModel(tt.tier)
+			if result != tt.expected {
+				t.Errorf("resolveModel(%q) = %q, want %q", tt.tier, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestProvider_Stream_CLINotFound(t *testing.T) {
+	p := New()
+	// Set an invalid CLI command
+	p.cliCommand = "nonexistent-claude-cli-binary"
+
+	ctx := context.Background()
+	req := llm.CompletionRequest{
+		Messages: []llm.Message{
+			{Role: llm.MessageRoleUser, Content: "Hello"},
+		},
+	}
+
+	_, err := p.Stream(ctx, req)
+	if err == nil {
+		t.Error("expected error when CLI not found, got nil")
+	}
+
+	if err != nil && !strings.Contains(err.Error(), "failed") {
+		t.Errorf("expected error about CLI failure, got: %v", err)
+	}
+}
+
+func TestProvider_Stream_ContextCancel(t *testing.T) {
+	p := New()
+
+	// Create a cancelled context
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	req := llm.CompletionRequest{
+		Messages: []llm.Message{
+			{Role: llm.MessageRoleUser, Content: "Hello"},
+		},
+	}
+
+	// Ensure CLI is detected first (so we don't fail on detection)
+	if found, _ := p.Detect(); !found {
+		t.Skip("Claude CLI not found, skipping context cancellation test")
+	}
+
+	chunks, err := p.Stream(ctx, req)
+	if err != nil {
+		// Error at start is acceptable for cancelled context
+		return
+	}
+
+	// If we got a channel, verify it handles cancellation
+	for chunk := range chunks {
+		if chunk.Error != nil {
+			// Context cancellation error is expected
+			if strings.Contains(chunk.Error.Error(), "context") {
+				return
+			}
+		}
 	}
 }
