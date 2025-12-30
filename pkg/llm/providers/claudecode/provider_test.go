@@ -236,3 +236,88 @@ func TestHealthCheck_UnknownCommand(t *testing.T) {
 	_ = p.HealthCheck(ctx)
 	// Test passes if no panic occurs
 }
+
+func TestProvider_BuildCLIArgs_WithTools(t *testing.T) {
+	p := New()
+
+	tests := []struct {
+		name         string
+		req          llm.CompletionRequest
+		wantTools    bool
+		wantJSON     bool
+	}{
+		{
+			name: "with tools - should disable built-in and enable JSON",
+			req: llm.CompletionRequest{
+				Model: "claude-sonnet-4-20250514",
+				Messages: []llm.Message{
+					{Role: llm.MessageRoleUser, Content: "Hello"},
+				},
+				Tools: []llm.Tool{
+					{Name: "file.read"},
+					{Name: "shell.run"},
+				},
+			},
+			wantTools: true,
+			wantJSON:  true,
+		},
+		{
+			name: "nil tools - no tool flags",
+			req: llm.CompletionRequest{
+				Model: "claude-sonnet-4-20250514",
+				Messages: []llm.Message{
+					{Role: llm.MessageRoleUser, Content: "Hello"},
+				},
+				Tools: nil,
+			},
+			wantTools: false,
+			wantJSON:  false,
+		},
+		{
+			name: "empty tools slice - no tool flags",
+			req: llm.CompletionRequest{
+				Model: "claude-sonnet-4-20250514",
+				Messages: []llm.Message{
+					{Role: llm.MessageRoleUser, Content: "Hello"},
+				},
+				Tools: []llm.Tool{},
+			},
+			wantTools: false,
+			wantJSON:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			args := p.buildCLIArgs(tt.req)
+
+			hasToolsFlag := false
+			hasJSONFlag := false
+
+			for i, arg := range args {
+				if arg == "--tools" {
+					hasToolsFlag = true
+					// Check that next arg is empty string
+					if i+1 < len(args) && args[i+1] != "" {
+						t.Errorf("--tools flag should be followed by empty string, got %q", args[i+1])
+					}
+				}
+				if arg == "--output-format" {
+					hasJSONFlag = true
+					// Check that next arg is "json"
+					if i+1 < len(args) && args[i+1] != "json" {
+						t.Errorf("--output-format should be followed by 'json', got %q", args[i+1])
+					}
+				}
+			}
+
+			if hasToolsFlag != tt.wantTools {
+				t.Errorf("--tools flag presence = %v, want %v", hasToolsFlag, tt.wantTools)
+			}
+
+			if hasJSONFlag != tt.wantJSON {
+				t.Errorf("--output-format json presence = %v, want %v", hasJSONFlag, tt.wantJSON)
+			}
+		})
+	}
+}
