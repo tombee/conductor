@@ -127,7 +127,7 @@ func TestLogAggregator_Unsubscribe(t *testing.T) {
 	la := NewLogAggregator()
 	runID := "test-run"
 
-	_, unsub := la.Subscribe(runID)
+	ch, unsub := la.Subscribe(runID)
 
 	if la.SubscriberCount(runID) != 1 {
 		t.Error("expected 1 subscriber before unsub")
@@ -139,9 +139,15 @@ func TestLogAggregator_Unsubscribe(t *testing.T) {
 		t.Error("expected 0 subscribers after unsub")
 	}
 
-	// Channel is not closed (to avoid race conditions with concurrent senders),
-	// but no more messages will be sent to it after unsubscribe.
-	// Just verify subscriber count is 0.
+	// Verify channel is closed after unsubscribe
+	select {
+	case _, ok := <-ch:
+		if ok {
+			t.Error("expected channel to be closed")
+		}
+	case <-time.After(10 * time.Millisecond):
+		t.Error("timeout waiting for channel close")
+	}
 }
 
 func TestLogAggregator_MultipleSubscribers(t *testing.T) {
@@ -305,5 +311,148 @@ func TestLogAggregator_DifferentRunIDs(t *testing.T) {
 		t.Error("ch2 should not have received message for run1")
 	case <-time.After(10 * time.Millisecond):
 		// Expected - no message for ch2
+	}
+}
+
+func TestLogAggregator_MapCleanup(t *testing.T) {
+	la := NewLogAggregator()
+	runID := "test-run"
+
+	// Subscribe and verify map entry exists
+	_, unsub := la.Subscribe(runID)
+	if la.SubscriberMapKeyCount() != 1 {
+		t.Errorf("expected 1 map key, got %d", la.SubscriberMapKeyCount())
+	}
+
+	// Unsubscribe and verify map entry is removed
+	unsub()
+	if la.SubscriberMapKeyCount() != 0 {
+		t.Errorf("expected 0 map keys after cleanup, got %d", la.SubscriberMapKeyCount())
+	}
+}
+
+func TestLogAggregator_MapCleanup_MultipleSubscribers(t *testing.T) {
+	la := NewLogAggregator()
+	runID := "test-run"
+
+	// Add two subscribers
+	_, unsub1 := la.Subscribe(runID)
+	_, unsub2 := la.Subscribe(runID)
+
+	if la.SubscriberMapKeyCount() != 1 {
+		t.Errorf("expected 1 map key, got %d", la.SubscriberMapKeyCount())
+	}
+
+	if la.SubscriberCount(runID) != 2 {
+		t.Errorf("expected 2 subscribers, got %d", la.SubscriberCount(runID))
+	}
+
+	// Unsubscribe first - map entry should remain
+	unsub1()
+	if la.SubscriberMapKeyCount() != 1 {
+		t.Errorf("expected 1 map key after first unsub, got %d", la.SubscriberMapKeyCount())
+	}
+
+	// Unsubscribe second - map entry should be removed
+	unsub2()
+	if la.SubscriberMapKeyCount() != 0 {
+		t.Errorf("expected 0 map keys after all unsub, got %d", la.SubscriberMapKeyCount())
+	}
+}
+
+func TestLogAggregator_TotalSubscriberCount(t *testing.T) {
+	la := NewLogAggregator()
+
+	if la.TotalSubscriberCount() != 0 {
+		t.Error("expected 0 total subscribers initially")
+	}
+
+	// Add subscribers for different runs
+	_, unsub1 := la.Subscribe("run-1")
+	_, unsub2 := la.Subscribe("run-1")
+	_, unsub3 := la.Subscribe("run-2")
+
+	if la.TotalSubscriberCount() != 3 {
+		t.Errorf("expected 3 total subscribers, got %d", la.TotalSubscriberCount())
+	}
+
+	if la.SubscriberMapKeyCount() != 2 {
+		t.Errorf("expected 2 map keys, got %d", la.SubscriberMapKeyCount())
+	}
+
+	// Unsubscribe all from run-1
+	unsub1()
+	unsub2()
+
+	if la.TotalSubscriberCount() != 1 {
+		t.Errorf("expected 1 total subscriber, got %d", la.TotalSubscriberCount())
+	}
+
+	if la.SubscriberMapKeyCount() != 1 {
+		t.Errorf("expected 1 map key after run-1 cleanup, got %d", la.SubscriberMapKeyCount())
+	}
+
+	// Unsubscribe from run-2
+	unsub3()
+
+	if la.TotalSubscriberCount() != 0 {
+		t.Errorf("expected 0 total subscribers, got %d", la.TotalSubscriberCount())
+	}
+
+	if la.SubscriberMapKeyCount() != 0 {
+		t.Errorf("expected 0 map keys, got %d", la.SubscriberMapKeyCount())
+	}
+}
+
+func TestLogAggregator_ChannelClosure(t *testing.T) {
+	la := NewLogAggregator()
+	runID := "test-run"
+
+	ch, unsub := la.Subscribe(runID)
+
+	// Verify channel is open
+	select {
+	case <-ch:
+		t.Error("expected no messages before unsub")
+	default:
+		// Expected - channel is open but empty
+	}
+
+	// Unsubscribe and verify channel closure
+	unsub()
+
+	// Reading from closed channel should immediately return zero value and ok=false
+	_, ok := <-ch
+	if ok {
+		t.Error("expected channel to be closed after unsubscribe")
+	}
+}
+
+func TestLogAggregator_ChannelClosure_AfterReceivingMessages(t *testing.T) {
+	la := NewLogAggregator()
+	run := &Run{ID: "test-run"}
+
+	ch, unsub := la.Subscribe(run.ID)
+
+	// Send a message
+	la.AddLog(run, "info", "test message", "")
+
+	// Receive the message
+	select {
+	case entry := <-ch:
+		if entry.Message != "test message" {
+			t.Errorf("expected 'test message', got %s", entry.Message)
+		}
+	case <-time.After(50 * time.Millisecond):
+		t.Error("timeout receiving message")
+	}
+
+	// Unsubscribe
+	unsub()
+
+	// Verify channel is closed
+	_, ok := <-ch
+	if ok {
+		t.Error("expected channel to be closed after unsubscribe")
 	}
 }

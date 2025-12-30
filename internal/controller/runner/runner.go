@@ -377,6 +377,8 @@ func (r *Runner) Submit(ctx context.Context, req SubmitRequest) (*RunSnapshot, e
 	// Create initial snapshot before background execution starts
 	snapshot := r.state.Snapshot(run)
 
+	// Track goroutine BEFORE spawning to avoid race condition
+	r.wg.Add(1)
 	// Start execution in background
 	go r.execute(run)
 

@@ -92,8 +92,8 @@ func (l *LogAggregator) Subscribe(runID string) (<-chan LogEntry, func()) {
 	l.mu.Unlock()
 
 	// Unsubscribe function removes the channel from the subscriber map.
-	// Note: We don't close the channel to avoid race conditions with concurrent senders.
-	// The channel will be garbage collected when no longer referenced.
+	// Closes the channel to signal completion and removes empty map entries
+	// to prevent unbounded map growth.
 	unsub := func() {
 		l.mu.Lock()
 		defer l.mu.Unlock()
@@ -105,6 +105,14 @@ func (l *LogAggregator) Subscribe(runID string) (<-chan LogEntry, func()) {
 				break
 			}
 		}
+
+		// Remove map entry when no subscribers remain to prevent memory leak
+		if len(l.subscribers[runID]) == 0 {
+			delete(l.subscribers, runID)
+		}
+
+		// Close the channel to signal completion to readers
+		close(ch)
 	}
 
 	return ch, unsub
@@ -115,4 +123,23 @@ func (l *LogAggregator) SubscriberCount(runID string) int {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	return len(l.subscribers[runID])
+}
+
+// SubscriberMapKeyCount returns the number of runID keys in the subscriber map.
+// This metric helps detect memory leaks from unbounded map growth.
+func (l *LogAggregator) SubscriberMapKeyCount() int {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return len(l.subscribers)
+}
+
+// TotalSubscriberCount returns the total number of active subscribers across all runs.
+func (l *LogAggregator) TotalSubscriberCount() int {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	total := 0
+	for _, subs := range l.subscribers {
+		total += len(subs)
+	}
+	return total
 }

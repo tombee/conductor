@@ -2,12 +2,24 @@ package tracing
 
 import (
 	"context"
+	"runtime"
 	"sync"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
+
+// SubscriberCounter provides subscriber count metrics.
+type SubscriberCounter interface {
+	TotalSubscriberCount() int
+	SubscriberMapKeyCount() int
+}
+
+// RunCounter provides run count metrics.
+type RunCounter interface {
+	RunCount() int
+}
 
 // MetricsCollector collects Prometheus-compatible metrics for workflow execution
 type MetricsCollector struct {
@@ -31,6 +43,12 @@ type MetricsCollector struct {
 	queueDepthMu  sync.RWMutex
 	totalCostUSD  float64
 	totalCostMu   sync.RWMutex
+
+	// Memory metrics sources
+	subscriberCounter SubscriberCounter
+	runCounter        RunCounter
+	subscriberMu      sync.RWMutex
+	runCounterMu      sync.RWMutex
 }
 
 // NewMetricsCollector creates a new metrics collector using the given meter provider
@@ -158,6 +176,89 @@ func NewMetricsCollector(meterProvider metric.MeterProvider) (*MetricsCollector,
 		return nil, err
 	}
 
+	// Memory metrics
+	_, err = meter.Int64ObservableGauge(
+		"conductor_sse_subscribers",
+		metric.WithDescription("Number of active SSE subscribers across all runs"),
+		metric.WithUnit("{subscriber}"),
+		metric.WithInt64Callback(func(ctx context.Context, observer metric.Int64Observer) error {
+			mc.subscriberMu.RLock()
+			counter := mc.subscriberCounter
+			mc.subscriberMu.RUnlock()
+			if counter != nil {
+				observer.Observe(int64(counter.TotalSubscriberCount()))
+			}
+			return nil
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = meter.Int64ObservableGauge(
+		"conductor_log_aggregator_runs",
+		metric.WithDescription("Number of runID keys in subscriber map"),
+		metric.WithUnit("{run}"),
+		metric.WithInt64Callback(func(ctx context.Context, observer metric.Int64Observer) error {
+			mc.subscriberMu.RLock()
+			counter := mc.subscriberCounter
+			mc.subscriberMu.RUnlock()
+			if counter != nil {
+				observer.Observe(int64(counter.SubscriberMapKeyCount()))
+			}
+			return nil
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = meter.Int64ObservableGauge(
+		"conductor_goroutines",
+		metric.WithDescription("Number of active goroutines"),
+		metric.WithUnit("{goroutine}"),
+		metric.WithInt64Callback(func(ctx context.Context, observer metric.Int64Observer) error {
+			observer.Observe(int64(runtime.NumGoroutine()))
+			return nil
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = meter.Int64ObservableGauge(
+		"conductor_runs_in_memory",
+		metric.WithDescription("Number of runs in memory cache"),
+		metric.WithUnit("{run}"),
+		metric.WithInt64Callback(func(ctx context.Context, observer metric.Int64Observer) error {
+			mc.runCounterMu.RLock()
+			counter := mc.runCounter
+			mc.runCounterMu.RUnlock()
+			if counter != nil {
+				observer.Observe(int64(counter.RunCount()))
+			}
+			return nil
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = meter.Int64ObservableGauge(
+		"conductor_heap_bytes",
+		metric.WithDescription("Current heap allocation in bytes"),
+		metric.WithUnit("By"),
+		metric.WithInt64Callback(func(ctx context.Context, observer metric.Int64Observer) error {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			observer.Observe(int64(m.HeapAlloc))
+			return nil
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return mc, nil
 }
 
@@ -239,4 +340,18 @@ func (mc *MetricsCollector) DecrementQueueDepth() {
 		mc.queueDepth--
 	}
 	mc.queueDepthMu.Unlock()
+}
+
+// SetSubscriberCounter sets the subscriber counter for memory metrics.
+func (mc *MetricsCollector) SetSubscriberCounter(counter SubscriberCounter) {
+	mc.subscriberMu.Lock()
+	mc.subscriberCounter = counter
+	mc.subscriberMu.Unlock()
+}
+
+// SetRunCounter sets the run counter for memory metrics.
+func (mc *MetricsCollector) SetRunCounter(counter RunCounter) {
+	mc.runCounterMu.Lock()
+	mc.runCounter = counter
+	mc.runCounterMu.Unlock()
 }
