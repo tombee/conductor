@@ -31,7 +31,7 @@ func NewCommand() *cobra.Command {
 		Short: "Interactive wizard to configure Conductor",
 		Long: `Launch the interactive setup wizard to configure:
   - LLM providers (Claude Code, Ollama, Anthropic, OpenAI-compatible)
-  - Secrets management (keychain, environment variables, file)
+  - Secrets management (keychain, environment variables)
   - Integrations (GitHub, Slack, Jira, Discord, Jenkins)
 
 The wizard provides a TUI (Terminal User Interface) for guided configuration.

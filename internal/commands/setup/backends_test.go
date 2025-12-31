@@ -29,7 +29,6 @@ func TestGetAvailableBackends(t *testing.T) {
 	expectedBackends := map[string]bool{
 		"keychain": false,
 		"env":      false,
-		"file":     false,
 	}
 
 	for _, backend := range backends {
@@ -56,13 +55,10 @@ func TestGetAvailableBackends(t *testing.T) {
 		}
 	}
 
-	// Verify env and file are always available
+	// Verify env is always available
 	for _, backend := range backends {
-		switch backend.Name {
-		case "env", "file":
-			if !backend.Available {
-				t.Errorf("Backend %s should always be available", backend.Name)
-			}
+		if backend.Name == "env" && !backend.Available {
+			t.Errorf("Backend %s should always be available", backend.Name)
 		}
 	}
 }
@@ -70,9 +66,9 @@ func TestGetAvailableBackends(t *testing.T) {
 func TestGetRecommendedBackend(t *testing.T) {
 	recommended := GetRecommendedBackend()
 
-	// Should return either keychain or file
-	if recommended != "keychain" && recommended != "file" {
-		t.Errorf("GetRecommendedBackend() = %q, want 'keychain' or 'file'", recommended)
+	// Should return either keychain or env
+	if recommended != "keychain" && recommended != "env" {
+		t.Errorf("GetRecommendedBackend() = %q, want 'keychain' or 'env'", recommended)
 	}
 
 	// If keychain is available, it should be recommended
@@ -80,9 +76,9 @@ func TestGetRecommendedBackend(t *testing.T) {
 		t.Errorf("GetRecommendedBackend() = %q, want 'keychain' (keychain is available)", recommended)
 	}
 
-	// If keychain is not available, file should be recommended
-	if !isKeychainAvailable() && recommended != "file" {
-		t.Errorf("GetRecommendedBackend() = %q, want 'file' (keychain is not available)", recommended)
+	// If keychain is not available, env should be recommended
+	if !isKeychainAvailable() && recommended != "env" {
+		t.Errorf("GetRecommendedBackend() = %q, want 'env' (keychain is not available)", recommended)
 	}
 }
 

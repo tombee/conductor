@@ -38,7 +38,7 @@ type SetupState struct {
 	ConfigPath string
 
 	// SecretsBackend is the user's selected default secrets backend.
-	// Options: "keychain", "env", "file"
+	// Options: "keychain", "env"
 	SecretsBackend string
 
 	// CredentialStore temporarily holds credentials during wizard flow

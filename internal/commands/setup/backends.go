@@ -54,25 +54,18 @@ func GetAvailableBackends() []BackendInfo {
 			Available:   true, // Always available
 			Recommended: false,
 		},
-		{
-			Name:        "file",
-			DisplayName: "Encrypted File",
-			Description: "Stores secrets in an encrypted file (portable, but less secure)",
-			Available:   true, // Always available
-			Recommended: false,
-		},
 	}
 
 	return backends
 }
 
 // GetRecommendedBackend returns the recommended backend for the current platform.
-// Returns "keychain" if available, otherwise "file".
+// Returns "keychain" if available, otherwise "env".
 func GetRecommendedBackend() string {
 	if isKeychainAvailable() {
 		return "keychain"
 	}
-	return "file"
+	return "env"
 }
 
 // isKeychainAvailable checks if the system keychain backend is available.
