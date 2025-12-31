@@ -146,8 +146,23 @@ func (h *SignalHandler) zeroCredentials() {
 		}
 	}
 
-	// Zero any temporary credential storage
-	// (Add additional fields as needed based on SetupState structure)
+	// Zero credentials stored in CredentialStore map
+	if h.state.CredentialStore != nil {
+		for key, value := range h.state.CredentialStore {
+			if value != "" {
+				// Overwrite with zeros
+				b := []byte(value)
+				for i := range b {
+					b[i] = 0
+				}
+				// Use subtle.ConstantTimeCopy to ensure compiler doesn't optimize away
+				subtle.ConstantTimeCopy(1, b, make([]byte, len(b)))
+				h.state.CredentialStore[key] = ""
+			}
+		}
+		// Clear the map entirely
+		h.state.CredentialStore = make(map[string]string)
+	}
 }
 
 // HandleCleanExit performs cleanup for a successful exit (no confirmation needed).

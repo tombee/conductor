@@ -1,0 +1,233 @@
+// Copyright 2025 Tom Barlow
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package forms
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/tombee/conductor/internal/commands/setup"
+	"github.com/tombee/conductor/internal/config"
+)
+
+func init() {
+	// Register this package as the wizard runner during package initialization
+	setup.SetWizardRunner(wizardRunner{})
+}
+
+// wizardRunner implements setup.WizardRunner
+type wizardRunner struct{}
+
+// Run executes the main wizard flow.
+func (wizardRunner) Run(ctx context.Context, state *setup.SetupState, accessibleMode bool) error {
+	// Determine if this is first-run (no existing config)
+	isFirstRun := state.Original == nil || len(state.Original.Providers) == 0
+
+	// Show welcome screen for first-run, or go directly to main menu for returning users
+	if isFirstRun && !accessibleMode {
+		// Run pre-flight checks
+		checks, err := RunPreFlightCheck(ctx)
+		if err != nil {
+			return fmt.Errorf("pre-flight check failed: %w", err)
+		}
+
+		// Show welcome screen
+		if err := ShowWelcomeScreen(ctx, checks); err != nil {
+			return fmt.Errorf("welcome screen failed: %w", err)
+		}
+	}
+
+	// Main navigation loop
+	for {
+		// Show main menu and get user choice
+		choice, err := ShowMainMenu(state, isFirstRun)
+		if err != nil {
+			return fmt.Errorf("main menu failed: %w", err)
+		}
+
+		switch choice {
+		case MenuProviders:
+			// Navigate to providers management
+			if err := handleProvidersMenu(ctx, state); err != nil {
+				return err
+			}
+
+		case MenuIntegrations:
+			// Navigate to integrations management
+			if err := handleIntegrationsMenu(ctx, state); err != nil {
+				return err
+			}
+
+		case MenuSettings:
+			// Navigate to settings
+			if err := handleSettingsMenu(ctx, state); err != nil {
+				return err
+			}
+
+		case MenuSaveExit:
+			// Show review screen before saving
+			if err := handleSaveAndExit(ctx, state); err != nil {
+				return err
+			}
+			// If save succeeded, exit the loop
+			return nil
+
+		case MenuDiscardExit:
+			// Confirm discard if there are unsaved changes
+			if state.IsDirty() {
+				discard, err := ConfirmDiscardChanges()
+				if err != nil {
+					return err
+				}
+				if discard {
+					setup.HandleCleanExit(state)
+					return nil
+				}
+				// User chose not to discard, continue wizard
+				continue
+			}
+			// No unsaved changes, exit cleanly
+			setup.HandleCleanExit(state)
+			return nil
+		}
+	}
+}
+
+// handleProvidersMenu manages the providers configuration flow.
+func handleProvidersMenu(ctx context.Context, state *setup.SetupState) error {
+	for {
+		choice, err := ShowProvidersMenu(state)
+		if err != nil {
+			return err
+		}
+
+		switch choice {
+		case ProviderAddProvider:
+			if err := AddProviderFlow(ctx, state); err != nil {
+				return err
+			}
+			state.MarkDirty()
+
+		case ProviderEditProvider:
+			// TODO: Implement edit provider flow
+			fmt.Println("Edit provider not yet implemented")
+
+		case ProviderRemoveProvider:
+			// TODO: Implement remove provider flow
+			fmt.Println("Remove provider not yet implemented")
+
+		case ProviderSetDefault:
+			// TODO: Implement set default provider flow
+			fmt.Println("Set default provider not yet implemented")
+
+		case ProviderTestAll:
+			// TODO: Implement test all providers flow
+			fmt.Println("Test all providers not yet implemented")
+
+		case ProviderDone:
+			// Return to main menu
+			return nil
+		}
+	}
+}
+
+// handleIntegrationsMenu manages the integrations configuration flow.
+func handleIntegrationsMenu(ctx context.Context, state *setup.SetupState) error {
+	// TODO: Implement integrations menu
+	// For now, show placeholder and return to main menu
+	fmt.Println("Integrations configuration not yet implemented")
+	return nil
+}
+
+// handleSettingsMenu manages the settings configuration flow.
+func handleSettingsMenu(ctx context.Context, state *setup.SetupState) error {
+	for {
+		choice, err := ShowSettingsMenu(state)
+		if err != nil {
+			return err
+		}
+
+		switch choice {
+		case SettingsChangeBackend:
+			if err := ChangeDefaultBackend(state); err != nil {
+				return err
+			}
+			state.MarkDirty()
+
+		case SettingsAddBackend:
+			// TODO: Implement add backend flow
+			fmt.Println("Add backend not yet implemented")
+
+		case SettingsViewCredentials:
+			if err := ViewStoredCredentials(state); err != nil {
+				return err
+			}
+
+		case SettingsMigratePlaintext:
+			if err := MigratePlaintextCredentials(state); err != nil {
+				return err
+			}
+			state.MarkDirty()
+
+		case SettingsBack:
+			// Return to main menu
+			return nil
+		}
+	}
+}
+
+// handleSaveAndExit shows the review screen and saves the configuration.
+func handleSaveAndExit(ctx context.Context, state *setup.SetupState) error {
+	// Show review screen
+	action, err := ShowReviewScreen(state)
+	if err != nil {
+		return err
+	}
+
+	switch action {
+	case ReviewActionSave:
+		// Save the configuration
+		if err := config.WriteConfig(state.Working, state.ConfigPath); err != nil {
+			return fmt.Errorf("failed to save configuration: %w", err)
+		}
+
+		// Mark as clean
+		state.Dirty = false
+
+		// Show completion message
+		if err := ShowCompletionMessage(state); err != nil {
+			return err
+		}
+
+		// Clean exit
+		setup.HandleCleanExit(state)
+		return nil
+
+	case ReviewActionEditProviders:
+		return handleProvidersMenu(ctx, state)
+
+	case ReviewActionEditIntegrations:
+		return handleIntegrationsMenu(ctx, state)
+
+	case ReviewActionEditSettings:
+		return handleSettingsMenu(ctx, state)
+
+	case ReviewActionCancel:
+		// Return to main menu
+		return nil
+	}
+
+	return nil
+}

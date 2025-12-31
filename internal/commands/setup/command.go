@@ -82,18 +82,12 @@ func runSetup(cmd *cobra.Command, accessible bool) error {
 	signalHandler.Start()
 	defer signalHandler.Stop()
 
-	// TODO: Implement wizard flow
-	// This will be implemented in the full wizard logic:
-	// 1. Show welcome screen (first-run) or main menu (returning user)
-	// 2. Navigate through provider/integration/settings forms
-	// 3. Show review screen before save
-	// 4. Save configuration atomically with backup
-	// 5. Show completion message
+	// Run the wizard flow
+	if err := RunWizard(cmd.Context(), state, accessibleMode); err != nil {
+		return err
+	}
 
-	fmt.Println("Setup wizard is not fully implemented yet.")
-	fmt.Printf("Accessible mode: %v\n", accessibleMode)
-
-	return fmt.Errorf("setup wizard not yet fully implemented")
+	return nil
 }
 
 // shouldUseAccessibleMode determines if accessible mode should be used.

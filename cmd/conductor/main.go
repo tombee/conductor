@@ -34,6 +34,7 @@ import (
 	"github.com/tombee/conductor/internal/commands/secrets"
 	"github.com/tombee/conductor/internal/commands/security"
 	"github.com/tombee/conductor/internal/commands/setup"
+	_ "github.com/tombee/conductor/internal/commands/setup/forms" // Register wizard runner
 	"github.com/tombee/conductor/internal/commands/triggers"
 	"github.com/tombee/conductor/internal/commands/validate"
 	versioncmd "github.com/tombee/conductor/internal/commands/version"
