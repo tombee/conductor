@@ -1,6 +1,6 @@
-# Contributing to Conduct
+# Contributing to Conductor
 
-Thank you for your interest in contributing to Conduct! This document provides guidelines and setup instructions for contributors.
+Thank you for your interest in contributing to Conductor! This document provides guidelines and setup instructions for contributors.
 
 ## Development Setup
 
@@ -14,7 +14,7 @@ Thank you for your interest in contributing to Conduct! This document provides g
 1. Clone the repository:
 ```bash
 git clone https://github.com/tombee/conductor.git
-cd conduct
+cd conductor
 ```
 
 2. Install dependencies:
@@ -22,15 +22,30 @@ cd conduct
 go mod download
 ```
 
-3. Run tests:
+3. Build and test:
 ```bash
-go test ./...
+make build    # Build the conductor binary
+make test     # Run all unit tests
+make lint     # Run golangci-lint
 ```
 
-4. Run linter:
+4. (Optional) Set up pre-commit hooks:
 ```bash
-golangci-lint run
+pip install pre-commit
+pre-commit install
 ```
+
+### Available Makefile Targets
+
+| Target | Description |
+|--------|-------------|
+| `make build` | Build the conductor binary |
+| `make test` | Run all unit tests |
+| `make test-integration` | Run integration tests (requires API keys) |
+| `make lint` | Run golangci-lint |
+| `make coverage` | Generate test coverage report |
+| `make install` | Install conductor binary to /usr/local/bin |
+| `make clean` | Clean build artifacts |
 
 ## Code Style
 
@@ -249,6 +264,40 @@ func TestProviderRegistry(t *testing.T) {
 - Test helpers: `testutil/` package
 - Mock implementations: `mocks/` subdirectory per package
 
+## CI/CD Pipeline
+
+### Automated Checks
+
+Every pull request automatically runs:
+
+- **Test**: Unit tests via `make test`
+- **Lint**: Code quality checks via golangci-lint
+- **Build**: Binary compilation verification
+
+### Fork PR Limitations
+
+For security reasons, pull requests from forks have limited CI capabilities:
+
+| Check | Fork PRs | Same-repo PRs |
+|-------|----------|---------------|
+| Unit tests | ✅ Run | ✅ Run |
+| Lint | ✅ Run | ✅ Run |
+| Build | ✅ Run | ✅ Run |
+| Integration tests | ⏭️ Skipped | ✅ Run |
+
+**Why?** Integration tests require API keys (Anthropic, OpenAI) which cannot be safely exposed to fork PRs. After a maintainer reviews and merges your PR, integration tests run automatically on the main branch.
+
+### Release Process
+
+Releases are automated via GoReleaser when a version tag is pushed:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+This triggers the release workflow which builds binaries for all platforms and creates a GitHub Release.
+
 ## Pull Request Process
 
 1. **Create a feature branch**:
@@ -339,4 +388,4 @@ Packages in `internal/` are foreman-specific implementation details:
 
 ## License
 
-By contributing to Conduct, you agree that your contributions will be licensed under the Apache 2.0 License.
+By contributing to Conductor, you agree that your contributions will be licensed under the Apache 2.0 License.

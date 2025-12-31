@@ -1,0 +1,27 @@
+---
+# Pre-commit hooks for Conductor
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  - repo: local
+    hooks:
+      - id: gofmt
+        name: gofmt
+        entry: gofmt -w
+        language: system
+        types: [go]
+
+      - id: go-vet
+        name: go vet
+        entry: sh -c 'go vet ./...'
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: go-build
+        name: go build
+        entry: sh -c 'go build ./...'
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
