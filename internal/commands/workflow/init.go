@@ -78,70 +78,16 @@ Examples:
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
-	// Handle --list flag
-	if initList {
-		return listTemplates()
-	}
+	// The 'conductor init' command has been replaced
+	// Show error message pointing users to the new commands
 
-	// If a name is provided, this is workflow scaffolding
-	if len(args) == 1 {
-		return runInitWorkflow(args[0])
-	}
+	fmt.Fprintln(os.Stderr, "Error: 'conductor init' has been replaced")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, "Use these commands instead:")
+	fmt.Fprintln(os.Stderr, "  conductor setup              # Configure Conductor (providers, integrations, secrets)")
+	fmt.Fprintln(os.Stderr, "")
 
-	// If --file flag is set without a name, create workflow in current directory
-	if initFile != "" {
-		return runInitWorkflow("")
-	}
-
-	// In JSON mode, skip interactive setup
-	if shared.GetJSON() {
-		errors := []shared.JSONError{
-			{
-				Code:       shared.ErrorCodeMissingInput,
-				Message:    "Interactive setup not supported in JSON mode",
-				Suggestion: "Use 'conductor init <workflow-name>' to create a workflow, or run without --json for interactive setup",
-			},
-		}
-		shared.EmitJSONError("init", errors)
-		return &shared.ExitError{Code: 1, Message: ""}
-	}
-
-	// Otherwise, run provider setup
-	ctx := cmd.Context()
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
-	// Get config directory
-	configDir, err := config.ConfigDir()
-	if err != nil {
-		return fmt.Errorf("failed to get config directory: %w", err)
-	}
-
-	configPath := filepath.Join(configDir, "config.yaml")
-
-	// Check if config already exists
-	if _, err := os.Stat(configPath); err == nil {
-		if !initYes {
-			fmt.Printf("Configuration file already exists at: %s\n", configPath)
-			fmt.Print("Overwrite? [y/N]: ")
-			var response string
-			fmt.Scanln(&response)
-			if response != "y" && response != "Y" {
-				fmt.Println("Initialization cancelled.")
-				return nil
-			}
-		} else if !initForce {
-			// In non-interactive mode, require --force to overwrite
-			return fmt.Errorf("configuration already exists at %s (use --force to overwrite)", configPath)
-		}
-	}
-
-	if initAdvanced {
-		return runAdvancedSetup(ctx, configPath)
-	}
-
-	return runSimpleSetup(ctx, configPath)
+	return &shared.ExitError{Code: 1, Message: ""}
 }
 
 func runSimpleSetup(ctx context.Context, configPath string) error {

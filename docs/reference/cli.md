@@ -32,7 +32,7 @@ conductor [command]
 Conductor is a command-line tool for orchestrating complex workflows with Large Language Models. It provides a simple, declarative way to define multi-step processes and execute them across different LLM providers.
 
 **Available Commands:**
-- `init` - Initialize Conductor or create a workflow
+- `setup` - Configure Conductor providers, secrets, and integrations
 - `run` - Execute a workflow
 - `validate` - Validate workflow syntax
 - `providers` - Manage LLM provider configurations
@@ -47,65 +47,116 @@ Conductor is a command-line tool for orchestrating complex workflows with Large 
 
 ---
 
-### conductor init
+### conductor setup
 
-Initialize Conductor or create a new workflow.
+Interactive wizard to configure Conductor providers, secrets, and integrations.
 
 ```bash
-conductor init [name] [flags]
+conductor setup [flags]
 ```
 
-**Usage Modes:**
+**Description:**
 
-**1. Setup wizard (no arguments):**
-```bash
-conductor init
-```
+The `setup` command launches an interactive TUI (Terminal User Interface) wizard that guides you through configuring:
 
-Runs the interactive setup wizard to configure LLM providers.
+- **LLM Providers**: Claude Code, Ollama, Anthropic API, OpenAI-compatible endpoints
+- **Secrets Management**: Keychain, environment variables, encrypted file storage
+- **Integrations**: GitHub, Slack, Jira, Discord, Jenkins
 
-**2. Create workflow (with name):**
-```bash
-conductor init my-workflow
-```
-
-Creates `my-workflow/workflow.yaml` from a template.
-
-**3. Create single file:**
-```bash
-conductor init --file review.yaml
-```
-
-Creates a single workflow file in the current directory.
+The wizard can be run multiple times to modify your configuration incrementally. It creates a backup of your existing config before making changes.
 
 **Flags:**
 
 | Flag | Description |
 |------|-------------|
-| `--advanced` | Advanced setup with API key configuration |
-| `--yes` | Accept defaults without prompts (non-interactive) |
-| `--force` | Overwrite existing files |
-| `--template`, `-t` | Template to use (default: `blank`) |
-| `--file`, `-f` | Create single file instead of directory |
-| `--list` | List available templates |
+| `--accessible` | Use accessible mode (simple text prompts instead of TUI) |
+
+**Accessible Mode:**
+
+If the TUI doesn't work in your terminal, use accessible mode for simple text prompts:
+
+```bash
+conductor setup --accessible
+```
+
+You can also enable accessible mode via environment variable:
+
+```bash
+export CONDUCTOR_ACCESSIBLE=1
+conductor setup
+```
+
+Accessible mode is automatically activated when:
+- The `--accessible` flag is set
+- `CONDUCTOR_ACCESSIBLE=1` environment variable is set
+- Input is not from a terminal (e.g., piped input)
+
+**First-Time Setup:**
+
+On first run, the wizard:
+1. Auto-detects Claude Code CLI if installed (`which claude`)
+2. Prompts you to add additional providers
+3. Guides you through secure credential storage
+4. Creates `~/.config/conductor/config.yaml` with mode 0600
+
+**Returning User Flow:**
+
+When you run `setup` with an existing configuration:
+1. Shows current configuration summary
+2. Offers options to edit providers, integrations, or settings
+3. Tracks unsaved changes with dirty state indicator
+4. Creates timestamped backup before saving changes
+5. Keeps last 3 backups, rotating older ones
 
 **Examples:**
 
 ```bash
-# Run setup wizard
-conductor init
+# First-time setup with TUI
+conductor setup
 
-# Create new workflow from blank template
-conductor init my-workflow
+# Run setup in accessible mode
+conductor setup --accessible
 
-# Use code-review template
-conductor init --template code-review my-review
+# Modify existing configuration
+conductor setup  # Shows main menu for returning users
+```
 
-# List available templates
-conductor init --list
+**Configuration File:**
 
-# Non-interactive setup (CI/CD)
-conductor init --yes
+Configuration is saved to `~/.config/conductor/config.yaml` by default. You can override this with the `--config` global flag:
+
+```bash
+conductor --config /path/to/config.yaml setup
+```
+
+**Keyboard Navigation:**
+
+- `↑/↓` or `j/k` - Navigate menu items
+- `Enter` - Select item
+- `Esc` - Go back / Cancel
+- `Ctrl+C` - Exit (prompts to save if changes pending)
+- `?` - Show help overlay
+
+**Security:**
+
+- Credentials are stored securely (keychain by default on macOS/Linux)
+- Config file has mode 0600 (readable only by owner)
+- Plaintext credentials are never logged
+- Memory is zeroed when exiting to prevent credential leakage
+
+**Troubleshooting:**
+
+If the terminal is too small:
+```
+Error: terminal too small (need at least 40x15, got 80x10)
+
+Tip: Use --accessible flag for non-interactive mode:
+  conductor setup --accessible
+```
+
+If you have unsaved changes and try to exit:
+```
+Discard unsaved changes? (y/n)
 ```
 
 ---
