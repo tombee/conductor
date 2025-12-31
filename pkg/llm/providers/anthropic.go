@@ -19,31 +19,6 @@ import (
 	"github.com/tombee/conductor/pkg/llm"
 )
 
-// ConnectionPoolConfig configures the HTTP connection pool.
-type ConnectionPoolConfig struct {
-	// MaxIdleConns controls the maximum number of idle (keep-alive) connections.
-	MaxIdleConns int
-
-	// MaxIdleConnsPerHost controls max idle connections per host.
-	MaxIdleConnsPerHost int
-
-	// IdleConnTimeout is the maximum amount of time an idle connection will remain idle.
-	IdleConnTimeout time.Duration
-
-	// ResponseHeaderTimeout is the timeout waiting for response headers.
-	ResponseHeaderTimeout time.Duration
-}
-
-// DefaultConnectionPoolConfig returns default connection pool settings.
-func DefaultConnectionPoolConfig() ConnectionPoolConfig {
-	return ConnectionPoolConfig{
-		MaxIdleConns:          10,
-		MaxIdleConnsPerHost:   10,
-		IdleConnTimeout:       30 * time.Second,
-		ResponseHeaderTimeout: 10 * time.Second,
-	}
-}
-
 // ConnectionPoolMetrics tracks connection pool statistics.
 type ConnectionPoolMetrics struct {
 	mu             sync.RWMutex
@@ -62,25 +37,18 @@ const (
 )
 
 // AnthropicProvider implements the Provider interface for Anthropic's Claude models.
-// Includes connection pooling for improved performance and resource management.
 type AnthropicProvider struct {
 	apiKey     string
 	baseURL    string
 	httpClient *http.Client
-	poolConfig ConnectionPoolConfig
 	metrics    *ConnectionPoolMetrics
 	lastUsage  *llm.TokenUsage
 	usageMu    sync.RWMutex
 }
 
-// NewAnthropicProvider creates a new Anthropic provider instance with default connection pool.
+// NewAnthropicProvider creates a new Anthropic provider instance.
 // The apiKey should be retrieved from secure storage (keychain or encrypted config).
 func NewAnthropicProvider(apiKey string) (*AnthropicProvider, error) {
-	return NewAnthropicProviderWithPool(apiKey, DefaultConnectionPoolConfig())
-}
-
-// NewAnthropicProviderWithPool creates a new Anthropic provider with custom connection pool config.
-func NewAnthropicProviderWithPool(apiKey string, poolConfig ConnectionPoolConfig) (*AnthropicProvider, error) {
 	if apiKey == "" {
 		return nil, &errors.ConfigError{
 			Key:    "anthropic.api_key",
@@ -92,8 +60,8 @@ func NewAnthropicProviderWithPool(apiKey string, poolConfig ConnectionPoolConfig
 	cfg := httpclient.DefaultConfig()
 	cfg.Timeout = 120 * time.Second // LLM requests can take a while
 	cfg.UserAgent = "conductor-anthropic/1.0"
-	// Note: Retry logic will be handled by the LLM retry wrapper (pkg/llm/retry.go)
-	// which has Anthropic-specific error handling, so we disable retries here
+	// Retry logic is handled by the LLM retry wrapper (pkg/llm/retry.go)
+	// which has Anthropic-specific error handling
 	cfg.RetryAttempts = 0
 
 	httpClient, err := httpclient.New(cfg)
@@ -101,16 +69,10 @@ func NewAnthropicProviderWithPool(apiKey string, poolConfig ConnectionPoolConfig
 		return nil, fmt.Errorf("failed to create HTTP client: %w", err)
 	}
 
-	// Note: Connection pooling is handled by httpclient.New() with sensible defaults.
-	// The poolConfig parameter is kept for backward compatibility but connection pool
-	// settings are now managed by the shared httpclient package.
-	// Correlation ID propagation is automatically handled by httpclient's logging transport.
-
 	return &AnthropicProvider{
 		apiKey:     apiKey,
 		baseURL:    anthropicAPIBaseURL,
 		httpClient: httpClient,
-		poolConfig: poolConfig,
 		metrics:    &ConnectionPoolMetrics{},
 	}, nil
 }
@@ -989,11 +951,6 @@ func (p *AnthropicProvider) GetPoolMetrics() ConnectionPoolMetrics {
 		totalRequests:  p.metrics.totalRequests,
 		failedRequests: p.metrics.failedRequests,
 	}
-}
-
-// GetPoolConfig returns the connection pool configuration.
-func (p *AnthropicProvider) GetPoolConfig() ConnectionPoolConfig {
-	return p.poolConfig
 }
 
 // incrementTotalRequests increments the total request counter.

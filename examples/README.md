@@ -36,40 +36,6 @@ Multi-persona AI code review workflow that analyzes changes from security, perfo
 
 [View Example →](./code-review/)
 
-### [Git Branch Code Review](./git-branch-code-review/)
-
-Multi-persona code review for local git branch changes. Analyzes the diff between your current branch and main, runs parallel reviews, and produces a markdown report.
-
-**Use Cases:**
-- Review feature branches before creating PRs
-- Pre-merge validation in local development
-- Batch code analysis for large changesets
-
-**Key Features:**
-- Uses local git commands (no GitHub API needed)
-- Parallel execution of security, performance, and style reviews
-- Generates a markdown report file
-- Configurable personas and output location
-
-[View Example →](./git-branch-code-review/)
-
-### [GitHub PR Review](./github-pr-review/)
-
-Multi-persona PR review using GitHub API integration. Demonstrates conditional step execution based on selected review personas.
-
-**Use Cases:**
-- Automated PR review comments
-- CI/CD integration for PR validation
-- Multi-perspective code analysis
-
-**Key Features:**
-- GitHub PR URL parsing with structured output
-- Conditional persona selection (security, performance, style)
-- Parallel review execution with concurrency limits
-- Consolidated review summary
-
-[View Example →](./github-pr-review/)
-
 ### [Issue Triage](./issue-triage/)
 
 Intelligent issue classification that automatically labels, prioritizes, and assigns GitHub issues to appropriate teams.
@@ -104,6 +70,38 @@ Analyze Infrastructure as Code changes (Terraform, Pulumi, CDK) to produce risk 
 - Environment-aware risk thresholds
 
 [View Example →](./iac-review/)
+
+### [Security Audit](./security-audit/)
+
+Security analysis workflow that reviews code for common vulnerabilities.
+
+**Use Cases:**
+- Pre-commit security validation
+- Security review for pull requests
+- OWASP vulnerability detection
+
+**Key Features:**
+- Common vulnerability pattern detection
+- Severity-based findings
+- Remediation suggestions
+
+[View Example →](./security-audit/)
+
+### [Slack Integration](./slack-integration/)
+
+Demonstrate Slack-style workflow outputs with formatted messages.
+
+**Use Cases:**
+- Notification workflows
+- Alert formatting
+- Team communication automation
+
+**Key Features:**
+- Structured message formatting
+- Status-based messaging
+- Integration with notification channels
+
+[View Example →](./slack-integration/)
 
 ## Running Examples
 
@@ -164,7 +162,6 @@ func main() {
 ```yaml
 name: my-workflow
 description: What this workflow does
-version: "1.0"
 
 inputs:
   - name: input_param
@@ -175,72 +172,55 @@ inputs:
 steps:
   - id: step_1
     name: First Step
-    type: llm
-    action: anthropic.complete
-    inputs:
-      model: fast
-      system: "You are an expert at..."
-      prompt: "Analyze: {{.input_param}}"
-    timeout: 30
+    model: fast
+    system: "You are an expert at..."
+    prompt: "Analyze: {{.inputs.input_param}}"
+    timeout: 30s
 
 outputs:
   - name: result
-    type: string
-    value: $.step_1.content
+    value: "{{.steps.step_1.response}}"
     description: The workflow output
 ```
 
 ### Step Types
 
-- **llm**: Make LLM API calls
+- **llm**: Make LLM API calls (default step type)
   ```yaml
-  type: llm
-  action: anthropic.complete
-  inputs:
-    model: fast|balanced|strategic
+  - id: analyze
+    model: fast|balanced|powerful
     system: "System prompt"
-    prompt: "User prompt with {{.variables}}"
+    prompt: "User prompt with {{.inputs.variable}}"
   ```
 
-- **action**: Execute tools (file read/write, bash commands)
+- **shell**: Execute shell commands
   ```yaml
-  type: action
-  action: read_file
-  inputs:
-    path: "{{.file_path}}"
+  - id: run_command
+    shell.run: echo "Hello World"
   ```
 
-- **condition**: Conditional branching
+- **file**: Read/write files
   ```yaml
-  type: condition
-  condition:
-    expression: steps.previous_step.status == "success"
-    then_steps: ["success_path"]
-    else_steps: ["failure_path"]
-  ```
-
-  Step-level conditions can also skip steps:
-  ```yaml
-  - id: optional_step
-    type: llm
-    condition:
-      expression: '"feature" in inputs.features'
-    prompt: "..."
+  - id: read_config
+    file.read: ./config.json
   ```
 
 - **parallel**: Concurrent execution
   ```yaml
-  type: parallel
-  max_concurrency: 3  # Optional, defaults to 3
-  steps:
-    - id: task_a
-      type: llm
-      condition:
-        expression: '"option_a" in inputs.options'
-      prompt: "..."
-    - id: task_b
-      type: llm
-      prompt: "..."
+  - id: reviews
+    steps:
+      - id: security
+        prompt: "Review for security issues..."
+      - id: performance
+        prompt: "Review for performance..."
+    max_concurrency: 3
+  ```
+
+- **condition**: Skip steps conditionally using `when`
+  ```yaml
+  - id: optional_step
+    when: '"feature" in inputs.features'
+    prompt: "..."
   ```
 
 ### Template Variables
@@ -249,9 +229,9 @@ Access inputs and previous step outputs using Go template syntax:
 
 ```yaml
 prompt: |
-  Original input: {{.input_name}}
-  Previous step result: {{$.step_id.content}}
-  Conditional: {{if .context}}Context: {{.context}}{{end}}
+  Original input: {{.inputs.input_name}}
+  Previous step result: {{.steps.step_id.response}}
+  Conditional: {{if .inputs.context}}Context: {{.inputs.context}}{{end}}
 ```
 
 ### Error Handling
@@ -277,11 +257,11 @@ timeout: 30  # seconds
 
 Choose model tier based on task complexity and cost requirements:
 
-| Tier | Claude Model | Use Case | Cost |
-|------|-------------|----------|------|
-| fast | Haiku | Quick classification, extraction | $ |
-| balanced | Sonnet | Most workflows, analysis | $$ |
-| strategic | Opus | Complex reasoning, synthesis | $$$ |
+| Tier | Use Case | Cost |
+|------|----------|------|
+| fast | Quick classification, extraction | $ |
+| balanced | Most workflows, analysis | $$ |
+| powerful | Complex reasoning, synthesis | $$$ |
 
 ## Best Practices
 
@@ -291,21 +271,18 @@ When running multiple steps in parallel (like code review personas), use `model:
 
 ```yaml
 - id: security_review
-  type: llm
-  action: anthropic.complete
-  inputs:
-    model: fast  # Parallel step, use fast model
+  model: fast  # Parallel step, use fast model
+  prompt: "..."
 ```
 
-### 2. Use Balanced/Strategic for Synthesis
+### 2. Use Balanced/Powerful for Synthesis
 
 Use more powerful models for final consolidation steps that require nuanced understanding:
 
 ```yaml
 - id: consolidate
-  type: llm
-  inputs:
-    model: balanced  # Or strategic for critical decisions
+  model: balanced  # Or powerful for critical decisions
+  prompt: "..."
 ```
 
 ### 3. Set Appropriate Timeouts

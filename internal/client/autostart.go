@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"time"
 )
 
@@ -42,25 +41,14 @@ func StartController(cfg AutoStartConfig) error {
 		cfg.StartTimeout = 10 * time.Second
 	}
 
-	// Find conductor binary (try conductord first for backwards compat, then conductor)
-	var conductorPath string
-	var err error
-	conductorPath, err = exec.LookPath("conductord")
+	// Find conductor binary
+	conductorPath, err := exec.LookPath("conductor")
 	if err != nil {
-		conductorPath, err = exec.LookPath("conductor")
-		if err != nil {
-			return fmt.Errorf("conductor not found in PATH: %w", err)
-		}
+		return fmt.Errorf("conductor not found in PATH: %w", err)
 	}
 
 	// Build command arguments
-	// If we found "conductor", use "controller start --foreground"
-	// If we found "conductord", just pass socket args directly
-	var args []string
-	baseName := filepath.Base(conductorPath)
-	if baseName == "conductor" || baseName == "conductor.exe" {
-		args = []string{"controller", "start", "--foreground"}
-	}
+	args := []string{"controller", "start", "--foreground"}
 	if cfg.SocketPath != "" {
 		args = append(args, "--socket", cfg.SocketPath)
 	}

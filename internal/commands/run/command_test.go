@@ -213,9 +213,8 @@ func TestRunCommand_InputFileFlag(t *testing.T) {
 	}
 }
 
-func TestRunCommand_DaemonFlags(t *testing.T) {
+func TestRunCommand_BackgroundFlag(t *testing.T) {
 	// Test that --background flag is recognized
-	// Note: --daemon flag was removed in SPEC-147 (unified execution mode)
 	cmd := NewCommand()
 	args := []string{"--background", "../testdata/valid_workflow.yaml"}
 	err := cmd.ParseFlags(args)
