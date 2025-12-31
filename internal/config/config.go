@@ -753,7 +753,18 @@ func Default() *Config {
 func Load(configPath string) (*Config, error) {
 	cfg := Default()
 
-	// Load from file if path provided
+	// If no config path provided, try the default config file
+	if configPath == "" {
+		defaultPath, err := ConfigPath()
+		if err == nil {
+			// Check if default config exists
+			if _, statErr := os.Stat(defaultPath); statErr == nil {
+				configPath = defaultPath
+			}
+		}
+	}
+
+	// Load from file if path provided or found
 	if configPath != "" {
 		if err := cfg.loadFromFile(configPath); err != nil {
 			return nil, &conductorerrors.ConfigError{

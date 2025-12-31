@@ -57,7 +57,10 @@ func (s *StateManager) SetCostStore(store cost.CostStore) {
 // Returns the created Run (internal) for further processing.
 func (s *StateManager) CreateRun(ctx context.Context, def *workflow.Definition, inputs map[string]any, sourceURL, workspace, profile string, bindings *binding.ResolvedBinding, overrides *RunOverrides) (*Run, error) {
 	runID := uuid.New().String()[:8]
-	runCtx, cancel := context.WithCancel(ctx)
+	// Use context.Background() as the parent for workflow execution.
+	// The HTTP request context (ctx) would get cancelled when the request ends,
+	// which would incorrectly cancel long-running workflows.
+	runCtx, cancel := context.WithCancel(context.Background())
 
 	// Extract correlation ID from context (set by HTTP middleware)
 	correlationID := string(tracing.FromContextOrEmpty(ctx))

@@ -105,7 +105,6 @@ func main() {
 
 	// Workflow management commands
 	rootCmd.AddCommand(workflow.NewInitCommand())
-	rootCmd.AddCommand(workflow.NewQuickstartCommand())
 	rootCmd.AddCommand(workflow.NewExamplesCommand())
 	rootCmd.AddCommand(workflow.NewSchemaCommand())
 	rootCmd.AddCommand(workflow.NewCostsCommand())

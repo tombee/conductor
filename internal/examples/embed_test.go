@@ -16,20 +16,20 @@ func TestList(t *testing.T) {
 		t.Fatal("List() returned no examples")
 	}
 
-	// Check that quickstart is present
+	// Check that minimal example is present
 	found := false
 	for _, ex := range examples {
-		if ex.Name == "quickstart" {
+		if ex.Name == "minimal" {
 			found = true
 			if ex.Description == "" {
-				t.Error("quickstart example has no description")
+				t.Error("minimal example has no description")
 			}
 			break
 		}
 	}
 
 	if !found {
-		t.Error("quickstart example not found in list")
+		t.Error("minimal example not found in list")
 	}
 }
 
@@ -38,7 +38,7 @@ func TestGet(t *testing.T) {
 		name    string
 		wantErr bool
 	}{
-		{"quickstart", false},
+		{"minimal", false},
 		{"nonexistent", true},
 	}
 
@@ -66,7 +66,7 @@ func TestExists(t *testing.T) {
 		name   string
 		expect bool
 	}{
-		{"quickstart", true},
+		{"minimal", true},
 		{"nonexistent", false},
 	}
 
@@ -90,7 +90,7 @@ func TestCopyTo(t *testing.T) {
 		wantErr  bool
 	}{
 		{
-			name:     "quickstart",
+			name:     "minimal",
 			destPath: filepath.Join(tmpDir, "test.yaml"),
 			wantErr:  false,
 		},
@@ -100,7 +100,7 @@ func TestCopyTo(t *testing.T) {
 			wantErr:  true,
 		},
 		{
-			name:     "quickstart",
+			name:     "minimal",
 			destPath: filepath.Join(tmpDir, "subdir", "nested.yaml"),
 			wantErr:  false,
 		},

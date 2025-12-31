@@ -40,7 +40,6 @@ Conductor is a command-line tool for orchestrating complex workflows with Large 
 - `runs` - View workflow run history
 - `config` - Manage configuration
 - `doctor` - Diagnose setup issues
-- `quickstart` - Run an interactive quick start
 - `examples` - Browse example workflows
 - `version` - Show version information
 - `completion` - Generate shell completion scripts
@@ -570,32 +569,6 @@ Running Conductor Diagnostics...
 Recommendations:
   • Set a default provider: conductor providers set-default claudecode
   • Set ANTHROPIC_API_KEY if you plan to use Anthropic provider
-```
-
----
-
-### conductor quickstart
-
-Run an interactive quick start.
-
-```bash
-conductor quickstart
-```
-
-**Description:**
-
-Interactive tutorial that walks you through:
-
-1. Creating your first workflow
-2. Running it with an LLM provider
-3. Understanding the output
-4. Next steps
-
-**Examples:**
-
-```bash
-# Start quick start tutorial
-conductor quickstart
 ```
 
 ---

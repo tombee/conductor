@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 )
 
@@ -34,27 +35,38 @@ type AutoStartConfig struct {
 	StartTimeout time.Duration
 }
 
-// StartDaemon starts the conductord daemon in the background.
+// StartDaemon starts the conductor daemon in the background.
 // Returns nil if the daemon starts successfully within the timeout.
 func StartDaemon(cfg AutoStartConfig) error {
 	if cfg.StartTimeout == 0 {
 		cfg.StartTimeout = 10 * time.Second
 	}
 
-	// Find conductord binary
-	conductordPath, err := exec.LookPath("conductord")
+	// Find conductor binary (try conductord first for backwards compat, then conductor)
+	var conductorPath string
+	var err error
+	conductorPath, err = exec.LookPath("conductord")
 	if err != nil {
-		return fmt.Errorf("conductord not found in PATH: %w", err)
+		conductorPath, err = exec.LookPath("conductor")
+		if err != nil {
+			return fmt.Errorf("conductor not found in PATH: %w", err)
+		}
 	}
 
 	// Build command arguments
-	args := []string{}
+	// If we found "conductor", use "daemon start --foreground"
+	// If we found "conductord", just pass socket args directly
+	var args []string
+	baseName := filepath.Base(conductorPath)
+	if baseName == "conductor" || baseName == "conductor.exe" {
+		args = []string{"daemon", "start", "--foreground"}
+	}
 	if cfg.SocketPath != "" {
 		args = append(args, "--socket", cfg.SocketPath)
 	}
 
 	// Start daemon in background
-	cmd := exec.Command(conductordPath, args...)
+	cmd := exec.Command(conductorPath, args...)
 	cmd.Stdout = nil // Detach stdout
 	cmd.Stderr = nil // Detach stderr
 	cmd.Stdin = nil
@@ -67,7 +79,7 @@ func StartDaemon(cfg AutoStartConfig) error {
 	setSysProcAttr(cmd)
 
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start conductord: %w", err)
+		return fmt.Errorf("failed to start daemon: %w", err)
 	}
 
 	// Wait for daemon to become available

@@ -85,7 +85,7 @@ func CopyTo(name string, destPath string) error {
 // getDescription returns a human-readable description for each example
 func getDescription(name string) string {
 	descriptions := map[string]string{
-		"quickstart": "Simple hello world workflow for testing Conductor",
+		"minimal": "Minimal workflow with a single LLM step",
 	}
 
 	if desc, ok := descriptions[name]; ok {

@@ -33,8 +33,10 @@ func NewRootCommand() *cobra.Command {
 with Large Language Models. It provides a simple, declarative way to
 define multi-step processes and execute them across different LLM providers.
 
-Run 'conductor init' to get started with interactive setup.
-Run 'conductor quickstart' to try a simple example workflow.`,
+Get started:
+  conductor init              Set up Conductor configuration
+  conductor run workflow.yaml Run your first workflow
+  conductor examples list     Browse example workflows`,
 		SilenceUsage:  true, // Don't show usage on errors
 		SilenceErrors: true, // We handle errors ourselves for proper exit codes
 	}

@@ -325,10 +325,13 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 	}
 
 	if err != nil {
-		// Check if the error is due to cancellation
-		if err == context.Canceled || err == context.DeadlineExceeded {
+		// Check if the error is due to cancellation or timeout
+		if err == context.Canceled {
 			run.Status = RunStatusCancelled
 			run.Error = "cancelled by user"
+		} else if err == context.DeadlineExceeded {
+			run.Status = RunStatusFailed
+			run.Error = "step timed out"
 		} else {
 			run.Status = RunStatusFailed
 			run.Error = err.Error()
