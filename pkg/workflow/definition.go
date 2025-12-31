@@ -245,12 +245,15 @@ func (t *TriggerConfig) Validate() error {
 	if t.Poll != nil {
 		triggerCount++
 	}
+	if t.File != nil {
+		triggerCount++
+	}
 
 	if triggerCount == 0 {
 		return &errors.ValidationError{
 			Field:      "listen",
 			Message:    "at least one trigger type must be configured",
-			Suggestion: "add one of: webhook, api, schedule, or poll",
+			Suggestion: "add one of: webhook, api, schedule, poll, or file",
 		}
 	}
 
@@ -258,7 +261,7 @@ func (t *TriggerConfig) Validate() error {
 		return &errors.ValidationError{
 			Field:      "listen",
 			Message:    "only one trigger type can be configured per workflow",
-			Suggestion: "remove all but one trigger type (webhook, api, schedule, or poll)",
+			Suggestion: "remove all but one trigger type (webhook, api, schedule, poll, or file)",
 		}
 	}
 

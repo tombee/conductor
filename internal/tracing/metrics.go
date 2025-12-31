@@ -303,31 +303,6 @@ func (mc *MetricsCollector) RecordReplay(ctx context.Context, workflowID, status
 	}
 }
 
-// RecordDebugSessionStart increments the active debug sessions gauge
-func (mc *MetricsCollector) RecordDebugSessionStart() {
-	mc.debugSessionsMu.Lock()
-	mc.debugSessionsActive++
-	mc.debugSessionsMu.Unlock()
-}
-
-// RecordDebugSessionEnd decrements the active debug sessions gauge
-func (mc *MetricsCollector) RecordDebugSessionEnd() {
-	mc.debugSessionsMu.Lock()
-	if mc.debugSessionsActive > 0 {
-		mc.debugSessionsActive--
-	}
-	mc.debugSessionsMu.Unlock()
-}
-
-// RecordDebugEvent records a debug event emission
-func (mc *MetricsCollector) RecordDebugEvent(ctx context.Context, eventType string) {
-	attrs := []attribute.KeyValue{
-		attribute.String("event_type", eventType),
-	}
-
-	mc.debugEventsTotal.Add(ctx, 1, metric.WithAttributes(attrs...))
-}
-
 // SubscriberCounter is an interface for counting subscribers (used by LogAggregator)
 type SubscriberCounter interface {
 	TotalSubscriberCount() int

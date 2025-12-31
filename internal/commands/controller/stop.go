@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package daemon
+package controller
 
 import (
 	"context"
@@ -27,7 +27,7 @@ import (
 	"github.com/tombee/conductor/internal/lifecycle"
 )
 
-// NewStopCommand creates the daemon stop command.
+// NewStopCommand creates the controller stop command.
 func NewStopCommand() *cobra.Command {
 	var (
 		timeout time.Duration
@@ -36,25 +36,25 @@ func NewStopCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "stop",
-		Short: "Stop the conductor daemon",
-		Long: `Stop the conductor daemon gracefully.
+		Short: "Stop the conductor controller",
+		Long: `Stop the conductor controller gracefully.
 
 By default, sends SIGTERM and waits for graceful shutdown.
 Use --force to send SIGKILL if graceful shutdown times out.
 
-The stop command is idempotent: if the daemon is not running,
+The stop command is idempotent: if the controller is not running,
 it exits successfully after cleaning up stale PID files.`,
-		Example: `  # Stop daemon gracefully
-  conductor daemon stop
+		Example: `  # Stop controller gracefully
+  conductor controller stop
 
   # Stop with custom timeout
-  conductor daemon stop --timeout 60s
+  conductor controller stop --timeout 60s
 
   # Force kill if shutdown times out
-  conductor daemon stop --force
+  conductor controller stop --force
 
   # Force kill with custom timeout
-  conductor daemon stop --timeout 30s --force`,
+  conductor controller stop --timeout 30s --force`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runStop(cmd.Context(), stopOptions{
 				timeout: timeout,
@@ -75,7 +75,7 @@ type stopOptions struct {
 }
 
 func runStop(ctx context.Context, opts stopOptions) error {
-	// Load daemon configuration
+	// Load controller configuration
 	cfg, err := config.LoadController("")
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
@@ -101,7 +101,7 @@ func runStop(ctx context.Context, opts stopOptions) error {
 	pid, err := pidMgr.Read()
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			fmt.Println("Daemon is not running (no PID file)")
+			fmt.Println("Controller is not running (no PID file)")
 			return nil
 		}
 		return fmt.Errorf("failed to read PID file: %w", err)
@@ -119,7 +119,7 @@ func runStop(ctx context.Context, opts stopOptions) error {
 			fmt.Fprintf(os.Stderr, "Warning: failed to write lifecycle log: %v\n", err)
 		}
 
-		fmt.Printf("Daemon process %d is not running (removing stale PID file)\n", pid)
+		fmt.Printf("Controller process %d is not running (removing stale PID file)\n", pid)
 
 		if err := pidMgr.Remove(); err != nil {
 			return fmt.Errorf("failed to remove stale PID file: %w", err)
@@ -138,15 +138,15 @@ func runStop(ctx context.Context, opts stopOptions) error {
 		fmt.Fprintf(os.Stderr, "Warning: failed to write lifecycle log: %v\n", err)
 	}
 
-	// Stop the daemon
+	// Stop the controller
 	startTime := time.Now()
-	fmt.Printf("Stopping daemon (PID %d)...\n", pid)
+	fmt.Printf("Stopping controller (PID %d)...\n", pid)
 
 	if err := lifecycle.GracefulShutdown(pid, opts.timeout, opts.force); err != nil {
 		if logErr := lifecycleLog.LogStopFailure(pid, err); logErr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: failed to write lifecycle log: %v\n", logErr)
 		}
-		return fmt.Errorf("failed to stop daemon: %w", err)
+		return fmt.Errorf("failed to stop controller: %w", err)
 	}
 
 	duration := time.Since(startTime)
@@ -161,6 +161,6 @@ func runStop(ctx context.Context, opts stopOptions) error {
 		fmt.Fprintf(os.Stderr, "Warning: failed to write lifecycle log: %v\n", err)
 	}
 
-	fmt.Printf("Daemon stopped successfully\n")
+	fmt.Printf("Controller stopped successfully\n")
 	return nil
 }

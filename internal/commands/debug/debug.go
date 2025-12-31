@@ -16,6 +16,8 @@
 package debug
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -29,9 +31,11 @@ func NewDebugCommand() *cobra.Command {
 The debug command group provides tools for interactive workflow debugging,
 including attaching to debug sessions and managing active sessions.
 
-Commands:
-  attach    Attach to an existing debug session
-  sessions  List and manage debug sessions`,
+NOTE: Remote debugging is not yet implemented. For now, use the --breakpoint
+flag with 'conductor run' for local debugging.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return fmt.Errorf("remote debugging is not yet implemented; use 'conductor run --breakpoint <step>' for local debugging")
+		},
 	}
 
 	cmd.AddCommand(NewAttachCmd())

@@ -15,7 +15,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,24 +22,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tombee/conductor/internal/controller/debug"
 	"github.com/tombee/conductor/internal/controller/runner"
 )
 
 // RunsHandler handles run-related API requests.
 type RunsHandler struct {
-	runner         *runner.Runner
-	sessionManager *debug.SessionManager // Optional - for debug session creation
+	runner *runner.Runner
 }
 
 // NewRunsHandler creates a new runs handler.
 func NewRunsHandler(r *runner.Runner) *RunsHandler {
 	return &RunsHandler{runner: r}
-}
-
-// SetSessionManager sets the debug session manager (optional).
-func (h *RunsHandler) SetSessionManager(sm *debug.SessionManager) {
-	h.sessionManager = sm
 }
 
 // RegisterRoutes registers run API routes on the router.
@@ -164,8 +156,7 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Create debug session if breakpoints were provided
-		response := h.createRunResponse(r.Context(), run, breakpoints)
+		response := h.createRunResponse(run)
 		writeJSON(w, http.StatusAccepted, response)
 		return
 	}
@@ -275,8 +266,7 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create debug session if breakpoints were provided
-	response := h.createRunResponse(r.Context(), run, breakpoints)
+	response := h.createRunResponse(run)
 	writeJSON(w, http.StatusAccepted, response)
 }
 
@@ -453,9 +443,9 @@ func (h *RunsHandler) handleCancel(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// createRunResponse creates a response for a run submission, optionally including debug session ID.
-func (h *RunsHandler) createRunResponse(ctx context.Context, run *runner.RunSnapshot, breakpoints []string) map[string]interface{} {
-	response := map[string]interface{}{
+// createRunResponse creates a response for a run submission.
+func (h *RunsHandler) createRunResponse(run *runner.RunSnapshot) map[string]interface{} {
+	return map[string]interface{}{
 		"id":             run.ID,
 		"workflow_id":    run.WorkflowID,
 		"workflow":       run.Workflow,
@@ -467,18 +457,5 @@ func (h *RunsHandler) createRunResponse(ctx context.Context, run *runner.RunSnap
 		"progress":       run.Progress,
 		"started_at":     run.StartedAt,
 		"completed_at":   run.CompletedAt,
-		"cost":           run.Cost,
 	}
-
-	// Create debug session if session manager is available and breakpoints are set
-	if h.sessionManager != nil && len(breakpoints) > 0 {
-		session, err := h.sessionManager.CreateSession(ctx, run.ID, breakpoints)
-		if err == nil {
-			response["debug_session_id"] = session.SessionID
-		}
-		// If session creation fails, log but don't fail the request
-		// The run is still created successfully
-	}
-
-	return response
 }

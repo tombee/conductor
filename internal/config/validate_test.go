@@ -91,15 +91,23 @@ steps:
 			errContains: "api-workflow (has listen.api)",
 		},
 		{
-			name:          "public API disabled with both listeners",
+			name:          "public API disabled with both webhook and api workflows",
 			publicEnabled: false,
 			workflows: map[string]string{
-				"both.yaml": `
-name: both-workflow
+				"webhook.yaml": `
+name: webhook-workflow
 listen:
   webhook:
     path: /test
     secret: test
+steps:
+  - id: step1
+    type: llm
+    prompt: test
+`,
+				"api.yaml": `
+name: api-workflow
+listen:
   api:
     secret: test-secret-123
 steps:
@@ -109,7 +117,7 @@ steps:
 `,
 			},
 			wantErr:     true,
-			errContains: "both-workflow",
+			errContains: "webhook-workflow",
 		},
 		{
 			name:          "public API disabled with schedule only - no error",

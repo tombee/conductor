@@ -35,6 +35,7 @@ import (
 	"github.com/tombee/conductor/internal/controller/backend/memory"
 	"github.com/tombee/conductor/internal/controller/backend/postgres"
 	"github.com/tombee/conductor/internal/controller/checkpoint"
+	"github.com/tombee/conductor/internal/controller/debug"
 	"github.com/tombee/conductor/internal/controller/endpoint"
 	"github.com/tombee/conductor/internal/controller/filewatcher"
 	"github.com/tombee/conductor/internal/controller/github"
@@ -53,7 +54,6 @@ import (
 	"github.com/tombee/conductor/internal/tracing"
 	"github.com/tombee/conductor/internal/tracing/audit"
 	"github.com/tombee/conductor/internal/triggers"
-	"github.com/tombee/conductor/pkg/llm/cost"
 	"github.com/tombee/conductor/pkg/security"
 	securityaudit "github.com/tombee/conductor/pkg/security/audit"
 	"github.com/tombee/conductor/pkg/workflow"
@@ -87,8 +87,9 @@ type Controller struct {
 	mcpLogCapture   *mcp.LogCapture
 	otelProvider    *tracing.OTelProvider
 	retentionMgr    *tracing.RetentionManager
-	auditLogger     *audit.Logger
+	auditLogger        *audit.Logger
 	pollTriggerService *polltrigger.Service
+	debugSessionMgr    *debug.SessionManager
 
 	// Security components
 	dnsMonitor          *security.DNSQueryMonitor
@@ -159,14 +160,11 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 		return nil, fmt.Errorf("failed to create checkpoint manager: %w", err)
 	}
 
-	// Create cost store for LLM cost tracking
-	costStore := cost.NewMemoryStore()
-
-	// Create runner with configured concurrency and cost tracking
+	// Create runner with configured concurrency
 	r := runner.New(runner.Config{
 		MaxParallel:    cfg.Controller.MaxConcurrentRuns,
 		DefaultTimeout: cfg.Controller.DefaultTimeout,
-	}, be, cm, runner.WithCostStore(costStore))
+	}, be, cm)
 
 	// Create remote workflow fetcher
 	// This enables remote workflow support (github:user/repo)
@@ -192,14 +190,12 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 				slog.String("provider", cfg.DefaultProvider))
 			logger.Warn("workflows requiring LLM steps may fail without a configured provider")
 		} else {
-			// Create the workflow executor adapter with cost tracking
+			// Create the workflow executor adapter
 			providerAdapter := internalllm.NewProviderAdapter(llmProvider)
-			providerAdapter.SetCostStore(costStore)
 			// TODO: Wire up tool registry once tool types are unified
 			// For now, pass nil as tool registry (like CLI does)
 			executor := workflow.NewExecutor(nil, providerAdapter)
 			executionAdapter := runner.NewExecutorAdapter(executor)
-			executionAdapter.SetCostStore(costStore)
 			r.SetAdapter(executionAdapter)
 
 			logger.Info("workflow execution adapter initialized",
@@ -340,7 +336,16 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 		}
 	}
 
-	// Check if this daemon was auto-started
+	// Initialize debug session manager if observability storage is available
+	var debugSessionMgr *debug.SessionManager
+	if otelProvider != nil && otelProvider.GetStore() != nil {
+		debugSessionMgr = debug.NewSessionManager(debug.SessionManagerConfig{
+			Store: otelProvider.GetStore(),
+		})
+		logger.Info("debug session manager initialized")
+	}
+
+	// Check if this controller was auto-started
 	autoStarted := os.Getenv("CONDUCTOR_AUTO_STARTED") == "1"
 	if autoStarted {
 		logger.Info("daemon auto-started by CLI",
@@ -463,6 +468,40 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 					internallog.Error(err))
 			}
 		}
+
+		// Register Datadog poller if API key and app key are configured
+		datadogAPIKey := os.Getenv("DATADOG_API_KEY")
+		datadogAppKey := os.Getenv("DATADOG_APP_KEY")
+		if datadogAPIKey != "" && datadogAppKey != "" {
+			datadogSite := os.Getenv("DATADOG_SITE") // Optional, defaults to datadoghq.com
+			ddPoller := polltrigger.NewDatadogPoller(datadogAPIKey, datadogAppKey, datadogSite)
+			if err := pollTriggerSvc.RegisterPoller(ddPoller); err != nil {
+				logger.Warn("failed to register Datadog poller",
+					internallog.Error(err))
+			}
+		}
+
+		// Register Jira poller if credentials are configured
+		jiraEmail := os.Getenv("JIRA_EMAIL")
+		jiraAPIToken := os.Getenv("JIRA_API_TOKEN")
+		jiraBaseURL := os.Getenv("JIRA_BASE_URL")
+		if jiraEmail != "" && jiraAPIToken != "" && jiraBaseURL != "" {
+			jiraPoller := polltrigger.NewJiraPoller(jiraEmail, jiraAPIToken, jiraBaseURL)
+			if err := pollTriggerSvc.RegisterPoller(jiraPoller); err != nil {
+				logger.Warn("failed to register Jira poller",
+					internallog.Error(err))
+			}
+		}
+
+		// Register Slack poller if bot token is configured
+		slackBotToken := os.Getenv("SLACK_BOT_TOKEN")
+		if slackBotToken != "" {
+			slackPoller := polltrigger.NewSlackPoller(slackBotToken)
+			if err := pollTriggerSvc.RegisterPoller(slackPoller); err != nil {
+				logger.Warn("failed to register Slack poller",
+					internallog.Error(err))
+			}
+		}
 	}
 
 	return &Controller{
@@ -483,6 +522,7 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 		retentionMgr:       retentionMgr,
 		auditLogger:        auditLogger,
 		pollTriggerService: pollTriggerSvc,
+		debugSessionMgr:    debugSessionMgr,
 		lastActivity:       time.Now(),
 		autoStarted:        autoStarted,
 
@@ -592,6 +632,21 @@ func (c *Controller) Start(ctx context.Context) error {
 	if c.mcpRegistry != nil {
 		mcpHandler := api.NewMCPHandler(c.mcpRegistry, c.mcpLogCapture)
 		mcpHandler.RegisterRoutes(router.Mux())
+	}
+
+	// Register traces, events, and debug API if observability storage is available
+	if c.otelProvider != nil && c.otelProvider.GetStore() != nil {
+		store := c.otelProvider.GetStore()
+		tracesHandler := api.NewTracesHandler(store)
+		tracesHandler.RegisterRoutes(router.Mux())
+		eventsHandler := api.NewEventsHandler(store)
+		eventsHandler.RegisterRoutes(router.Mux())
+
+		// Register debug API if session manager is available
+		if c.debugSessionMgr != nil {
+			debugHandler := api.NewDebugHandler(c.debugSessionMgr)
+			debugHandler.RegisterRoutes(router.Mux())
+		}
 	}
 
 	// Wire up scheduler to router for health endpoint

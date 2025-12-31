@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/tombee/conductor/internal/commands/shared"
 )
 
 func TestDocsCommand(t *testing.T) {
@@ -36,7 +38,7 @@ func TestDocsCommand(t *testing.T) {
 		},
 		{
 			name:           "docs with --json shows JSON output",
-			args:           []string{"--json"},
+			args:           []string{},
 			wantErr:        false,
 			wantJSONOutput: true,
 		},
@@ -44,6 +46,10 @@ func TestDocsCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Set JSON output mode via shared package
+			shared.SetJSONForTest(tt.wantJSONOutput)
+			defer shared.SetJSONForTest(false)
+
 			cmd := NewDocsCommand()
 			buf := new(bytes.Buffer)
 			cmd.SetOut(buf)
@@ -138,11 +144,15 @@ func TestDocsSubcommands(t *testing.T) {
 
 	for _, tt := range subcommands {
 		t.Run(tt.name, func(t *testing.T) {
+			// Set JSON output mode via shared package
+			shared.SetJSONForTest(true)
+			defer shared.SetJSONForTest(false)
+
 			cmd := NewDocsCommand()
 			buf := new(bytes.Buffer)
 			cmd.SetOut(buf)
 			cmd.SetErr(buf)
-			cmd.SetArgs([]string{tt.subcommand, "--json"})
+			cmd.SetArgs([]string{tt.subcommand})
 
 			err := cmd.Execute()
 			if err != nil {
@@ -177,11 +187,15 @@ func TestDocsSubcommands(t *testing.T) {
 }
 
 func TestDocsJSONStructure(t *testing.T) {
+	// Set JSON output mode via shared package
+	shared.SetJSONForTest(true)
+	defer shared.SetJSONForTest(false)
+
 	cmd := NewDocsCommand()
 	buf := new(bytes.Buffer)
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
-	cmd.SetArgs([]string{"--json"})
+	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
 	if err != nil {

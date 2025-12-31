@@ -15,8 +15,8 @@ type TokenLimitEnforcer struct {
 	// currentUsage tracks accumulated token usage for the current workflow run
 	currentUsage LimitUsage
 
-	// tracker is the cost tracker to pull records from
-	tracker *llm.CostTracker
+	// tracker is the usage tracker to pull records from
+	tracker *llm.UsageTracker
 
 	// runID is the current run ID for filtering records
 	runID string
@@ -29,7 +29,7 @@ type LimitUsage struct {
 }
 
 // NewTokenLimitEnforcer creates a new token limit enforcer for a workflow run.
-func NewTokenLimitEnforcer(workflowLimit int, tracker *llm.CostTracker, runID string) *TokenLimitEnforcer {
+func NewTokenLimitEnforcer(workflowLimit int, tracker *llm.UsageTracker, runID string) *TokenLimitEnforcer {
 	return &TokenLimitEnforcer{
 		workflowLimit: workflowLimit,
 		tracker:       tracker,

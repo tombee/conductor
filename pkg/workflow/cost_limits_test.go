@@ -57,7 +57,7 @@ func TestTokenLimitEnforcer_CheckAfterStep(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tracker := llm.NewCostTracker()
+			tracker := llm.NewUsageTracker()
 			enforcer := NewTokenLimitEnforcer(tt.workflowLimit, tracker, "test-run-123")
 
 			step := &StepDefinition{
@@ -85,20 +85,18 @@ func TestTokenLimitEnforcer_CheckAfterStep(t *testing.T) {
 }
 
 func TestTokenLimitEnforcer_AccumulatedTokens(t *testing.T) {
-	tracker := llm.NewCostTracker()
+	tracker := llm.NewUsageTracker()
 	runID := "test-run-456"
 
 	// Add some token usage records to the tracker
-	tracker.Track(llm.CostRecord{
-		ID:       "rec1",
+	tracker.Track(llm.UsageRecord{
 		RunID:    runID,
 		Provider: "anthropic",
 		Model:    "claude-3-opus",
 		Usage:    llm.TokenUsage{TotalTokens: 1000},
 	})
 
-	tracker.Track(llm.CostRecord{
-		ID:       "rec2",
+	tracker.Track(llm.UsageRecord{
 		RunID:    runID,
 		Provider: "anthropic",
 		Model:    "claude-3-opus",
@@ -106,8 +104,7 @@ func TestTokenLimitEnforcer_AccumulatedTokens(t *testing.T) {
 	})
 
 	// Add a record from a different run (should not be counted)
-	tracker.Track(llm.CostRecord{
-		ID:       "rec3",
+	tracker.Track(llm.UsageRecord{
 		RunID:    "other-run",
 		Provider: "anthropic",
 		Model:    "claude-3-opus",
@@ -135,18 +132,16 @@ func TestTokenLimitEnforcer_AccumulatedTokens(t *testing.T) {
 }
 
 func TestTokenLimitEnforcer_GetCurrentUsage(t *testing.T) {
-	tracker := llm.NewCostTracker()
+	tracker := llm.NewUsageTracker()
 	runID := "test-run-789"
 
 	// Add token records
-	tracker.Track(llm.CostRecord{
-		ID:    "rec1",
+	tracker.Track(llm.UsageRecord{
 		RunID: runID,
 		Usage: llm.TokenUsage{TotalTokens: 1000},
 	})
 
-	tracker.Track(llm.CostRecord{
-		ID:    "rec2",
+	tracker.Track(llm.UsageRecord{
 		RunID: runID,
 		Usage: llm.TokenUsage{TotalTokens: 2000},
 	})

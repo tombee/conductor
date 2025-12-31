@@ -2,10 +2,14 @@
 package providers
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -42,23 +46,31 @@ func DefaultConnectionPoolConfig() ConnectionPoolConfig {
 
 // ConnectionPoolMetrics tracks connection pool statistics.
 type ConnectionPoolMetrics struct {
-	mu               sync.RWMutex
-	activeConns      int
-	idleConns        int
-	totalRequests    int64
-	failedRequests   int64
+	mu             sync.RWMutex
+	activeConns    int
+	idleConns      int
+	totalRequests  int64
+	failedRequests int64
 }
+
+const (
+	// anthropicAPIBaseURL is the base URL for the Anthropic API
+	anthropicAPIBaseURL = "https://api.anthropic.com/v1"
+
+	// anthropicAPIVersion is the API version to use
+	anthropicAPIVersion = "2023-06-01"
+)
 
 // AnthropicProvider implements the Provider interface for Anthropic's Claude models.
 // Includes connection pooling for improved performance and resource management.
 type AnthropicProvider struct {
-	apiKey      string
-	httpClient  *http.Client
-	poolConfig  ConnectionPoolConfig
-	metrics     *ConnectionPoolMetrics
-	lastUsage   *llm.TokenUsage
-	usageMu     sync.RWMutex
-	// TODO: Add actual Anthropic SDK client once API integration is working
+	apiKey     string
+	baseURL    string
+	httpClient *http.Client
+	poolConfig ConnectionPoolConfig
+	metrics    *ConnectionPoolMetrics
+	lastUsage  *llm.TokenUsage
+	usageMu    sync.RWMutex
 }
 
 // NewAnthropicProvider creates a new Anthropic provider instance with default connection pool.
@@ -78,7 +90,7 @@ func NewAnthropicProviderWithPool(apiKey string, poolConfig ConnectionPoolConfig
 
 	// Create HTTP client using shared httpclient package
 	cfg := httpclient.DefaultConfig()
-	cfg.Timeout = 5 * time.Second
+	cfg.Timeout = 120 * time.Second // LLM requests can take a while
 	cfg.UserAgent = "conductor-anthropic/1.0"
 	// Note: Retry logic will be handled by the LLM retry wrapper (pkg/llm/retry.go)
 	// which has Anthropic-specific error handling, so we disable retries here
@@ -96,6 +108,7 @@ func NewAnthropicProviderWithPool(apiKey string, poolConfig ConnectionPoolConfig
 
 	return &AnthropicProvider{
 		apiKey:     apiKey,
+		baseURL:    anthropicAPIBaseURL,
 		httpClient: httpClient,
 		poolConfig: poolConfig,
 		metrics:    &ConnectionPoolMetrics{},
@@ -116,8 +129,7 @@ func (p *AnthropicProvider) Capabilities() llm.Capabilities {
 	}
 }
 
-// Complete sends a synchronous completion request.
-// This is a minimal implementation for Phase 1b. Full API integration in T012.
+// Complete sends a synchronous completion request to the Anthropic Messages API.
 func (p *AnthropicProvider) Complete(ctx context.Context, req llm.CompletionRequest) (*llm.CompletionResponse, error) {
 	p.metrics.incrementTotalRequests()
 
@@ -144,31 +156,302 @@ func (p *AnthropicProvider) Complete(ctx context.Context, req llm.CompletionRequ
 		}
 	}
 
-	// Stop sequences will be passed to API when implemented
-	_ = req.StopSequences
-	_ = anthropicTools
+	// Build the API request
+	apiReq, err := p.buildAPIRequest(req, anthropicTools, false)
+	if err != nil {
+		p.metrics.incrementFailedRequests()
+		return nil, err
+	}
 
-	// TODO: Implement actual Anthropic API call
-	// For now, return an error indicating this needs real implementation
-	p.metrics.incrementFailedRequests()
-	return nil, &errors.ProviderError{
-		Provider:   "anthropic",
-		StatusCode: http.StatusNotImplemented,
-		Message:    "Anthropic API integration not yet implemented",
-		Suggestion: "Use a mock provider for testing or wait for full API implementation",
-		RequestID:  requestID,
+	// Make the API call
+	resp, err := p.doRequest(ctx, apiReq, requestID)
+	if err != nil {
+		p.metrics.incrementFailedRequests()
+		return nil, err
+	}
+
+	// Parse the response
+	completionResp, err := p.parseResponse(resp, requestID)
+	if err != nil {
+		p.metrics.incrementFailedRequests()
+		return nil, err
+	}
+
+	return completionResp, nil
+}
+
+// buildAPIRequest constructs an anthropicRequest from a CompletionRequest.
+func (p *AnthropicProvider) buildAPIRequest(req llm.CompletionRequest, tools []anthropicTool, stream bool) (*anthropicRequest, error) {
+	// Resolve model
+	model := p.resolveModel(req.Model)
+
+	// Convert messages to Anthropic format
+	var systemPrompt string
+	var apiMessages []anthropicMessage
+
+	for _, msg := range req.Messages {
+		switch msg.Role {
+		case llm.MessageRoleSystem:
+			// Anthropic uses a separate system field
+			if systemPrompt != "" {
+				systemPrompt += "\n\n"
+			}
+			systemPrompt += msg.Content
+
+		case llm.MessageRoleUser:
+			content := []interface{}{
+				anthropicTextContent{Type: "text", Text: msg.Content},
+			}
+			apiMessages = append(apiMessages, anthropicMessage{
+				Role:    "user",
+				Content: content,
+			})
+
+		case llm.MessageRoleAssistant:
+			var content []interface{}
+			if msg.Content != "" {
+				content = append(content, anthropicTextContent{Type: "text", Text: msg.Content})
+			}
+			// Include tool calls if present
+			for _, tc := range msg.ToolCalls {
+				var input map[string]interface{}
+				if err := json.Unmarshal([]byte(tc.Arguments), &input); err != nil {
+					input = map[string]interface{}{}
+				}
+				content = append(content, map[string]interface{}{
+					"type":  "tool_use",
+					"id":    tc.ID,
+					"name":  tc.Name,
+					"input": input,
+				})
+			}
+			if len(content) > 0 {
+				apiMessages = append(apiMessages, anthropicMessage{
+					Role:    "assistant",
+					Content: content,
+				})
+			}
+
+		case llm.MessageRoleTool:
+			content := []interface{}{
+				anthropicToolResultContent{
+					Type:      "tool_result",
+					ToolUseID: msg.ToolCallID,
+					Content:   msg.Content,
+				},
+			}
+			apiMessages = append(apiMessages, anthropicMessage{
+				Role:    "user",
+				Content: content,
+			})
+		}
+	}
+
+	// Determine max tokens (use default if not specified)
+	maxTokens := 4096
+	if req.MaxTokens != nil {
+		maxTokens = *req.MaxTokens
+	}
+
+	apiReq := &anthropicRequest{
+		Model:         model,
+		Messages:      apiMessages,
+		MaxTokens:     maxTokens,
+		System:        systemPrompt,
+		Temperature:   req.Temperature,
+		Tools:         tools,
+		StopSequences: req.StopSequences,
+		Stream:        stream,
+	}
+
+	return apiReq, nil
+}
+
+// doRequest sends the API request and returns the response body.
+func (p *AnthropicProvider) doRequest(ctx context.Context, apiReq *anthropicRequest, requestID string) (*anthropicResponse, error) {
+	// Marshal request body
+	body, err := json.Marshal(apiReq)
+	if err != nil {
+		return nil, &errors.ProviderError{
+			Provider:  "anthropic",
+			Message:   fmt.Sprintf("failed to marshal request: %v", err),
+			RequestID: requestID,
+		}
+	}
+
+	// Create HTTP request
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL+"/messages", bytes.NewReader(body))
+	if err != nil {
+		return nil, &errors.ProviderError{
+			Provider:  "anthropic",
+			Message:   fmt.Sprintf("failed to create request: %v", err),
+			RequestID: requestID,
+		}
+	}
+
+	// Set headers
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("x-api-key", p.apiKey)
+	httpReq.Header.Set("anthropic-version", anthropicAPIVersion)
+
+	// Send request
+	resp, err := p.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, &errors.ProviderError{
+			Provider:  "anthropic",
+			Message:   fmt.Sprintf("request failed: %v", err),
+			RequestID: requestID,
+		}
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, &errors.ProviderError{
+			Provider:   "anthropic",
+			StatusCode: resp.StatusCode,
+			Message:    fmt.Sprintf("failed to read response: %v", err),
+			RequestID:  requestID,
+		}
+	}
+
+	// Handle error responses
+	if resp.StatusCode != http.StatusOK {
+		var errResp anthropicErrorResponse
+		if err := json.Unmarshal(respBody, &errResp); err == nil && errResp.Error.Message != "" {
+			return nil, &errors.ProviderError{
+				Provider:   "anthropic",
+				StatusCode: resp.StatusCode,
+				Message:    errResp.Error.Message,
+				Suggestion: p.getSuggestionForError(resp.StatusCode, errResp.Error.Type),
+				RequestID:  requestID,
+			}
+		}
+		return nil, &errors.ProviderError{
+			Provider:   "anthropic",
+			StatusCode: resp.StatusCode,
+			Message:    fmt.Sprintf("API request failed with status %d: %s", resp.StatusCode, string(respBody)),
+			RequestID:  requestID,
+		}
+	}
+
+	// Parse successful response
+	var apiResp anthropicResponse
+	if err := json.Unmarshal(respBody, &apiResp); err != nil {
+		return nil, &errors.ProviderError{
+			Provider:  "anthropic",
+			Message:   fmt.Sprintf("failed to parse response: %v", err),
+			RequestID: requestID,
+		}
+	}
+
+	return &apiResp, nil
+}
+
+// getSuggestionForError returns a helpful suggestion based on the error type.
+func (p *AnthropicProvider) getSuggestionForError(statusCode int, errorType string) string {
+	switch statusCode {
+	case http.StatusUnauthorized:
+		return "Check that your API key is valid and correctly configured"
+	case http.StatusForbidden:
+		return "Your API key may not have access to this model or feature"
+	case http.StatusTooManyRequests:
+		return "Rate limit exceeded. Consider implementing backoff or reducing request frequency"
+	case http.StatusBadRequest:
+		if errorType == "invalid_request_error" {
+			return "Check the request parameters for errors"
+		}
+		return "Review the request format and parameters"
+	case http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable:
+		return "Anthropic API is experiencing issues. Retry after a short delay"
+	default:
+		return "Check the Anthropic API documentation for more details"
 	}
 }
 
-// Stream sends a streaming completion request.
-// This is a minimal implementation for Phase 1b. Full API integration in T013.
+// parseResponse converts an anthropicResponse to a CompletionResponse.
+func (p *AnthropicProvider) parseResponse(resp *anthropicResponse, requestID string) (*llm.CompletionResponse, error) {
+	// Extract text content and tool calls
+	var textContent strings.Builder
+	var toolCalls []llm.ToolCall
+
+	for _, block := range resp.Content {
+		blockType, _ := block["type"].(string)
+
+		switch blockType {
+		case "text":
+			if text, ok := block["text"].(string); ok {
+				if textContent.Len() > 0 {
+					textContent.WriteString("\n")
+				}
+				textContent.WriteString(text)
+			}
+		case "tool_use":
+			id, _ := block["id"].(string)
+			name, _ := block["name"].(string)
+			input := block["input"]
+
+			inputJSON, err := json.Marshal(input)
+			if err != nil {
+				inputJSON = []byte("{}")
+			}
+
+			toolCalls = append(toolCalls, llm.ToolCall{
+				ID:        id,
+				Name:      name,
+				Arguments: string(inputJSON),
+			})
+		}
+	}
+
+	// Map stop reason to finish reason
+	finishReason := p.mapStopReason(resp.StopReason)
+
+	// Build usage stats
+	usage := llm.TokenUsage{
+		PromptTokens:        resp.Usage.InputTokens,
+		CompletionTokens:    resp.Usage.OutputTokens,
+		TotalTokens:         resp.Usage.InputTokens + resp.Usage.OutputTokens,
+		CacheCreationTokens: resp.Usage.CacheCreationTokens,
+		CacheReadTokens:     resp.Usage.CacheReadTokens,
+	}
+
+	// Cache usage for cost tracking
+	p.setLastUsage(usage)
+
+	return &llm.CompletionResponse{
+		Content:      textContent.String(),
+		ToolCalls:    toolCalls,
+		FinishReason: finishReason,
+		Usage:        usage,
+		Model:        resp.Model,
+		RequestID:    requestID,
+		Created:      time.Now(),
+	}, nil
+}
+
+// mapStopReason converts Anthropic's stop_reason to our FinishReason.
+func (p *AnthropicProvider) mapStopReason(stopReason string) llm.FinishReason {
+	switch stopReason {
+	case "end_turn", "stop_sequence":
+		return llm.FinishReasonStop
+	case "max_tokens":
+		return llm.FinishReasonLength
+	case "tool_use":
+		return llm.FinishReasonToolCalls
+	case "content_filtered":
+		return llm.FinishReasonContentFilter
+	default:
+		return llm.FinishReasonStop
+	}
+}
+
+// Stream sends a streaming completion request to the Anthropic Messages API.
 func (p *AnthropicProvider) Stream(ctx context.Context, req llm.CompletionRequest) (<-chan llm.StreamChunk, error) {
 	p.metrics.incrementTotalRequests()
 
 	requestID := uuid.New().String()
-
-	// Resolve model
-	model := p.resolveModel(req.Model)
 
 	// Validate the request
 	if len(req.Messages) == 0 {
@@ -191,31 +474,277 @@ func (p *AnthropicProvider) Stream(ctx context.Context, req llm.CompletionReques
 		}
 	}
 
-	// Stop sequences will be passed to API when implemented
-	_ = req.StopSequences
-	_ = anthropicTools
+	// Build the API request with streaming enabled
+	apiReq, err := p.buildAPIRequest(req, anthropicTools, true)
+	if err != nil {
+		p.metrics.incrementFailedRequests()
+		return nil, err
+	}
+
+	// Marshal request body
+	body, err := json.Marshal(apiReq)
+	if err != nil {
+		p.metrics.incrementFailedRequests()
+		return nil, &errors.ProviderError{
+			Provider:  "anthropic",
+			Message:   fmt.Sprintf("failed to marshal request: %v", err),
+			RequestID: requestID,
+		}
+	}
+
+	// Create HTTP request
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL+"/messages", bytes.NewReader(body))
+	if err != nil {
+		p.metrics.incrementFailedRequests()
+		return nil, &errors.ProviderError{
+			Provider:  "anthropic",
+			Message:   fmt.Sprintf("failed to create request: %v", err),
+			RequestID: requestID,
+		}
+	}
+
+	// Set headers
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("x-api-key", p.apiKey)
+	httpReq.Header.Set("anthropic-version", anthropicAPIVersion)
+
+	// Send request
+	resp, err := p.httpClient.Do(httpReq)
+	if err != nil {
+		p.metrics.incrementFailedRequests()
+		return nil, &errors.ProviderError{
+			Provider:  "anthropic",
+			Message:   fmt.Sprintf("request failed: %v", err),
+			RequestID: requestID,
+		}
+	}
+
+	// Handle error responses
+	if resp.StatusCode != http.StatusOK {
+		defer resp.Body.Close()
+		respBody, _ := io.ReadAll(resp.Body)
+		p.metrics.incrementFailedRequests()
+
+		var errResp anthropicErrorResponse
+		if err := json.Unmarshal(respBody, &errResp); err == nil && errResp.Error.Message != "" {
+			return nil, &errors.ProviderError{
+				Provider:   "anthropic",
+				StatusCode: resp.StatusCode,
+				Message:    errResp.Error.Message,
+				Suggestion: p.getSuggestionForError(resp.StatusCode, errResp.Error.Type),
+				RequestID:  requestID,
+			}
+		}
+		return nil, &errors.ProviderError{
+			Provider:   "anthropic",
+			StatusCode: resp.StatusCode,
+			Message:    fmt.Sprintf("API request failed with status %d: %s", resp.StatusCode, string(respBody)),
+			RequestID:  requestID,
+		}
+	}
 
 	// Create output channel
 	chunks := make(chan llm.StreamChunk, 10)
 
-	// For now, return an error chunk indicating this needs real implementation
-	go func() {
-		defer close(chunks)
-		p.metrics.incrementFailedRequests()
-		chunks <- llm.StreamChunk{
-			RequestID: requestID,
-			Error: &errors.ProviderError{
-				Provider:   "anthropic",
-				StatusCode: http.StatusNotImplemented,
-				Message:    fmt.Sprintf("Anthropic streaming not yet implemented (model: %s)", model),
-				Suggestion: "Use a mock provider for testing or wait for full API implementation",
-				RequestID:  requestID,
-			},
-			FinishReason: llm.FinishReasonError,
-		}
-	}()
+	// Start goroutine to process SSE stream
+	go p.processStream(ctx, resp, chunks, requestID)
 
 	return chunks, nil
+}
+
+// processStream reads the SSE stream and sends chunks to the channel.
+func (p *AnthropicProvider) processStream(ctx context.Context, resp *http.Response, chunks chan<- llm.StreamChunk, requestID string) {
+	defer close(chunks)
+	defer resp.Body.Close()
+
+	reader := bufio.NewReader(resp.Body)
+	var currentToolCall *llm.ToolCallDelta
+	var toolCallIndex int
+	var totalUsage *llm.TokenUsage
+
+	for {
+		select {
+		case <-ctx.Done():
+			chunks <- llm.StreamChunk{
+				RequestID:    requestID,
+				Error:        ctx.Err(),
+				FinishReason: llm.FinishReasonError,
+			}
+			p.metrics.incrementFailedRequests()
+			return
+		default:
+		}
+
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				// Stream ended normally
+				if totalUsage != nil {
+					p.setLastUsage(*totalUsage)
+				}
+				return
+			}
+			chunks <- llm.StreamChunk{
+				RequestID:    requestID,
+				Error:        fmt.Errorf("stream read error: %w", err),
+				FinishReason: llm.FinishReasonError,
+			}
+			p.metrics.incrementFailedRequests()
+			return
+		}
+
+		// Parse SSE format: "event: <type>\ndata: <json>\n\n"
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		// Skip event type lines
+		if strings.HasPrefix(line, "event:") {
+			continue
+		}
+
+		// Parse data lines
+		if !strings.HasPrefix(line, "data:") {
+			continue
+		}
+
+		data := strings.TrimPrefix(line, "data:")
+		data = strings.TrimSpace(data)
+
+		if data == "" || data == "[DONE]" {
+			continue
+		}
+
+		var event anthropicStreamEvent
+		if err := json.Unmarshal([]byte(data), &event); err != nil {
+			continue // Skip malformed events
+		}
+
+		switch event.Type {
+		case "message_start":
+			// Initial message with metadata
+			if event.Message != nil {
+				chunks <- llm.StreamChunk{
+					RequestID: requestID,
+				}
+			}
+
+		case "content_block_start":
+			// New content block starting
+			if event.ContentBlock != nil {
+				blockType, _ := event.ContentBlock["type"].(string)
+				if blockType == "tool_use" {
+					// Starting a new tool call
+					id, _ := event.ContentBlock["id"].(string)
+					name, _ := event.ContentBlock["name"].(string)
+					currentToolCall = &llm.ToolCallDelta{
+						Index: toolCallIndex,
+						ID:    id,
+						Name:  name,
+					}
+					toolCallIndex++
+
+					chunks <- llm.StreamChunk{
+						RequestID: requestID,
+						Delta: llm.StreamDelta{
+							ToolCallDelta: currentToolCall,
+						},
+					}
+				}
+			}
+
+		case "content_block_delta":
+			// Incremental content
+			if event.Delta != nil {
+				deltaType, _ := event.Delta["type"].(string)
+
+				switch deltaType {
+				case "text_delta":
+					text, _ := event.Delta["text"].(string)
+					if text != "" {
+						chunks <- llm.StreamChunk{
+							RequestID: requestID,
+							Delta: llm.StreamDelta{
+								Content: text,
+							},
+						}
+					}
+
+				case "input_json_delta":
+					partialJSON, _ := event.Delta["partial_json"].(string)
+					if partialJSON != "" && currentToolCall != nil {
+						chunks <- llm.StreamChunk{
+							RequestID: requestID,
+							Delta: llm.StreamDelta{
+								ToolCallDelta: &llm.ToolCallDelta{
+									Index:          currentToolCall.Index,
+									ArgumentsDelta: partialJSON,
+								},
+							},
+						}
+					}
+				}
+			}
+
+		case "content_block_stop":
+			// Content block finished
+			currentToolCall = nil
+
+		case "message_delta":
+			// Message-level updates (stop reason, usage)
+			if event.Delta != nil {
+				stopReason, _ := event.Delta["stop_reason"].(string)
+				if stopReason != "" {
+					finishReason := p.mapStopReason(stopReason)
+					chunks <- llm.StreamChunk{
+						RequestID:    requestID,
+						FinishReason: finishReason,
+					}
+				}
+			}
+			if event.Usage != nil {
+				totalUsage = &llm.TokenUsage{
+					PromptTokens:        event.Usage.InputTokens,
+					CompletionTokens:    event.Usage.OutputTokens,
+					TotalTokens:         event.Usage.InputTokens + event.Usage.OutputTokens,
+					CacheCreationTokens: event.Usage.CacheCreationTokens,
+					CacheReadTokens:     event.Usage.CacheReadTokens,
+				}
+				chunks <- llm.StreamChunk{
+					RequestID: requestID,
+					Usage:     totalUsage,
+				}
+			}
+
+		case "message_stop":
+			// Message complete
+			if totalUsage != nil {
+				p.setLastUsage(*totalUsage)
+			}
+			return
+
+		case "error":
+			// Error event
+			errMsg := "unknown streaming error"
+			if event.Delta != nil {
+				if msg, ok := event.Delta["message"].(string); ok {
+					errMsg = msg
+				}
+			}
+			chunks <- llm.StreamChunk{
+				RequestID: requestID,
+				Error: &errors.ProviderError{
+					Provider:  "anthropic",
+					Message:   errMsg,
+					RequestID: requestID,
+				},
+				FinishReason: llm.FinishReasonError,
+			}
+			p.metrics.incrementFailedRequests()
+			return
+		}
+	}
 }
 
 // GetLastUsage returns the token usage from the most recent request.
@@ -410,7 +939,7 @@ func estimateTokens(messages []llm.Message) int {
 	return totalChars / 4
 }
 
-// Helper to create a mock response with specific content.
+// CreateMockResponse is a helper to create a mock response with specific content.
 func CreateMockResponse(content string, model string) *llm.CompletionResponse {
 	return &llm.CompletionResponse{
 		Content:      content,
@@ -493,6 +1022,76 @@ func (m *ConnectionPoolMetrics) GetFailedRequests() int64 {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.failedRequests
+}
+
+// anthropicRequest represents the request body for the Anthropic Messages API.
+type anthropicRequest struct {
+	Model         string             `json:"model"`
+	Messages      []anthropicMessage `json:"messages"`
+	MaxTokens     int                `json:"max_tokens"`
+	System        string             `json:"system,omitempty"`
+	Temperature   *float64           `json:"temperature,omitempty"`
+	Tools         []anthropicTool    `json:"tools,omitempty"`
+	StopSequences []string           `json:"stop_sequences,omitempty"`
+	Stream        bool               `json:"stream,omitempty"`
+}
+
+// anthropicMessage represents a message in the Anthropic API format.
+type anthropicMessage struct {
+	Role    string        `json:"role"`
+	Content []interface{} `json:"content"`
+}
+
+// anthropicTextContent represents a text content block.
+type anthropicTextContent struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
+// anthropicToolResultContent represents a tool result content block.
+type anthropicToolResultContent struct {
+	Type      string `json:"type"`
+	ToolUseID string `json:"tool_use_id"`
+	Content   string `json:"content"`
+}
+
+// anthropicResponse represents the response from the Anthropic Messages API.
+type anthropicResponse struct {
+	ID           string                   `json:"id"`
+	Type         string                   `json:"type"`
+	Role         string                   `json:"role"`
+	Content      []map[string]interface{} `json:"content"`
+	Model        string                   `json:"model"`
+	StopReason   string                   `json:"stop_reason"`
+	StopSequence *string                  `json:"stop_sequence,omitempty"`
+	Usage        anthropicUsage           `json:"usage"`
+}
+
+// anthropicUsage represents token usage in the Anthropic API response.
+type anthropicUsage struct {
+	InputTokens         int `json:"input_tokens"`
+	OutputTokens        int `json:"output_tokens"`
+	CacheCreationTokens int `json:"cache_creation_input_tokens,omitempty"`
+	CacheReadTokens     int `json:"cache_read_input_tokens,omitempty"`
+}
+
+// anthropicErrorResponse represents an error response from the Anthropic API.
+type anthropicErrorResponse struct {
+	Type  string `json:"type"`
+	Error struct {
+		Type    string `json:"type"`
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+// anthropicStreamEvent represents a streaming event from the Anthropic API.
+type anthropicStreamEvent struct {
+	Type         string                   `json:"type"`
+	Index        int                      `json:"index,omitempty"`
+	ContentBlock map[string]interface{}   `json:"content_block,omitempty"`
+	Delta        map[string]interface{}   `json:"delta,omitempty"`
+	Message      *anthropicResponse       `json:"message,omitempty"`
+	Usage        *anthropicUsage          `json:"usage,omitempty"`
 }
 
 // anthropicTool represents a tool in Anthropic's API format.

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package daemon
+package controller
 
 import (
 	"context"
@@ -26,60 +26,60 @@ import (
 	"github.com/tombee/conductor/internal/commands/shared"
 )
 
-// NewCommand creates the daemon command group.
+// NewCommand creates the controller command group.
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "daemon",
+		Use:   "controller",
 		Annotations: map[string]string{
 			"group": "system",
 		},
-		Short: "Manage the conductor daemon",
-		Long: `Commands for managing the conductor daemon (conductord).
+		Short: "Manage the conductor controller",
+		Long: `Commands for managing the conductor controller.
 
-The daemon is the central service that executes workflows. The CLI
-communicates with the daemon to run workflows, check status, and more.`,
+The controller is the central service that executes workflows. The CLI
+communicates with the controller to run workflows, check status, and more.`,
 	}
 
 	cmd.AddCommand(NewStartCommand())
 	cmd.AddCommand(NewStopCommand())
-	cmd.AddCommand(newDaemonStatusCommand())
-	cmd.AddCommand(newDaemonPingCommand())
+	cmd.AddCommand(newControllerStatusCommand())
+	cmd.AddCommand(newControllerPingCommand())
 
 	return cmd
 }
 
-func newDaemonStatusCommand() *cobra.Command {
+func newControllerStatusCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
-		Short: "Show daemon status and version",
-		Long: `Display the status, version, and health of the conductor daemon.
+		Short: "Show controller status and version",
+		Long: `Display the status, version, and health of the conductor controller.
 
-See also: conductor daemon ping, conductor doctor, conductor runs list`,
-		Example: `  # Example 1: Check daemon status
-  conductor daemon status
+See also: conductor controller ping, conductor doctor, conductor runs list`,
+		Example: `  # Example 1: Check controller status
+  conductor controller status
 
-  # Example 2: Get daemon info as JSON
-  conductor daemon status --json
+  # Example 2: Get controller info as JSON
+  conductor controller status --json
 
-  # Example 3: Extract daemon version
-  conductor daemon status --json | jq -r '.version'
+  # Example 3: Extract controller version
+  conductor controller status --json | jq -r '.version'
 
-  # Example 4: Check daemon uptime
-  conductor daemon status --json | jq -r '.uptime'`,
-		RunE:  runDaemonStatus,
+  # Example 4: Check controller uptime
+  conductor controller status --json | jq -r '.uptime'`,
+		RunE:  runControllerStatus,
 	}
 }
 
-func newDaemonPingCommand() *cobra.Command {
+func newControllerPingCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "ping",
-		Short: "Check if daemon is reachable",
-		Long:  `Quickly check if the conductor daemon is running and reachable.`,
-		RunE:  runDaemonPing,
+		Short: "Check if controller is reachable",
+		Long:  `Quickly check if the conductor controller is running and reachable.`,
+		RunE:  runControllerPing,
 	}
 }
 
-func runDaemonStatus(cmd *cobra.Command, args []string) error {
+func runControllerStatus(cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -118,11 +118,11 @@ func runDaemonStatus(cmd *cobra.Command, args []string) error {
 			fmt.Fprintln(os.Stderr, dnr.Guidance())
 			os.Exit(10)
 		}
-		return fmt.Errorf("failed to get daemon health: %w", healthResult.err)
+		return fmt.Errorf("failed to get controller health: %w", healthResult.err)
 	}
 
 	if versionResult.err != nil {
-		return fmt.Errorf("failed to get daemon version: %w", versionResult.err)
+		return fmt.Errorf("failed to get controller version: %w", versionResult.err)
 	}
 
 	health := healthResult.health
@@ -144,8 +144,8 @@ func runDaemonStatus(cmd *cobra.Command, args []string) error {
 		return json.NewEncoder(os.Stdout).Encode(output)
 	}
 
-	fmt.Println("Conductor Daemon Status")
-	fmt.Println("=======================")
+	fmt.Println("Conductor Controller Status")
+	fmt.Println("===========================")
 	fmt.Println()
 	fmt.Printf("Status:     %s\n", health.Status)
 	fmt.Printf("Version:    %s\n", version.Version)
@@ -166,7 +166,7 @@ func runDaemonStatus(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func runDaemonPing(cmd *cobra.Command, args []string) error {
+func runControllerPing(cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -179,7 +179,7 @@ func runDaemonPing(cmd *cobra.Command, args []string) error {
 	if err := c.Ping(ctx); err != nil {
 		if client.IsDaemonNotRunning(err) {
 			if !shared.GetQuiet() {
-				fmt.Println("Daemon is not running")
+				fmt.Println("Controller is not running")
 			}
 			os.Exit(1)
 		}
@@ -196,7 +196,7 @@ func runDaemonPing(cmd *cobra.Command, args []string) error {
 	}
 
 	if !shared.GetQuiet() {
-		fmt.Printf("Daemon is running (latency: %v)\n", latency.Round(time.Millisecond))
+		fmt.Printf("Controller is running (latency: %v)\n", latency.Round(time.Millisecond))
 	}
 
 	return nil

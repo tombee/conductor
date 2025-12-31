@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package daemon
+package controller
 
 import (
 	"context"
@@ -24,11 +24,11 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tombee/conductor/internal/config"
-	daemonpkg "github.com/tombee/conductor/internal/controller"
+	controllerpkg "github.com/tombee/conductor/internal/controller"
 	"github.com/tombee/conductor/internal/lifecycle"
 )
 
-// NewStartCommand creates the daemon start command.
+// NewStartCommand creates the controller start command.
 func NewStartCommand() *cobra.Command {
 	var (
 		foreground    bool
@@ -43,28 +43,28 @@ func NewStartCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "start",
-		Short: "Start the conductor daemon",
-		Long: `Start the conductor daemon in the background.
+		Short: "Start the conductor controller",
+		Long: `Start the conductor controller in the background.
 
-By default, the daemon runs in the background and writes a PID file.
+By default, the controller runs in the background and writes a PID file.
 Use --foreground to run in the current terminal (no PID file, logs to stdout).
 
-The start command is idempotent: if the daemon is already running and healthy,
+The start command is idempotent: if the controller is already running and healthy,
 it exits successfully without starting a new instance.`,
-		Example: `  # Start daemon in background
-  conductor daemon start
+		Example: `  # Start controller in background
+  conductor controller start
 
   # Start in foreground (for systemd/docker)
-  conductor daemon start --foreground
+  conductor controller start --foreground
 
   # Start with custom socket path
-  conductor daemon start --socket /tmp/conductor.sock
+  conductor controller start --socket /tmp/conductor.sock
 
   # Start with TCP listener
-  conductor daemon start --tcp localhost:8080
+  conductor controller start --tcp localhost:8080
 
   # Override health check timeout
-  conductor daemon start --timeout 60s`,
+  conductor controller start --timeout 60s`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runStart(cmd.Context(), startOptions{
 				foreground:    foreground,
@@ -103,7 +103,7 @@ type startOptions struct {
 }
 
 func runStart(ctx context.Context, opts startOptions) error {
-	// Load daemon configuration
+	// Load controller configuration
 	cfg, err := config.LoadController("")
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
@@ -148,16 +148,16 @@ func runStart(ctx context.Context, opts startOptions) error {
 	lifecycleLog := lifecycle.NewLifecycleLogger(logPath)
 
 	// Build args for logging
-	args := buildDaemonArgs(cfg, opts)
+	args := buildControllerArgs(cfg, opts)
 	if err := lifecycleLog.LogStart("", args, ""); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: failed to write lifecycle log: %v\n", err)
 	}
 
-	// Foreground mode: run daemon inline
+	// Foreground mode: run controller inline
 	if opts.foreground {
-		fmt.Println("Starting daemon in foreground mode...")
+		fmt.Println("Starting controller in foreground mode...")
 
-		runOpts := daemonpkg.RunOptions{
+		runOpts := controllerpkg.RunOptions{
 			Version:      "", // Will be set from build ldflags in main
 			Commit:       "",
 			BuildDate:    "",
@@ -168,7 +168,7 @@ func runStart(ctx context.Context, opts startOptions) error {
 			WorkflowsDir: cfg.Controller.WorkflowsDir,
 		}
 
-		if err := daemonpkg.Run(runOpts); err != nil {
+		if err := controllerpkg.Run(runOpts); err != nil {
 			if logErr := lifecycleLog.LogStartFailure(err); logErr != nil {
 				fmt.Fprintf(os.Stderr, "Warning: failed to write lifecycle log: %v\n", logErr)
 			}
@@ -199,12 +199,12 @@ func runStart(ctx context.Context, opts startOptions) error {
 					if err := lifecycleLog.LogAlreadyRunning(existingPID); err != nil {
 						fmt.Fprintf(os.Stderr, "Warning: failed to write lifecycle log: %v\n", err)
 					}
-					fmt.Printf("Daemon is already running (PID %d)\n", existingPID)
+					fmt.Printf("Controller is already running (PID %d)\n", existingPID)
 					return nil
 				}
 
 				// Process exists but unhealthy - log warning
-				fmt.Fprintf(os.Stderr, "Warning: daemon process exists (PID %d) but is unhealthy, starting new instance\n", existingPID)
+				fmt.Fprintf(os.Stderr, "Warning: controller process exists (PID %d) but is unhealthy, starting new instance\n", existingPID)
 			} else {
 				// Stale PID file
 				reason := "process not running"
@@ -218,47 +218,47 @@ func runStart(ctx context.Context, opts startOptions) error {
 			}
 		} else if !errors.Is(err, os.ErrNotExist) {
 			// Error reading PID file (not just "doesn't exist")
-			return fmt.Errorf("failed to check existing daemon: %w", err)
+			return fmt.Errorf("failed to check existing controller: %w", err)
 		}
 	}
 
-	// Spawn detached daemon process
+	// Spawn detached controller process
 	binaryPath, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("failed to get executable path: %w", err)
 	}
 
-	// Build daemon arguments
-	daemonArgs := buildDaemonArgs(cfg, opts)
+	// Build controller arguments
+	controllerArgs := buildControllerArgs(cfg, opts)
 
-	// Determine daemon log path
-	daemonLogPath := getDaemonLogPath(cfg)
+	// Determine controller log path
+	controllerLogPath := getControllerLogPath(cfg)
 
 	// Spawn the process
 	spawner := lifecycle.NewSpawner()
-	pid, err := spawner.SpawnDetached(binaryPath, daemonArgs, daemonLogPath)
+	pid, err := spawner.SpawnDetached(binaryPath, controllerArgs, controllerLogPath)
 	if err != nil {
 		if logErr := lifecycleLog.LogStartFailure(err); logErr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: failed to write lifecycle log: %v\n", logErr)
 		}
-		return fmt.Errorf("failed to spawn daemon: %w", err)
+		return fmt.Errorf("failed to spawn controller: %w", err)
 	}
 
-	// Wait for daemon to become healthy
+	// Wait for controller to become healthy
 	startTime := time.Now()
-	fmt.Printf("Starting daemon (PID %d)...\n", pid)
+	fmt.Printf("Starting controller (PID %d)...\n", pid)
 
 	healthEndpoint := getHealthEndpoint(cfg)
 	checker := lifecycle.NewHealthChecker(healthEndpoint)
 
 	if err := checker.WaitUntilHealthy(opts.timeout); err != nil {
-		// Daemon failed to become healthy - try to clean up
+		// Controller failed to become healthy - try to clean up
 		_ = lifecycle.SendSignal(pid, 15) // SIGTERM
 
 		if logErr := lifecycleLog.LogStartFailure(err); logErr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: failed to write lifecycle log: %v\n", logErr)
 		}
-		return fmt.Errorf("daemon failed to become healthy within %v: %w", opts.timeout, err)
+		return fmt.Errorf("controller failed to become healthy within %v: %w", opts.timeout, err)
 	}
 
 	duration := time.Since(startTime)
@@ -267,9 +267,9 @@ func runStart(ctx context.Context, opts startOptions) error {
 	if pidFilePath != "" {
 		pidMgr := lifecycle.NewPIDFileManager(pidFilePath)
 		if err := pidMgr.Create(pid); err != nil {
-			// Daemon is running but we couldn't write PID file - warn but don't fail
-			fmt.Fprintf(os.Stderr, "Warning: daemon started but failed to write PID file: %v\n", err)
-			fmt.Printf("Daemon started successfully (PID %d)\n", pid)
+			// Controller is running but we couldn't write PID file - warn but don't fail
+			fmt.Fprintf(os.Stderr, "Warning: controller started but failed to write PID file: %v\n", err)
+			fmt.Printf("Controller started successfully (PID %d)\n", pid)
 			return nil
 		}
 	}
@@ -278,13 +278,13 @@ func runStart(ctx context.Context, opts startOptions) error {
 		fmt.Fprintf(os.Stderr, "Warning: failed to write lifecycle log: %v\n", err)
 	}
 
-	fmt.Printf("Daemon started successfully (PID %d)\n", pid)
+	fmt.Printf("Controller started successfully (PID %d)\n", pid)
 	return nil
 }
 
-// buildDaemonArgs constructs the arguments to pass to the spawned daemon process.
-func buildDaemonArgs(cfg *config.Config, opts startOptions) []string {
-	args := []string{"--daemon-child"}
+// buildControllerArgs constructs the arguments to pass to the spawned controller process.
+func buildControllerArgs(cfg *config.Config, opts startOptions) []string {
+	args := []string{"--controller-child"}
 
 	if cfg.Controller.Listen.SocketPath != "" {
 		args = append(args, "--socket", cfg.Controller.Listen.SocketPath)
@@ -308,7 +308,7 @@ func buildDaemonArgs(cfg *config.Config, opts startOptions) []string {
 	return args
 }
 
-// getHealthEndpoint returns the health check endpoint URL based on daemon config.
+// getHealthEndpoint returns the health check endpoint URL based on controller config.
 func getHealthEndpoint(cfg *config.Config) string {
 	// If TCP is configured, use that
 	if cfg.Controller.Listen.TCPAddr != "" {
@@ -336,13 +336,13 @@ func getLifecycleLogPath(cfg *config.Config) string {
 	return filepath.Join(homeDir, ".local", "share", "conductor", "lifecycle.log")
 }
 
-// getDaemonLogPath returns the daemon output log file path.
-func getDaemonLogPath(cfg *config.Config) string {
-	// Default: ~/.local/share/conductor/daemon.log
+// getControllerLogPath returns the controller output log file path.
+func getControllerLogPath(cfg *config.Config) string {
+	// Default: ~/.local/share/conductor/controller.log
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return "/tmp/conductor-daemon.log"
+		return "/tmp/conductor-controller.log"
 	}
 
-	return filepath.Join(homeDir, ".local", "share", "conductor", "daemon.log")
+	return filepath.Join(homeDir, ".local", "share", "conductor", "controller.log")
 }

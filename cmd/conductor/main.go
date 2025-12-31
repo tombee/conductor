@@ -22,7 +22,7 @@ import (
 	"github.com/tombee/conductor/internal/cli"
 	"github.com/tombee/conductor/internal/commands/completion"
 	"github.com/tombee/conductor/internal/commands/config"
-	"github.com/tombee/conductor/internal/commands/daemon"
+	"github.com/tombee/conductor/internal/commands/controller"
 	"github.com/tombee/conductor/internal/commands/debug"
 	"github.com/tombee/conductor/internal/commands/diagnostics"
 	"github.com/tombee/conductor/internal/commands/docs"
@@ -43,7 +43,7 @@ import (
 	versioncmd "github.com/tombee/conductor/internal/commands/version"
 	"github.com/tombee/conductor/internal/commands/workflow"
 	workspacecmd "github.com/tombee/conductor/internal/commands/workspace"
-	daemonpkg "github.com/tombee/conductor/internal/controller"
+	controllerpkg "github.com/tombee/conductor/internal/controller"
 )
 
 // Version information (injected via ldflags at build time)
@@ -54,40 +54,40 @@ var (
 )
 
 func main() {
-	// Check for --daemon-child flag before any cobra processing
-	// This flag indicates the binary was spawned by daemon start in background mode
-	daemonChild := false
-	var daemonFlags daemonChildFlags
+	// Check for --controller-child flag before any cobra processing
+	// This flag indicates the binary was spawned by controller start in background mode
+	controllerChild := false
+	var controllerFlags controllerChildFlags
 
 	for i, arg := range os.Args[1:] {
-		if arg == "--daemon-child" {
-			daemonChild = true
-			// Parse daemon flags
-			daemonFlags = parseDaemonChildFlags(os.Args[i+1:])
+		if arg == "--controller-child" {
+			controllerChild = true
+			// Parse controller flags
+			controllerFlags = parseControllerChildFlags(os.Args[i+1:])
 			break
 		}
 	}
 
-	if daemonChild {
-		// Run as daemon child (background mode)
-		runOpts := daemonpkg.RunOptions{
+	if controllerChild {
+		// Run as controller child (background mode)
+		runOpts := controllerpkg.RunOptions{
 			Version:      version,
 			Commit:       commit,
 			BuildDate:    buildDate,
-			BackendType:  daemonFlags.backend,
-			PostgresURL:  daemonFlags.postgresURL,
-			Distributed:  daemonFlags.distributed,
-			InstanceID:   daemonFlags.instanceID,
-			SocketPath:   daemonFlags.socket,
-			TCPAddr:      daemonFlags.tcp,
-			WorkflowsDir: daemonFlags.workflowsDir,
-			TLSCert:      daemonFlags.tlsCert,
-			TLSKey:       daemonFlags.tlsKey,
-			AllowRemote:  daemonFlags.allowRemote,
+			BackendType:  controllerFlags.backend,
+			PostgresURL:  controllerFlags.postgresURL,
+			Distributed:  controllerFlags.distributed,
+			InstanceID:   controllerFlags.instanceID,
+			SocketPath:   controllerFlags.socket,
+			TCPAddr:      controllerFlags.tcp,
+			WorkflowsDir: controllerFlags.workflowsDir,
+			TLSCert:      controllerFlags.tlsCert,
+			TLSKey:       controllerFlags.tlsKey,
+			AllowRemote:  controllerFlags.allowRemote,
 		}
 
-		if err := daemonpkg.Run(runOpts); err != nil {
-			fmt.Fprintf(os.Stderr, "Daemon error: %v\n", err)
+		if err := controllerpkg.Run(runOpts); err != nil {
+			fmt.Fprintf(os.Stderr, "Controller error: %v\n", err)
 			os.Exit(1)
 		}
 		return
@@ -109,10 +109,10 @@ func main() {
 	rootCmd.AddCommand(workflow.NewInitCommand())
 	rootCmd.AddCommand(workflow.NewExamplesCommand())
 	rootCmd.AddCommand(workflow.NewSchemaCommand())
-	rootCmd.AddCommand(workflow.NewCostsCommand())
+	rootCmd.AddCommand(workflow.NewUsageCommand())
 
-	// Daemon commands
-	rootCmd.AddCommand(daemon.NewCommand())
+	// Controller commands
+	rootCmd.AddCommand(controller.NewCommand())
 
 	// MCP commands
 	rootCmd.AddCommand(mcp.NewMCPCommand())
@@ -120,8 +120,6 @@ func main() {
 
 	// Management commands
 	rootCmd.AddCommand(management.NewRunsCommand())
-	rootCmd.AddCommand(management.NewEventsCommand())
-	rootCmd.AddCommand(management.NewTracesCommand())
 	rootCmd.AddCommand(management.NewCacheCommand())
 	rootCmd.AddCommand(endpoint.NewCommand())
 	rootCmd.AddCommand(triggers.NewTriggersCommand())
@@ -159,8 +157,8 @@ func main() {
 	}
 }
 
-// daemonChildFlags holds flags for daemon child process.
-type daemonChildFlags struct {
+// controllerChildFlags holds flags for controller child process.
+type controllerChildFlags struct {
 	backend      string
 	postgresURL  string
 	distributed  bool
@@ -173,12 +171,12 @@ type daemonChildFlags struct {
 	allowRemote  bool
 }
 
-// parseDaemonChildFlags parses daemon flags from command line.
-// This uses standard flag package to parse flags after --daemon-child.
-func parseDaemonChildFlags(args []string) daemonChildFlags {
-	var flags daemonChildFlags
+// parseControllerChildFlags parses controller flags from command line.
+// This uses standard flag package to parse flags after --controller-child.
+func parseControllerChildFlags(args []string) controllerChildFlags {
+	var flags controllerChildFlags
 
-	fs := flag.NewFlagSet("daemon-child", flag.ContinueOnError)
+	fs := flag.NewFlagSet("controller-child", flag.ContinueOnError)
 	fs.StringVar(&flags.backend, "backend", "", "Storage backend")
 	fs.StringVar(&flags.postgresURL, "postgres-url", "", "PostgreSQL URL")
 	fs.BoolVar(&flags.distributed, "distributed", false, "Distributed mode")

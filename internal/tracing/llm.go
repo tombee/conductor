@@ -118,22 +118,10 @@ func (t *TracedProvider) Complete(ctx context.Context, req llm.CompletionRequest
 		"llm.response.content_length":          len(resp.Content),
 	})
 
-	// Attempt to retrieve and record cost information
-	var costUSD float64
-	if costRecord := llm.GetCostRecordByRequestID(resp.RequestID); costRecord != nil && costRecord.Cost != nil {
-		span.SetAttributes(map[string]any{
-			"llm.cost.amount":   costRecord.Cost.Amount,
-			"llm.cost.currency": costRecord.Cost.Currency,
-			"llm.cost.accuracy": string(costRecord.Cost.Accuracy),
-			"llm.cost.source":   costRecord.Cost.Source,
-		})
-		costUSD = costRecord.Cost.Amount
-	}
-
 	// Record successful request metrics
 	if t.metrics != nil {
 		t.metrics.RecordLLMRequest(ctx, t.provider.Name(), resp.Model, "success",
-			resp.Usage.PromptTokens, resp.Usage.CompletionTokens, costUSD, latency)
+			resp.Usage.PromptTokens, resp.Usage.CompletionTokens, 0, latency)
 	}
 
 	span.SetStatus(observability.StatusCodeOK, "")
@@ -184,7 +172,6 @@ func (t *TracedProvider) Stream(ctx context.Context, req llm.CompletionRequest) 
 
 		var contentLength int
 		var toolCallsCount int
-		var lastRequestID string
 
 		for chunk := range chunks {
 			// Forward the chunk
@@ -204,11 +191,6 @@ func (t *TracedProvider) Stream(ctx context.Context, req llm.CompletionRequest) 
 					t.metrics.RecordLLMRequest(ctx, t.provider.Name(), req.Model, "error", 0, 0, 0, time.Since(startTime))
 				}
 				return
-			}
-
-			// Record request ID
-			if chunk.RequestID != "" {
-				lastRequestID = chunk.RequestID
 			}
 
 			// Final chunk contains usage
@@ -236,24 +218,10 @@ func (t *TracedProvider) Stream(ctx context.Context, req llm.CompletionRequest) 
 					"llm.response.content_length":     contentLength,
 				})
 
-				// Attempt to retrieve and record cost information
-				var costUSD float64
-				if lastRequestID != "" {
-					if costRecord := llm.GetCostRecordByRequestID(lastRequestID); costRecord != nil && costRecord.Cost != nil {
-						span.SetAttributes(map[string]any{
-							"llm.cost.amount":   costRecord.Cost.Amount,
-							"llm.cost.currency": costRecord.Cost.Currency,
-							"llm.cost.accuracy": string(costRecord.Cost.Accuracy),
-							"llm.cost.source":   costRecord.Cost.Source,
-						})
-						costUSD = costRecord.Cost.Amount
-					}
-				}
-
 				// Record successful request metrics
 				if t.metrics != nil {
 					t.metrics.RecordLLMRequest(ctx, t.provider.Name(), req.Model, "success",
-						usage.PromptTokens, usage.CompletionTokens, costUSD, time.Since(startTime))
+						usage.PromptTokens, usage.CompletionTokens, 0, time.Since(startTime))
 				}
 
 				span.SetStatus(observability.StatusCodeOK, "")

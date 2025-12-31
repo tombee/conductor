@@ -131,14 +131,26 @@ steps:
 func TestScanner_Scan_MultipleTriggers(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create a workflow with multiple triggers
-	workflowContent := `
-name: multi-trigger
-description: Has both webhook and schedule
+	// Create separate workflows for each trigger type
+	// (workflows can only have one trigger type each)
+	webhookWorkflow := `
+name: webhook-multi
+description: Webhook trigger
 
 listen:
   webhook:
     path: /webhooks/multi
+
+steps:
+  - id: run
+    type: llm
+    prompt: "Run task"
+`
+	scheduleWorkflow := `
+name: schedule-multi
+description: Schedule trigger
+
+listen:
   schedule:
     cron: "0 0 * * *"
 
@@ -147,9 +159,13 @@ steps:
     type: llm
     prompt: "Run task"
 `
-	err := os.WriteFile(filepath.Join(tmpDir, "multi.yaml"), []byte(workflowContent), 0644)
+	err := os.WriteFile(filepath.Join(tmpDir, "webhook.yaml"), []byte(webhookWorkflow), 0644)
 	if err != nil {
-		t.Fatalf("Failed to write workflow: %v", err)
+		t.Fatalf("Failed to write webhook workflow: %v", err)
+	}
+	err = os.WriteFile(filepath.Join(tmpDir, "schedule.yaml"), []byte(scheduleWorkflow), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write schedule workflow: %v", err)
 	}
 
 	s := NewScanner(tmpDir)

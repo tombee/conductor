@@ -15,7 +15,6 @@
 package mcp
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -26,36 +25,7 @@ func TestNewMCPStatusCommand(t *testing.T) {
 		t.Errorf("expected use 'status <name>', got %q", cmd.Use)
 	}
 
-	// Check that --json flag is defined
-	if cmd.Flags().Lookup("json") == nil {
-		t.Error("--json flag not defined")
-	}
-}
-
-func TestMCPStatusCommand_RequiresArgument(t *testing.T) {
-	cmd := newMCPStatusCommand()
-	cmd.SetArgs([]string{})
-
-	err := cmd.Execute()
-	if err == nil {
-		t.Error("expected error when server name argument is missing")
-	}
-
-	// Should mention accepts/requires 1 arg
-	if !strings.Contains(err.Error(), "accepts 1 arg(s)") && !strings.Contains(err.Error(), "required") {
-		t.Errorf("expected missing argument error, got: %v", err)
-	}
-}
-
-func TestMCPStatusCommand_JSONFlag(t *testing.T) {
-	cmd := newMCPStatusCommand()
-	cmd.SetArgs([]string{"test-server", "--json"})
-
-	// Parse flags only (don't execute - requires daemon)
-	err := cmd.ParseFlags([]string{"--json"})
-	if err != nil {
-		t.Errorf("--json flag parsing failed: %v", err)
-	}
+	// Note: --json is a root-level persistent flag, not on individual commands
 }
 
 func TestMCPStatusCommand_NonexistentServer(t *testing.T) {

@@ -26,22 +26,9 @@ func TestNewMCPListCommand(t *testing.T) {
 	}
 
 	// Check that flags are defined
-	if cmd.Flags().Lookup("json") == nil {
-		t.Error("--json flag not defined")
-	}
+	// Note: --json is a root-level persistent flag, not on individual commands
 	if cmd.Flags().Lookup("all") == nil {
 		t.Error("--all flag not defined")
-	}
-}
-
-func TestMCPListCommand_JSONFlag(t *testing.T) {
-	cmd := newMCPListCommand()
-	cmd.SetArgs([]string{"--json"})
-
-	// Parse flags only (don't execute - requires daemon)
-	err := cmd.ParseFlags([]string{"--json"})
-	if err != nil {
-		t.Errorf("--json flag parsing failed: %v", err)
 	}
 }
 
