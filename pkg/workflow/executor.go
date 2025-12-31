@@ -1335,10 +1335,22 @@ func (e *Executor) executeForeach(ctx context.Context, step *StepDefinition, inp
 
 			// Inject foreach context variables into template context
 			if templateCtx, ok := iterContext["_templateContext"].(*TemplateContext); ok {
+				// Deep copy Steps map to avoid race conditions in parallel foreach
+				stepsCopy := make(map[string]map[string]interface{})
+				if templateCtx.Steps != nil {
+					for k, v := range templateCtx.Steps {
+						// Copy each step's output map
+						stepOutputCopy := make(map[string]interface{})
+						for sk, sv := range v {
+							stepOutputCopy[sk] = sv
+						}
+						stepsCopy[k] = stepOutputCopy
+					}
+				}
 				// Create a new template context with foreach variables
 				newTemplateCtx := &TemplateContext{
 					Inputs: make(map[string]interface{}),
-					Steps:  templateCtx.Steps,
+					Steps:  stepsCopy,
 					Env:    templateCtx.Env,
 					Tools:  templateCtx.Tools,
 				}
