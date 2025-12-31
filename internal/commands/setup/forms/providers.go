@@ -21,6 +21,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/tombee/conductor/internal/commands/setup"
+	"github.com/tombee/conductor/internal/commands/setup/actions"
 )
 
 // ProvidersMenuChoice represents a selection in the providers menu
@@ -45,7 +46,7 @@ func ShowProvidersMenu(state *setup.SetupState) (ProvidersMenuChoice, error) {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewNote().
-				Title("Providers\n\n" + providerList),
+				Title("Providers\n\n"+providerList),
 			huh.NewSelect[string]().
 				Title("What would you like to do?").
 				Options(
@@ -517,4 +518,242 @@ func SelectDefaultProvider(state *setup.SetupState) error {
 	}
 
 	return nil
+}
+
+// EditProviderFlow guides the user through editing an existing provider
+func EditProviderFlow(ctx context.Context, state *setup.SetupState, providerName string) error {
+	provider, ok := state.Working.Providers[providerName]
+	if !ok {
+		return fmt.Errorf("provider %q not found", providerName)
+	}
+
+	providerType, ok := setup.GetProviderType(provider.Type)
+	if !ok {
+		return fmt.Errorf("unknown provider type: %s", provider.Type)
+	}
+
+	// Build menu for editable fields
+	var choice string
+	options := []huh.Option[string]{
+		huh.NewOption("Test connection", "test"),
+		huh.NewOption("Done editing", "done"),
+	}
+
+	// Add API key option if provider requires it
+	if providerType.RequiresAPIKey() {
+		options = append([]huh.Option[string]{
+			huh.NewOption("Change API key", "api_key"),
+		}, options...)
+	}
+
+	// Add base URL option if provider requires it
+	if providerType.RequiresBaseURL() {
+		options = append([]huh.Option[string]{
+			huh.NewOption("Change base URL", "base_url"),
+		}, options...)
+	}
+
+	for {
+		// Show current config
+		var configLines []string
+		configLines = append(configLines, fmt.Sprintf("Provider: %s", providerName))
+		configLines = append(configLines, fmt.Sprintf("Type: %s", provider.Type))
+		if provider.APIKey != "" {
+			backend, key := parseCredentialRef(provider.APIKey)
+			if backend != "" {
+				configLines = append(configLines, fmt.Sprintf("API Key: %s:%s", backend, key))
+			} else {
+				configLines = append(configLines, "API Key: (set)")
+			}
+		}
+
+		form := huh.NewForm(
+			huh.NewGroup(
+				huh.NewNote().
+					Title("Edit Provider\n\n"+strings.Join(configLines, "\n")),
+				huh.NewSelect[string]().
+					Title("What would you like to do?").
+					Options(options...).
+					Value(&choice),
+			),
+		)
+
+		if err := form.Run(); err != nil {
+			return err
+		}
+
+		switch choice {
+		case "api_key":
+			if err := updateProviderAPIKey(ctx, state, providerName); err != nil {
+				return err
+			}
+
+		case "base_url":
+			if err := updateProviderBaseURL(state, providerName); err != nil {
+				return err
+			}
+
+		case "test":
+			if err := testSingleProvider(ctx, state, providerName); err != nil {
+				return err
+			}
+
+		case "done":
+			return nil
+		}
+
+		// Reload provider after changes
+		provider = state.Working.Providers[providerName]
+	}
+}
+
+// updateProviderAPIKey updates the API key for a provider
+func updateProviderAPIKey(ctx context.Context, state *setup.SetupState, providerName string) error {
+	provider := state.Working.Providers[providerName]
+
+	var apiKey string
+	keyForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().
+				Title("New API Key:").
+				EchoMode(huh.EchoModePassword).
+				Value(&apiKey).
+				Validate(func(s string) error {
+					if s == "" {
+						return fmt.Errorf("API key is required")
+					}
+					return nil
+				}),
+		),
+	)
+
+	if err := keyForm.Run(); err != nil {
+		return err
+	}
+
+	// Store in credential store
+	credKey := fmt.Sprintf("provider:%s:api_key", providerName)
+	state.CredentialStore[credKey] = apiKey
+
+	// Update config reference
+	provider.APIKey = fmt.Sprintf("$secret:%s_API_KEY", strings.ToUpper(providerName))
+	state.Working.Providers[providerName] = provider
+	state.MarkDirty()
+
+	return nil
+}
+
+// updateProviderBaseURL updates the base URL for a provider
+func updateProviderBaseURL(state *setup.SetupState, providerName string) error {
+	provider := state.Working.Providers[providerName]
+	providerType, _ := setup.GetProviderType(provider.Type)
+
+	var baseURL string
+	urlForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().
+				Title("Base URL:").
+				Value(&baseURL).
+				Placeholder(providerType.DefaultBaseURL()).
+				Validate(func(s string) error {
+					if s == "" {
+						return fmt.Errorf("base URL is required")
+					}
+					return nil
+				}),
+		),
+	)
+
+	if err := urlForm.Run(); err != nil {
+		return err
+	}
+
+	// Store base URL in credential store for now
+	credKey := fmt.Sprintf("provider:%s:base_url", providerName)
+	state.CredentialStore[credKey] = baseURL
+	state.MarkDirty()
+
+	return nil
+}
+
+// testSingleProvider tests a single provider connection
+func testSingleProvider(ctx context.Context, state *setup.SetupState, providerName string) error {
+	provider, ok := state.Working.Providers[providerName]
+	if !ok {
+		return fmt.Errorf("provider %q not found", providerName)
+	}
+
+	// Import actions package
+	result := actions.TestProvider(ctx, provider.Type, provider)
+
+	// Display result
+	message := fmt.Sprintf("Testing %s...\n\n%s", providerName, result.Message)
+	if !result.Success && result.ErrorDetails != "" {
+		message += "\n\nError: " + result.ErrorDetails
+	}
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewNote().
+				Title(message),
+			huh.NewConfirm().
+				Title("Press Enter to continue").
+				Affirmative("Continue").
+				Negative(""),
+		),
+	)
+
+	return form.Run()
+}
+
+// TestAllProviders tests all configured providers
+func TestAllProviders(ctx context.Context, state *setup.SetupState) error {
+	if len(state.Working.Providers) == 0 {
+		form := huh.NewForm(
+			huh.NewGroup(
+				huh.NewNote().
+					Title("No providers configured yet."),
+				huh.NewConfirm().
+					Title("Press Enter to go back").
+					Affirmative("Back").
+					Negative(""),
+			),
+		)
+		return form.Run()
+	}
+
+	// Test each provider
+	var results []string
+	for name, provider := range state.Working.Providers {
+		result := actions.TestProvider(ctx, provider.Type, provider)
+		status := result.StatusIcon
+		results = append(results, fmt.Sprintf("%s %s (%s)", status, name, provider.Type))
+	}
+
+	message := "Test Results\n\n" + strings.Join(results, "\n")
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewNote().
+				Title(message),
+			huh.NewConfirm().
+				Title("Press Enter to continue").
+				Affirmative("Continue").
+				Negative(""),
+		),
+	)
+
+	return form.Run()
+}
+
+// parseCredentialRef parses a credential reference like "$secret:KEY"
+func parseCredentialRef(ref string) (string, string) {
+	if !strings.HasPrefix(ref, "$") {
+		return "", ""
+	}
+	parts := strings.SplitN(ref[1:], ":", 2)
+	if len(parts) != 2 {
+		return "", ""
+	}
+	return parts[0], parts[1]
 }

@@ -15,22 +15,24 @@
 package forms
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/tombee/conductor/internal/commands/setup"
+	"github.com/tombee/conductor/internal/commands/setup/actions"
 )
 
 // IntegrationsMenuChoice represents a selection in the integrations menu
 type IntegrationsMenuChoice string
 
 const (
-	IntegrationAdd      IntegrationsMenuChoice = "add"
-	IntegrationEdit     IntegrationsMenuChoice = "edit"
-	IntegrationRemove   IntegrationsMenuChoice = "remove"
-	IntegrationTestAll  IntegrationsMenuChoice = "test_all"
-	IntegrationDone     IntegrationsMenuChoice = "done"
+	IntegrationAdd     IntegrationsMenuChoice = "add"
+	IntegrationEdit    IntegrationsMenuChoice = "edit"
+	IntegrationRemove  IntegrationsMenuChoice = "remove"
+	IntegrationTestAll IntegrationsMenuChoice = "test_all"
+	IntegrationDone    IntegrationsMenuChoice = "done"
 )
 
 // ShowIntegrationsMenu displays the integrations management screen.
@@ -43,7 +45,7 @@ func ShowIntegrationsMenu(state *setup.SetupState) (IntegrationsMenuChoice, erro
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewNote().
-				Title("Integrations\n\n" + integrationList),
+				Title("Integrations\n\n"+integrationList),
 			huh.NewSelect[string]().
 				Title("What would you like to do?").
 				Options(
@@ -66,13 +68,50 @@ func ShowIntegrationsMenu(state *setup.SetupState) (IntegrationsMenuChoice, erro
 
 // buildIntegrationListSummary builds a formatted list of configured integrations
 func buildIntegrationListSummary(state *setup.SetupState) string {
-	// TODO: Once integrations are added to config.Config, build the actual list
-	// For now, show placeholder
-	return "No integrations configured yet.\n\n(Integration support coming soon)"
+	// Find all integrations in credential store
+	integrations := make(map[string]string)
+	for k, v := range state.CredentialStore {
+		if strings.HasPrefix(k, "integration:") && strings.Count(k, ":") == 1 {
+			integrationName := strings.TrimPrefix(k, "integration:")
+			integrations[integrationName] = v
+		}
+	}
+
+	if len(integrations) == 0 {
+		return "No integrations configured yet."
+	}
+
+	var lines []string
+	lines = append(lines, "Configured integrations:")
+
+	for name, integrationType := range integrations {
+		// Get integration config
+		integrationKey := fmt.Sprintf("integration:%s", name)
+		var details []string
+
+		for k, v := range state.CredentialStore {
+			if strings.HasPrefix(k, integrationKey+":") {
+				fieldName := strings.TrimPrefix(k, integrationKey+":")
+				// Show non-secret fields
+				if fieldName == "base_url" {
+					details = append(details, v)
+				}
+			}
+		}
+
+		detailStr := ""
+		if len(details) > 0 {
+			detailStr = " - " + strings.Join(details, ", ")
+		}
+
+		lines = append(lines, fmt.Sprintf("  ✓ %s (%s)%s", name, integrationType, detailStr))
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 // AddIntegrationFlow guides the user through adding a new integration.
-func AddIntegrationFlow(state *setup.SetupState) error {
+func AddIntegrationFlow(ctx context.Context, state *setup.SetupState) error {
 	// Get available integration types
 	integrationTypes := setup.GetIntegrationTypes()
 
@@ -152,19 +191,94 @@ func AddIntegrationFlow(state *setup.SetupState) error {
 		instanceName = defaultName
 	}
 
-	// TODO: Implement integration-specific field collection
-	// TODO: Implement credential collection and backend selection
-	// TODO: Implement connection testing
-	// TODO: Add integration to config
+	// Get integration type info
+	integrationInfo, ok := GetIntegrationTypeInfo(selectedType)
+	if !ok {
+		return fmt.Errorf("integration type %q not found", selectedType)
+	}
 
-	// For now, show placeholder
+	// Collect field values
+	fieldValues := make(map[string]string)
+
+	// Collect each field
+	for _, field := range integrationInfo.Fields {
+		var value string
+
+		if field.IsSecret {
+			// Prompt for secret with password masking
+			keyForm := huh.NewForm(
+				huh.NewGroup(
+					huh.NewInput().
+						Title(fmt.Sprintf("%s:", field.DisplayName)).
+						EchoMode(huh.EchoModePassword).
+						Value(&value).
+						Validate(func(s string) error {
+							if field.Required && s == "" {
+								return fmt.Errorf("%s is required", field.DisplayName)
+							}
+							return nil
+						}),
+				),
+			)
+
+			if err := keyForm.Run(); err != nil {
+				return err
+			}
+
+			// Store in credential store
+			credKey := fmt.Sprintf("integration:%s:%s", instanceName, field.Name)
+			state.CredentialStore[credKey] = value
+
+			// Store reference
+			envVarName := field.DefaultEnv
+			if envVarName == "" {
+				envVarName = fmt.Sprintf("%s_%s", strings.ToUpper(instanceName), strings.ToUpper(field.Name))
+			}
+			fieldValues[field.Name] = fmt.Sprintf("$secret:%s", envVarName)
+
+		} else {
+			// Regular field
+			inputForm := huh.NewForm(
+				huh.NewGroup(
+					huh.NewInput().
+						Title(fmt.Sprintf("%s:", field.DisplayName)).
+						Value(&value).
+						Validate(func(s string) error {
+							if field.Required && s == "" {
+								return fmt.Errorf("%s is required", field.DisplayName)
+							}
+							return nil
+						}),
+				),
+			)
+
+			if err := inputForm.Run(); err != nil {
+				return err
+			}
+
+			if value != "" {
+				fieldValues[field.Name] = value
+			}
+		}
+	}
+
+	// Store integration config (for now just mark as configured)
+	integrationKey := fmt.Sprintf("integration:%s", instanceName)
+	state.CredentialStore[integrationKey] = selectedType
+	for k, v := range fieldValues {
+		state.CredentialStore[fmt.Sprintf("%s:%s", integrationKey, k)] = v
+	}
+
+	state.MarkDirty()
+
+	// Show success message
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewNote().
-				Title(fmt.Sprintf("Integration %q configuration coming soon.\n\nIntegration support is under development.", instanceName)),
+				Title(fmt.Sprintf("✓ Integration %q configured successfully", instanceName)),
 			huh.NewConfirm().
-				Title("Press Enter to go back").
-				Affirmative("Back").
+				Title("Press Enter to continue").
+				Affirmative("Continue").
 				Negative(""),
 		),
 	)
@@ -174,14 +288,80 @@ func AddIntegrationFlow(state *setup.SetupState) error {
 
 // SelectIntegrationForEdit shows a list of integrations and returns the selected one
 func SelectIntegrationForEdit(state *setup.SetupState) (string, error) {
-	// TODO: Once integrations are in config, build actual list
-	return "", fmt.Errorf("no integrations configured")
+	// Find all integrations in credential store
+	integrations := make(map[string]string)
+	for k, v := range state.CredentialStore {
+		if strings.HasPrefix(k, "integration:") && strings.Count(k, ":") == 1 {
+			integrationName := strings.TrimPrefix(k, "integration:")
+			integrations[integrationName] = v
+		}
+	}
+
+	if len(integrations) == 0 {
+		return "", fmt.Errorf("no integrations configured")
+	}
+
+	options := make([]huh.Option[string], 0, len(integrations)+1)
+	for name, integrationType := range integrations {
+		label := fmt.Sprintf("%s (%s)", name, integrationType)
+		options = append(options, huh.NewOption(label, name))
+	}
+	options = append(options, huh.NewOption("Back", ""))
+
+	var selected string
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Select integration to edit:").
+				Options(options...).
+				Value(&selected),
+		),
+	)
+
+	if err := form.Run(); err != nil {
+		return "", err
+	}
+
+	return selected, nil
 }
 
 // SelectIntegrationForRemoval shows a list of integrations and returns the selected one
 func SelectIntegrationForRemoval(state *setup.SetupState) (string, error) {
-	// TODO: Once integrations are in config, build actual list
-	return "", fmt.Errorf("no integrations configured")
+	// Find all integrations in credential store
+	integrations := make(map[string]string)
+	for k, v := range state.CredentialStore {
+		if strings.HasPrefix(k, "integration:") && strings.Count(k, ":") == 1 {
+			integrationName := strings.TrimPrefix(k, "integration:")
+			integrations[integrationName] = v
+		}
+	}
+
+	if len(integrations) == 0 {
+		return "", fmt.Errorf("no integrations configured")
+	}
+
+	options := make([]huh.Option[string], 0, len(integrations)+1)
+	for name, integrationType := range integrations {
+		label := fmt.Sprintf("%s (%s)", name, integrationType)
+		options = append(options, huh.NewOption(label, name))
+	}
+	options = append(options, huh.NewOption("Back", ""))
+
+	var selected string
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Select integration to remove:").
+				Options(options...).
+				Value(&selected),
+		),
+	)
+
+	if err := form.Run(); err != nil {
+		return "", err
+	}
+
+	return selected, nil
 }
 
 // ConfirmRemoveIntegration confirms removal of an integration
@@ -215,7 +395,19 @@ func RemoveIntegration(state *setup.SetupState, name string) error {
 		return nil
 	}
 
-	// TODO: Remove the integration from config once integrations are added
+	// Remove integration and all its fields from credential store
+	integrationKey := fmt.Sprintf("integration:%s", name)
+	keysToDelete := []string{}
+	for k := range state.CredentialStore {
+		if k == integrationKey || strings.HasPrefix(k, integrationKey+":") {
+			keysToDelete = append(keysToDelete, k)
+		}
+	}
+
+	for _, k := range keysToDelete {
+		delete(state.CredentialStore, k)
+	}
+
 	state.MarkDirty()
 
 	return nil
@@ -320,4 +512,154 @@ func BuildIntegrationSummary(name, integrationType string, config map[string]str
 	}
 
 	return strings.Join(parts, " ")
+}
+
+// EditIntegrationFlow guides the user through editing an existing integration
+func EditIntegrationFlow(ctx context.Context, state *setup.SetupState, integrationName string) error {
+	// Get integration from credential store
+	integrationKey := fmt.Sprintf("integration:%s", integrationName)
+	integrationType, ok := state.CredentialStore[integrationKey]
+	if !ok {
+		return fmt.Errorf("integration %q not found", integrationName)
+	}
+
+	integrationInfo, ok := GetIntegrationTypeInfo(integrationType)
+	if !ok {
+		return fmt.Errorf("integration type %q not found", integrationType)
+	}
+
+	// Show edit menu
+	var choice string
+	options := []huh.Option[string]{
+		huh.NewOption("Test connection", "test"),
+		huh.NewOption("Reconfigure", "reconfigure"),
+		huh.NewOption("Done editing", "done"),
+	}
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewNote().
+				Title(fmt.Sprintf("Edit Integration: %s\nType: %s", integrationName, integrationInfo.DisplayName)),
+			huh.NewSelect[string]().
+				Title("What would you like to do?").
+				Options(options...).
+				Value(&choice),
+		),
+	)
+
+	if err := form.Run(); err != nil {
+		return err
+	}
+
+	switch choice {
+	case "test":
+		return testSingleIntegration(ctx, state, integrationName, integrationType)
+	case "reconfigure":
+		// Re-run the add flow
+		if err := RemoveIntegration(state, integrationName); err != nil {
+			return err
+		}
+		return AddIntegrationFlow(ctx, state)
+	case "done":
+		return nil
+	}
+
+	return nil
+}
+
+// testSingleIntegration tests a single integration connection
+func testSingleIntegration(ctx context.Context, state *setup.SetupState, integrationName, integrationType string) error {
+	// Get integration config from credential store
+	integrationKey := fmt.Sprintf("integration:%s", integrationName)
+	config := make(map[string]string)
+
+	// Collect all config fields
+	for k, v := range state.CredentialStore {
+		if strings.HasPrefix(k, integrationKey+":") {
+			fieldName := strings.TrimPrefix(k, integrationKey+":")
+			config[fieldName] = v
+		}
+	}
+
+	// Test the integration
+	result := actions.TestIntegration(ctx, integrationType, config)
+
+	// Display result
+	message := fmt.Sprintf("Testing %s...\n\n%s", integrationName, result.Message)
+	if !result.Success && result.ErrorDetails != "" {
+		message += "\n\nError: " + result.ErrorDetails
+	}
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewNote().
+				Title(message),
+			huh.NewConfirm().
+				Title("Press Enter to continue").
+				Affirmative("Continue").
+				Negative(""),
+		),
+	)
+
+	return form.Run()
+}
+
+// TestAllIntegrations tests all configured integrations
+func TestAllIntegrations(ctx context.Context, state *setup.SetupState) error {
+	// Find all integrations in credential store
+	integrations := make(map[string]string)
+	for k, v := range state.CredentialStore {
+		if strings.HasPrefix(k, "integration:") && strings.Count(k, ":") == 1 {
+			// This is an integration entry (not a field)
+			integrationName := strings.TrimPrefix(k, "integration:")
+			integrations[integrationName] = v
+		}
+	}
+
+	if len(integrations) == 0 {
+		form := huh.NewForm(
+			huh.NewGroup(
+				huh.NewNote().
+					Title("No integrations configured yet."),
+				huh.NewConfirm().
+					Title("Press Enter to go back").
+					Affirmative("Back").
+					Negative(""),
+			),
+		)
+		return form.Run()
+	}
+
+	// Test each integration
+	var results []string
+	for name, integrationType := range integrations {
+		// Get integration config
+		integrationKey := fmt.Sprintf("integration:%s", name)
+		config := make(map[string]string)
+		for k, v := range state.CredentialStore {
+			if strings.HasPrefix(k, integrationKey+":") {
+				fieldName := strings.TrimPrefix(k, integrationKey+":")
+				config[fieldName] = v
+			}
+		}
+
+		result := actions.TestIntegration(ctx, integrationType, config)
+		status := result.StatusIcon
+		results = append(results, fmt.Sprintf("%s %s (%s)", status, name, integrationType))
+	}
+
+	message := "Test Results\n\n" + strings.Join(results, "\n")
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewNote().
+				Title(message),
+			huh.NewConfirm().
+				Title("Press Enter to continue").
+				Affirmative("Continue").
+				Negative(""),
+		),
+	)
+
+	return form.Run()
 }

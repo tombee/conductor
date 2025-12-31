@@ -121,20 +121,36 @@ func handleProvidersMenu(ctx context.Context, state *setup.SetupState) error {
 			state.MarkDirty()
 
 		case ProviderEditProvider:
-			// TODO: Implement edit provider flow
-			fmt.Println("Edit provider not yet implemented")
+			providerName, err := SelectProviderForEdit(state)
+			if err != nil {
+				return err
+			}
+			if providerName != "" {
+				if err := EditProviderFlow(ctx, state, providerName); err != nil {
+					return err
+				}
+			}
 
 		case ProviderRemoveProvider:
-			// TODO: Implement remove provider flow
-			fmt.Println("Remove provider not yet implemented")
+			providerName, err := SelectProviderForRemoval(state)
+			if err != nil {
+				return err
+			}
+			if providerName != "" {
+				if err := RemoveProvider(state, providerName); err != nil {
+					return err
+				}
+			}
 
 		case ProviderSetDefault:
-			// TODO: Implement set default provider flow
-			fmt.Println("Set default provider not yet implemented")
+			if err := SelectDefaultProvider(state); err != nil {
+				return err
+			}
 
 		case ProviderTestAll:
-			// TODO: Implement test all providers flow
-			fmt.Println("Test all providers not yet implemented")
+			if err := TestAllProviders(ctx, state); err != nil {
+				return err
+			}
 
 		case ProviderDone:
 			// Return to main menu
@@ -145,10 +161,59 @@ func handleProvidersMenu(ctx context.Context, state *setup.SetupState) error {
 
 // handleIntegrationsMenu manages the integrations configuration flow.
 func handleIntegrationsMenu(ctx context.Context, state *setup.SetupState) error {
-	// TODO: Implement integrations menu
-	// For now, show placeholder and return to main menu
-	fmt.Println("Integrations configuration not yet implemented")
-	return nil
+	for {
+		choice, err := ShowIntegrationsMenu(state)
+		if err != nil {
+			return err
+		}
+
+		switch choice {
+		case IntegrationAdd:
+			if err := AddIntegrationFlow(ctx, state); err != nil {
+				return err
+			}
+			state.MarkDirty()
+
+		case IntegrationEdit:
+			integrationName, err := SelectIntegrationForEdit(state)
+			if err != nil {
+				if err.Error() == "no integrations configured" {
+					fmt.Println("No integrations configured yet")
+					continue
+				}
+				return err
+			}
+			if integrationName != "" {
+				if err := EditIntegrationFlow(ctx, state, integrationName); err != nil {
+					return err
+				}
+			}
+
+		case IntegrationRemove:
+			integrationName, err := SelectIntegrationForRemoval(state)
+			if err != nil {
+				if err.Error() == "no integrations configured" {
+					fmt.Println("No integrations configured yet")
+					continue
+				}
+				return err
+			}
+			if integrationName != "" {
+				if err := RemoveIntegration(state, integrationName); err != nil {
+					return err
+				}
+			}
+
+		case IntegrationTestAll:
+			if err := TestAllIntegrations(ctx, state); err != nil {
+				return err
+			}
+
+		case IntegrationDone:
+			// Return to main menu
+			return nil
+		}
+	}
 }
 
 // handleSettingsMenu manages the settings configuration flow.
