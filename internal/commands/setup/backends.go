@@ -80,3 +80,49 @@ func isKeychainAvailable() bool {
 	backend := secrets.NewKeychainBackend()
 	return backend.Available()
 }
+
+// BackendType interface for secrets backend types (used by forms)
+type BackendType interface {
+	ID() string
+	Name() string
+	Description() string
+	IsAvailable() bool
+}
+
+// backendTypeImpl implements BackendType
+type backendTypeImpl struct {
+	id          string
+	name        string
+	description string
+	available   bool
+}
+
+func (b *backendTypeImpl) ID() string          { return b.id }
+func (b *backendTypeImpl) Name() string        { return b.name }
+func (b *backendTypeImpl) Description() string { return b.description }
+func (b *backendTypeImpl) IsAvailable() bool   { return b.available }
+
+// GetBackendTypes returns all backend types
+func GetBackendTypes() []BackendType {
+	backends := GetAvailableBackends()
+	result := make([]BackendType, len(backends))
+	for i, b := range backends {
+		result[i] = &backendTypeImpl{
+			id:          b.Name,
+			name:        b.DisplayName,
+			description: b.Description,
+			available:   b.Available,
+		}
+	}
+	return result
+}
+
+// GetBackendType returns a specific backend type by ID
+func GetBackendType(id string) (BackendType, bool) {
+	for _, bt := range GetBackendTypes() {
+		if bt.ID() == id {
+			return bt, true
+		}
+	}
+	return nil, false
+}
