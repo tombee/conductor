@@ -46,8 +46,11 @@ type IntegrationField struct {
 
 // integrationRegistry holds all registered integration types
 var integrationRegistry = map[string]IntegrationType{
-	// Integration types will be added once integration config is implemented
-	// For now, this is empty to avoid compilation errors
+	"github":  &GitHubIntegrationType{},
+	"slack":   &SlackIntegrationType{},
+	"jira":    &JiraIntegrationType{},
+	"discord": &DiscordIntegrationType{},
+	"jenkins": &JenkinsIntegrationType{},
 }
 
 // GetIntegrationTypes returns all registered integration types
@@ -87,6 +90,110 @@ func (g *GitHubIntegrationType) GetFields() []IntegrationField {
 			DisplayName: "Base URL (for Enterprise)",
 			Required:    false,
 			IsSecret:    false,
+		},
+	}
+}
+
+// Slack integration type
+type SlackIntegrationType struct{}
+
+func (s *SlackIntegrationType) ID() string             { return "slack" }
+func (s *SlackIntegrationType) DisplayName() string    { return "Slack" }
+func (s *SlackIntegrationType) Description() string    { return "Slack workspace integration" }
+func (s *SlackIntegrationType) RequiresBaseURL() bool  { return false }
+func (s *SlackIntegrationType) DefaultBaseURL() string { return "https://slack.com/api" }
+func (s *SlackIntegrationType) GetFields() []IntegrationField {
+	return []IntegrationField{
+		{
+			Name:        "bot_token",
+			DisplayName: "Bot Token",
+			Required:    true,
+			IsSecret:    true,
+			DefaultEnv:  "SLACK_BOT_TOKEN",
+		},
+	}
+}
+
+// Jira integration type
+type JiraIntegrationType struct{}
+
+func (j *JiraIntegrationType) ID() string             { return "jira" }
+func (j *JiraIntegrationType) DisplayName() string    { return "Jira" }
+func (j *JiraIntegrationType) Description() string    { return "Atlassian Jira integration" }
+func (j *JiraIntegrationType) RequiresBaseURL() bool  { return true }
+func (j *JiraIntegrationType) DefaultBaseURL() string { return "" }
+func (j *JiraIntegrationType) GetFields() []IntegrationField {
+	return []IntegrationField{
+		{
+			Name:        "base_url",
+			DisplayName: "Jira URL",
+			Required:    true,
+			IsSecret:    false,
+		},
+		{
+			Name:        "email",
+			DisplayName: "Email",
+			Required:    true,
+			IsSecret:    false,
+		},
+		{
+			Name:        "api_token",
+			DisplayName: "API Token",
+			Required:    true,
+			IsSecret:    true,
+			DefaultEnv:  "JIRA_API_TOKEN",
+		},
+	}
+}
+
+// Discord integration type
+type DiscordIntegrationType struct{}
+
+func (d *DiscordIntegrationType) ID() string             { return "discord" }
+func (d *DiscordIntegrationType) DisplayName() string    { return "Discord" }
+func (d *DiscordIntegrationType) Description() string    { return "Discord bot integration" }
+func (d *DiscordIntegrationType) RequiresBaseURL() bool  { return false }
+func (d *DiscordIntegrationType) DefaultBaseURL() string { return "https://discord.com/api" }
+func (d *DiscordIntegrationType) GetFields() []IntegrationField {
+	return []IntegrationField{
+		{
+			Name:        "bot_token",
+			DisplayName: "Bot Token",
+			Required:    true,
+			IsSecret:    true,
+			DefaultEnv:  "DISCORD_BOT_TOKEN",
+		},
+	}
+}
+
+// Jenkins integration type
+type JenkinsIntegrationType struct{}
+
+func (j *JenkinsIntegrationType) ID() string             { return "jenkins" }
+func (j *JenkinsIntegrationType) DisplayName() string    { return "Jenkins" }
+func (j *JenkinsIntegrationType) Description() string    { return "Jenkins CI/CD integration" }
+func (j *JenkinsIntegrationType) RequiresBaseURL() bool  { return true }
+func (j *JenkinsIntegrationType) DefaultBaseURL() string { return "" }
+func (j *JenkinsIntegrationType) GetFields() []IntegrationField {
+	return []IntegrationField{
+		{
+			Name:        "base_url",
+			DisplayName: "Jenkins URL",
+			Required:    true,
+			IsSecret:    false,
+		},
+		{
+			Name:        "username",
+			DisplayName: "Username",
+			Required:    true,
+			IsSecret:    false,
+		},
+		{
+			Name:        "api_token",
+			DisplayName: "API Token",
+			Required:    true,
+			IsSecret:    true,
+			DefaultEnv:  "JENKINS_API_TOKEN",
 		},
 	}
 }
