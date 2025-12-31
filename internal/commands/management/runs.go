@@ -40,7 +40,7 @@ func NewRunsCommand() *cobra.Command {
 		Short: "Manage workflow runs",
 		Long: `Commands for listing, viewing, and managing workflow runs.
 
-Runs are workflow executions managed by the conductor daemon.`,
+Runs are workflow executions managed by the conductor controller.`,
 	}
 
 	cmd.AddCommand(newRunsListCommand())
@@ -62,7 +62,7 @@ func newRunsListCommand() *cobra.Command {
 		Short: "List workflow runs",
 		Long: `List all workflow runs, optionally filtered by status or workflow.
 
-See also: conductor runs show, conductor run, conductor daemon status`,
+See also: conductor runs show, conductor run, conductor controller status`,
 		Example: `  # Example 1: List all workflow runs
   conductor runs list
 

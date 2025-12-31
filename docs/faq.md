@@ -199,7 +199,7 @@ See [Performance: Token Optimization](building-workflows/performance.md#token-op
 Use **controller mode** to run workflows on a schedule or via webhooks:
 
 ```bash
-conductor daemon
+conductor controller
 ```
 
 Configure schedules in `conductor.yaml`:
@@ -214,7 +214,7 @@ webhooks:
     workflow: workflows/pr-review.yaml
 ```
 
-See [Daemon Mode](building-workflows/controller.md) and [Deployment Guide](production/deployment.md).
+See [Controller Mode](building-workflows/controller.md) and [Deployment Guide](production/deployment.md).
 
 ### Can I run Conductor in production?
 

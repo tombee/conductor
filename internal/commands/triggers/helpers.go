@@ -66,15 +66,13 @@ func getManager() (*triggers.Manager, error) {
 }
 
 // getWebhookURL constructs the webhook URL from the path.
-// This is a placeholder - in production, this would use the controller's configured host.
+// Returns a placeholder URL; in production, users should replace <controller-host> with their actual host.
 func getWebhookURL(path string) string {
-	// TODO: Get actual host from controller config
 	return fmt.Sprintf("https://<controller-host>%s", path)
 }
 
 // getEndpointURL constructs the API endpoint URL from the name.
-// This is a placeholder - in production, this would use the controller's configured host.
+// Returns a placeholder URL; in production, users should replace <controller-host> with their actual host.
 func getEndpointURL(name string) string {
-	// TODO: Get actual host from controller config
 	return fmt.Sprintf("https://<controller-host>/v1/endpoints/%s", name)
 }

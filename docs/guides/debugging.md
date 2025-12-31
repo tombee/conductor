@@ -369,7 +369,7 @@ If `conductor run show` doesn't show step details:
 
 **Phase 1 MVP limitations:**
 
-- **Interactive debugging requires terminal access** - The interactive debugger shell runs in the controller process. When using a background controller (daemon mode), breakpoints are detected but interactive commands won't work. For interactive debugging, start the controller in the foreground or use `conductor run` directly with the controller inline.
+- **Interactive debugging requires terminal access** - The interactive debugger shell runs in the controller process. When using a background controller (controller mode), breakpoints are detected but interactive commands won't work. For interactive debugging, start the controller in the foreground or use `conductor run` directly with the controller inline.
 
 - **No remote debugging** - Currently debugging only works when running on the same machine as the controller. Remote debugging will be added in a future release.
 
@@ -612,7 +612,7 @@ Run a workflow with breakpoints against a background controller:
 
 ```bash
 # Start controller in background
-conductor daemon start
+conductor controller start
 
 # Run workflow with breakpoints
 conductor run workflow.yaml --breakpoint step2

@@ -25,7 +25,7 @@ import (
 	"github.com/tombee/conductor/pkg/httpclient"
 )
 
-// mcpAPIClient provides methods for calling the daemon's MCP API.
+// mcpAPIClient provides methods for calling the controller's MCP API.
 type mcpAPIClient struct {
 	baseURL string
 	client  *http.Client
@@ -43,7 +43,7 @@ func newMCPAPIClient() *mcpAPIClient {
 	}
 
 	return &mcpAPIClient{
-		baseURL: "http://localhost:8374", // Default daemon address
+		baseURL: "http://localhost:8374", // Default controller address
 		client:  client,
 	}
 }
@@ -56,7 +56,7 @@ func (c *mcpAPIClient) get(ctx context.Context, path string) ([]byte, error) {
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to daemon: %w", err)
+		return nil, fmt.Errorf("failed to connect to controller: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -87,7 +87,7 @@ func (c *mcpAPIClient) post(ctx context.Context, path string, body io.Reader) ([
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to daemon: %w", err)
+		return nil, fmt.Errorf("failed to connect to controller: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -117,7 +117,7 @@ func (c *mcpAPIClient) delete(ctx context.Context, path string) error {
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to connect to daemon: %w", err)
+		return fmt.Errorf("failed to connect to controller: %w", err)
 	}
 	defer resp.Body.Close()
 

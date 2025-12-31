@@ -130,7 +130,7 @@ func (r *Runner) execute(run *Run) {
 		// No adapter configured - workflow execution will fail
 		run.mu.Lock()
 		run.Status = RunStatusFailed
-		run.Error = "no execution adapter configured - check daemon initialization"
+		run.Error = "no execution adapter configured - check controller initialization"
 		completedAt := time.Now()
 		run.CompletedAt = &completedAt
 		run.mu.Unlock()

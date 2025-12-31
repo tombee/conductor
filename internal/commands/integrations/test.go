@@ -70,10 +70,10 @@ Examples:
 				return fmt.Errorf("failed to get integration: %w", err)
 			}
 
-			// TODO: Implement actual connectivity testing
-			// For now, just validate the configuration
+			// Connectivity testing validates configuration only.
+			// Future: make actual API calls to verify credentials.
 			status := "unknown"
-			message := "Connectivity testing not yet implemented"
+			message := "Configuration validated; connectivity testing not yet implemented"
 
 			// Basic validation checks
 			if integration.BaseURL == "" && workspace.DefaultBaseURL(integration.Type) == "" {

@@ -30,7 +30,7 @@ The `deadcode -test ./...` command identified **282 unreachable functions, types
 - `internal/tracing/*` - 49 unreachable items (exporters, sampling, retention, audit middleware, propagation)
 - `pkg/security/*` - 26 unreachable items (DNS monitoring, metrics, override management, audit rotation)
 - `pkg/llm/*` - 17 unreachable items (cost tracking, failover, retry, provider methods)
-- `internal/daemon/runner/*` - 15 unreachable items (checkpoint, MCP tools, tracing helpers, options)
+- `internal/controller/runner/*` - 15 unreachable items (checkpoint, MCP tools, tracing helpers, options)
 - `internal/connector/*` - 14 unreachable items (package validation, transport registry, builtins)
 - `pkg/workflow/*` - 8 unreachable items (cost limits, environment, executor test mocks)
 - `internal/output/*` - 7 unreachable items (formatter implementations)
@@ -51,7 +51,7 @@ Sample of unused code detected by golangci-lint's `unused` linter:
 **Functions:**
 - Multiple `setLastUsage` methods in LLM providers (unused)
 - Test helper mocks in `*_test.go` files
-- Tracing helpers in `internal/daemon/runner/tracing.go`
+- Tracing helpers in `internal/controller/runner/tracing.go`
 - Permission helpers in `internal/permissions/*.go`
 
 **Types:**
@@ -85,14 +85,14 @@ Manual review required to identify dead conditional branches.
 
 ### Compilation Errors Fixed (Pre-Analysis)
 Before running dead code analysis, the following compilation errors were discovered and fixed:
-- `internal/daemon/runner/executor.go:149` - Reference to non-existent `r.workflowTracer` field
-- `internal/daemon/runner/observability_integration_test.go` - Calls to non-existent `SetWorkflowTracer` method
+- `internal/controller/runner/executor.go:149` - Reference to non-existent `r.workflowTracer` field
+- `internal/controller/runner/observability_integration_test.go` - Calls to non-existent `SetWorkflowTracer` method
 
 These were incomplete tracing implementations that were never finished. They have been commented out with TODO markers for removal during this spec.
 
 ### Security-Critical Code (Excluded from Removal)
 The following directories are explicitly excluded from automated removal per AD1:
-- `internal/daemon/auth/` (14 files)
+- `internal/controller/auth/` (14 files)
 - `internal/secrets/` (21 files)
 - `pkg/security/` (20+ files)
 - `pkg/secrets/masker.go`
@@ -151,7 +151,7 @@ Based on tool convergence (both deadcode and golangci-lint flagging the same ite
    - JSON and Text formatter implementations
    - **Rationale:** CLI output system may be dead or replaced
 
-10. **Runner Options Pattern** (`internal/daemon/runner/options.go`) - 6 unreachable items
+10. **Runner Options Pattern** (`internal/controller/runner/options.go`) - 6 unreachable items
     - Functional options for Runner construction
     - **Rationale:** Options pattern implemented but unused; check if intended
 
@@ -159,7 +159,7 @@ Based on tool convergence (both deadcode and golangci-lint flagging the same ite
 Multiple test helper types and mocks flagged as unused:
 - `mockUserVisibleError` in `internal/commands/shared/exit_codes_test.go`
 - `mockFlakyTool` in `pkg/workflow/executor_test.go`
-- `mockAdapter` in `internal/daemon/runner/drain_test.go`
+- `mockAdapter` in `internal/controller/runner/drain_test.go`
 
 **Analysis:** These are test code - verify they're actually used in tests or remove.
 

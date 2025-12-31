@@ -60,7 +60,7 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	// Check if runner is draining (graceful shutdown in progress)
 	if h.runner.IsDraining() {
 		w.Header().Set("Retry-After", "10")
-		writeError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
+		writeError(w, http.StatusServiceUnavailable, "controller is shutting down gracefully")
 		return
 	}
 

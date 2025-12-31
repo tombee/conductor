@@ -28,7 +28,7 @@ const (
 	ConductorAPIKeyEnv = "CONDUCTOR_API_KEY"
 )
 
-// DefaultSocketPath returns the default Unix socket path for the daemon.
+// DefaultSocketPath returns the default Unix socket path for the controller.
 func DefaultSocketPath() (string, error) {
 	// Use XDG_RUNTIME_DIR if available (Linux)
 	if runtimeDir := os.Getenv("XDG_RUNTIME_DIR"); runtimeDir != "" {
@@ -93,42 +93,42 @@ func FromEnvironment() (*Client, error) {
 	return New(opts...)
 }
 
-// DaemonNotRunningError indicates the daemon is not running.
-type DaemonNotRunningError struct {
+// ControllerNotRunningError indicates the controller is not running.
+type ControllerNotRunningError struct {
 	SocketPath string
 	Err        error
 }
 
-func (e *DaemonNotRunningError) Error() string {
-	return fmt.Sprintf("conductor daemon is not running (socket: %s)", e.SocketPath)
+func (e *ControllerNotRunningError) Error() string {
+	return fmt.Sprintf("conductor controller is not running (socket: %s)", e.SocketPath)
 }
 
-func (e *DaemonNotRunningError) Unwrap() error {
+func (e *ControllerNotRunningError) Unwrap() error {
 	return e.Err
 }
 
-// Guidance returns user-friendly guidance for starting the daemon.
-func (e *DaemonNotRunningError) Guidance() string {
-	return `Conductor daemon is not running.
+// Guidance returns user-friendly guidance for starting the controller.
+func (e *ControllerNotRunningError) Guidance() string {
+	return `Conductor controller is not running.
 
-Start the daemon with:
-  conductord                    # Foreground (for development)
-  conductord &                  # Background
+Start the controller with:
+  conductor controller start    # Foreground (for development)
+  conductor controller start &  # Background
   brew services start conductor # macOS service (if installed via Homebrew)
 
 Or enable auto-start:
-  conductor config set daemon.auto_start true`
+  conductor config set controller.auto_start true`
 }
 
-// IsDaemonNotRunning checks if an error indicates the daemon is not running.
-func IsDaemonNotRunning(err error) bool {
+// IsControllerNotRunning checks if an error indicates the controller is not running.
+func IsControllerNotRunning(err error) bool {
 	if err == nil {
 		return false
 	}
 
 	// Check for our specific error type
-	var dnr *DaemonNotRunningError
-	if ok := errorAs(err, &dnr); ok {
+	var cnr *ControllerNotRunningError
+	if ok := errorAs(err, &cnr); ok {
 		return true
 	}
 
@@ -143,8 +143,8 @@ func IsDaemonNotRunning(err error) bool {
 func errorAs(err error, target any) bool {
 	// Simple type assertion - for full errors.As behavior, import errors package
 	switch t := target.(type) {
-	case **DaemonNotRunningError:
-		if e, ok := err.(*DaemonNotRunningError); ok {
+	case **ControllerNotRunningError:
+		if e, ok := err.(*ControllerNotRunningError); ok {
 			*t = e
 			return true
 		}

@@ -23,21 +23,21 @@ import (
 	"time"
 )
 
-// AutoStartConfig configures automatic daemon startup behavior.
+// AutoStartConfig configures automatic controller startup behavior.
 type AutoStartConfig struct {
-	// Enabled enables automatic daemon startup.
+	// Enabled enables automatic controller startup.
 	Enabled bool
 
 	// SocketPath is the socket path to use (empty for default).
 	SocketPath string
 
-	// StartTimeout is how long to wait for the daemon to start.
+	// StartTimeout is how long to wait for the controller to start.
 	StartTimeout time.Duration
 }
 
-// StartDaemon starts the conductor daemon in the background.
-// Returns nil if the daemon starts successfully within the timeout.
-func StartDaemon(cfg AutoStartConfig) error {
+// StartController starts the conductor controller in the background.
+// Returns nil if the controller starts successfully within the timeout.
+func StartController(cfg AutoStartConfig) error {
 	if cfg.StartTimeout == 0 {
 		cfg.StartTimeout = 10 * time.Second
 	}
@@ -54,18 +54,18 @@ func StartDaemon(cfg AutoStartConfig) error {
 	}
 
 	// Build command arguments
-	// If we found "conductor", use "daemon start --foreground"
+	// If we found "conductor", use "controller start --foreground"
 	// If we found "conductord", just pass socket args directly
 	var args []string
 	baseName := filepath.Base(conductorPath)
 	if baseName == "conductor" || baseName == "conductor.exe" {
-		args = []string{"daemon", "start", "--foreground"}
+		args = []string{"controller", "start", "--foreground"}
 	}
 	if cfg.SocketPath != "" {
 		args = append(args, "--socket", cfg.SocketPath)
 	}
 
-	// Start daemon in background
+	// Start controller in background
 	cmd := exec.Command(conductorPath, args...)
 	cmd.Stdout = nil // Detach stdout
 	cmd.Stderr = nil // Detach stderr
@@ -79,10 +79,10 @@ func StartDaemon(cfg AutoStartConfig) error {
 	setSysProcAttr(cmd)
 
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start daemon: %w", err)
+		return fmt.Errorf("failed to start controller: %w", err)
 	}
 
-	// Wait for daemon to become available
+	// Wait for controller to become available
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.StartTimeout)
 	defer cancel()
 
@@ -91,14 +91,14 @@ func StartDaemon(cfg AutoStartConfig) error {
 		return fmt.Errorf("failed to create client: %w", err)
 	}
 
-	// Poll until daemon is ready
+	// Poll until controller is ready
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("timeout waiting for daemon to start")
+			return fmt.Errorf("timeout waiting for controller to start")
 		case <-ticker.C:
 			if err := client.Ping(ctx); err == nil {
 				return nil
@@ -107,9 +107,9 @@ func StartDaemon(cfg AutoStartConfig) error {
 	}
 }
 
-// EnsureDaemon ensures the daemon is running, starting it if needed and if auto-start is enabled.
-// Returns a client connected to the daemon.
-func EnsureDaemon(cfg AutoStartConfig) (*Client, error) {
+// EnsureController ensures the controller is running, starting it if needed and if auto-start is enabled.
+// Returns a client connected to the controller.
+func EnsureController(cfg AutoStartConfig) (*Client, error) {
 	client, err := FromEnvironment()
 	if err != nil {
 		return nil, err
@@ -121,23 +121,23 @@ func EnsureDaemon(cfg AutoStartConfig) (*Client, error) {
 	cancel()
 
 	if err == nil {
-		// Daemon is running
+		// Controller is running
 		return client, nil
 	}
 
-	// Check if daemon is not running
-	if !IsDaemonNotRunning(err) {
-		return nil, fmt.Errorf("failed to connect to daemon: %w", err)
+	// Check if controller is not running
+	if !IsControllerNotRunning(err) {
+		return nil, fmt.Errorf("failed to connect to controller: %w", err)
 	}
 
 	// Auto-start if enabled
 	if !cfg.Enabled {
-		dnr := &DaemonNotRunningError{}
-		return nil, dnr
+		cnr := &ControllerNotRunningError{}
+		return nil, cnr
 	}
 
-	// Start the daemon
-	if err := StartDaemon(cfg); err != nil {
+	// Start the controller
+	if err := StartController(cfg); err != nil {
 		return nil, fmt.Errorf("auto-start failed: %w", err)
 	}
 

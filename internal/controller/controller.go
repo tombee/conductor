@@ -112,8 +112,8 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 		return nil, err
 	}
 
-	// Create logger with daemon component context
-	// Use daemon-specific log configuration if available, otherwise fall back to global log config
+	// Create logger with controller component context
+	// Use controller-specific log configuration if available, otherwise fall back to global log config
 	level := cfg.Controller.ControllerLog.Level
 	if level == "" {
 		level = cfg.Log.Level
@@ -127,7 +127,7 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 		Format: internallog.Format(format),
 		Output: os.Stderr,
 	}
-	logger := internallog.WithComponent(internallog.New(logCfg), "daemon")
+	logger := internallog.WithComponent(internallog.New(logCfg), "controller")
 
 	// Create backend based on configuration
 	var be backend.Backend
@@ -192,8 +192,7 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 		} else {
 			// Create the workflow executor adapter
 			providerAdapter := internalllm.NewProviderAdapter(llmProvider)
-			// TODO: Wire up tool registry once tool types are unified
-			// For now, pass nil as tool registry (like CLI does)
+			// Tool registry is nil; tools are resolved dynamically per-workflow.
 			executor := workflow.NewExecutor(nil, providerAdapter)
 			executionAdapter := runner.NewExecutorAdapter(executor)
 			r.SetAdapter(executionAdapter)
@@ -348,7 +347,7 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 	// Check if this controller was auto-started
 	autoStarted := os.Getenv("CONDUCTOR_AUTO_STARTED") == "1"
 	if autoStarted {
-		logger.Info("daemon auto-started by CLI",
+		logger.Info("controller auto-started by CLI",
 			slog.Duration("idle_timeout", cfg.Controller.IdleTimeout))
 	}
 
@@ -535,12 +534,12 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 	}, nil
 }
 
-// Start starts the daemon and blocks until the context is cancelled.
+// Start starts the controller and blocks until the context is cancelled.
 func (c *Controller) Start(ctx context.Context) error {
 	c.mu.Lock()
 	if c.started {
 		c.mu.Unlock()
-		return fmt.Errorf("daemon already started")
+		return fmt.Errorf("controller already started")
 	}
 	c.started = true
 	c.mu.Unlock()
@@ -794,18 +793,18 @@ func (c *Controller) Start(ctx context.Context) error {
 		} else {
 			// Add file triggers from workflow definitions
 			for _, t := range scanResult.FileTriggers {
-				if t.Trigger.File == nil {
+				if t.File == nil {
 					continue
 				}
 
 				// Parse debounce duration if specified
 				var debounceWindow time.Duration
-				if t.Trigger.File.Debounce != "" {
-					debounceWindow, err = time.ParseDuration(t.Trigger.File.Debounce)
+				if t.File.Debounce != "" {
+					debounceWindow, err = time.ParseDuration(t.File.Debounce)
 					if err != nil {
 						c.logger.Error("invalid debounce duration in workflow file trigger",
 							slog.String("workflow", t.WorkflowName),
-							slog.String("debounce", t.Trigger.File.Debounce),
+							slog.String("debounce", t.File.Debounce),
 							internallog.Error(err))
 						continue
 					}
@@ -814,16 +813,16 @@ func (c *Controller) Start(ctx context.Context) error {
 				config := filewatcher.WatchConfig{
 					Name:                 fmt.Sprintf("workflow:%s", t.WorkflowName),
 					Workflow:             t.WorkflowPath,
-					Paths:                t.Trigger.File.Paths,
-					Events:               t.Trigger.File.Events,
-					IncludePatterns:      t.Trigger.File.IncludePatterns,
-					ExcludePatterns:      t.Trigger.File.ExcludePatterns,
+					Paths:                t.File.Paths,
+					Events:               t.File.Events,
+					IncludePatterns:      t.File.IncludePatterns,
+					ExcludePatterns:      t.File.ExcludePatterns,
 					DebounceWindow:       debounceWindow,
-					BatchMode:            t.Trigger.File.BatchMode,
-					MaxTriggersPerMinute: t.Trigger.File.MaxTriggersPerMinute,
-					Recursive:            t.Trigger.File.Recursive,
-					MaxDepth:             t.Trigger.File.MaxDepth,
-					Inputs:               t.Trigger.File.Inputs,
+					BatchMode:            t.File.BatchMode,
+					MaxTriggersPerMinute: t.File.MaxTriggersPerMinute,
+					Recursive:            t.File.Recursive,
+					MaxDepth:             t.File.MaxDepth,
+					Inputs:               t.File.Inputs,
 				}
 				if err := c.fileWatcher.AddWatcher(config); err != nil {
 					c.logger.Error("failed to add workflow file trigger",
@@ -832,7 +831,7 @@ func (c *Controller) Start(ctx context.Context) error {
 				} else {
 					c.logger.Info("registered file trigger from workflow",
 						slog.String("workflow", t.WorkflowName),
-						slog.Int("path_count", len(t.Trigger.File.Paths)))
+						slog.Int("path_count", len(t.File.Paths)))
 				}
 			}
 
@@ -934,7 +933,7 @@ func (c *Controller) Start(ctx context.Context) error {
 	}
 }
 
-// Shutdown gracefully shuts down the daemon.
+// Shutdown gracefully shuts down the controller.
 func (c *Controller) Shutdown(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -1114,7 +1113,7 @@ func (c *Controller) Shutdown(ctx context.Context) error {
 	}
 
 	c.started = false
-	c.logger.Info("daemon stopped")
+	c.logger.Info("controller stopped")
 	return nil
 }
 

@@ -18,7 +18,7 @@
 // to runtime values by following a strict resolution order:
 //
 //  1. Profile binding (explicit configuration)
-//  2. Inline workflow definition (backward compatibility)
+//  2. Inline workflow definition (self-contained workflows)
 //  3. Environment variable (if inherit_env enabled)
 //  4. Default value (if defined in workflow)
 //  5. Error: required binding missing
@@ -245,7 +245,7 @@ func (r *Resolver) resolveIntegrationBinding(ctx context.Context, resCtx *Resolu
 		}
 	}
 
-	// 2. Check inline workflow definition (backward compatibility)
+	// 2. Check inline workflow definition (self-contained workflows)
 	if resCtx.Workflow.Integrations != nil {
 		if intDef, exists := resCtx.Workflow.Integrations[name]; exists {
 			// Convert IntegrationDefinition to IntegrationBinding
@@ -365,7 +365,7 @@ func (r *Resolver) resolveMCPServerBinding(ctx context.Context, resCtx *Resoluti
 		}
 	}
 
-	// 2. Check inline workflow definition (backward compatibility)
+	// 2. Check inline MCP server configuration (self-contained workflows)
 	if resCtx.Workflow.MCPServers != nil {
 		for _, mcpCfg := range resCtx.Workflow.MCPServers {
 			if mcpCfg.Name == name {
@@ -423,7 +423,7 @@ func (r *Resolver) resolveMCPServerSecrets(ctx context.Context, resCtx *Resoluti
 	return resolved, nil
 }
 
-// resolveInlineBindings handles workflows without requires section (backward compatibility).
+// resolveInlineBindings handles self-contained workflows without requires section.
 func (r *Resolver) resolveInlineBindings(ctx context.Context, resCtx *ResolutionContext, resolved *ResolvedBinding) (*ResolvedBinding, error) {
 	// Process inline integrations
 	for name, intDef := range resCtx.Workflow.Integrations {

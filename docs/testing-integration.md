@@ -39,7 +39,7 @@ All tests skip automatically when API keys are not available.
 
 ## Database Tests
 
-Location: `internal/daemon/backend/memory/integration_test.go`
+Location: `internal/controller/backend/memory/integration_test.go`
 
 Tests real backend operations:
 - Full run lifecycle (CRUD)

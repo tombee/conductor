@@ -43,7 +43,7 @@ log:
 
 # LLM provider configuration
 llm:
-  # Default LLM provider: anthropic, openai, ollama
+  # Default LLM provider: anthropic, claude-code
   # Environment: LLM_DEFAULT_PROVIDER
   # Default: anthropic
   default_provider: anthropic

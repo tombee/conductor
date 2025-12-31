@@ -21,7 +21,7 @@ import (
 	"syscall"
 )
 
-// setSysProcAttrPlatform sets Unix-specific process attributes for daemon detachment.
+// setSysProcAttrPlatform sets Unix-specific process attributes for controller detachment.
 func setSysProcAttrPlatform(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setsid: true, // Create new session

@@ -122,23 +122,6 @@ func CreateProvider(cfg *config.Config, providerName string) (llm.Provider, erro
 			return nil, err
 		}
 
-	case "openai":
-		if providerCfg.APIKey == "" {
-			return nil, fmt.Errorf("openai provider requires api_key in config")
-		}
-		baseProvider, err = providers.NewOpenAIProvider(providerCfg.APIKey)
-		if err != nil {
-			return nil, err
-		}
-
-	case "ollama":
-		// Ollama doesn't require API key, uses localhost by default
-		// The provider itself handles the baseURL
-		baseProvider, err = providers.NewOllamaProvider("http://localhost:11434")
-		if err != nil {
-			return nil, err
-		}
-
 	default:
 		return nil, fmt.Errorf("unsupported provider type: %s", providerCfg.Type)
 	}

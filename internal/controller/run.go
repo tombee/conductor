@@ -26,7 +26,7 @@ import (
 	"github.com/tombee/conductor/internal/log"
 )
 
-// RunOptions configures daemon execution.
+// RunOptions configures controller execution.
 type RunOptions struct {
 	Version   string
 	Commit    string
@@ -45,16 +45,16 @@ type RunOptions struct {
 	AllowRemote  bool
 }
 
-// Run starts the daemon and blocks until shutdown.
-// This is the main entry point for daemon execution, used by both
-// foreground mode (conductor daemon start --foreground) and background
-// mode (conductor --daemon-child).
+// Run starts the controller and blocks until shutdown.
+// This is the main entry point for controller execution, used by both
+// foreground mode (conductor controller start --foreground) and background
+// mode (conductor --controller-child).
 func Run(opts RunOptions) error {
 	// Initialize structured logging from environment
 	logger := log.New(log.FromEnv())
 	slog.SetDefault(logger)
 
-	// Load daemon configuration
+	// Load controller configuration
 	cfg, err := config.LoadController("")
 	if err != nil {
 		logger.Error("Failed to load config", slog.Any("error", err))
@@ -91,18 +91,18 @@ func Run(opts RunOptions) error {
 	}
 	if opts.AllowRemote {
 		cfg.Controller.Listen.AllowRemote = true
-		logger.Warn("--allow-remote is enabled. The daemon will accept connections from any network address. Ensure you have proper authentication and TLS configured for production use.")
+		logger.Warn("--allow-remote is enabled. The controller will accept connections from any network address. Ensure you have proper authentication and TLS configured for production use.")
 	}
 
-	// Create daemon instance
+	// Create controller instance
 	d, err := New(cfg, Options{
 		Version:   opts.Version,
 		Commit:    opts.Commit,
 		BuildDate: opts.BuildDate,
 	})
 	if err != nil {
-		logger.Error("Failed to create daemon", slog.Any("error", err))
-		return fmt.Errorf("failed to create daemon: %w", err)
+		logger.Error("Failed to create controller", slog.Any("error", err))
+		return fmt.Errorf("failed to create controller: %w", err)
 	}
 
 	// Setup signal handling for graceful shutdown
@@ -112,7 +112,7 @@ func Run(opts RunOptions) error {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
-	// Start daemon
+	// Start controller
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- d.Start(ctx)
@@ -130,8 +130,8 @@ func Run(opts RunOptions) error {
 		return nil
 	case err := <-errCh:
 		if err != nil {
-			logger.Error("Daemon error", slog.Any("error", err))
-			return fmt.Errorf("daemon error: %w", err)
+			logger.Error("Controller error", slog.Any("error", err))
+			return fmt.Errorf("controller error: %w", err)
 		}
 		return nil
 	}

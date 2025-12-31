@@ -22,7 +22,7 @@ import (
 	"strings"
 )
 
-// isConductorProcess checks if the process is a conductor daemon using ps command.
+// isConductorProcess checks if the process is a conductor controller using ps command.
 func isConductorProcess(pid int) bool {
 	cmd := exec.Command("ps", "-p", fmt.Sprintf("%d", pid), "-o", "command=")
 	output, err := cmd.Output()

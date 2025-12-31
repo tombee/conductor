@@ -162,13 +162,13 @@ func executeDryRun(ctx context.Context, def *workflow.Definition, inputs map[str
 // For v1, we return an error directing users to use the CLI
 func executeWorkflow(ctx context.Context, def *workflow.Definition, inputs map[string]interface{}, workflowPath string) RunResult {
 	// For v1, execution via MCP server is not implemented
-	// Users should use the CLI or daemon for actual execution
+	// Users should use the CLI for actual execution
 	return RunResult{
 		Success: false,
 		Mode:    "executed",
 		Error: &RunError{
 			Message: "Workflow execution via MCP server is not yet implemented",
-			Details: fmt.Sprintf("Please use 'conductor run %s' or 'conductor run --daemon %s' to execute this workflow", workflowPath, workflowPath),
+			Details: fmt.Sprintf("Please use 'conductor run %s' to execute this workflow", workflowPath),
 		},
 	}
 }

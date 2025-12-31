@@ -22,7 +22,7 @@ import (
 	"time"
 )
 
-// Transport creates an HTTP transport for connecting to the daemon.
+// Transport creates an HTTP transport for connecting to the controller.
 type Transport struct {
 	// SocketPath is the Unix socket path for local connections.
 	SocketPath string

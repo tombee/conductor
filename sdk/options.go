@@ -57,54 +57,6 @@ func WithAnthropicProvider(apiKey string) Option {
 	}
 }
 
-// WithOpenAIProvider creates an OpenAI provider.
-// Note: OpenAI provider is not fully implemented in Phase 1.
-//
-// Example:
-//
-//	s, err := sdk.New(
-//		sdk.WithOpenAIProvider(os.Getenv("OPENAI_API_KEY")),
-//	)
-func WithOpenAIProvider(apiKey string) Option {
-	return func(s *SDK) error {
-		if apiKey == "" {
-			return fmt.Errorf("OpenAI API key cannot be empty")
-		}
-
-		provider, err := providers.NewOpenAIProvider(apiKey)
-		if err != nil {
-			return fmt.Errorf("create OpenAI provider: %w", err)
-		}
-
-		s.providers.Register(provider)
-		return nil
-	}
-}
-
-// WithOllamaProvider creates an Ollama provider.
-// Ollama runs locally and does not require an API key.
-//
-// Example:
-//
-//	s, err := sdk.New(
-//		sdk.WithOllamaProvider("http://localhost:11434"),
-//	)
-func WithOllamaProvider(baseURL string) Option {
-	return func(s *SDK) error {
-		if baseURL == "" {
-			return fmt.Errorf("Ollama base URL cannot be empty")
-		}
-
-		provider, err := providers.NewOllamaProvider(baseURL)
-		if err != nil {
-			return fmt.Errorf("create Ollama provider: %w", err)
-		}
-
-		s.providers.Register(provider)
-		return nil
-	}
-}
-
 // WithLogger sets a custom structured logger.
 // If not set, logs go to slog.Default().
 //
@@ -236,9 +188,8 @@ func WithBuiltinIntegrations() Option {
 	}
 }
 
-// WithMCPServer connects a user-provided MCP server.
-// The server is not connected until ConnectMCP() is called or the server is
-// enabled via WithMCPServers() run option.
+// WithMCPServer registers configuration for a user-provided MCP server.
+// This stores the configuration for use by workflow execution.
 //
 // Example:
 //
@@ -262,19 +213,3 @@ func WithMCPServer(name string, config MCPConfig) Option {
 	}
 }
 
-// WithConductorMCP enables the built-in Conductor MCP server.
-// This exposes actions/integrations via the MCP protocol.
-//
-// Example:
-//
-//	s, err := sdk.New(
-//		sdk.WithAnthropicProvider(apiKey),
-//		sdk.WithConductorMCP(),
-//	)
-func WithConductorMCP() Option {
-	return func(s *SDK) error {
-		// TODO: Implement in Phase 2
-		// This will configure the built-in MCP server
-		return fmt.Errorf("WithConductorMCP not implemented yet (Phase 2)")
-	}
-}

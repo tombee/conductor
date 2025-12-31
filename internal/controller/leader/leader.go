@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package leader provides leader election for distributed daemon deployments.
+// Package leader provides leader election for distributed controller deployments.
 package leader
 
 import (
@@ -45,7 +45,7 @@ type Config struct {
 	// DB is the database connection.
 	DB *sql.DB
 
-	// InstanceID uniquely identifies this daemon instance.
+	// InstanceID uniquely identifies this controller instance.
 	InstanceID string
 
 	// RetryInterval is how often to attempt acquiring leadership.

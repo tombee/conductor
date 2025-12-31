@@ -235,7 +235,7 @@ func TestDefaultSocketPath(t *testing.T) {
 	}
 }
 
-func TestIsDaemonNotRunning(t *testing.T) {
+func TestIsControllerNotRunning(t *testing.T) {
 	tests := []struct {
 		name string
 		err  error
@@ -252,17 +252,17 @@ func TestIsDaemonNotRunning(t *testing.T) {
 			want: false, // This specific error doesn't match our string checks
 		},
 		{
-			name: "daemon not running error",
-			err:  &DaemonNotRunningError{SocketPath: "/tmp/test.sock"},
+			name: "controller not running error",
+			err:  &ControllerNotRunningError{SocketPath: "/tmp/test.sock"},
 			want: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := IsDaemonNotRunning(tt.err)
+			got := IsControllerNotRunning(tt.err)
 			if got != tt.want {
-				t.Errorf("IsDaemonNotRunning() = %v, want %v", got, tt.want)
+				t.Errorf("IsControllerNotRunning() = %v, want %v", got, tt.want)
 			}
 		})
 	}

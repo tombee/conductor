@@ -382,25 +382,9 @@ func AuthorizeReplay(
 	}
 
 	// Check if user owns the run (run creator)
-	// For now, we assume the Run struct doesn't have a UserID field yet.
-	// In a full implementation, this would check parentRun.UserID == userID.
-	// Since we don't have user tracking on runs yet, we'll return nil (allow all).
-	// This is a placeholder for future user-based authorization.
-
-	// TODO: Once Run struct has UserID field, implement:
-	// if parentRun.UserID == userID {
-	//     return nil // User owns the run
-	// }
-
-	// TODO: Check workflow execute/debug permissions
-	// This would integrate with the workflow permission system to check if user has:
-	// - "execute" permission on the workflow, AND
-	// - "debug" permission on the workflow
-
-	// For now, log the authorization attempt and allow it
-	// This will be enhanced when user tracking is added to runs
-	_ = parentRun // Use the variable to avoid compiler warning
-
+	// User-based authorization not yet implemented.
+	// Future: check parentRun.UserID and workflow execute/debug permissions.
+	_ = parentRun
 	return nil
 }
 

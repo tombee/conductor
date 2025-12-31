@@ -719,7 +719,7 @@ response:
 HTTP action behavior can be customized via runtime configuration:
 
 ```conductor
-# config.yaml (daemon/runtime config)
+# config.yaml (controller/runtime config)
 builtin_tools:
   http:
     # Timeout settings

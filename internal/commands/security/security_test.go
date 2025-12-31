@@ -105,32 +105,6 @@ func TestSecurityGenerateProfileCommand(t *testing.T) {
 	}
 }
 
-// TestSecurityListPermissionsCommand tests the list-permissions command.
-func TestSecurityListPermissionsCommand(t *testing.T) {
-	cmd := NewCommand()
-	listCmd := findSubcommand(cmd, "list-permissions")
-	if listCmd == nil {
-		t.Fatal("list-permissions subcommand not found")
-	}
-
-	if !strings.HasPrefix(listCmd.Use, "list-permissions") {
-		t.Errorf("Expected Use to start with 'list-permissions', got %q", listCmd.Use)
-	}
-}
-
-// TestSecurityRevokeCommand tests the revoke command.
-func TestSecurityRevokeCommand(t *testing.T) {
-	cmd := NewCommand()
-	revokeCmd := findSubcommand(cmd, "revoke")
-	if revokeCmd == nil {
-		t.Fatal("revoke subcommand not found")
-	}
-
-	if !strings.HasPrefix(revokeCmd.Use, "revoke") {
-		t.Errorf("Expected Use to start with 'revoke', got %q", revokeCmd.Use)
-	}
-}
-
 // TestPermissionPrompt tests the permission prompt functionality.
 func TestPermissionPrompt(t *testing.T) {
 	tests := []struct {

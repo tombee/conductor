@@ -47,7 +47,7 @@ const (
 // Secrets are stored in a JSON file encrypted with a master key derived from:
 //  1. CONDUCTOR_MASTER_KEY environment variable
 //  2. ~/.config/conductor/master.key file
-//  3. Interactive prompt (CLI only, not daemon)
+//  3. Interactive prompt (CLI only, not controller)
 type FileBackend struct {
 	path      string
 	masterKey []byte
@@ -390,7 +390,7 @@ func resolveMasterKey(providedKey string) ([]byte, error) {
 		}
 	}
 
-	// 4. For daemon mode, fail here (no interactive prompt)
+	// 4. For controller mode, fail here (no interactive prompt)
 	// CLI mode would need to prompt, but that's handled at a higher level
 	return nil, errors.New("master key not available (set CONDUCTOR_MASTER_KEY or create ~/.config/conductor/master.key)")
 }

@@ -118,7 +118,7 @@ func (c *Cache) Clear(runID string) {
 }
 
 // ClearAll removes all cached secrets for all runs.
-// This should be called on daemon shutdown.
+// This should be called on controller shutdown.
 func (c *Cache) ClearAll() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -200,7 +200,7 @@ func (c *Cache) GetStats() CacheStats {
 // Returns ("env", "VAR", nil) for "${VAR}" or "env:VAR"
 // Returns ("file", "/path", nil) for "file:/path"
 func parseReferenceScheme(reference string) (scheme, key string, err error) {
-	// Try legacy ${VAR} syntax
+	// Try ${VAR} syntax
 	if len(reference) > 3 && reference[0] == '$' && reference[1] == '{' && reference[len(reference)-1] == '}' {
 		return "env", reference[2 : len(reference)-1], nil
 	}

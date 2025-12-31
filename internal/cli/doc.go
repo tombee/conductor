@@ -31,7 +31,7 @@ The CLI is organized as:
 	├── schema        Output JSON schema
 	├── config        Configuration management
 	├── secrets       Secret management
-	├── daemon        Daemon control
+	├── controller    Controller commands
 	├── runs          Manage workflow runs
 	├── mcp           MCP server management
 	├── security      Security profile management

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package backend provides storage backends for the daemon.
+// Package backend provides storage backends for the controller.
 //
 // # Interface Hierarchy
 //
@@ -96,7 +96,7 @@ type StepResultStore interface {
 	ListStepResults(ctx context.Context, runID string) ([]*StepResult, error)
 }
 
-// Backend defines the full interface for daemon storage.
+// Backend defines the full interface for controller storage.
 // This is a composite interface that embeds all segregated interfaces
 // plus io.Closer for lifecycle management.
 //

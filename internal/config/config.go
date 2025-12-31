@@ -549,12 +549,12 @@ type Workspace struct {
 // ServerConfig configures the RPC server behavior.
 type ServerConfig struct {
 	// Port specifies the port to bind to.
-	// Consumed by: internal/commands/daemon/serve.go:85
+	// Consumed by: internal/controller/run.go:85
 	// Default: 9876
 	Port int `yaml:"port"`
 
 	// ShutdownTimeout is the maximum duration to wait for graceful shutdown.
-	// Consumed by: internal/commands/daemon/serve.go:86
+	// Consumed by: internal/controller/run.go:86
 	// Default: 5s
 	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
 }
@@ -722,18 +722,18 @@ func Default() *Config {
 				},
 			},
 		},
-		// Default workspace with backward-compatible profile
+		// Default workspace with permissive profile
 		Workspaces: map[string]Workspace{
 			"default": {
 				Name:        "default",
-				Description: "Default workspace for backward compatibility",
+				Description: "Default workspace",
 				Profiles: map[string]profile.Profile{
 					"default": {
 						Name:        "default",
 						Description: "Default profile with environment inheritance",
 						InheritEnv: profile.InheritEnvConfig{
 							Enabled:   true,
-							Allowlist: nil, // No restrictions - backward compatible
+							Allowlist: nil, // No restrictions - allows all env vars
 						},
 						Bindings: profile.Bindings{
 							Integrations: make(map[string]profile.IntegrationBinding),
@@ -879,7 +879,7 @@ func (c *Config) applyDefaults() {
 		c.Security.DefaultProfile = defaults.Security.DefaultProfile
 	}
 
-	// Daemon defaults
+	// Controller defaults
 	if c.Controller.IdleTimeout == 0 {
 		c.Controller.IdleTimeout = defaults.Controller.IdleTimeout
 	}
@@ -1015,7 +1015,7 @@ func (c *Config) loadFromEnv() {
 		c.DefaultProvider = val
 	}
 
-	// Daemon configuration (CLI-related)
+	// Controller configuration (CLI-related)
 	if val := os.Getenv("CONDUCTOR_DAEMON_AUTO_START"); val != "" {
 		c.Controller.AutoStart = val == "1" || strings.ToLower(val) == "true"
 	}
@@ -1026,7 +1026,7 @@ func (c *Config) loadFromEnv() {
 		c.Controller.APIKey = val
 	}
 
-	// Daemon configuration (controller-specific)
+	// Controller configuration (controller-specific)
 	if val := os.Getenv("CONDUCTOR_LISTEN_SOCKET"); val != "" {
 		c.Controller.Listen.SocketPath = val
 	}

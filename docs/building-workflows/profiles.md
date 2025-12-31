@@ -7,7 +7,7 @@ This guide explains how to use profiles to separate workflow definitions from ex
 Conductor supports two approaches to credential management:
 
 1. **Inline credentials** (default) - Credentials embedded directly in workflow files
-2. **Profiles** (recommended for teams) - Credentials managed separately in daemon configuration
+2. **Profiles** (recommended for teams) - Credentials managed separately in controller configuration
 
 Profiles enable:
 - Safe workflow sharing within teams and organizations
@@ -74,7 +74,7 @@ workspaces:
 
 ## Configuration
 
-### Daemon Configuration
+### Controller Configuration
 
 Profiles are defined in `conductor.yaml`:
 
@@ -164,19 +164,19 @@ Security constraints:
 
 ```bash
 # Use default profile
-conductor run workflow.yaml --daemon
+conductor run workflow.yaml
 
 # Specify profile
-conductor run workflow.yaml --daemon --profile prod
+conductor run workflow.yaml --profile prod
 
 # Full workspace/profile selection
-conductor run workflow.yaml --daemon --workspace frontend --profile dev
+conductor run workflow.yaml --workspace frontend --profile dev
 
 # Short forms
-conductor run workflow.yaml -d -w frontend -p prod
+conductor run workflow.yaml -w frontend -p prod
 
 # Environment variable override
-CONDUCTOR_WORKSPACE=frontend CONDUCTOR_PROFILE=prod conductor run workflow.yaml -d
+CONDUCTOR_WORKSPACE=frontend CONDUCTOR_PROFILE=prod conductor run workflow.yaml
 ```
 
 ### API Usage
@@ -219,7 +219,7 @@ Profile Configuration:
   Workspace: frontend
   Profile: prod
 
-  Note: Profile binding validation requires daemon connection
+  Note: Profile binding validation requires controller connection
   Run with --controller to validate actual bindings
 ```
 
@@ -271,7 +271,7 @@ workspaces:
 Run existing workflow with the new profile:
 
 ```bash
-conductor run workflow.yaml --daemon --profile prod
+conductor run workflow.yaml --profile prod
 ```
 
 Verify credentials resolve correctly.
@@ -300,7 +300,7 @@ Ensure workflows work without inline credentials:
 
 ```bash
 conductor validate workflow.yaml --profile prod
-conductor run workflow.yaml --daemon --profile prod
+conductor run workflow.yaml --profile prod
 ```
 
 ## Best Practices
@@ -325,7 +325,7 @@ conductor run workflow.yaml --daemon --profile prod
    - Verify symlink policy
 
 4. **Scan for plaintext credentials**
-   - Daemon warns on startup if credentials detected
+   - Controller warns on startup if credentials detected
    - Use secret references instead
 
 ### Organization
@@ -522,7 +522,7 @@ Error: secret resolution failed: file provider access denied
 ```
 
 **Solutions:**
-1. Check file provider is enabled in daemon config
+1. Check file provider is enabled in controller config
 2. Verify path is in allowed_paths list
 3. Check file permissions
 4. Ensure file is under 64KB
@@ -588,6 +588,6 @@ secret_providers:
 
 ## See Also
 
-- [Daemon Mode Guide](controller.md) - Running workflows via controller
+- [Controller Mode Guide](controller.md) - Running workflows via controller
 - [Error Handling](error-handling.md) - Troubleshooting profile errors
 - [Security](../operations/security.md) - Security best practices

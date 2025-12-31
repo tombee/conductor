@@ -24,7 +24,7 @@ import (
 )
 
 // ValidatePublicAPIRequirements validates that workflows requiring public API
-// have the public API enabled in the daemon configuration.
+// have the public API enabled in the controller configuration.
 // Returns an error listing all workflows that require public API when it's disabled.
 func ValidatePublicAPIRequirements(cfg *Config) error {
 	// If public API is enabled, no validation needed
@@ -95,8 +95,8 @@ func ValidatePublicAPIRequirements(cfg *Config) error {
 		return fmt.Errorf(
 			"public API is disabled but the following workflows require it:\n  %s\n\n"+
 				"To fix this, either:\n"+
-				"  1. Enable public API in daemon config:\n"+
-				"     daemon:\n"+
+				"  1. Enable public API in controller config:\n"+
+				"     controller:\n"+
 				"       listen:\n"+
 				"         public_api:\n"+
 				"           enabled: true\n"+

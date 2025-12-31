@@ -95,7 +95,7 @@ MCP servers transition through states:
 
 # Registry
 
-The Registry provides daemon-level MCP server management:
+The Registry provides controller-level MCP server management:
 
 	registry, _ := mcp.NewRegistry(mcp.RegistryConfig{Logger: logger})
 	registry.Start(ctx)  // Starts auto-start servers
@@ -106,7 +106,7 @@ The Registry provides daemon-level MCP server management:
 
 # Configuration
 
-MCP servers can be configured at the daemon level:
+MCP servers can be configured at the controller level:
 
 	~/.config/conductor/mcp-servers.yaml
 

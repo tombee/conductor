@@ -13,6 +13,6 @@
 // limitations under the License.
 
 // Package shared provides common utilities used across multiple command packages.
-// It includes API helpers for daemon communication, workflow resolution logic,
+// It includes API helpers for controller communication, workflow resolution logic,
 // LLM provider adapters, and shared type definitions.
 package shared

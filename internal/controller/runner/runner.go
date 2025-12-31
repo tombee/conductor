@@ -172,7 +172,7 @@ type SubmitRequest struct {
 	WorkflowYAML []byte
 	Inputs       map[string]any
 	// RemoteRef is an optional remote reference (e.g., github:user/repo)
-	// If provided, WorkflowYAML should be empty (daemon will fetch it)
+	// If provided, WorkflowYAML should be empty (controller will fetch it)
 	RemoteRef string
 	// NoCache forces a fresh fetch of remote workflows, bypassing cache
 	NoCache bool

@@ -72,7 +72,7 @@ type MCPServerEntry struct {
 	// Defaults to 30 seconds if not specified.
 	Timeout int `yaml:"timeout,omitempty"`
 
-	// AutoStart indicates whether to start this server when the daemon starts.
+	// AutoStart indicates whether to start this server when the controller starts.
 	AutoStart bool `yaml:"auto_start,omitempty"`
 
 	// RestartPolicy defines the restart behavior on failure.

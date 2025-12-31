@@ -13,11 +13,11 @@
 // limitations under the License.
 
 /*
-Package client provides an HTTP client for the conductord daemon API.
+Package client provides an HTTP client for the conductor controller API.
 
 This package enables CLI commands and other tools to communicate with the
-conductor daemon over its REST API. It supports both Unix socket and TCP
-connections, with automatic daemon startup if configured.
+conductor controller over its REST API. It supports both Unix socket and TCP
+connections, with automatic controller startup if configured.
 
 # Basic Usage
 
@@ -67,27 +67,28 @@ Override with CONDUCTOR_HOST environment variable:
 
 # Auto-Start
 
-When the daemon isn't running and auto-start is configured, the client
+When the controller isn't running and auto-start is configured, the client
 attempts to start conductord automatically:
 
-	// Check if daemon is running
-	if !client.IsDaemonRunning() {
-	    if err := client.AutoStart(); err != nil {
-	        log.Fatal(err)
-	    }
+	// Ensure controller is running (starts it if needed)
+	c, err := client.EnsureController(client.AutoStartConfig{
+	    Enabled: true,
+	})
+	if err != nil {
+	    log.Fatal(err)
 	}
 
-Platform-specific implementations in autostart_*.go handle daemon spawning.
+Platform-specific implementations in autostart_*.go handle controller spawning.
 
 # API Methods
 
-The client provides methods matching the daemon's REST API:
+The client provides methods matching the controller's REST API:
 
   - Trigger: Submit a workflow for execution
   - GetRun: Get run status by ID
   - ListRuns: List runs with optional filtering
   - CancelRun: Cancel a running workflow
-  - Health: Check daemon health
-  - Version: Get daemon version info
+  - Health: Check controller health
+  - Version: Get controller version info
 */
 package client

@@ -44,7 +44,7 @@ type Endpoint struct {
 	RateLimit string `yaml:"rate_limit,omitempty" json:"rate_limit,omitempty"`
 
 	// Timeout is the maximum execution time for this endpoint
-	// Zero means use daemon default
+	// Zero means use controller default
 	Timeout time.Duration `yaml:"timeout,omitempty" json:"timeout,omitempty"`
 
 	// Public indicates this endpoint requires no authentication

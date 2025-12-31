@@ -151,7 +151,7 @@ outputs:
       prompt: "Process {{.item}}"
 ```
 
-## Connectors (Shorthand)
+## Actions & Integrations (Shorthand)
 
 ### File Operations
 
@@ -329,23 +329,23 @@ conductor providers test anthropic
 conductor providers set-default anthropic
 ```
 
-### Daemon Mode
+### Controller Mode
 
 ```bash
-# Start daemon
-conductor daemon
+# Start controller
+conductor controller
 
 # With specific config
-conductor daemon --config daemon.yaml
+conductor controller --config controller.yaml
 
 # Background mode
-conductor daemon --detach
+conductor controller --detach
 ```
 
 ### Tools
 
 ```bash
-# List available tools/connectors
+# List available tools/integrations
 conductor tools list
 
 # Get tool details

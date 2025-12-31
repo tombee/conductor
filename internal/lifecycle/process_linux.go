@@ -22,7 +22,7 @@ import (
 	"strings"
 )
 
-// isConductorProcess checks if the process is a conductor daemon by reading /proc/[pid]/cmdline.
+// isConductorProcess checks if the process is a conductor controller by reading /proc/[pid]/cmdline.
 func isConductorProcess(pid int) bool {
 	cmdline, err := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
 	if err != nil {
@@ -35,7 +35,7 @@ func isConductorProcess(pid int) bool {
 	cmd = strings.TrimSpace(cmd)
 
 	// Check if command contains "conductor"
-	// This catches both "conductor daemon start" and the binary path
+	// This catches both "conductor controller start" and the binary path
 	return strings.Contains(cmd, "conductor")
 }
 

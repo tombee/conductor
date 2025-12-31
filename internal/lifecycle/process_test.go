@@ -116,7 +116,7 @@ func TestWaitForExit(t *testing.T) {
 func TestGracefulShutdown(t *testing.T) {
 	t.Run("shuts down process with SIGTERM", func(t *testing.T) {
 		// Skip this test as signal handling behavior varies by platform
-		// Integration tests will cover real daemon shutdown
+		// Integration tests will cover real controller shutdown
 		t.Skip("Signal handling in tests is platform-specific - covered by integration tests")
 	})
 

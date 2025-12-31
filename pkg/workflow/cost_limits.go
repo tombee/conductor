@@ -147,9 +147,7 @@ func NewPartialResultsHandler(basePath string) *PartialResultsHandler {
 }
 
 // SavePartialResults saves the workflow state when execution is aborted.
+// Currently a no-op; future implementation will write to ~/.conductor/partial-results/<runID>.json.
 func (h *PartialResultsHandler) SavePartialResults(ctx context.Context, runID string, completedSteps []StepResult, abortReason error) error {
-	// TODO: Implement actual file saving
-	// Implementation will write to ~/.conductor/partial-results/<runID>.json
-	// with completed steps and abort reason
 	return nil
 }

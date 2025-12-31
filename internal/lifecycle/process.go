@@ -26,8 +26,8 @@ var (
 	// ErrProcessNotRunning is returned when the process does not exist.
 	ErrProcessNotRunning = errors.New("process not running")
 
-	// ErrNotConductorProcess is returned when the process is not a conductor daemon.
-	ErrNotConductorProcess = errors.New("process is not a conductor daemon")
+	// ErrNotConductorProcess is returned when the process is not a conductor controller.
+	ErrNotConductorProcess = errors.New("process is not a conductor controller")
 
 	// ErrShutdownTimeout is returned when the process doesn't exit within the timeout.
 	ErrShutdownTimeout = errors.New("shutdown timeout exceeded")
@@ -54,7 +54,7 @@ func IsProcessRunning(pid int) bool {
 	return err == nil
 }
 
-// IsConductorProcess checks if the given PID is a conductor daemon process.
+// IsConductorProcess checks if the given PID is a conductor controller process.
 // This prevents sending signals to unrelated processes if the PID file is stale.
 func IsConductorProcess(pid int) bool {
 	return isConductorProcess(pid)

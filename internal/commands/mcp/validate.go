@@ -93,8 +93,8 @@ func runMCPValidate(name string) error {
 		fmt.Print("  Command.................. ")
 		if server.Config.Command != "" {
 			fmt.Printf("'%s' ", server.Config.Command)
-			// Note: We can't check if command exists from CLI since daemon runs it
-			fmt.Println("(check on daemon)")
+			// Note: We can't check if command exists from CLI since controller runs it
+			fmt.Println("(check on controller)")
 		} else {
 			fmt.Println("MISSING")
 			fmt.Println("    Error: Command is required")

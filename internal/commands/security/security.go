@@ -34,16 +34,12 @@ agents can access during workflow execution.
 Commands:
   status           Show current security profile and permissions
   analyze          Analyze a workflow's security requirements
-  generate-profile Generate a custom security profile from workflow analysis
-  list-permissions List stored permission grants
-  revoke           Revoke a stored permission grant`,
+  generate-profile Generate a custom security profile from workflow analysis`,
 	}
 
 	cmd.AddCommand(newSecurityStatusCommand())
 	cmd.AddCommand(newSecurityAnalyzeCommand())
 	cmd.AddCommand(newSecurityGenerateProfileCommand())
-	cmd.AddCommand(newSecurityListPermissionsCommand())
-	cmd.AddCommand(newSecurityRevokeCommand())
 
 	return cmd
 }

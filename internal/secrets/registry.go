@@ -28,17 +28,17 @@ import (
 // Registry routes secret references to specific providers based on URI schemes.
 //
 // Supported reference formats:
-//   - env:VAR_NAME -> environment variable provider
+//   - ${VAR_NAME} -> environment variable provider (recommended)
+//   - env:VAR_NAME -> environment variable provider (explicit scheme)
 //   - file:/path/to/secret -> file provider
-//   - ${VAR_NAME} -> environment variable provider (legacy syntax)
 //   - vault:secret/path -> vault provider (future)
 type Registry struct {
 	providers map[string]profile.SecretProvider
 }
 
 var (
-	// legacyEnvVarRegex matches ${VAR_NAME} syntax
-	legacyEnvVarRegex = regexp.MustCompile(`^\$\{([A-Z_][A-Z0-9_]*)\}$`)
+	// envVarRegex matches ${VAR_NAME} syntax for environment variables
+	envVarRegex = regexp.MustCompile(`^\$\{([A-Z_][A-Z0-9_]*)\}$`)
 
 	// schemeRegex matches scheme:reference format
 	schemeRegex = regexp.MustCompile(`^([a-z][a-z0-9]*):(.+)$`)
@@ -65,9 +65,9 @@ func (r *Registry) Register(provider profile.SecretProvider) error {
 // Resolve routes a secret reference to the appropriate provider and returns the value.
 //
 // Reference formats:
-//   - "env:GITHUB_TOKEN" -> env provider
+//   - "${API_KEY}" -> env provider (recommended)
+//   - "env:GITHUB_TOKEN" -> env provider (explicit)
 //   - "file:/etc/secrets/token" -> file provider
-//   - "${API_KEY}" -> env provider (legacy)
 //   - "vault:secret/data/prod#token" -> vault provider (future)
 //
 // Returns sanitized errors that don't leak secret values or paths.
@@ -122,16 +122,16 @@ func (r *Registry) GetProvider(scheme string) profile.SecretProvider {
 // parseReference extracts the scheme and key from a secret reference.
 //
 // Supported formats:
+//   - "${VAR_NAME}" -> ("env", "VAR_NAME")
 //   - "env:VAR_NAME" -> ("env", "VAR_NAME")
 //   - "file:/path/to/secret" -> ("file", "/path/to/secret")
-//   - "${VAR_NAME}" -> ("env", "VAR_NAME")  // legacy syntax
 func (r *Registry) parseReference(reference string) (scheme, key string, err error) {
 	if reference == "" {
 		return "", "", fmt.Errorf("empty reference")
 	}
 
-	// Check for legacy ${VAR} syntax
-	if matches := legacyEnvVarRegex.FindStringSubmatch(reference); matches != nil {
+	// Check for ${VAR} syntax
+	if matches := envVarRegex.FindStringSubmatch(reference); matches != nil {
 		return "env", matches[1], nil
 	}
 
@@ -148,7 +148,7 @@ func (r *Registry) parseReference(reference string) (scheme, key string, err err
 		return scheme, key, nil
 	}
 
-	// No scheme specified - treat as plain value (for backward compatibility)
+	// No scheme specified - treat as plain value
 	// This allows profiles to use plain strings alongside secret references
 	return "plain", reference, nil
 }

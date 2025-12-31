@@ -235,7 +235,7 @@ func (h *Handler) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 	if h.runner.IsDraining() {
 		statusCode = http.StatusServiceUnavailable
 		w.Header().Set("Retry-After", "10")
-		writeError(w, statusCode, "daemon is shutting down gracefully")
+		writeError(w, statusCode, "controller is shutting down gracefully")
 		return
 	}
 	if name == "" {

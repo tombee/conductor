@@ -37,7 +37,7 @@ type LifecycleEvent struct {
 	Error      string            `json:"error,omitempty"`
 }
 
-// LifecycleLogger logs daemon lifecycle events to a file.
+// LifecycleLogger logs controller lifecycle events to a file.
 type LifecycleLogger struct {
 	logPath string
 }
@@ -49,49 +49,49 @@ func NewLifecycleLogger(logPath string) *LifecycleLogger {
 	}
 }
 
-// LogStart logs a daemon start event.
+// LogStart logs a controller start event.
 func (l *LifecycleLogger) LogStart(version string, args []string, configFile string) error {
 	event := LifecycleEvent{
 		Timestamp:  time.Now(),
 		Event:      "start",
 		Version:    version,
 		Success:    true,
-		Message:    "Daemon start initiated",
+		Message:    "Controller start initiated",
 		Flags:      parseFlags(args),
 		ConfigFile: configFile,
 	}
 	return l.writeEvent(event)
 }
 
-// LogStartSuccess logs successful daemon startup with PID.
+// LogStartSuccess logs successful controller startup with PID.
 func (l *LifecycleLogger) LogStartSuccess(pid int, healthCheckAttempts int, duration time.Duration) error {
 	event := LifecycleEvent{
 		Timestamp: time.Now(),
 		Event:     "start_success",
 		PID:       pid,
 		Success:   true,
-		Message:   fmt.Sprintf("Daemon started successfully (health checks: %d, duration: %v)", healthCheckAttempts, duration),
+		Message:   fmt.Sprintf("Controller started successfully (health checks: %d, duration: %v)", healthCheckAttempts, duration),
 	}
 	return l.writeEvent(event)
 }
 
-// LogStartFailure logs failed daemon startup.
+// LogStartFailure logs failed controller startup.
 func (l *LifecycleLogger) LogStartFailure(err error) error {
 	event := LifecycleEvent{
 		Timestamp: time.Now(),
 		Event:     "start_failure",
 		Success:   false,
-		Message:   "Daemon failed to start",
+		Message:   "Controller failed to start",
 		Error:     err.Error(),
 	}
 	return l.writeEvent(event)
 }
 
-// LogStop logs a daemon stop event.
+// LogStop logs a controller stop event.
 func (l *LifecycleLogger) LogStop(pid int, force bool) error {
-	message := "Daemon stop initiated"
+	message := "Controller stop initiated"
 	if force {
-		message = "Daemon force stop initiated"
+		message = "Controller force stop initiated"
 	}
 
 	event := LifecycleEvent{
@@ -104,26 +104,26 @@ func (l *LifecycleLogger) LogStop(pid int, force bool) error {
 	return l.writeEvent(event)
 }
 
-// LogStopSuccess logs successful daemon shutdown.
+// LogStopSuccess logs successful controller shutdown.
 func (l *LifecycleLogger) LogStopSuccess(pid int, duration time.Duration) error {
 	event := LifecycleEvent{
 		Timestamp: time.Now(),
 		Event:     "stop_success",
 		PID:       pid,
 		Success:   true,
-		Message:   fmt.Sprintf("Daemon stopped successfully (duration: %v)", duration),
+		Message:   fmt.Sprintf("Controller stopped successfully (duration: %v)", duration),
 	}
 	return l.writeEvent(event)
 }
 
-// LogStopFailure logs failed daemon shutdown.
+// LogStopFailure logs failed controller shutdown.
 func (l *LifecycleLogger) LogStopFailure(pid int, err error) error {
 	event := LifecycleEvent{
 		Timestamp: time.Now(),
 		Event:     "stop_failure",
 		PID:       pid,
 		Success:   false,
-		Message:   "Failed to stop daemon",
+		Message:   "Failed to stop controller",
 		Error:     err.Error(),
 	}
 	return l.writeEvent(event)
@@ -158,14 +158,14 @@ func (l *LifecycleLogger) LogStalePID(pid int, reason string) error {
 	return l.writeEvent(event)
 }
 
-// LogAlreadyRunning logs that the daemon is already running.
+// LogAlreadyRunning logs that the controller is already running.
 func (l *LifecycleLogger) LogAlreadyRunning(pid int) error {
 	event := LifecycleEvent{
 		Timestamp: time.Now(),
 		Event:     "already_running",
 		PID:       pid,
 		Success:   true,
-		Message:   "Daemon already running",
+		Message:   "Controller already running",
 	}
 	return l.writeEvent(event)
 }

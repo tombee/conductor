@@ -29,18 +29,18 @@ func TestNewMCPStatusCommand(t *testing.T) {
 }
 
 func TestMCPStatusCommand_NonexistentServer(t *testing.T) {
-	// Skip if running short tests (requires daemon)
+	// Skip if running short tests (requires controller)
 	if testing.Short() {
-		t.Skip("skipping daemon integration test in short mode")
+		t.Skip("skipping controller integration test in short mode")
 	}
 
 	cmd := newMCPStatusCommand()
 	cmd.SetArgs([]string{"nonexistent-server"})
 
-	// This will fail if daemon is not running or server doesn't exist
+	// This will fail if controller is not running or server doesn't exist
 	err := cmd.Execute()
 	if err != nil {
-		// Expected - daemon not running or server not found
+		// Expected - controller not running or server not found
 		t.Logf("status command failed as expected: %v", err)
 	}
 }

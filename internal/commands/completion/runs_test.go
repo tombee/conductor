@@ -28,7 +28,7 @@ func TestCompleteRunIDs(t *testing.T) {
 	runCache = nil
 	runCacheMu.Unlock()
 
-	// Create mock daemon server
+	// Create mock controller server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/runs" {
 			http.NotFound(w, r)
@@ -87,7 +87,7 @@ func TestCompleteActiveRunIDs(t *testing.T) {
 	runCache = nil
 	runCacheMu.Unlock()
 
-	// Create mock daemon server
+	// Create mock controller server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]interface{}{
 			"runs": []interface{}{
@@ -184,14 +184,14 @@ func TestCompleteRunIDs_DaemonNotRunning(t *testing.T) {
 	runCache = nil
 	runCacheMu.Unlock()
 
-	// Point to non-existent daemon
+	// Point to non-existent controller
 	t.Setenv("CONDUCTOR_HOST", "tcp://localhost:9999")
 
 	completions, directive := CompleteRunIDs(nil, nil, "")
 
-	// Should return empty list when daemon is not available
+	// Should return empty list when controller is not available
 	if len(completions) != 0 {
-		t.Errorf("expected 0 completions when daemon unavailable, got %d", len(completions))
+		t.Errorf("expected 0 completions when controller unavailable, got %d", len(completions))
 	}
 
 	if directive != 4 { // cobra.ShellCompDirectiveNoFileComp

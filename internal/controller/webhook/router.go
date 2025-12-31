@@ -112,7 +112,7 @@ func (router *Router) handleWebhook(w http.ResponseWriter, r *http.Request, rout
 	// Check if runner is draining (graceful shutdown in progress)
 	if router.runner.IsDraining() {
 		w.Header().Set("Retry-After", "10")
-		writeError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
+		writeError(w, http.StatusServiceUnavailable, "controller is shutting down gracefully")
 		return
 	}
 
@@ -199,7 +199,7 @@ func (router *Router) handleDynamicWebhook(w http.ResponseWriter, r *http.Reques
 	// Check if runner is draining (graceful shutdown in progress)
 	if router.runner.IsDraining() {
 		w.Header().Set("Retry-After", "10")
-		writeError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
+		writeError(w, http.StatusServiceUnavailable, "controller is shutting down gracefully")
 		return
 	}
 

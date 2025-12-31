@@ -91,31 +91,31 @@ steps:
       Return ONLY the formatted message text, no explanations.
     timeout: 15
 
-  # Step 3: Post to Slack (placeholder - connectors not yet implemented)
+  # Step 3: Post to Slack via HTTP
+  # Note: Requires SLACK_BOT_TOKEN environment variable
   - id: post_to_slack
     name: Post Message to Slack
-    type: llm
-    model: fast
-    prompt: |
-      [Note: This is a placeholder. In production, this would use a Slack connector.]
-
-      Prepare this message for posting to {{.channel}}:
-      {{$.format_message.content}}
-
-      Return the message exactly as-is.
+    http.post:
+      url: "https://slack.com/api/chat.postMessage"
+      headers:
+        Authorization: "Bearer ${SLACK_BOT_TOKEN}"
+        Content-Type: "application/json"
+      body:
+        channel: "{{.inputs.channel}}"
+        text: "{{.steps.format_message.content}}"
 
 outputs:
   - name: summary
     type: string
-    value: $.generate_summary.content
+    value: "{{.steps.generate_summary.content}}"
     description: Generated event summary
 
   - name: message
     type: string
-    value: $.format_message.content
+    value: "{{.steps.format_message.content}}"
     description: Formatted Slack message
 
   - name: slack_response
-    type: string
-    value: $.post_to_slack.content
-    description: Prepared message for Slack posting
+    type: object
+    value: "{{.steps.post_to_slack}}"
+    description: Slack API response with message timestamp

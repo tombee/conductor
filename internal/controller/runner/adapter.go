@@ -23,7 +23,7 @@ import (
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
-// ExecutionAdapter bridges the daemon Runner with workflow execution.
+// ExecutionAdapter bridges the controller Runner with workflow execution.
 // It provides a clean interface for executing workflows, allowing the Runner
 // to focus on orchestration while delegating step execution to the workflow package.
 type ExecutionAdapter interface {
@@ -79,7 +79,7 @@ type ExecutionResult struct {
 }
 
 // ExecutorAdapter implements ExecutionAdapter using the workflow.Executor.
-// It bridges the daemon Runner with the workflow execution layer.
+// It bridges the controller Runner with the workflow execution layer.
 type ExecutorAdapter struct {
 	// executor is the underlying step executor from pkg/workflow
 	executor *workflow.Executor

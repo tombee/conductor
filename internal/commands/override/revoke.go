@@ -39,7 +39,7 @@ Available override types:
 				return fmt.Errorf("invalid override type: %s (valid types: disable-enforcement, disable-sandbox)", overrideType)
 			}
 
-			// Revoke override via daemon API
+			// Revoke override via controller API
 			url := shared.BuildAPIURL(fmt.Sprintf("/v1/override/%s", overrideType), nil)
 			_, err := shared.MakeAPIRequest("DELETE", url, nil)
 			if err != nil {

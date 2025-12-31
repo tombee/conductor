@@ -46,7 +46,7 @@ func TestControllerStartStop(t *testing.T) {
 		t.Fatalf("Failed to create controller: %v", err)
 	}
 
-	// Start daemon in background
+	// Start controller in background
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

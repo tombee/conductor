@@ -326,7 +326,7 @@ func TestObservability_ParallelSpans(t *testing.T) {
 func TestObservability_APIAuthentication(t *testing.T) {
 	// This test verifies the authentication requirement is enforced
 	// by checking that the handlers are registered with auth middleware
-	// in daemon.go (already implemented in Phase 4)
+	// in controller.go (already implemented in Phase 4)
 
 	// Create storage
 	store, err := storage.New(storage.Config{
@@ -346,7 +346,7 @@ func TestObservability_APIAuthentication(t *testing.T) {
 		t.Fatal("failed to create traces handler")
 	}
 
-	// Note: Authentication is applied via middleware in daemon.go
+	// Note: Authentication is applied via middleware in controller.go
 	// The middleware wraps all routes, including traces endpoints
 	// This test verifies the handler exists and can be registered
 	t.Log("Traces handler created successfully - authentication is enforced at router level")

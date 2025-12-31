@@ -17,37 +17,10 @@
 // and resuming interrupted runs from saved checkpoints.
 package runner
 
-import (
-	"context"
-	"fmt"
-)
+import "context"
 
 // ResumeInterrupted attempts to resume any interrupted runs from checkpoints.
+// Delegates to LifecycleManager.
 func (r *Runner) ResumeInterrupted(ctx context.Context) error {
-	if r.lifecycle.checkpoints == nil || !r.lifecycle.checkpoints.Enabled() {
-		return nil
-	}
-
-	runIDs, err := r.lifecycle.checkpoints.ListInterrupted(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to list interrupted runs: %w", err)
-	}
-
-	for _, runID := range runIDs {
-		cp, err := r.lifecycle.checkpoints.Load(ctx, runID)
-		if err != nil {
-			// Log and continue
-			continue
-		}
-		if cp == nil {
-			continue
-		}
-
-		// TODO: Implement actual resume logic
-		// For now, just log that we found interrupted runs
-		// Real implementation would reload workflow definition and continue from checkpoint
-		_ = cp // Placeholder
-	}
-
-	return nil
+	return r.lifecycle.ResumeInterrupted(ctx)
 }

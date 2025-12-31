@@ -106,8 +106,8 @@ Verbosity levels:
 				return shared.NewInvalidWorkflowError("cannot use --dry-run in background mode", nil)
 			}
 
-			// All execution goes through daemon
-			return runWorkflowViaDaemon(args[0], inputs, inputFile, outputFile, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun, provider, model, timeout, workspace, profile, bindIntegrations, securityMode, allowHosts, allowPaths, logLevel, step, breakpoints)
+			// All execution goes through controller
+			return runWorkflowViaController(args[0], inputs, inputFile, outputFile, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun, provider, model, timeout, workspace, profile, bindIntegrations, securityMode, allowHosts, allowPaths, logLevel, step, breakpoints)
 		},
 	}
 

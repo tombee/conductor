@@ -36,7 +36,7 @@ Conductor is a command-line tool for orchestrating complex workflows with Large 
 - `run` - Execute a workflow
 - `validate` - Validate workflow syntax
 - `providers` - Manage LLM provider configurations
-- `daemon` - Manage the conductor daemon
+- `controller` - Manage the conductor controller
 - `runs` - View workflow run history
 - `config` - Manage configuration
 - `doctor` - Diagnose setup issues
@@ -187,8 +187,7 @@ conductor run <workflow> [flags]
 | `--dry-run` | | Show execution plan without running |
 | `--quiet` | `-q` | Suppress all warnings |
 | `--verbose` | `-v` | Show detailed execution logs |
-| `--daemon` | `-d` | Submit to controller for execution |
-| `--background` | | Run asynchronously, return run ID immediately (implies `--daemon`) |
+| `--background` | | Run asynchronously, return run ID immediately |
 
 **Provider Resolution Order:**
 
@@ -199,9 +198,8 @@ conductor run <workflow> [flags]
 
 **Execution Modes:**
 
-- **Direct**: Execute workflow immediately in current process
-- **Daemon** (`--daemon`): Submit to `conductor` daemon
-- **Background** (`--background`): Asynchronous execution via controller
+All workflows execute via the controller. Use `--background` for asynchronous execution
+that returns a run ID immediately instead of waiting for completion.
 
 **Examples:**
 
@@ -421,42 +419,42 @@ conductor providers set-default anthropic
 
 ---
 
-### conductor daemon
+### conductor controller
 
-Manage the conductor daemon.
+Manage the conductor controller.
 
 ```bash
-conductor daemon [command]
+conductor controller [command]
 ```
 
 **Description:**
 
-Commands for managing the conductor daemon (`conductor`). The controller is the central service that executes workflows. The CLI communicates with the controller to run workflows, check status, and more.
+Commands for managing the conductor controller (`conductor`). The controller is the central service that executes workflows. The CLI communicates with the controller to run workflows, check status, and more.
 
 **Subcommands:**
 
-- `status` - Show daemon status and version
+- `status` - Show controller status and version
 - `ping` - Check if controller is reachable
 
 ---
 
-#### conductor daemon status
+#### conductor controller status
 
-Show daemon status and version.
+Show controller status and version.
 
 ```bash
-conductor daemon status
+conductor controller status
 ```
 
 **Description:**
 
-Display the status, version, and health of the conductor daemon.
+Display the status, version, and health of the conductor controller.
 
 **Examples:**
 
 ```bash
-# Check daemon status
-conductor daemon status
+# Check controller status
+conductor controller status
 ```
 
 **Output:**
@@ -480,12 +478,12 @@ Health Checks:
 
 ---
 
-#### conductor daemon ping
+#### conductor controller ping
 
 Check if controller is reachable.
 
 ```bash
-conductor daemon ping
+conductor controller ping
 ```
 
 **Description:**
@@ -495,19 +493,19 @@ Quickly check if the conductor controller is running and reachable.
 **Examples:**
 
 ```bash
-# Ping daemon
-conductor daemon ping
+# Ping controller
+conductor controller ping
 ```
 
 **Output:**
 
 ```
-Daemon is running (latency: 2ms)
+Controller is running (latency: 2ms)
 ```
 
 **Exit Codes:**
-- `0` - Daemon is running
-- `1` - Daemon is not running
+- `0` - Controller is running
+- `1` - Controller is not running
 
 ---
 
@@ -597,7 +595,7 @@ Runs diagnostic checks to identify and help resolve common setup issues:
 - Provider connectivity
 - Environment variables
 - File permissions
-- Daemon status
+- Controller status
 
 **Examples:**
 
@@ -640,7 +638,7 @@ Explore and run example workflows.
 
 - `list` - List available examples
 - `show` - Display example code
-- `run` - Run an example
+- `copy` - Copy an example to the filesystem
 
 **Examples:**
 
@@ -651,8 +649,8 @@ conductor examples list
 # Show example code
 conductor examples show code-review
 
-# Run example
-conductor examples run hello-world
+# Copy example to current directory
+conductor examples copy hello-world
 ```
 
 ---
@@ -724,7 +722,7 @@ Conductor respects the following environment variables:
 | `CONDUCTOR_PROVIDER` | Default provider name |
 | `ANTHROPIC_API_KEY` | Anthropic API key |
 | `OPENAI_API_KEY` | OpenAI API key |
-| `CONDUCTOR_DAEMON_SOCKET` | Path to daemon socket |
+| `CONDUCTOR_CONTROLLER_SOCKET` | Path to controller socket |
 | `LOG_LEVEL` | Log level (`debug`, `info`, `warn`, `error`) |
 | `NO_COLOR` | Disable colored output |
 
@@ -742,7 +740,7 @@ Conductor uses consistent exit codes:
 | `3` | Missing required input |
 | `4` | Workflow execution failed |
 | `5` | Provider error |
-| `10` | Daemon not running |
+| `10` | Controller not running |
 
 ---
 
@@ -768,7 +766,7 @@ conductor run workflow.yaml \
 ### Background Execution
 
 ```bash
-# Submit workflow to daemon and continue
+# Submit workflow to controller and continue
 RUN_ID=$(conductor run workflow.yaml --background --json | jq -r '.run_id')
 
 # Check status later

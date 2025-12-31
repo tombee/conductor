@@ -49,12 +49,12 @@ func TestDefault(t *testing.T) {
 		t.Errorf("expected log add_source false, got true")
 	}
 
-	// Daemon auth defaults - secure by default
+	// Controller auth defaults - secure by default
 	if !cfg.Controller.ControllerAuth.Enabled {
-		t.Errorf("expected daemon auth enabled by default, got disabled")
+		t.Errorf("expected controller auth enabled by default, got disabled")
 	}
 	if !cfg.Controller.ControllerAuth.AllowUnixSocket {
-		t.Errorf("expected daemon auth allow_unix_socket true by default, got false")
+		t.Errorf("expected controller auth allow_unix_socket true by default, got false")
 	}
 
 	// LLM defaults

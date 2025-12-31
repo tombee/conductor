@@ -23,14 +23,14 @@ import (
 	"net/http"
 )
 
-// Client is a client for the conductord daemon API.
+// Client is a client for the conductor controller API.
 type Client struct {
 	httpClient *http.Client
 	baseURL    string
 	apiKey     string
 }
 
-// New creates a new daemon client with the given options.
+// New creates a new controller client with the given options.
 func New(opts ...Option) (*Client, error) {
 	c := &Client{
 		baseURL: "http://localhost", // Default for Unix socket
@@ -99,7 +99,7 @@ type VersionResponse struct {
 	Arch      string `json:"arch"`
 }
 
-// Health returns the daemon health status.
+// Health returns the controller health status.
 func (c *Client) Health(ctx context.Context) (*HealthResponse, error) {
 	resp, err := c.get(ctx, "/v1/health")
 	if err != nil {
@@ -115,7 +115,7 @@ func (c *Client) Health(ctx context.Context) (*HealthResponse, error) {
 	return &health, nil
 }
 
-// Version returns the daemon version information.
+// Version returns the controller version information.
 func (c *Client) Version(ctx context.Context) (*VersionResponse, error) {
 	resp, err := c.get(ctx, "/v1/version")
 	if err != nil {
@@ -131,7 +131,7 @@ func (c *Client) Version(ctx context.Context) (*VersionResponse, error) {
 	return &version, nil
 }
 
-// Ping checks if the daemon is reachable.
+// Ping checks if the controller is reachable.
 func (c *Client) Ping(ctx context.Context) error {
 	_, err := c.Health(ctx)
 	return err
@@ -170,7 +170,7 @@ func (c *Client) GetStream(ctx context.Context, path, accept string) (*http.Resp
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, fmt.Errorf("daemon returned error %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("controller returned error %d: %s", resp.StatusCode, string(body))
 	}
 
 	return resp, nil
@@ -218,7 +218,7 @@ func (c *Client) PostYAML(ctx context.Context, path string, yamlData []byte) (ma
 
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("daemon returned error %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("controller returned error %d: %s", resp.StatusCode, string(body))
 	}
 
 	var result map[string]any
@@ -245,13 +245,13 @@ func (c *Client) Delete(ctx context.Context, path string) error {
 
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("daemon returned error %d: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("controller returned error %d: %s", resp.StatusCode, string(body))
 	}
 
 	return nil
 }
 
-// get performs a GET request to the daemon API.
+// get performs a GET request to the controller API.
 func (c *Client) get(ctx context.Context, path string) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
@@ -268,7 +268,7 @@ func (c *Client) get(ctx context.Context, path string) (*http.Response, error) {
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, fmt.Errorf("daemon returned error %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("controller returned error %d: %s", resp.StatusCode, string(body))
 	}
 
 	return resp, nil
@@ -281,7 +281,7 @@ func (c *Client) addAuth(req *http.Request) {
 	}
 }
 
-// post performs a POST request to the daemon API.
+// post performs a POST request to the controller API.
 func (c *Client) post(ctx context.Context, path string, body io.Reader) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, body)
 	if err != nil {
@@ -298,7 +298,7 @@ func (c *Client) post(ctx context.Context, path string, body io.Reader) (*http.R
 	if resp.StatusCode >= 400 {
 		respBody, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, fmt.Errorf("daemon returned error %d: %s", resp.StatusCode, string(respBody))
+		return nil, fmt.Errorf("controller returned error %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	return resp, nil

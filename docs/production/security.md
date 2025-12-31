@@ -108,8 +108,8 @@ vault kv put secret/conductor/api-keys \
 export ANTHROPIC_API_KEY=$(vault kv get -field=anthropic secret/conductor/api-keys)
 export OPENAI_API_KEY=$(vault kv get -field=openai secret/conductor/api-keys)
 
-# Start Conductor daemon
-conductor daemon start
+# Start Conductor controller
+conductor controller start
 ```
 
 Configure Vault authentication:
@@ -152,7 +152,7 @@ SECRET_JSON=$(aws secretsmanager get-secret-value \
 export ANTHROPIC_API_KEY=$(echo $SECRET_JSON | jq -r '.anthropic')
 export OPENAI_API_KEY=$(echo $SECRET_JSON | jq -r '.openai')
 
-conductor daemon start
+conductor controller start
 ```
 
 #### Kubernetes Secrets
@@ -743,7 +743,7 @@ export HTTP_PROXY="http://proxy.company.com:8080"
 export HTTPS_PROXY="http://proxy.company.com:8080"
 export NO_PROXY="localhost,127.0.0.1"
 
-conductor daemon start
+conductor controller start
 ```
 
 ## Audit Logging

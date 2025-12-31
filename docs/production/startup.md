@@ -42,10 +42,10 @@ CONDUCTOR_BACKEND_PORT=9876
 **Resolution:**
 ```bash
 # Check if backend can start standalone
-conductor daemon start
+conductor controller start
 
 # Check health endpoint
-conductor daemon status
+conductor controller status
 ```
 
 ### 3. Health Check Polling
@@ -74,10 +74,10 @@ Once port is discovered, Electron polls the health endpoint every 500ms.
 **Resolution:**
 ```bash
 # Test health endpoint manually
-conductor daemon status
+conductor controller status
 
 # Check backend logs for initialization errors
-conductor daemon logs
+conductor controller logs
 ```
 
 ### 4. Ready State
@@ -162,8 +162,8 @@ On Electron app quit, the backend receives SIGTERM.
 **Resolution:**
 ```bash
 # Test graceful shutdown
-conductor daemon start
-conductor daemon stop
+conductor controller start
+conductor controller stop
 # Should exit within 5s with code 0
 ```
 
@@ -190,12 +190,12 @@ None - backend uses sensible defaults
 
 ### Test health endpoint
 ```bash
-conductor daemon status
+conductor controller status
 ```
 
 ### Monitor backend metrics
 ```bash
-conductor daemon metrics
+conductor controller metrics
 ```
 
 ### Check process status
@@ -203,15 +203,15 @@ conductor daemon metrics
 # Find backend process
 ps aux | grep conductor
 
-# Check daemon status
-conductor daemon status
+# Check controller status
+conductor controller status
 ```
 
 ## Logs and Debugging
 
 **Log locations:**
 - **Development**: Backend stderr redirected to console
-- **Production**: `~/Library/Logs/conductor/daemon.log`
+- **Production**: `~/Library/Logs/conductor/controller.log`
 - **Standalone**: stderr
 
 **Log format:**
@@ -227,7 +227,7 @@ conductor daemon status
 
 **Enable debug logging:**
 ```bash
-LOG_LEVEL=debug conductor daemon start
+LOG_LEVEL=debug conductor controller start
 ```
 
 **Useful debug information:**

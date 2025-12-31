@@ -10,15 +10,15 @@ When a user runs `conductor run workflow.yaml`:
 sequenceDiagram
     participant User
     participant CLI as conductor CLI
-    participant Daemon as conductor
+    participant Controller as conductor
     participant Executor as Workflow Executor
     participant Provider as LLM Provider
     participant Tool as Tool Registry
 
     User->>CLI: conductor run workflow.yaml
-    CLI->>Daemon: POST /v1/runs (socket)
-    Daemon->>Daemon: Load & validate workflow
-    Daemon->>Executor: Execute(workflow, inputs)
+    CLI->>Controller: POST /v1/runs (socket)
+    Controller->>Controller: Load & validate workflow
+    Controller->>Executor: Execute(workflow, inputs)
 
     loop For each step
         Executor->>Provider: Complete(prompt, tools)
@@ -33,22 +33,22 @@ sequenceDiagram
             Provider-->>Executor: Final response
         end
 
-        Executor->>Daemon: Checkpoint step result
+        Executor->>Controller: Checkpoint step result
     end
 
-    Executor-->>Daemon: Workflow complete
-    Daemon-->>CLI: Run result
+    Executor-->>Controller: Workflow complete
+    Controller-->>CLI: Run result
     CLI-->>User: Output
 ```
 
-## Daemon API Workflow
+## Controller API Workflow
 
 When an external client triggers a workflow via API:
 
 ```mermaid
 sequenceDiagram
     participant Client as API Client
-    participant API as Daemon API
+    participant API as Controller API
     participant Queue as Job Queue
     participant Runner as Runner
     participant Executor as Executor
@@ -118,7 +118,7 @@ sequenceDiagram
     participant Source as Webhook Source
     participant Handler as Webhook Handler
     participant Router as Trigger Router
-    participant Daemon as Daemon
+    participant Controller as Controller
     participant Executor as Executor
 
     Source->>Handler: POST /webhooks/{source}
@@ -127,8 +127,8 @@ sequenceDiagram
     Router->>Router: Find matching workflows
 
     loop For each matched workflow
-        Router->>Daemon: Enqueue run
-        Daemon->>Executor: Execute async
+        Router->>Controller: Enqueue run
+        Controller->>Executor: Execute async
     end
 
     Handler-->>Source: 200 OK
@@ -144,7 +144,7 @@ When a cron schedule triggers a workflow:
 sequenceDiagram
     participant Scheduler as Scheduler
     participant State as State Backend
-    participant Daemon as Daemon
+    participant Controller as Controller
     participant Executor as Executor
 
     loop Every minute
@@ -153,8 +153,8 @@ sequenceDiagram
 
         loop For each due workflow
             Scheduler->>State: Mark as triggered
-            Scheduler->>Daemon: Enqueue run
-            Daemon->>Executor: Execute async
+            Scheduler->>Controller: Enqueue run
+            Controller->>Executor: Execute async
         end
     end
 ```

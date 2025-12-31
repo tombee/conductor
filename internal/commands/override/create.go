@@ -63,7 +63,7 @@ All overrides are time-limited and fully audited.`,
 				return fmt.Errorf("reason is required (use --reason)")
 			}
 
-			// Create override via daemon API
+			// Create override via controller API
 			reqBody := map[string]string{
 				"type":   overrideType,
 				"reason": flags.reason,

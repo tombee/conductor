@@ -79,8 +79,7 @@ func ValidateProfiles(workspaces map[string]Workspace) ([]string, []string, erro
 		for profileName, prof := range workspace.Profiles {
 			profilePath := fmt.Sprintf("workspaces.%s.profiles.%s", workspaceName, profileName)
 
-			// Validate profile name
-			// Allow "default" profile in "default" workspace for backward compatibility
+			// Validate profile name (skip validation for the built-in default profile)
 			if !(workspaceName == "default" && profileName == "default") {
 				if err := profile.ValidateProfileName(profileName); err != nil {
 					errors = append(errors, fmt.Sprintf("%s: %v", profilePath, err))

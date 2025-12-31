@@ -49,9 +49,9 @@ var (
 )
 
 // CompleteRunIDs provides dynamic completion for workflow run IDs.
-// Queries the daemon API for recent runs and caches results for 2 seconds.
+// Queries the controller API for recent runs and caches results for 2 seconds.
 // Returns run IDs with workflow names as descriptions.
-// Applies 500ms timeout for daemon queries and aims for <200ms overall.
+// Applies 500ms timeout for controller queries and aims for <200ms overall.
 func CompleteRunIDs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return SafeCompletionWrapper(func() ([]string, cobra.ShellCompDirective) {
 		runs, err := getRunCompletions(false)
@@ -87,7 +87,7 @@ func CompleteActiveRunIDs(cmd *cobra.Command, args []string, toComplete string) 
 	})
 }
 
-// getRunCompletions fetches run completions from the daemon with caching.
+// getRunCompletions fetches run completions from the controller with caching.
 // If activeOnly is true, only returns running or pending runs.
 func getRunCompletions(activeOnly bool) ([]runInfo, error) {
 	// Check cache first
@@ -104,7 +104,7 @@ func getRunCompletions(activeOnly bool) ([]runInfo, error) {
 	}
 	runCacheMu.RUnlock()
 
-	// Cache miss - fetch from daemon
+	// Cache miss - fetch from controller
 	runs, err := fetchRunsFromDaemon()
 	if err != nil {
 		return nil, err
@@ -125,7 +125,7 @@ func getRunCompletions(activeOnly bool) ([]runInfo, error) {
 	return runs, nil
 }
 
-// fetchRunsFromDaemon queries the daemon API for runs with a timeout.
+// fetchRunsFromDaemon queries the controller API for runs with a timeout.
 func fetchRunsFromDaemon() ([]runInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), daemonTimeout)
 	defer cancel()

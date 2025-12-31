@@ -23,11 +23,10 @@ import (
 )
 
 // EnvProvider implements secret resolution from environment variables.
-// This provider supports both explicit env: references and legacy ${VAR} syntax.
 //
 // Reference formats:
-//   - env:GITHUB_TOKEN -> resolves GITHUB_TOKEN environment variable
-//   - ${API_KEY} -> resolves API_KEY environment variable (legacy)
+//   - ${API_KEY} -> resolves API_KEY environment variable (recommended)
+//   - env:GITHUB_TOKEN -> resolves GITHUB_TOKEN environment variable (explicit)
 //
 // The provider respects profile inherit_env settings for access control.
 type EnvProvider struct {

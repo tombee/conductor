@@ -40,7 +40,7 @@ providers:
   claude-code:
     type: claude-code
 
-# Daemon configuration
+# Controller configuration
 controller:
   auto_start: false
   socket_path: ~/.config/conductor/conductor.sock
@@ -83,7 +83,7 @@ server:
 
 ## Authentication Configuration
 
-Security settings for daemon authentication.
+Security settings for controller authentication.
 
 ### auth.token_length
 
@@ -321,27 +321,27 @@ providers:
 
 ---
 
-## Daemon Configuration
+## Controller Configuration
 
-Settings for the Conductor daemon.
+Settings for the Conductor controller.
 
-### daemon.auto_start
+### controller.auto_start
 
 **Type:** `boolean`
 **Default:** `false`
 
-Automatically start the controller when running `conductor run --daemon` if not already running.
+Automatically start the controller when running `conductor run` if not already running.
 
 ```conductor
 controller:
   auto_start: false
 ```
 
-### daemon.socket_path
+### controller.socket_path
 
 **Type:** `string`
 **Default:** `~/.config/conductor/conductor.sock`
-**Environment:** `CONDUCTOR_DAEMON_SOCKET`
+**Environment:** `CONDUCTOR_CONTROLLER_SOCKET`
 
 Path to the controller Unix socket.
 
@@ -350,7 +350,7 @@ controller:
   socket_path: ~/.config/conductor/conductor.sock
 ```
 
-### daemon.force_insecure
+### controller.force_insecure
 
 **Type:** `boolean`
 **Default:** `false`
@@ -367,9 +367,9 @@ controller:
 
 ---
 
-## Daemon Authentication
+## Controller Authentication
 
-Security settings for daemon API authentication. **Authentication is enabled by default** as a secure default.
+Security settings for controller API authentication. **Authentication is enabled by default** as a secure default.
 
 ### daemon_auth.enabled
 
@@ -403,21 +403,21 @@ daemon_auth:
 
 Settings for how long observability data is retained.
 
-### daemon.observability.storage.retention.trace_days
+### controller.observability.storage.retention.trace_days
 
 **Type:** `integer`
 **Default:** `7`
 
 Number of days to retain trace data. Must be a positive integer when observability is enabled.
 
-### daemon.observability.storage.retention.event_days
+### controller.observability.storage.retention.event_days
 
 **Type:** `integer`
 **Default:** `30`
 
 Number of days to retain event data. Must be a positive integer when observability is enabled.
 
-### daemon.observability.storage.retention.aggregate_days
+### controller.observability.storage.retention.aggregate_days
 
 **Type:** `integer`
 **Default:** `90`
@@ -481,11 +481,11 @@ All configuration options can be set via environment variables. Environment vari
 | `ANTHROPIC_API_KEY` | Anthropic API key |
 | `OPENAI_API_KEY` | OpenAI API key |
 
-### Daemon
+### Controller
 
 | Variable | Description |
 |----------|-------------|
-| `CONDUCTOR_DAEMON_SOCKET` | Path to daemon socket |
+| `CONDUCTOR_CONTROLLER_SOCKET` | Path to controller socket |
 
 ---
 

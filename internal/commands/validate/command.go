@@ -357,8 +357,8 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, workspace
 			if profile != "" {
 				cmd.Printf("  Profile: %s\n", profile)
 			}
-			cmd.Println("\n  Note: Profile binding validation requires daemon connection")
-			cmd.Println("  Run with --daemon to validate actual bindings")
+			cmd.Println("\n  Note: Profile binding validation requires controller connection")
+			cmd.Println("  Actual bindings are validated when workflow runs via controller")
 		}
 
 		// Show security warnings

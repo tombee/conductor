@@ -56,7 +56,7 @@ Examples:
 	cmd.Flags().StringArrayVar(&args, "args", nil, "Command arguments (can be repeated)")
 	cmd.Flags().StringArrayVar(&env, "env", nil, "Environment variables in KEY=VALUE format (can be repeated)")
 	cmd.Flags().IntVar(&timeout, "timeout", 30, "Timeout for tool calls in seconds")
-	cmd.Flags().BoolVar(&autoStart, "auto-start", false, "Start automatically when daemon starts")
+	cmd.Flags().BoolVar(&autoStart, "auto-start", false, "Start automatically when controller starts")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be added without executing")
 
 	cmd.MarkFlagRequired("command")

@@ -99,20 +99,6 @@ func (s *SDK) Close() error {
 
 	var errs []error
 
-	// Disconnect all MCP servers
-	s.mcpMu.RLock()
-	serverNames := make([]string, 0, len(s.mcpServers))
-	for name := range s.mcpServers {
-		serverNames = append(serverNames, name)
-	}
-	s.mcpMu.RUnlock()
-
-	for _, name := range serverNames {
-		if err := s.DisconnectMCP(name); err != nil {
-			errs = append(errs, fmt.Errorf("disconnect MCP %s: %w", name, err))
-		}
-	}
-
 	// Zero credential memory for security (NFR12)
 	if err := s.zeroCredentials(); err != nil {
 		errs = append(errs, fmt.Errorf("zero credentials: %w", err))

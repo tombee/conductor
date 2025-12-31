@@ -11,7 +11,7 @@ MCP enables workflows to integrate with external tool servers. This package mana
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                        Registry                              │
-│  (daemon-level server management + auto-start support)       │
+│  (controller-level server management + auto-start support)       │
 └─────────────────────────┬───────────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────────┐
@@ -79,7 +79,7 @@ result, _ := client.CallTool(ctx, "read_file", map[string]any{
 
 ### Registry
 
-Daemon-level management combining configuration with runtime state:
+Controller-level management combining configuration with runtime state:
 
 ```go
 registry, _ := mcp.NewRegistry(mcp.RegistryConfig{Logger: logger})
@@ -126,7 +126,7 @@ The Manager implements exponential backoff for failed servers:
 |------|---------|
 | `manager.go` | Server lifecycle management |
 | `client.go` | JSON-RPC client implementation |
-| `registry.go` | Daemon-level server registry |
+| `registry.go` | Controller-level server registry |
 | `config.go` | Configuration loading |
 | `tool_adapter.go` | MCP → Conductor tool adaptation |
 | `types.go` | Protocol type definitions |
@@ -140,7 +140,7 @@ The Manager implements exponential backoff for failed servers:
 
 ## Configuration
 
-Daemon-level MCP servers in `~/.config/conductor/mcp-servers.yaml`:
+Controller-level MCP servers in `~/.config/conductor/mcp-servers.yaml`:
 
 ```yaml
 servers:

@@ -113,9 +113,9 @@ func runControllerStatus(cmd *cobra.Command, args []string) error {
 
 	// Check for connection errors
 	if healthResult.err != nil {
-		if client.IsDaemonNotRunning(healthResult.err) {
-			dnr := &client.DaemonNotRunningError{}
-			fmt.Fprintln(os.Stderr, dnr.Guidance())
+		if client.IsControllerNotRunning(healthResult.err) {
+			cnr := &client.ControllerNotRunningError{}
+			fmt.Fprintln(os.Stderr, cnr.Guidance())
 			os.Exit(10)
 		}
 		return fmt.Errorf("failed to get controller health: %w", healthResult.err)
@@ -177,7 +177,7 @@ func runControllerPing(cmd *cobra.Command, args []string) error {
 
 	start := time.Now()
 	if err := c.Ping(ctx); err != nil {
-		if client.IsDaemonNotRunning(err) {
+		if client.IsControllerNotRunning(err) {
 			if !shared.GetQuiet() {
 				fmt.Println("Controller is not running")
 			}

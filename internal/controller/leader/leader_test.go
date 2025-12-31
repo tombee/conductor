@@ -1,4 +1,4 @@
-// Package leader provides leader election for distributed daemon deployments.
+// Package leader provides leader election for distributed controller deployments.
 package leader
 
 import (

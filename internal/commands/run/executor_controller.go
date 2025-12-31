@@ -32,8 +32,8 @@ import (
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
-// runWorkflowViaDaemon submits a workflow to the daemon for execution
-func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, outputFile string, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun bool, provider, model, timeout, workspace, profile string, bindIntegrations []string, security string, allowHosts, allowPaths []string, logLevel, step string, breakpoints []string) error {
+// runWorkflowViaController submits a workflow to the controller for execution
+func runWorkflowViaController(workflowPath string, inputArgs []string, inputFile, outputFile string, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun bool, provider, model, timeout, workspace, profile string, bindIntegrations []string, security string, allowHosts, allowPaths []string, logLevel, step string, breakpoints []string) error {
 	ctx := context.Background()
 
 	// Apply environment variable defaults for workspace and profile
@@ -54,7 +54,7 @@ func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, ou
 		if !quiet {
 			fmt.Fprintf(os.Stderr, "Using remote workflow: %s\n", workflowPath)
 		}
-		// Remote workflows are fetched by the daemon
+		// Remote workflows are fetched by the controller
 		// We'll pass the reference in the request
 		data = nil
 	} else {
@@ -93,7 +93,7 @@ func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, ou
 		return shared.NewMissingInputError("failed to parse inputs", err)
 	}
 
-	// For daemon mode, collect missing inputs BEFORE submitting to daemon
+	// For controller mode, collect missing inputs BEFORE submitting to controller
 	if def != nil {
 		analyzer := prompt.NewInputAnalyzer(def.Inputs, inputs)
 		missing := analyzer.FindMissingInputs()
@@ -158,7 +158,7 @@ func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, ou
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// Auto-start is always enabled - daemon mode is the only mode
+	// Auto-start is always enabled - controller mode is the only mode
 	autoStartCfg := client.AutoStartConfig{
 		Enabled: true,
 	}
@@ -166,12 +166,12 @@ func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, ou
 		autoStartCfg.SocketPath = cfg.Controller.SocketPath
 	}
 
-	c, err := client.EnsureDaemon(autoStartCfg)
+	c, err := client.EnsureController(autoStartCfg)
 	if err != nil {
-		return fmt.Errorf("failed to connect to daemon: %w\n\nHint: Ensure 'conductord' is in your PATH", err)
+		return fmt.Errorf("failed to connect to controller: %w\n\nHint: Ensure 'conductord' is in your PATH", err)
 	}
 
-	// Submit workflow to daemon
+	// Submit workflow to controller
 	submitPath := "/v1/runs"
 	params := url.Values{}
 
@@ -250,7 +250,7 @@ func runWorkflowViaDaemon(workflowPath string, inputArgs []string, inputFile, ou
 	// The /v1/runs endpoint returns "id"
 	runID, _ := resp["id"].(string)
 	if runID == "" {
-		return shared.NewExecutionError("daemon did not return run ID", nil)
+		return shared.NewExecutionError("controller did not return run ID", nil)
 	}
 
 	// If --background, just print run ID and exit

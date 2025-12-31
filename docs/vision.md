@@ -38,7 +38,7 @@ Organizations and developers building AI-powered automation face common challeng
 2. **Platform features included** - Observability, reliability, and security out of the box
 3. **LLM-efficient** - Deterministic steps handle orchestration; LLMs focus on reasoning tasks
 4. **Provider portability** - Switch LLM providers without rewriting workflows
-5. **Local-first, daemon when needed** - Works on your laptop, scales to production
+5. **Local-first, controller when needed** - Works on your laptop, scales to production
 6. **Shareable by default** - Text files you can version, fork, and share
 
 ## Sharing Model

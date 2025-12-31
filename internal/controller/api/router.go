@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package api provides the HTTP API for the daemon.
+// Package api provides the HTTP API for the controller.
 package api
 
 import (
@@ -69,7 +69,7 @@ type MetricsHandler interface {
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 }
 
-// ActivityRecorder tracks daemon activity for idle timeout monitoring.
+// ActivityRecorder tracks controller activity for idle timeout monitoring.
 type ActivityRecorder interface {
 	RecordActivity()
 }

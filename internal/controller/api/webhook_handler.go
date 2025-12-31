@@ -63,7 +63,7 @@ func (h *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	// Check if runner is draining
 	if h.runner.IsDraining() {
 		w.Header().Set("Retry-After", "10")
-		writeError(w, http.StatusServiceUnavailable, "daemon is shutting down gracefully")
+		writeError(w, http.StatusServiceUnavailable, "controller is shutting down gracefully")
 		return
 	}
 

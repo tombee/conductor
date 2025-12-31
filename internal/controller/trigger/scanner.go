@@ -32,8 +32,17 @@ type WorkflowTrigger struct {
 	// WorkflowName is the name of the workflow
 	WorkflowName string
 
-	// Trigger is the trigger definition
-	Trigger workflow.TriggerDefinition
+	// Type is the trigger type (webhook, schedule, file)
+	Type workflow.TriggerType
+
+	// Webhook configuration (for webhook triggers)
+	Webhook *workflow.WebhookTrigger
+
+	// Schedule configuration (for schedule triggers)
+	Schedule *workflow.ScheduleTrigger
+
+	// File configuration (for file triggers)
+	File *workflow.FileTriggerConfig
 }
 
 // ScanResult contains the results of scanning workflows for triggers.
@@ -99,7 +108,7 @@ func (s *Scanner) Scan() (*ScanResult, error) {
 
 		// Categorize triggers
 		for _, t := range triggers {
-			switch t.Trigger.Type {
+			switch t.Type {
 			case workflow.TriggerTypeWebhook:
 				result.WebhookTriggers = append(result.WebhookTriggers, t)
 			case workflow.TriggerTypeSchedule:
@@ -131,38 +140,33 @@ func (s *Scanner) scanWorkflow(path string) ([]WorkflowTrigger, error) {
 		return nil, fmt.Errorf("failed to parse workflow: %w", err)
 	}
 
-	// Convert listen config to legacy trigger format for backward compatibility
 	if def.Trigger == nil {
 		return nil, nil
 	}
 
 	triggers := make([]WorkflowTrigger, 0, 2)
 
-	// Convert webhook listener to trigger
+	// Collect webhook trigger
 	if def.Trigger.Webhook != nil {
 		triggers = append(triggers, WorkflowTrigger{
 			WorkflowPath: path,
 			WorkflowName: def.Name,
-			Trigger: workflow.TriggerDefinition{
-				Type:    workflow.TriggerTypeWebhook,
-				Webhook: def.Trigger.Webhook,
-			},
+			Type:         workflow.TriggerTypeWebhook,
+			Webhook:      def.Trigger.Webhook,
 		})
 	}
 
-	// Convert schedule listener to trigger
+	// Collect schedule trigger
 	if def.Trigger.Schedule != nil {
 		triggers = append(triggers, WorkflowTrigger{
 			WorkflowPath: path,
 			WorkflowName: def.Name,
-			Trigger: workflow.TriggerDefinition{
-				Type:     workflow.TriggerTypeSchedule,
-				Schedule: def.Trigger.Schedule,
-			},
+			Type:         workflow.TriggerTypeSchedule,
+			Schedule:     def.Trigger.Schedule,
 		})
 	}
 
-	// Convert file listener to trigger
+	// Collect file trigger
 	if def.Trigger.File != nil {
 		// Validate file trigger configuration
 		if err := workflow.ValidateFileTrigger(def.Trigger.File); err != nil {
@@ -172,10 +176,8 @@ func (s *Scanner) scanWorkflow(path string) ([]WorkflowTrigger, error) {
 		triggers = append(triggers, WorkflowTrigger{
 			WorkflowPath: path,
 			WorkflowName: def.Name,
-			Trigger: workflow.TriggerDefinition{
-				Type: workflow.TriggerTypeFile,
-				File: def.Trigger.File,
-			},
+			Type:         workflow.TriggerTypeFile,
+			File:         def.Trigger.File,
 		})
 	}
 

@@ -73,8 +73,7 @@ type Definition struct {
 	Security *SecurityAccessConfig `yaml:"security,omitempty" json:"security,omitempty"`
 }
 
-// ListenConfig defines how a workflow can be invoked.
-// This replaces the old TriggerDefinition structure.
+// TriggerConfig defines how a workflow can be invoked (via listen: in YAML).
 type TriggerConfig struct {
 	// Webhook configures webhook listeners
 	Webhook *WebhookTrigger `yaml:"webhook,omitempty" json:"webhook,omitempty"`
@@ -101,22 +100,6 @@ type APITriggerConfig struct {
 	Secret string `yaml:"secret" json:"secret"`
 }
 
-// TriggerDefinition defines how a workflow can be triggered.
-// DEPRECATED: Use TriggerConfig instead. This type is kept for backward compatibility
-// during migration, but parsing will return an error if triggers: is used.
-type TriggerDefinition struct {
-	// Type is the trigger type (webhook, schedule, file, manual)
-	Type TriggerType `yaml:"type" json:"type"`
-
-	// Webhook configuration (for webhook triggers)
-	Webhook *WebhookTrigger `yaml:"webhook,omitempty" json:"webhook,omitempty"`
-
-	// Schedule configuration (for schedule triggers)
-	Schedule *ScheduleTrigger `yaml:"schedule,omitempty" json:"schedule,omitempty"`
-
-	// File configuration (for file watcher triggers)
-	File *FileTriggerConfig `yaml:"file,omitempty" json:"file,omitempty"`
-}
 
 // TriggerType represents the type of trigger.
 type TriggerType string

@@ -31,7 +31,7 @@ For visual architecture diagrams, see:
 conductor/
 ├── cmd/
 │   ├── conductor/       # CLI client
-│   └── conductor/      # Daemon binary
+│   └── conductor/      # Controller binary
 ├── pkg/                 # Public packages (embeddable)
 │   ├── workflow/        # Parser, executor
 │   ├── llm/             # LLM provider abstraction
@@ -40,7 +40,7 @@ conductor/
 │   ├── security/        # Security profiles, sandboxing
 │   └── errors/          # Typed error handling
 ├── internal/
-│   ├── daemon/          # Daemon-specific code
+│   ├── controller/          # Controller-specific code
 │   │   ├── api/         # HTTP/socket API handlers
 │   │   ├── scheduler/   # Cron scheduling
 │   │   ├── webhook/     # Webhook routing
@@ -59,7 +59,7 @@ conductor/
 │  - Desktop UI               - VS Code extension             │
 │  - CI/CD integrations       - Custom dashboards             │
 └──────────────────────────┬──────────────────────────────────┘
-                           │ Daemon API (recommended)
+                           │ Controller API (recommended)
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  conductor                                                  │
@@ -78,35 +78,35 @@ conductor/
 ```
 
 :::note[About Historical References]
-Some diagrams and documentation may reference companion desktop applications as examples of community tools. Conductor works independently without any additional applications installed. These references are for architectural context only - the CLI and daemon are the primary interfaces for Conductor.
+Some diagrams and documentation may reference companion desktop applications as examples of community tools. Conductor works independently without any additional applications installed. These references are for architectural context only - the CLI and controller are the primary interfaces for Conductor.
 :::
 
 
-## Daemon-First Architecture
+## Controller-First Architecture
 
 All CLI commands go through `conductor`. The controller is required, not optional.
 
-**Why daemon-first:**
+**Why controller-first:**
 - Consistent execution model (checkpointing, state, recovery)
 - Provider credentials managed centrally
 - Same behavior whether running one-off or production workflows
 - API enables community tools to build on Conductor
 
-### CLI → Daemon Communication
+### CLI → Controller Communication
 
 ```
 conductor run workflow.yaml
      │
      │ Unix socket (default) or HTTP
      ▼
-conductor (daemon)
+conductor (controller)
      │
      │ Execute workflow
      ▼
 LLM Providers / Tools
 ```
 
-### Daemon API
+### Controller API
 
 The controller exposes a versioned REST API:
 
@@ -184,7 +184,7 @@ Registry and execution framework for workflow tools.
 - Script tools (stdin/stdout)
 - MCP servers (via SPEC-9)
 
-### Scheduler (`internal/daemon/scheduler`)
+### Scheduler (`internal/controller/scheduler`)
 
 Cron-based workflow scheduling.
 
@@ -194,7 +194,7 @@ triggers:
     cron: "0 9 * * 1-5"  # 9am weekdays
 ```
 
-### Webhooks (`internal/daemon/webhook`)
+### Webhooks (`internal/controller/webhook`)
 
 Receives and routes external events to workflows.
 
@@ -204,7 +204,7 @@ Receives and routes external events to workflows.
 - Discord (messages)
 - Generic HTTP webhooks
 
-### State & Checkpointing (`internal/daemon/backend`)
+### State & Checkpointing (`internal/controller/backend`)
 
 Persists workflow state for crash recovery.
 
@@ -236,9 +236,9 @@ result, err := executor.Execute(ctx, workflowDef, workflow.RunOptions{
 
 | Use Case | Recommendation |
 |----------|----------------|
-| Desktop app | Daemon API |
-| VS Code extension | Daemon API |
-| CI/CD integration | Daemon API |
+| Desktop app | Controller API |
+| VS Code extension | Controller API |
+| CI/CD integration | Controller API |
 | Serverless function | Embed core |
 | Unit tests | Embed core |
 

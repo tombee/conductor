@@ -91,7 +91,7 @@ Metrics exposed at /metrics:
 
 Full configuration options:
 
-	daemon:
+	controller:
 	  observability:
 	    enabled: true
 	    service_name: conductor

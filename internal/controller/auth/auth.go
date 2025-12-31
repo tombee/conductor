@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package auth provides authentication middleware for the daemon API.
+// Package auth provides authentication middleware for the controller API.
 package auth
 
 import (

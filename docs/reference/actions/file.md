@@ -870,7 +870,7 @@ All file operations return consistent error types:
 File action behavior can be customized via workflow execution config (not in workflow YAML):
 
 ```conductor
-# config.yaml (daemon/runtime config)
+# config.yaml (controller/runtime config)
 builtin_actions:
   file:
     max_file_size: 104857600      # 100MB (default)

@@ -13,10 +13,10 @@
 // limitations under the License.
 
 /*
-Package lifecycle manages daemon process lifecycle operations.
+Package lifecycle manages controller process lifecycle operations.
 
 This package provides secure PID file management, process spawning/validation,
-health checking, and lifecycle event logging for the Conductor daemon.
+health checking, and lifecycle event logging for the Conductor controller.
 
 # PID File Management
 
@@ -32,7 +32,7 @@ signals. The package uses exclusive file locking (flock) and atomic creation
 
 # Process Operations
 
-Process validation ensures signals are sent only to conductor daemons,
+Process validation ensures signals are sent only to conductor controllers,
 preventing accidental kills of unrelated processes:
 
 	pid, err := manager.Read()
@@ -50,16 +50,16 @@ preventing accidental kills of unrelated processes:
 
 # Health Checking
 
-Health polling uses exponential backoff to wait for daemon startup:
+Health polling uses exponential backoff to wait for controller startup:
 
 	checker := lifecycle.NewHealthChecker("http://localhost:9000/health")
 	if err := checker.WaitUntilHealthy(30 * time.Second); err != nil {
-	    // Daemon failed to start
+	    // Controller failed to start
 	}
 
 # Process Spawning
 
-Detached process spawning runs the daemon in background mode:
+Detached process spawning runs the controller in background mode:
 
 	spawner := lifecycle.NewSpawner()
 	pid, err := spawner.SpawnDetached(ctx, "/path/to/conductor", args, logPath)

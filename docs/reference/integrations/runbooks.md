@@ -87,8 +87,8 @@ conductor integration status --rate-limits
    # For controller mode
    conductor reload
 
-   # Or restart daemon
-   conductor daemon restart
+   # Or restart controller
+   conductor controller restart
    ```
 
 4. **Verify connectivity**

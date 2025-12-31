@@ -23,9 +23,9 @@ import "context"
 // scheme (e.g., "env", "file", "vault").
 //
 // Secret references in profiles are resolved through providers at run time:
-//   - env:VAR_NAME -> environment variable
+//   - ${VAR} -> environment variable (recommended)
+//   - env:VAR_NAME -> environment variable (explicit scheme)
 //   - file:/path/to/secret -> file contents
-//   - ${VAR} -> environment variable (backward compatibility)
 //   - vault:secret/path -> Vault KV secret (future)
 //
 // Providers must implement timeout and cancellation via the context parameter
@@ -70,12 +70,11 @@ type SecretProviderRegistry interface {
 	Register(provider SecretProvider) error
 
 	// Resolve routes a secret reference to the appropriate provider and returns the value.
-	// Reference format: "scheme:reference" or "${VAR}" for backward compatibility.
 	//
 	// Examples:
-	//   - "env:GITHUB_TOKEN" -> env provider
+	//   - "${API_KEY}" -> env provider (recommended)
+	//   - "env:GITHUB_TOKEN" -> env provider (explicit)
 	//   - "file:/etc/secrets/token" -> file provider
-	//   - "${API_KEY}" -> env provider (legacy syntax)
 	//   - "vault:secret/data/prod#token" -> vault provider (future)
 	//
 	// Returns sanitized errors that don't leak secret values or paths.

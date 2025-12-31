@@ -20,7 +20,7 @@ import (
 	"os/exec"
 )
 
-// setSysProcAttrPlatform sets Windows-specific process attributes for daemon detachment.
+// setSysProcAttrPlatform sets Windows-specific process attributes for controller detachment.
 func setSysProcAttrPlatform(cmd *exec.Cmd) {
 	// On Windows, the process will be detached by default when started without a console
 	// No special SysProcAttr needed

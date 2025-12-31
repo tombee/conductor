@@ -37,7 +37,7 @@ func newListCommand() *cobra.Command {
 		Long:  `List all currently active security overrides.`,
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// List overrides via daemon API
+			// List overrides via controller API
 			url := shared.BuildAPIURL("/v1/override", nil)
 			body, err := shared.MakeAPIRequest("GET", url, nil)
 			if err != nil {

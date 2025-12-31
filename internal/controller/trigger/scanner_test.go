@@ -78,8 +78,8 @@ steps:
 		if trigger.WorkflowName != "webhook-handler" {
 			t.Errorf("WorkflowName = %v, want webhook-handler", trigger.WorkflowName)
 		}
-		if trigger.Trigger.Webhook == nil || trigger.Trigger.Webhook.Path != "/webhooks/test" {
-			t.Errorf("Path = %v, want /webhooks/test", trigger.Trigger.Webhook)
+		if trigger.Webhook == nil || trigger.Webhook.Path != "/webhooks/test" {
+			t.Errorf("Path = %v, want /webhooks/test", trigger.Webhook)
 		}
 	}
 }
@@ -122,8 +122,8 @@ steps:
 		if trigger.WorkflowName != "scheduled-task" {
 			t.Errorf("WorkflowName = %v, want scheduled-task", trigger.WorkflowName)
 		}
-		if trigger.Trigger.Schedule == nil || trigger.Trigger.Schedule.Cron != "0 * * * *" {
-			t.Errorf("Cron = %v, want 0 * * * *", trigger.Trigger.Schedule)
+		if trigger.Schedule == nil || trigger.Schedule.Cron != "0 * * * *" {
+			t.Errorf("Cron = %v, want 0 * * * *", trigger.Schedule)
 		}
 	}
 }
@@ -493,20 +493,20 @@ steps:
 		if trigger.WorkflowName != "file-watcher" {
 			t.Errorf("WorkflowName = %v, want file-watcher", trigger.WorkflowName)
 		}
-		if trigger.Trigger.File == nil {
+		if trigger.File == nil {
 			t.Fatal("File trigger is nil")
 		}
-		if len(trigger.Trigger.File.Paths) != 1 || trigger.Trigger.File.Paths[0] != "/tmp/watch" {
-			t.Errorf("Paths = %v, want [/tmp/watch]", trigger.Trigger.File.Paths)
+		if len(trigger.File.Paths) != 1 || trigger.File.Paths[0] != "/tmp/watch" {
+			t.Errorf("Paths = %v, want [/tmp/watch]", trigger.File.Paths)
 		}
-		if trigger.Trigger.File.Debounce != "500ms" {
-			t.Errorf("Debounce = %v, want 500ms", trigger.Trigger.File.Debounce)
+		if trigger.File.Debounce != "500ms" {
+			t.Errorf("Debounce = %v, want 500ms", trigger.File.Debounce)
 		}
-		if !trigger.Trigger.File.BatchMode {
+		if !trigger.File.BatchMode {
 			t.Error("BatchMode should be true")
 		}
-		if trigger.Trigger.File.MaxTriggersPerMinute != 60 {
-			t.Errorf("MaxTriggersPerMinute = %d, want 60", trigger.Trigger.File.MaxTriggersPerMinute)
+		if trigger.File.MaxTriggersPerMinute != 60 {
+			t.Errorf("MaxTriggersPerMinute = %d, want 60", trigger.File.MaxTriggersPerMinute)
 		}
 	}
 }

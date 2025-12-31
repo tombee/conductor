@@ -126,7 +126,7 @@ prompt: "Use {{.steps.analyze.response}}"
   prompt: "{{.steps.analyze.response}}"  # Must match ID above
 ```
 
-## Daemon Issues
+## Controller Issues
 
 ### "Port already in use"
 

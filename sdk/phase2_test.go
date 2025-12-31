@@ -290,28 +290,3 @@ func TestMCPServerConfiguration(t *testing.T) {
 	}
 }
 
-// TestConnectDisconnectMCP verifies MCP connection lifecycle (stubs for now).
-func TestConnectDisconnectMCP(t *testing.T) {
-	config := MCPConfig{
-		Transport: "stdio",
-		Command:   "test-mcp",
-	}
-
-	s, err := New(
-		WithMCPServer("test", config),
-	)
-	if err != nil {
-		t.Fatalf("New() failed: %v", err)
-	}
-	defer s.Close()
-
-	// Connect (stub implementation returns nil for now)
-	if err := s.ConnectMCP("test", config); err != nil {
-		t.Errorf("ConnectMCP() failed: %v", err)
-	}
-
-	// Disconnect (stub implementation returns nil for now)
-	if err := s.DisconnectMCP("test"); err != nil {
-		t.Errorf("DisconnectMCP() failed: %v", err)
-	}
-}

@@ -18,9 +18,9 @@
 **Lines removed:** ~447 lines (including baseline files creation)
 
 **Files:**
-- `internal/daemon/runner/tracing.go` - DELETED (178 lines)
-- `internal/daemon/runner/executor.go` - Removed dead workflow/step span tracking (~90 lines)
-- `internal/daemon/runner/observability_integration_test.go` - Cleaned up test code (~5 lines)
+- `internal/controller/runner/tracing.go` - DELETED (178 lines)
+- `internal/controller/runner/executor.go` - Removed dead workflow/step span tracking (~90 lines)
+- `internal/controller/runner/observability_integration_test.go` - Cleaned up test code (~5 lines)
 
 **Items from baseline:**
 - safeStartSpan (line 29)
@@ -56,7 +56,7 @@
 - `internal/cli/root.go` - Removed cli.Execute(), GetVerbose(), GetQuiet(), GetJSON(), GetConfigPath() (29 lines)
 - `internal/cli/doc.go` - Updated example to reflect actual usage pattern
 - `internal/commands/shared/flags.go` - Removed SetFlags() (15 lines)
-- `internal/daemon/runner/options.go` - Removed 5 unused option constructors (43 lines)
+- `internal/controller/runner/options.go` - Removed 5 unused option constructors (43 lines)
 
 **Items from baseline:**
 - cli.Execute (never called - main.go uses NewRootCommand directly)
@@ -73,7 +73,7 @@ These are safe removals with clear evidence of being unused:
 
 1. **Other test mocks:**
    - `mockFlakyTool` in `pkg/workflow/executor_test.go`
-   - `mockAdapter` in `internal/daemon/runner/drain_test.go`
+   - `mockAdapter` in `internal/controller/runner/drain_test.go`
 
 2. **Runner helper functions:**
    - `saveCheckpoint` (line 58 in checkpoint.go) - appears to be superseded by LifecycleManager

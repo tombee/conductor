@@ -22,7 +22,7 @@ import (
 	"syscall"
 )
 
-// Spawner handles detached process spawning for daemon background mode.
+// Spawner handles detached process spawning for controller background mode.
 type Spawner struct {
 	// Additional environment variables to pass to the child process
 	Env []string

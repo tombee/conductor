@@ -44,18 +44,18 @@ func TestMCPListCommand_AllFlag(t *testing.T) {
 }
 
 func TestMCPListCommand_NoServers(t *testing.T) {
-	// Skip if running short tests (requires daemon)
+	// Skip if running short tests (requires controller)
 	if testing.Short() {
-		t.Skip("skipping daemon integration test in short mode")
+		t.Skip("skipping controller integration test in short mode")
 	}
 
 	cmd := newMCPListCommand()
 	cmd.SetArgs([]string{})
 
-	// This will fail if daemon is not running, which is expected
+	// This will fail if controller is not running, which is expected
 	err := cmd.Execute()
 	if err != nil {
-		// Expected - daemon not running
-		t.Logf("list command failed as expected (daemon not running): %v", err)
+		// Expected - controller not running
+		t.Logf("list command failed as expected (controller not running): %v", err)
 	}
 }

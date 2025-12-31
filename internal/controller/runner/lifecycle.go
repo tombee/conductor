@@ -219,10 +219,9 @@ func (l *LifecycleManager) ResumeInterrupted(ctx context.Context) error {
 			continue
 		}
 
-		// TODO: Implement actual resume logic
-		// For now, just log that we found interrupted runs
-		// Real implementation would reload workflow definition and continue from checkpoint
-		_ = cp // Placeholder
+		// Resume from checkpoint not yet implemented.
+		// Future: reload workflow definition and continue execution from saved state.
+		_ = cp
 	}
 
 	return nil

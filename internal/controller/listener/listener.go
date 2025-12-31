@@ -71,7 +71,7 @@ func newTCPListener(cfg config.ControllerListenConfig) (net.Listener, error) {
 	// Security check: block non-localhost bindings unless explicitly allowed
 	if !cfg.AllowRemote && isRemoteAddr(cfg.TCPAddr) {
 		return nil, fmt.Errorf(
-			"binding to %s exposes the daemon to the network.\n"+
+			"binding to %s exposes the controller to the network.\n"+
 				"This allows anyone with network access to execute workflows.\n\n"+
 				"If you understand the risks, use: --allow-remote\n"+
 				"For production, use HTTPS with authentication: --listen https://...",

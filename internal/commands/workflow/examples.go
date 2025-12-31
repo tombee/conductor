@@ -10,9 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tombee/conductor/internal/commands/completion"
 	"github.com/tombee/conductor/internal/commands/shared"
-	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/internal/examples"
-	"github.com/tombee/conductor/pkg/workflow"
 )
 
 // NewExamplesCommand creates the examples command
@@ -23,7 +21,7 @@ func NewExamplesCommand() *cobra.Command {
 			"group": "workflow",
 		},
 		Short: "Manage example workflows",
-		Long: `Browse, view, run, and copy example workflows.
+		Long: `Browse, view, and copy example workflows.
 
 Examples are embedded in the Conductor binary and work offline.
 They demonstrate common workflow patterns and best practices.`,
@@ -31,7 +29,6 @@ They demonstrate common workflow patterns and best practices.`,
 
 	cmd.AddCommand(newExamplesListCmd())
 	cmd.AddCommand(newExamplesShowCmd())
-	cmd.AddCommand(newExamplesRunCmd())
 	cmd.AddCommand(newExamplesCopyCmd())
 
 	// Default to list if no subcommand specified
@@ -48,7 +45,7 @@ func newExamplesListCmd() *cobra.Command {
 		Short: "List available example workflows",
 		Long: `List all embedded example workflows with their descriptions.
 
-See also: conductor examples show, conductor examples run`,
+See also: conductor examples show, conductor examples copy`,
 		Example: `  # Example 1: List all examples
   conductor examples list
 
@@ -83,7 +80,6 @@ See also: conductor examples show, conductor examples run`,
 
 			fmt.Println()
 			fmt.Println("Use 'conductor examples show <name>' to view an example")
-			fmt.Println("Use 'conductor examples run <name>' to execute an example")
 			fmt.Println("Use 'conductor examples copy <name> <dest>' to copy an example")
 
 			return nil
@@ -125,91 +121,6 @@ See also: conductor examples list, conductor examples copy, conductor validate`,
 			return nil
 		},
 	}
-
-	return cmd
-}
-
-func newExamplesRunCmd() *cobra.Command {
-	var (
-		dryRun  bool
-		quiet   bool
-		verbose bool
-	)
-
-	cmd := &cobra.Command{
-		Use:   "run <name>",
-		Short: "Run an example workflow",
-		Long: `Run an embedded example workflow.
-
-This command executes the example with default settings. You can pass
-additional flags like --verbose or --dry-run.
-
-See also: conductor examples list, conductor run, conductor validate`,
-		Example: `  # Example 1: Run an example workflow
-  conductor examples run hello-world
-
-  # Example 2: Preview execution without running
-  conductor examples run api-request --dry-run
-
-  # Example 3: Run with verbose output
-  conductor examples run data-pipeline --verbose
-
-  # Example 4: Run with JSON output
-  conductor examples run hello-world --json`,
-		Args:              cobra.ExactArgs(1),
-		ValidArgsFunction: completion.CompleteExampleNames,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			name := args[0]
-
-			if !examples.Exists(name) {
-				return fmt.Errorf("example %q not found (use 'conductor examples list' to see available examples)", name)
-			}
-
-			fmt.Printf("Running example: %s\n\n", name)
-
-			// Load the example
-			content, err := examples.Get(name)
-			if err != nil {
-				return fmt.Errorf("failed to load example: %w", err)
-			}
-
-			// Parse the workflow
-			def, err := workflow.ParseDefinition(content)
-			if err != nil {
-				return fmt.Errorf("failed to parse example workflow: %w", err)
-			}
-
-			// Load config for provider resolution
-			_, err = config.Load(shared.GetConfigPath())
-			if err != nil {
-				return fmt.Errorf("failed to load config: %w", err)
-			}
-
-			// Show execution plan if verbose or dry-run
-			if verbose || dryRun {
-				fmt.Println("Execution Plan:")
-				fmt.Printf("  Workflow: %s\n", def.Name)
-				fmt.Printf("  Steps: %d\n", len(def.Steps))
-				fmt.Println()
-			}
-
-			if dryRun {
-				fmt.Println("Dry run complete. No workflow executed.")
-				return nil
-			}
-
-			// TODO: Actual execution will be implemented in later phase
-			fmt.Println("✓ Example validated successfully!")
-			fmt.Println()
-			fmt.Println("Note: Workflow execution not yet implemented")
-
-			return nil
-		},
-	}
-
-	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show execution plan without running")
-	cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Suppress all warnings")
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show detailed execution logs")
 
 	return cmd
 }

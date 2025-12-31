@@ -34,7 +34,7 @@ func WithMCPManager(manager mcp.MCPManagerProvider) Option {
 	}
 }
 
-// WithConfig sets the daemon configuration for profile resolution.
+// WithConfig sets the controller configuration for profile resolution.
 func WithConfig(cfg *config.Config) Option {
 	return func(r *Runner) {
 		r.config = cfg
