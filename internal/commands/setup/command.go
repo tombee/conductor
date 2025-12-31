@@ -16,8 +16,10 @@ package setup
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 // NewCommand creates the setup command
@@ -32,7 +34,10 @@ func NewCommand() *cobra.Command {
   - Secrets management (keychain, environment variables, file)
   - Integrations (GitHub, Slack, Jira, Discord, Jenkins)
 
-The wizard provides a TUI (Terminal User Interface) for guided configuration.`,
+The wizard provides a TUI (Terminal User Interface) for guided configuration.
+
+Use --accessible for simple text prompts if the TUI doesn't work in your terminal.
+You can also set CONDUCTOR_ACCESSIBLE=1 to enable accessible mode.`,
 		Annotations: map[string]string{
 			"group": "config",
 		},
@@ -48,6 +53,88 @@ The wizard provides a TUI (Terminal User Interface) for guided configuration.`,
 
 // runSetup executes the setup wizard
 func runSetup(cmd *cobra.Command, accessible bool) error {
-	// TODO: Implement setup wizard
-	return fmt.Errorf("setup wizard not yet implemented")
+	// Determine if we should use accessible mode
+	accessibleMode := shouldUseAccessibleMode(accessible)
+
+	// Validate terminal size if using TUI mode
+	if !accessibleMode {
+		if err := validateTerminalSize(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n\n", err)
+			fmt.Fprintf(os.Stderr, "Tip: Use --accessible flag for non-interactive mode:\n")
+			fmt.Fprintf(os.Stderr, "  conductor setup --accessible\n")
+			return err
+		}
+	}
+
+	// Create audit logger
+	audit := NewAuditLogger()
+
+	// Load existing config or create new state
+	state, err := LoadOrCreateState()
+	if err != nil {
+		return fmt.Errorf("failed to load setup state: %w", err)
+	}
+
+	audit.LogSetupStarted(state.Original != nil)
+
+	// Initialize signal handler for graceful exit
+	signalHandler := NewSignalHandler(state, state.IsDirty)
+	signalHandler.Start()
+	defer signalHandler.Stop()
+
+	// TODO: Implement wizard flow
+	// This will be implemented in the full wizard logic:
+	// 1. Show welcome screen (first-run) or main menu (returning user)
+	// 2. Navigate through provider/integration/settings forms
+	// 3. Show review screen before save
+	// 4. Save configuration atomically with backup
+	// 5. Show completion message
+
+	fmt.Println("Setup wizard is not fully implemented yet.")
+	fmt.Printf("Accessible mode: %v\n", accessibleMode)
+
+	return fmt.Errorf("setup wizard not yet fully implemented")
+}
+
+// shouldUseAccessibleMode determines if accessible mode should be used.
+// Returns true if:
+// - --accessible flag is set
+// - CONDUCTOR_ACCESSIBLE=1 environment variable is set
+// - stdin is not a terminal (e.g., piped input)
+func shouldUseAccessibleMode(flagValue bool) bool {
+	// Explicit flag takes precedence
+	if flagValue {
+		return true
+	}
+
+	// Check environment variable
+	if os.Getenv("CONDUCTOR_ACCESSIBLE") == "1" {
+		return true
+	}
+
+	// Check if stdin is a terminal
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		return true
+	}
+
+	return false
+}
+
+// validateTerminalSize checks if the terminal is large enough for the TUI.
+// Minimum size: 40 columns x 15 rows
+func validateTerminalSize() error {
+	width, height, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		// Can't determine size, assume it's okay
+		return nil
+	}
+
+	const minWidth = 40
+	const minHeight = 15
+
+	if width < minWidth || height < minHeight {
+		return fmt.Errorf("terminal too small (need at least %dx%d, got %dx%d)", minWidth, minHeight, width, height)
+	}
+
+	return nil
 }

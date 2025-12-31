@@ -15,6 +15,8 @@
 package setup
 
 import (
+	"fmt"
+
 	"github.com/tombee/conductor/internal/config"
 )
 
@@ -93,6 +95,27 @@ func (s *SetupState) clearCredentials() {
 		s.CredentialStore[key] = ""
 	}
 	s.CredentialStore = make(map[string]string)
+}
+
+// LoadOrCreateState loads existing config or creates a new state.
+// It determines the config path from the XDG config directory.
+func LoadOrCreateState() (*SetupState, error) {
+	// Determine config path using XDG standards
+	configPath, err := config.ConfigPath()
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine config path: %w", err)
+	}
+
+	// Try to load existing config
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		// If config doesn't exist, create a new minimal config
+		cfg = &config.Config{
+			Providers: make(config.ProvidersMap),
+		}
+	}
+
+	return NewSetupState(cfg, configPath), nil
 }
 
 // copyConfig creates a deep copy of a config.Config.
