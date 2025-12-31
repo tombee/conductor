@@ -453,12 +453,12 @@ builtinStep := workflow.Step{
     },
 }
 
-// Connector step (HTTP connector)
-connectorStep := workflow.Step{
-    ID:        "create_issue",
-    Type:      workflow.StepTypeConnector,
-    Connector: "github.create_issue",
-    Action: "my_custom_action",
+// Integration step (GitHub integration)
+integrationStep := workflow.Step{
+    ID:          "create_issue",
+    Type:        workflow.StepTypeIntegration,
+    Integration: "github",
+    Operation:   "create_issue",
     Inputs: map[string]interface{}{
         "param": "{{.value}}",
     },

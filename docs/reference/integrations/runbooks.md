@@ -43,7 +43,7 @@ conductor integration status --rate-limits
 1. **Identify high-frequency callers**
    ```bash
    # Check logs for patterns
-   conductor logs --filter "connector=github" --last 1h
+   conductor logs --filter "integration=github" --last 1h
    ```
 
 2. **Temporary mitigation**
@@ -194,16 +194,16 @@ conductor integration status --rate-limits
 1. **Check metrics**
    ```bash
    # View integration metrics
-   curl http://localhost:9090/metrics | grep conductor_connector
+   curl http://localhost:9090/metrics | grep conductor_integration
 
    # Look for:
-   # conductor_connector_request_duration_seconds_sum
-   # conductor_connector_rate_limit_waits_total
+   # conductor_integration_request_duration_seconds_sum
+   # conductor_integration_rate_limit_waits_total
    ```
 
 2. **Identify slow operations**
    ```bash
-   conductor logs --filter "connector" --format json | \
+   conductor logs --filter "integration" --format json | \
      jq '.duration' | \
      sort -n | \
      tail -20
@@ -250,7 +250,7 @@ conductor integration status --rate-limits
 5. **Check metrics after rollout**
    ```bash
    # Monitor error rates
-   curl http://localhost:9090/metrics | grep conductor_connector_requests_total
+   curl http://localhost:9090/metrics | grep conductor_integration_requests_total
    ```
 
 ## Monitoring Dashboards
@@ -258,48 +258,48 @@ conductor integration status --rate-limits
 ### Key Metrics to Monitor
 
 **Request Rate:**
-- `conductor_connector_requests_total{connector="github",status="200"}`
+- `conductor_integration_requests_total{integration="github",status="200"}`
 - Alert if error rate (status 4xx/5xx) > 5%
 
 **Duration:**
-- `conductor_connector_request_duration_seconds{connector="github"}`
+- `conductor_integration_request_duration_seconds{integration="github"}`
 - Alert if p95 > 5 seconds
 
 **Rate Limit Waits:**
-- `conductor_connector_rate_limit_waits_total{connector="github"}`
+- `conductor_integration_rate_limit_waits_total{integration="github"}`
 - Alert if wait count increasing rapidly
 
 **Sample Prometheus Queries:**
 
 ```promql
 # Error rate by integration
-rate(conductor_connector_requests_total{status=~"4..|5.."}[5m]) /
-rate(conductor_connector_requests_total[5m])
+rate(conductor_integration_requests_total{status=~"4..|5.."}[5m]) /
+rate(conductor_integration_requests_total[5m])
 
 # P95 request duration
-histogram_quantile(0.95, conductor_connector_request_duration_seconds)
+histogram_quantile(0.95, conductor_integration_request_duration_seconds)
 
 # Rate limit wait rate
-rate(conductor_connector_rate_limit_waits_total[5m])
+rate(conductor_integration_rate_limit_waits_total[5m])
 ```
 
 ## Emergency Procedures
 
 ### Circuit Breaker: Disable Failing Integration
 
-If a integration is causing cascading failures:
+If an integration is causing cascading failures:
 
 1. **Identify affected workflows**
    ```bash
-   grep -r "connector: failing_connector" workflows/
+   grep -r "integration: failing_integration" workflows/
    ```
 
 2. **Temporary disable** (if supported by your deployment)
    ```yaml
    # In workflow, add condition to skip
-   - id: use_connector
+   - id: use_integration
      type: integration
-     integration: failing_connector.operation
+     integration: failing_integration.operation
      condition: "false"  # Temporarily disabled
    ```
 

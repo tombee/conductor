@@ -191,7 +191,7 @@ The workflow consists of three sequential steps that transform raw event data in
   type: llm
   model: fast
   prompt: |
-    [Note: This is a placeholder. In production, use a Slack connector.]
+    [Note: This is a placeholder. In production, use the Slack integration.]
 
     Prepare this message for posting to {{.channel}}:
     {{$.format_message.content}}

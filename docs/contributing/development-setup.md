@@ -387,9 +387,9 @@ conductor/
 ├── internal/           # Private implementation
 │   └── [internal packages]
 ├── docs/               # Documentation
-│   ├── learn/
+│   ├── getting-started/
 │   ├── guides/
-│   ├── connectors/
+│   ├── building-workflows/
 │   └── reference/
 ├── examples/           # Example workflows
 └── testutil/          # Shared test utilities

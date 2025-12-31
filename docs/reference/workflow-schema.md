@@ -422,15 +422,15 @@ See examples under `output_type`.
 
 ---
 
-### Connector Steps (Shorthand Syntax)
+### Action and Integration Steps (Shorthand Syntax)
 
-Connector steps execute operations on builtin or external integrations. The preferred syntax is **shorthand** where you don't need to specify `type: connector` explicitly.
+Action steps execute local operations (file, shell, http, etc.) while integration steps call external services. The preferred syntax is **shorthand** where you specify the operation directly without an explicit `type:`.
 
 #### Shorthand Pattern
 
-**Format:** `connector.operation: inputs`
+**Format:** `action.operation: inputs` or `integration.operation: inputs`
 
-The integration and operation are specified as a single key following the pattern `connector.operation:`. The value becomes the inputs for that operation.
+The action/integration and operation are specified as a single key. The value becomes the inputs for that operation.
 
 ```conductor
 # Inline form (simple inputs)
@@ -448,7 +448,7 @@ The integration and operation are specified as a single key following the patter
 
 #### Auto-Generated IDs
 
-Steps using shorthand syntax automatically get IDs in the format `{connector}_{operation}_{N}`:
+Steps using shorthand syntax automatically get IDs in the format `{action}_{operation}_{N}` or `{integration}_{operation}_{N}`:
 
 ```conductor
 steps:
@@ -464,9 +464,9 @@ You can still provide an explicit `id:` when needed:
   file.read: ./config.json
 ```
 
-#### Builtin Connectors
+#### Builtin Actions
 
-These connectors work without configuration:
+These actions work without configuration:
 
 **file** - File system operations
 ```conductor
@@ -519,33 +519,33 @@ These connectors work without configuration:
     expr: '.priority == "high"'
 ```
 
-#### External Connectors
+#### Service Integrations
 
-External connectors require configuration in the `integrations:` section:
+Service integrations require configuration in the `integrations:` section:
 
 ```conductor
 integrations:
   github:
-    from: connectors/github
+    from: integrations/github
     auth:
       token: ${GITHUB_TOKEN}
 
 steps:
-  # Use the configured connector
+  # Use the configured integration
   - github.create_issue:
       owner: myorg
       repo: myrepo
       title: "Automated Issue"
 ```
 
-#### Verbose Connector Syntax (Optional)
+#### Verbose Integration Syntax (Optional)
 
 For complex cases, you can use the verbose syntax:
 
 ```conductor
 - id: create_issue
-  type: connector
-  connector: github
+  type: integration
+  integration: github
   operation: create_issue
   inputs:
     owner: myorg
@@ -1347,21 +1347,21 @@ triggers:
 # GOOD - Environment variable
 integrations:
   github:
-    from: connectors/github
+    from: integrations/github
     auth:
       token: ${GITHUB_TOKEN}
 
 # GOOD - Secret reference (when secrets backend is configured)
 integrations:
   slack:
-    from: connectors/slack
+    from: integrations/slack
     auth:
       token: $secret:slack_token
 
 # BAD - Hardcoded credential (will cause validation error)
 integrations:
   github:
-    from: connectors/github
+    from: integrations/github
     auth:
       token: ghp_xxxxxxxxxxxxxxxxxxxx  # ERROR!
 ```
@@ -1401,14 +1401,14 @@ Be specific with file paths to prevent unauthorized file access:
     path: ~  # WARNING: User home directory
 ```
 
-### Connector Configuration
+### Integration Configuration
 
-External connectors should always include authentication:
+External integrations should always include authentication:
 
 ```conductor
 integrations:
   github:
-    from: connectors/github
+    from: integrations/github
     auth:  # Always configure auth for external services
       token: ${GITHUB_TOKEN}
 ```
@@ -1419,10 +1419,10 @@ integrations:
 
 Conductor validates workflow definitions before execution:
 
-1. **Step types**: Must be `llm`, `parallel`, `condition`, or detected from connector shorthand
+1. **Step types**: Must be `llm`, `parallel`, `condition`, or detected from action/integration shorthand
 2. **Unique IDs**: All step IDs must be unique within a workflow (auto-generated if not provided for shorthand)
 3. **LLM steps**: Must have `prompt` field and explicit `id`
-4. **Connector steps**: Must have valid connector and operation names matching pattern `^[a-z][a-z0-9_]*$`
+4. **Action/Integration steps**: Must have valid names matching pattern `^[a-z][a-z0-9_]*$`
 5. **Condition steps**: Must have `condition` field with valid expression
 6. **Parallel steps**: Must have `steps` array with at least one nested step
 7. **Model tiers**: Must be `fast`, `balanced`, or `strategic`
@@ -1431,7 +1431,7 @@ Conductor validates workflow definitions before execution:
 10. **Agent references**: Referenced agents must be defined in `agents:` section
 11. **Mutually exclusive**: Cannot specify both `output_schema` and `output_type`
 12. **Security checks**:
-    - Plaintext credentials in connector auth trigger validation errors
+    - Plaintext credentials in integration auth trigger validation errors
     - Shell commands with string form + templates trigger warnings
     - Overly broad file paths trigger warnings
 

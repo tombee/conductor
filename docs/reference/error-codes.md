@@ -42,7 +42,7 @@ validation failed on workflow_name: name cannot contain special characters
 Represents a resource not found error.
 
 **Fields:**
-- `Resource` (string): Type of resource (e.g., "workflow", "tool", "connector")
+- `Resource` (string): Type of resource (e.g., "workflow", "tool", "integration")
 - `ID` (string): Identifier that was not found
 
 **Example:**
@@ -176,7 +176,7 @@ type UserVisibleError interface {
 ```
 
 **Implementations:**
-- `connector.Error`
+- `integration.Error`
 - `mcp.MCPError`
 - `file.OperationError`
 
@@ -193,7 +193,7 @@ type ErrorClassifier interface {
 ```
 
 **Implementations:**
-- `connector.Error` (classifies HTTP errors, timeouts, etc.)
+- `integration.Error` (classifies HTTP errors, timeouts, etc.)
 
 ### Error Wrapping
 
@@ -378,7 +378,7 @@ Connector operations use typed errors for consistent handling across all integra
 | `auth_error` | Authentication or authorization failure (401, 403) | No | Check authentication credentials and permissions |
 | `not_found` | Resource not found (404) | No | Verify the resource exists and the path is correct |
 | `validation_error` | Invalid request data (400, 422) | No | Check request inputs against operation schema |
-| `rate_limited` | Rate limit exceeded (429) | Yes | Wait for rate limit window or configure rate_limit in connector |
+| `rate_limited` | Rate limit exceeded (429) | Yes | Wait for rate limit window or configure rate_limit in integration |
 | `server_error` | Server-side error (500+) | Yes | Retry or contact the service provider |
 | `timeout` | Operation timeout | Yes | Increase timeout or check service responsiveness |
 | `connection_error` | Network or DNS error | Yes | Check network connectivity and DNS resolution |
@@ -386,11 +386,11 @@ Connector operations use typed errors for consistent handling across all integra
 | `ssrf_blocked` | SSRF protection blocked request | No | Add host to allowed_hosts if access is intentional |
 | `path_injection` | Path traversal attempt blocked | No | Remove path traversal sequences (../, %2e%2e) |
 
-**Example connector error:**
+**Example integration error:**
 
 ```
-ConnectorError: 429 Too Many Requests (type: rate_limited) [HTTP 429]
-Suggestion: Wait for rate limit window or configure rate_limit in connector
+IntegrationError: 429 Too Many Requests (type: rate_limited) [HTTP 429]
+Suggestion: Wait for rate limit window or configure rate_limit in integration
 ```
 
 **Resolution by error type:**
@@ -400,12 +400,12 @@ Suggestion: Wait for rate limit window or configure rate_limit in connector
 1. Verify API credentials are correct
 2. Check token hasn't expired
 3. Ensure account has required permissions
-4. Review connector auth configuration
+4. Review integration auth configuration
 
 **Rate Limit Errors (`rate_limited`):**
 
 1. Wait for rate limit window to reset
-2. Configure rate limiting in connector:
+2. Configure rate limiting in integration:
    ```yaml
    integrations:
      github:
@@ -660,8 +660,8 @@ conductor validate workflow.yaml
 # Test LLM provider
 conductor providers test openai
 
-# Test connector
-conductor connectors test github
+# Test integration
+conductor integrations test github
 
 # Validate inputs
 conductor run workflow.yaml --dry-run

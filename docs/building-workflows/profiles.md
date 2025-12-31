@@ -46,9 +46,7 @@ requires:
 
 steps:
   - id: create-pr
-    type: connector
-    connector: github.create_pull_request
-    inputs:
+    github.create_pull_request:
       title: "Deploy {{.input.version}}"
 ```
 
@@ -556,7 +554,7 @@ workspace_name:
       inherit_env: bool | {allowlist: [string]}
       bindings:
         integrations:
-          connector_name:
+          integration_name:
             auth: {...}
         mcp_servers:
           server_name:
