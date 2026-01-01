@@ -85,14 +85,14 @@ func TestRegistry_ParseReference(t *testing.T) {
 			wantError:  false,
 		},
 		{
-			name:       "legacy ${VAR} syntax",
+			name:       "${VAR} syntax",
 			reference:  "${API_KEY}",
 			wantScheme: "env",
 			wantKey:    "API_KEY",
 			wantError:  false,
 		},
 		{
-			name:       "legacy ${VAR} with underscore",
+			name:       "${VAR} with underscore",
 			reference:  "${GITHUB_API_KEY}",
 			wantScheme: "env",
 			wantKey:    "GITHUB_API_KEY",
@@ -176,7 +176,7 @@ func TestRegistry_Resolve(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name:      "resolve env with legacy syntax",
+			name:      "resolve env with ${VAR} syntax",
 			reference: "${API_KEY}",
 			want:      "sk-test456",
 			wantError: false,

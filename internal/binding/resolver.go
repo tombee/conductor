@@ -511,7 +511,7 @@ func (r *Resolver) resolveSecret(ctx context.Context, reference string) (string,
 // isSecretReference checks if a value looks like a secret reference.
 //
 // Secret references match one of these patterns:
-//   - ${VAR_NAME}        (legacy environment variable syntax)
+//   - ${VAR_NAME}        (environment variable reference)
 //   - env:VAR_NAME       (explicit environment variable)
 //   - file:/path/to/file (file-based secret)
 //   - vault:path#field   (future: Vault secret)

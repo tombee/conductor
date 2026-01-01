@@ -45,7 +45,7 @@ var (
 // ValidateSecretReference validates the syntax of a secret reference.
 //
 // Valid formats:
-//   - ${GITHUB_TOKEN} - legacy environment variable syntax
+//   - ${GITHUB_TOKEN} - environment variable reference
 //   - env:API_KEY - explicit environment variable
 //   - file:/etc/secrets/token - file-based secret
 //   - vault:secret/data/prod#token - vault secret (future)
