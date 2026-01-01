@@ -279,7 +279,7 @@ func (s StepOutput) ToMap() map[string]interface{} {
 
 	if s.Text != "" {
 		result["text"] = s.Text
-		result["response"] = s.Text // Alias for backward compatibility with LLM steps
+		result["response"] = s.Text // Both "text" and "response" are valid accessors
 	}
 
 	if s.Error != "" {

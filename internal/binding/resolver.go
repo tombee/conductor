@@ -180,7 +180,6 @@ func (r *Resolver) Resolve(ctx context.Context, resCtx *ResolutionContext) (*Res
 
 	// If workflow has no requirements, check for inline definitions
 	if resCtx.Workflow.Requires == nil {
-		// Use inline definitions if present (backward compatibility)
 		return r.resolveInlineBindings(ctx, resCtx, resolved)
 	}
 
@@ -488,7 +487,7 @@ func (r *Resolver) resolveInlineBindings(ctx context.Context, resCtx *Resolution
 // 2. Routes to the appropriate secret provider via the registry
 // 3. Returns the resolved value or an error
 //
-// Non-secret values (plain strings) are returned as-is for backward compatibility.
+// Non-secret values (plain strings) are returned as-is.
 func (r *Resolver) resolveSecret(ctx context.Context, reference string) (string, error) {
 	if reference == "" {
 		return "", nil

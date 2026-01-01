@@ -53,7 +53,7 @@ func FromContext(ctx context.Context) *PermissionContext {
 // If permDef is nil, returns permissive defaults (allow all).
 func NewPermissionContext(permDef *workflow.PermissionDefinition) *PermissionContext {
 	if permDef == nil {
-		// Permissive defaults for backward compatibility (DECISION-141-1)
+		// Permissive defaults when no permissions defined
 		return &PermissionContext{
 			Paths: &workflow.PathPermissions{
 				Read:  []string{"**/*"},

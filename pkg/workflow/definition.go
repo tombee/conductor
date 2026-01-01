@@ -1272,53 +1272,6 @@ func ParseIntegrationRequirement(req string) ParsedIntegrationRequirement {
 	}
 }
 
-// UnmarshalYAML implements custom YAML unmarshaling for Definition
-// to detect and reject the deprecated triggers: key.
-func (d *Definition) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	// First check for deprecated triggers: key
-	var raw map[string]interface{}
-	if err := unmarshal(&raw); err != nil {
-		return err
-	}
-
-	if _, hasTriggersKey := raw["triggers"]; hasTriggersKey {
-		return &errors.ConfigError{
-			Key: "triggers",
-			Reason: `the 'triggers:' key is no longer supported. Use 'listen:' instead.
-
-Migration guide:
-  Old syntax (triggers:):
-    triggers:
-      - type: webhook
-        webhook:
-          path: /webhooks/my-workflow
-          source: github
-          secret: ${GITHUB_SECRET}
-
-  New syntax (listen:):
-    listen:
-      webhook:
-        path: /webhooks/my-workflow
-        source: github
-        secret: ${GITHUB_SECRET}
-      api:
-        secret: ${API_SECRET}
-      schedule:
-        cron: "0 9 * * *"
-
-See: https://conductor.sh/docs/workflows/listen`,
-		}
-	}
-
-	// Standard unmarshaling using a type alias to avoid recursion
-	type definitionAlias Definition
-	var alias definitionAlias
-	if err := unmarshal(&alias); err != nil {
-		return err
-	}
-	*d = Definition(alias)
-	return nil
-}
 
 // ParseDefinition parses a workflow definition from YAML bytes.
 func ParseDefinition(data []byte) (*Definition, error) {
