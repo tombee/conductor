@@ -198,7 +198,7 @@ When reviewing any section of this document, if you find code patterns like:
 - [ ] Test helpers that hide failures
 - [ ] Shared test fixtures that create coupling
 - [ ] Missing test cleanup (leaked resources)
-- [x] Race conditions in tests (`go test -race`) *(fixed in publicapi, runner/logs, httpclient, foreach)*
+- [x] Race conditions in tests (`go test -race`) *(fixed in publicapi, runner/logs, httpclient, foreach, endpoint/handler)*
 - [ ] Parallel test safety
 
 ---
@@ -358,7 +358,7 @@ BEGIN RSA PRIVATE KEY, BEGIN OPENSSH PRIVATE KEY
 > Verify all code examples in documentation are syntactically correct and actually work when run.
 
 **Specific Checks:**
-- [ ] YAML workflow examples validate
+- [x] YAML workflow examples validate *(all 9 examples in examples/ pass validation)*
 - [ ] Shell commands execute successfully
 - [ ] Code snippets compile/run
 - [ ] Output examples match actual output
@@ -626,11 +626,11 @@ BEGIN RSA PRIVATE KEY, BEGIN OPENSSH PRIVATE KEY
 > Verify all dependency licenses are compatible with project license.
 
 **Specific Checks:**
-- [ ] Direct dependency licenses
-- [ ] Transitive dependency licenses
-- [ ] License compatibility with Apache 2.0
+- [x] Direct dependency licenses *(all MIT, BSD-3-Clause, or Apache-2.0)*
+- [x] Transitive dependency licenses *(verified via go-licenses)*
+- [x] License compatibility with Apache 2.0 *(all licenses are compatible)*
 - [ ] Attribution requirements
-- [ ] Copyleft contamination
+- [x] Copyleft contamination *(no GPL/LGPL dependencies)*
 
 **Tools:** `go-licenses`, `license-checker`
 
@@ -642,8 +642,8 @@ BEGIN RSA PRIVATE KEY, BEGIN OPENSSH PRIVATE KEY
 > Review dependency freshness and update process.
 
 **Specific Checks:**
-- [ ] Outdated dependencies
-- [ ] Security updates pending
+- [x] Outdated dependencies *(~30 minor updates available, no critical)*
+- [x] Security updates pending *(govulncheck shows no vulnerabilities)*
 - [ ] Major version updates available
 - [ ] Update automation (Dependabot)
 
@@ -672,7 +672,7 @@ BEGIN RSA PRIVATE KEY, BEGIN OPENSSH PRIVATE KEY
 > Review concurrent code for correctness and efficiency.
 
 **Specific Checks:**
-- [x] Race conditions (`go test -race`) *(fixed in publicapi, runner/logs, httpclient, foreach)*
+- [x] Race conditions (`go test -race`) *(fixed in publicapi, runner/logs, httpclient, foreach, endpoint/handler)*
 - [ ] Deadlock possibilities
 - [ ] Mutex usage correctness
 - [ ] Channel usage patterns
