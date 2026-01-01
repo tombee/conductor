@@ -90,6 +90,14 @@ func (wizardRunner) Run(ctx context.Context, state *setup.SetupState, accessible
 				return err
 			}
 
+			// For first-run users, after completing providers, go directly to save/exit
+			if isFirstRun {
+				if err := handleSaveAndExit(ctx, state); err != nil {
+					return err
+				}
+				return nil
+			}
+
 		case MenuIntegrations:
 			// Navigate to integrations management
 			if err := handleIntegrationsMenu(ctx, state); err != nil {
