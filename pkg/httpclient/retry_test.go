@@ -341,8 +341,8 @@ func TestRetryTransport_ContextCancellation(t *testing.T) {
 	}
 
 	// Should only attempt once before cancellation
-	if attempts > 1 {
-		t.Errorf("expected 1 attempt, got %d", attempts)
+	if atomic.LoadInt32(&attempts) > 1 {
+		t.Errorf("expected 1 attempt, got %d", atomic.LoadInt32(&attempts))
 	}
 }
 
