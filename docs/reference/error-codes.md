@@ -61,7 +61,7 @@ workflow not found: my-workflow
 **When to use:**
 - Workflow not found in store
 - Tool not registered
-- Connector not configured
+- Integration not configured
 - MCP server not found
 
 #### ProviderError
@@ -158,7 +158,7 @@ LLM request operation timed out after 30s
 - LLM request timeouts
 - Workflow step timeouts
 - Tool execution timeouts
-- Connector operation timeouts
+- Integration operation timeouts
 
 ### Error Interfaces
 
@@ -367,9 +367,9 @@ When using `--json` output format, Conductor returns structured error codes for 
 | E402 | `ErrorCodeInternal` | Internal error | Check logs and report issue |
 | E403 | `ErrorCodeExecutionFailed` | Execution failed | Review error details and retry |
 
-## Connector Errors
+## Integration Errors
 
-Connector operations use typed errors for consistent handling across all integrations.
+Integration operations use typed errors for consistent handling across all integrations.
 
 ### Error Types
 

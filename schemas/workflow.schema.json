@@ -122,52 +122,6 @@
       },
       "additionalProperties": false
     },
-    "trigger": {
-      "type": "object",
-      "required": ["type"],
-      "description": "DEPRECATED: Use 'listen:' instead. This trigger definition is kept for backward compatibility documentation only.",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": ["webhook", "schedule", "manual"],
-          "description": "Type of trigger: 'webhook' for HTTP endpoints, 'schedule' for cron-based execution, 'manual' for CLI-only triggering."
-        },
-        "webhook": {
-          "$ref": "#/$defs/webhook_trigger",
-          "description": "Webhook trigger configuration. Required when type is 'webhook'."
-        },
-        "schedule": {
-          "$ref": "#/$defs/schedule_trigger",
-          "description": "Schedule trigger configuration. Required when type is 'schedule'."
-        }
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "type": {
-                "const": "webhook"
-              }
-            }
-          },
-          "then": {
-            "required": ["webhook"]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "type": {
-                "const": "schedule"
-              }
-            }
-          },
-          "then": {
-            "required": ["schedule"]
-          }
-        }
-      ]
-    },
     "webhook_trigger": {
       "type": "object",
       "required": ["path"],

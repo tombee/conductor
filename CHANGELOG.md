@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Transform operations (JSON, YAML, text)
   - Utility functions (random, ID generation, math)
 
-- **Integrations**: External service connectors
+- **Integrations**: External service APIs
   - GitHub (issues, PRs, workflows, releases)
   - Slack (messages, channels, users)
   - Jira (issues, projects, comments)

@@ -17,7 +17,7 @@
       "include": "#conductor-keys"
     },
     {
-      "include": "#connector-shorthand"
+      "include": "#action-shorthand"
     },
     {
       "include": "#template-syntax"
@@ -114,8 +114,8 @@
         }
       ]
     },
-    "connector-shorthand": {
-      "comment": "Connector shorthand syntax (FR3): connector.operation:",
+    "action-shorthand": {
+      "comment": "Action/integration shorthand syntax (FR3): action.operation:",
       "match": "^\\s*([a-z][a-z0-9_]*)\\.([a-z][a-z0-9_]*)\\s*:",
       "captures": {
         "1": {

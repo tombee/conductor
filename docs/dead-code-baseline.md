@@ -31,7 +31,7 @@ The `deadcode -test ./...` command identified **282 unreachable functions, types
 - `pkg/security/*` - 26 unreachable items (DNS monitoring, metrics, override management, audit rotation)
 - `pkg/llm/*` - 17 unreachable items (cost tracking, failover, retry, provider methods)
 - `internal/controller/runner/*` - 15 unreachable items (checkpoint, MCP tools, tracing helpers, options)
-- `internal/connector/*` - 14 unreachable items (package validation, transport registry, builtins)
+- `internal/operation/*` - 14 unreachable items (package validation, transport registry, builtins)
 - `pkg/workflow/*` - 8 unreachable items (cost limits, environment, executor test mocks)
 - `internal/output/*` - 7 unreachable items (formatter implementations)
 - Other packages - ~94 unreachable items
@@ -141,7 +141,7 @@ Based on tool convergence (both deadcode and golangci-lint flagging the same ite
    - Aggregation functions
    - **Rationale:** Feature may be planned but unfinished
 
-8. **Transport Registry** (`internal/connector/transport/registry.go`) - 8 unreachable items
+8. **Transport Registry** (`internal/operation/transport/registry.go`) - 8 unreachable items
    - Registry creation and management
    - AWS SigV4 transport
    - OAuth2 transport

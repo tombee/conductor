@@ -7,7 +7,7 @@ This document describes the custom TextMate grammar used for Conductor workflow 
 The Conductor documentation uses a custom TextMate grammar (`conductor.tmLanguage.json`) to provide syntax highlighting for workflow YAML files. This grammar:
 
 - Highlights Conductor-specific keywords distinctly from YAML structure
-- Recognizes connector shorthand syntax (`connector.operation:`)
+- Recognizes action/integration shorthand syntax (`action.operation:`)
 - Highlights Go template variables and control flow
 - Distinguishes enumerated values (step types, model tiers, error strategies)
 - Auto-generates keyword patterns from the JSON Schema
@@ -52,8 +52,8 @@ steps:
     prompt: "Analyze this data"
 ```
 
-### 3. Connector Shorthand
-The `connector.operation:` pattern is recognized and highlighted:
+### 3. Action/Integration Shorthand
+The `action.operation:` pattern is recognized and highlighted:
 
 ```conductor
 steps:
@@ -122,7 +122,7 @@ npm run build  # Runs build:grammar + convert + astro build
 ### Manual Updates
 
 Some grammar patterns are hand-written and preserved during auto-generation:
-- Connector shorthand regex pattern
+- Action/integration shorthand regex pattern
 - Template syntax begin/end patterns
 - Template control flow and function highlighting
 - Template variable path recognition
@@ -135,7 +135,7 @@ The grammar uses standard TextMate scope naming conventions:
 |-----------|-------|-------------|
 | Top-level keywords | `keyword.control.conductor` | Control keyword color |
 | Step keywords | `keyword.other.conductor` | Secondary keyword color |
-| Connector name | `entity.name.namespace.conductor` | Namespace color |
+| Action/integration name | `entity.name.namespace.conductor` | Namespace color |
 | Operation name | `entity.name.function.conductor` | Function color |
 | Template delimiters | `punctuation.section.embedded` | Punctuation color |
 | Template variables | `variable.other.conductor` | Variable color |
@@ -196,7 +196,7 @@ The grammar is validated during the documentation build:
 
 3. Verify highlighting in both light and dark themes:
    - Keywords should be distinct from values
-   - Connector shorthand should be highlighted as a unit
+   - Action/integration shorthand should be highlighted as a unit
    - Template variables should be visually distinct
    - Enum values should be highlighted consistently
 
@@ -242,7 +242,7 @@ If templates aren't highlighting:
 ## Future Enhancements
 
 Potential improvements:
-- Highlight known connector names differently from unknown ones
+- Highlight known action/integration names differently from unknown ones
 - Add semantic validation (e.g., warn on unknown template functions)
 - Support for YAML anchors and aliases
 - Multi-line template syntax support

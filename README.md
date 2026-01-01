@@ -73,6 +73,10 @@ Conductor also supports Anthropic, OpenAI, and Ollama APIs. Run `conductor init`
 - [Examples](https://tombee.github.io/conductor/examples/) — Workflows to copy and adapt
 - [CLI Reference](https://tombee.github.io/conductor/reference/cli/) — All commands and options
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, and contribution guidelines.
+
 ## License
 
 Apache 2.0 — see [LICENSE](LICENSE) for details.

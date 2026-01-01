@@ -128,8 +128,8 @@ return &conductorerrors.ValidationError{
 }
 
 // GOOD: Actionable suggestion via UserVisibleError
-return &connector.Error{
-    Type:        connector.ErrorTypeAuth,
+return &operation.Error{
+    Type:        operation.ErrorTypeAuth,
     Message:     "Authentication failed",
     SuggestText: "Check API key in config.yaml or GITHUB_TOKEN environment variable",
 }

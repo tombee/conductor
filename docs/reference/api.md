@@ -442,12 +442,11 @@ llmStep := workflow.Step{
     Model:  "balanced",
 }
 
-// Builtin action step (file operations)
-builtinStep := workflow.Step{
-    ID:               "read_file",
-    Type:             workflow.StepTypeBuiltin,
-    BuiltinConnector: "file",
-    BuiltinOperation: "read",
+// Action step (file operations)
+actionStep := workflow.Step{
+    ID:        "read_file",
+    Type:      workflow.StepTypeAction,
+    Action:    "file.read",
     Inputs: map[string]interface{}{
         "path": "{{.file_path}}",
     },

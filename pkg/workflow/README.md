@@ -242,10 +242,9 @@ err = store.Delete(wf.ID)
 ```go
 // Configure retry for a step
 step := workflow.Step{
-    ID:               "flaky_step",
-    Type:             workflow.StepTypeBuiltin,
-    BuiltinConnector: "shell",
-    BuiltinOperation: "run",
+    ID:      "flaky_step",
+    Type:    workflow.StepTypeAction,
+    Action:  "shell.run",
     OnError: workflow.ErrorHandlerRetry,
     RetryConfig: &workflow.RetryConfig{
         MaxAttempts:  3,
@@ -257,25 +256,22 @@ step := workflow.Step{
 
 // Configure fallback
 step := workflow.Step{
-    ID:               "primary_step",
-    Type:             workflow.StepTypeBuiltin,
-    BuiltinConnector: "file",
-    BuiltinOperation: "read",
+    ID:      "primary_step",
+    Type:    workflow.StepTypeAction,
+    Action:  "file.read",
     OnError: workflow.ErrorHandlerFallback,
     FallbackStep: &workflow.Step{
-        ID:               "fallback_step",
-        Type:             workflow.StepTypeBuiltin,
-        BuiltinConnector: "file",
-        BuiltinOperation: "read",
+        ID:     "fallback_step",
+        Type:   workflow.StepTypeAction,
+        Action: "file.read",
     },
 }
 
 // Ignore errors
 step := workflow.Step{
-    ID:               "optional_step",
-    Type:             workflow.StepTypeBuiltin,
-    BuiltinConnector: "file",
-    BuiltinOperation: "read",
+    ID:      "optional_step",
+    Type:    workflow.StepTypeAction,
+    Action:  "file.read",
     OnError: workflow.ErrorHandlerIgnore,
 }
 ```

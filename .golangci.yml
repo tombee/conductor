@@ -48,7 +48,6 @@ linters-settings:
     # Allow certain packages to return errors without wrapping
     ignorePackageGlobs:
       - github.com/tombee/conductor/pkg/errors
-      - github.com/tombee/conductor/internal/connector
       - github.com/tombee/conductor/internal/mcp
 
 issues:

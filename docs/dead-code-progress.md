@@ -127,7 +127,7 @@ These should be verified as truly unused before removal:
     - **Decision needed:** Planned for 0.0.1 or future?
 
 11. **Transport registry:**
-    - Registry creation and management (8 items in `internal/connector/transport/`)
+    - Registry creation and management (8 items in `internal/operation/transport/`)
     - AWS SigV4 transport
     - OAuth2 transport
     - **Decision needed:** Architectural prep or dead?

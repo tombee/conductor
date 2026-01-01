@@ -311,6 +311,6 @@ If an integration is causing cascading failures:
 
 ## See Also
 
-- [Connector Configuration](./custom.md)
+- [Integration Configuration](./custom.md)
 - [Monitoring](../operations/monitoring.md)
 - [Security](../operations/security.md)

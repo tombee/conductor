@@ -1,11 +1,11 @@
-# Workflow using connector shorthand syntax
+# Workflow using action shorthand syntax
 name: analyze-file
-description: Reads a file and analyzes its content using connector shorthand
+description: Reads a file and analyzes its content using action shorthand
 inputs:
   - name: filepath
     type: string
 steps:
-  # Using shorthand syntax for file connector - auto-generated id: file_read_1
+  # Using shorthand syntax for file action - auto-generated id: file_read_1
   - file.read: "{{.filepath}}"
 
   - id: analyze
