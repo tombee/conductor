@@ -235,23 +235,14 @@ func handleSettingsMenu(ctx context.Context, state *setup.SetupState) error {
 		}
 
 		switch choice {
-		case SettingsChangeBackend:
-			if err := ChangeDefaultBackend(state); err != nil {
+		case SettingsChangeDefaultProvider:
+			if err := SelectDefaultProvider(state); err != nil {
 				return err
 			}
 			state.MarkDirty()
 
-		case SettingsAddBackend:
-			// TODO: Implement add backend flow
-			fmt.Println("Add backend not yet implemented")
-
-		case SettingsViewCredentials:
-			if err := ViewStoredCredentials(state); err != nil {
-				return err
-			}
-
-		case SettingsMigratePlaintext:
-			if err := MigratePlaintextCredentials(state); err != nil {
+		case SettingsChangeBackend:
+			if err := ChangeDefaultBackend(state); err != nil {
 				return err
 			}
 			state.MarkDirty()
