@@ -362,37 +362,42 @@ func addAPIProviderFlowDirect(ctx context.Context, state *setup.SetupState, prov
 		_ = baseURL // Suppress unused variable warning for now
 	}
 
-	// Step 3: API Key configuration
+	// Step 3: API Key configuration with inline backend selection
 	if providerType.RequiresAPIKey() {
-		// TODO: Implement API key + backend selection flow
-		// For now, just prompt for the key
-		var apiKey string
-
-		keyForm := huh.NewForm(
-			huh.NewGroup(
-				huh.NewInput().
-					Title("API Key:").
-					EchoMode(huh.EchoModePassword).
-					Value(&apiKey).
-					Validate(func(s string) error {
-						if s == "" {
-							return fmt.Errorf("API key is required")
-						}
-						return nil
-					}),
-			),
-		)
-
-		if err := keyForm.Run(); err != nil {
+		// Prompt for API key with guidance
+		apiKey, err := ShowAPIKeyForm(providerType, instanceName)
+		if err != nil {
 			return err
+		}
+
+		// Check if this is the first API provider (need to select backend)
+		needsBackendSelection := state.SecretsBackend == ""
+
+		// Get available backends (in real implementation, this would come from pkg/secrets)
+		availableBackends := []string{"keychain", "env"}
+
+		// Select backend if needed
+		var selectedBackend string
+		if needsBackendSelection {
+			selectedBackend, err = ShowStorageBackendSelection(availableBackends, state.SecretsBackend)
+			if err != nil {
+				return err
+			}
+
+			// Set as default backend for future API keys
+			state.SecretsBackend = selectedBackend
+			state.MarkDirty()
+		} else {
+			// Use existing default backend
+			selectedBackend = state.SecretsBackend
 		}
 
 		// Store in credential store for later persistence
 		credKey := fmt.Sprintf("provider:%s:api_key", instanceName)
 		state.CredentialStore[credKey] = apiKey
 
-		// For now, store reference in config (TODO: implement backend selection)
-		providerCfg.APIKey = fmt.Sprintf("$secret:%s_API_KEY", strings.ToUpper(instanceName))
+		// Store reference in config with backend prefix
+		providerCfg.APIKey = fmt.Sprintf("$%s:%s_API_KEY", selectedBackend, strings.ToUpper(instanceName))
 	}
 
 	// Add to state
