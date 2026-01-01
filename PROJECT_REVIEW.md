@@ -552,10 +552,10 @@ BEGIN RSA PRIVATE KEY, BEGIN OPENSSH PRIVATE KEY
 > Verify builds are reproducible and properly versioned.
 
 **Specific Checks:**
-- [ ] Version embedding in binary
+- [x] Version embedding in binary *(.goreleaser.yaml sets version/commit/date via ldflags)*
 - [ ] Reproducible builds
 - [ ] Build instructions documented
-- [ ] Cross-platform builds
+- [x] Cross-platform builds *(.goreleaser.yaml: linux/darwin, amd64/arm64)*
 - [ ] Build dependencies documented
 
 ---
@@ -566,8 +566,8 @@ BEGIN RSA PRIVATE KEY, BEGIN OPENSSH PRIVATE KEY
 > Review CI pipeline for completeness and correctness.
 
 **Specific Checks:**
-- [ ] All tests run in CI
-- [ ] Linting enforced
+- [x] All tests run in CI *(.github/workflows/ci.yml: test, integration jobs)*
+- [x] Linting enforced *(.github/workflows/ci.yml: golangci-lint)*
 - [ ] Security scanning
 - [ ] Coverage reporting
 - [ ] Build matrix (OS/arch)
@@ -581,7 +581,7 @@ BEGIN RSA PRIVATE KEY, BEGIN OPENSSH PRIVATE KEY
 > Review release automation and artifact generation.
 
 **Specific Checks:**
-- [ ] Release automation (goreleaser)
+- [x] Release automation (goreleaser) *(.goreleaser.yaml configured)*
 - [ ] Changelog generation
 - [ ] Binary signing
 - [ ] Checksum files
@@ -597,7 +597,7 @@ BEGIN RSA PRIVATE KEY, BEGIN OPENSSH PRIVATE KEY
 
 **Specific Checks:**
 - [ ] Semantic versioning compliance
-- [ ] Version in `--version` output
+- [x] Version in `--version` output *(conductor version command shows version/commit/date)*
 - [ ] Version in API responses
 - [ ] Breaking change documentation
 - [ ] Deprecation policy
@@ -702,8 +702,8 @@ BEGIN RSA PRIVATE KEY, BEGIN OPENSSH PRIVATE KEY
 > Verify license is properly applied throughout the project.
 
 **Specific Checks:**
-- [ ] LICENSE file present and correct
-- [ ] License headers in source files (if required)
+- [x] LICENSE file present and correct *(Apache 2.0)*
+- [x] License headers in source files *(Apache 2.0 header in all .go files)*
 - [ ] License in package metadata
 - [ ] Third-party license notices
 
@@ -742,8 +742,8 @@ BEGIN RSA PRIVATE KEY, BEGIN OPENSSH PRIVATE KEY
 > Review public API surface for stability and future compatibility.
 
 **Specific Checks:**
-- [ ] Public API clearly defined
-- [ ] Internal packages properly marked
+- [x] Public API clearly defined *(pkg/ for public, internal/ for private)*
+- [x] Internal packages properly marked *(internal/ directory structure)*
 - [ ] Breaking change risks identified
 - [ ] Deprecation paths available
 - [ ] Versioning strategy for APIs
