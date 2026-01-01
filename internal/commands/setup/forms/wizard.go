@@ -265,44 +265,60 @@ func handleSettingsMenu(ctx context.Context, state *setup.SetupState) error {
 
 // handleSaveAndExit shows the review screen and saves the configuration.
 func handleSaveAndExit(ctx context.Context, state *setup.SetupState) error {
-	// Show review screen
-	action, err := ShowReviewScreen(state)
-	if err != nil {
-		return err
-	}
-
-	switch action {
-	case ReviewActionSave:
-		// Save the configuration
-		if err := config.WriteConfig(state.Working, state.ConfigPath); err != nil {
-			return fmt.Errorf("failed to save configuration: %w", err)
-		}
-
-		// Mark as clean
-		state.Dirty = false
-
-		// Show completion message
-		if err := ShowCompletionMessage(state); err != nil {
+	// Show review screen in a loop to allow inline editing
+	for {
+		result, err := ShowReviewScreen(state)
+		if err != nil {
 			return err
 		}
 
-		// Clean exit
-		setup.HandleCleanExit(state)
-		return nil
+		switch result.Action {
+		case ReviewActionSave:
+			// Save the configuration
+			if err := config.WriteConfig(state.Working, state.ConfigPath); err != nil {
+				return fmt.Errorf("failed to save configuration: %w", err)
+			}
 
-	case ReviewActionEditProviders:
-		return handleProvidersMenu(ctx, state)
+			// Mark as clean
+			state.Dirty = false
 
-	case ReviewActionEditIntegrations:
-		return handleIntegrationsMenu(ctx, state)
+			// Show completion message
+			if err := ShowCompletionMessage(state); err != nil {
+				return err
+			}
 
-	case ReviewActionEditSettings:
-		return handleSettingsMenu(ctx, state)
+			// Clean exit
+			setup.HandleCleanExit(state)
+			return nil
 
-	case ReviewActionCancel:
-		// Return to main menu
-		return nil
+		case ReviewActionAddProvider:
+			// Add a new provider
+			if err := AddProviderFlow(ctx, state); err != nil {
+				return err
+			}
+			state.MarkDirty()
+			// Return to review screen
+			continue
+
+		case ReviewActionEditProvider:
+			// Edit the selected provider (T22 - inline edit)
+			if err := EditProviderFlow(ctx, state, result.ProviderName); err != nil {
+				return err
+			}
+			// Return to review screen
+			continue
+
+		case ReviewActionRemoveProvider:
+			// Remove the selected provider
+			if err := RemoveProvider(state, result.ProviderName); err != nil {
+				return err
+			}
+			// Return to review screen
+			continue
+
+		case ReviewActionCancel:
+			// Return to main menu
+			return nil
+		}
 	}
-
-	return nil
 }
