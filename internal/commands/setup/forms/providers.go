@@ -128,7 +128,8 @@ func ShowFlattenedProviderSelection(ctx context.Context, state *setup.SetupState
 		for _, result := range cliDetectionResults {
 			label := result.ProviderType.DisplayName()
 			if result.Detected {
-				label += " [Detected: " + result.Path + "]"
+				label = AddVerifiedIndicatorToCLIProvider(label)
+				label += " - " + result.Path
 			} else {
 				label += " [Not found]"
 			}
