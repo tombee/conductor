@@ -227,10 +227,10 @@ func TestHTTPIntegration_PathParameters(t *testing.T) {
 
 func TestHTTPIntegration_ErrorHandling(t *testing.T) {
 	tests := []struct {
-		name           string
-		statusCode     int
-		wantErrorType  ErrorType
-		wantRetryable  bool
+		name          string
+		statusCode    int
+		wantErrorType ErrorType
+		wantRetryable bool
 	}{
 		{
 			name:          "401 Unauthorized",

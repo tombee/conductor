@@ -379,9 +379,9 @@ func (p *SlackPoller) checkStatusCode(resp *http.Response) error {
 // Slack API response types
 
 type slackConversationsListResponse struct {
-	OK       bool              `json:"ok"`
-	Channels []slackChannel    `json:"channels"`
-	Error    string            `json:"error,omitempty"`
+	OK       bool           `json:"ok"`
+	Channels []slackChannel `json:"channels"`
+	Error    string         `json:"error,omitempty"`
 }
 
 type slackChannel struct {

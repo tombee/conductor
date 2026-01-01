@@ -49,9 +49,9 @@ type AccessCheckResult struct {
 
 // accessChecker implements the AccessChecker interface.
 type accessChecker struct {
-	config    *AccessConfig
-	cwd       string
-	tempDir   string
+	config  *AccessConfig
+	cwd     string
+	tempDir string
 	// Cached resolved patterns for performance
 	fsReadPatterns  []string
 	fsWritePatterns []string

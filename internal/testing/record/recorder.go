@@ -69,25 +69,25 @@ func NewRecorder(cfg Config) (*Recorder, error) {
 
 // LLMResponse represents a recorded LLM response with metadata.
 type LLMResponse struct {
-	Response string            `yaml:"response" json:"response"`
-	Metadata LLMResponseMeta   `yaml:"_metadata,omitempty" json:"_metadata,omitempty"`
-	Comment  string            `yaml:"_comment,omitempty" json:"_comment,omitempty"`
+	Response string          `yaml:"response" json:"response"`
+	Metadata LLMResponseMeta `yaml:"_metadata,omitempty" json:"_metadata,omitempty"`
+	Comment  string          `yaml:"_comment,omitempty" json:"_comment,omitempty"`
 }
 
 // LLMResponseMeta contains metadata about a recorded LLM response.
 type LLMResponseMeta struct {
-	RecordedAt   string `yaml:"recorded_at" json:"recorded_at"`
-	DurationMs   int64  `yaml:"duration_ms" json:"duration_ms"`
-	Model        string `yaml:"model,omitempty" json:"model,omitempty"`
-	PromptTokens int    `yaml:"prompt_tokens,omitempty" json:"prompt_tokens,omitempty"`
-	CompletionTokens int `yaml:"completion_tokens,omitempty" json:"completion_tokens,omitempty"`
+	RecordedAt       string `yaml:"recorded_at" json:"recorded_at"`
+	DurationMs       int64  `yaml:"duration_ms" json:"duration_ms"`
+	Model            string `yaml:"model,omitempty" json:"model,omitempty"`
+	PromptTokens     int    `yaml:"prompt_tokens,omitempty" json:"prompt_tokens,omitempty"`
+	CompletionTokens int    `yaml:"completion_tokens,omitempty" json:"completion_tokens,omitempty"`
 }
 
 // HTTPResponse represents a recorded HTTP response with metadata.
 type HTTPResponse struct {
-	Request  HTTPRequest     `yaml:"request" json:"request"`
+	Request  HTTPRequest      `yaml:"request" json:"request"`
 	Response HTTPResponseData `yaml:"response" json:"response"`
-	Comment  string          `yaml:"_comment,omitempty" json:"_comment,omitempty"`
+	Comment  string           `yaml:"_comment,omitempty" json:"_comment,omitempty"`
 }
 
 // HTTPRequest represents the HTTP request that was made.

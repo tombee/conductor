@@ -163,7 +163,8 @@ const (
 // 3. Returns resolved bindings or an error if required bindings are missing
 //
 // Resolution follows the precedence order:
-//   profile > inline > environment > default > error
+//
+//	profile > inline > environment > default > error
 func (r *Resolver) Resolve(ctx context.Context, resCtx *ResolutionContext) (*ResolvedBinding, error) {
 	if resCtx == nil {
 		return nil, fmt.Errorf("resolution context is nil")

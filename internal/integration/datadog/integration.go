@@ -43,7 +43,7 @@ func NewDatadogIntegration(config *api.ProviderConfig) (operation.Provider, erro
 
 	// Validate site
 	validSites := map[string]bool{
-		"datadoghq.com":    true,
+		"datadoghq.com":     true,
 		"us3.datadoghq.com": true,
 		"us5.datadoghq.com": true,
 		"datadoghq.eu":      true,

@@ -106,9 +106,9 @@ func TestRegistry_ParseReference(t *testing.T) {
 			wantError:  false,
 		},
 		{
-			name:       "empty reference",
-			reference:  "",
-			wantError:  true,
+			name:      "empty reference",
+			reference: "",
+			wantError: true,
 		},
 		{
 			name:       "plain value (no scheme)",

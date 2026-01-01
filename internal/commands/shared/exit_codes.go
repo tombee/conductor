@@ -24,12 +24,12 @@ import (
 
 // Exit codes for conductor run command
 const (
-	ExitSuccess                      = 0
-	ExitExecutionFailed              = 1
-	ExitInvalidWorkflow              = 2
-	ExitMissingInput                 = 3
-	ExitProviderError                = 4
-	ExitMissingInputNonInteractive   = 70 // Missing inputs in non-interactive mode (EX_SOFTWARE from sysexits.h)
+	ExitSuccess                    = 0
+	ExitExecutionFailed            = 1
+	ExitInvalidWorkflow            = 2
+	ExitMissingInput               = 3
+	ExitProviderError              = 4
+	ExitMissingInputNonInteractive = 70 // Missing inputs in non-interactive mode (EX_SOFTWARE from sysexits.h)
 )
 
 // ExitError is an error that carries an exit code

@@ -59,8 +59,8 @@ func TestExecuteIntegration(t *testing.T) {
 		{
 			name: "successful integration execution",
 			step: &StepDefinition{
-				ID:        "test_step",
-				Type:      StepTypeIntegration,
+				ID:          "test_step",
+				Type:        StepTypeIntegration,
 				Integration: "github.create_issue",
 			},
 			inputs: map[string]interface{}{
@@ -101,8 +101,8 @@ func TestExecuteIntegration(t *testing.T) {
 		{
 			name: "integration step with missing integration field",
 			step: &StepDefinition{
-				ID:        "test_step",
-				Type:      StepTypeIntegration,
+				ID:          "test_step",
+				Type:        StepTypeIntegration,
 				Integration: "",
 			},
 			inputs:       map[string]interface{}{},
@@ -112,8 +112,8 @@ func TestExecuteIntegration(t *testing.T) {
 		{
 			name: "integration step without registry",
 			step: &StepDefinition{
-				ID:        "test_step",
-				Type:      StepTypeIntegration,
+				ID:          "test_step",
+				Type:        StepTypeIntegration,
 				Integration: "github.create_issue",
 			},
 			inputs:       map[string]interface{}{},
@@ -123,8 +123,8 @@ func TestExecuteIntegration(t *testing.T) {
 		{
 			name: "integration returns nil result without error (contract violation)",
 			step: &StepDefinition{
-				ID:        "test_step",
-				Type:      StepTypeIntegration,
+				ID:          "test_step",
+				Type:        StepTypeIntegration,
 				Integration: "broken.integration",
 			},
 			inputs: map[string]interface{}{},

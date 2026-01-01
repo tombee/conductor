@@ -419,7 +419,7 @@ func TestHTTPTransport_Execute_Timeout(t *testing.T) {
 
 	// Should be classified as timeout, connection, or cancelled (all valid for deadline exceeded)
 	validTypes := map[ErrorType]bool{
-		ErrorTypeTimeout:   true,
+		ErrorTypeTimeout:    true,
 		ErrorTypeConnection: true,
 		ErrorTypeCancelled:  true,
 	}

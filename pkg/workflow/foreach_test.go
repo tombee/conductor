@@ -16,18 +16,18 @@ func TestExecutor_Foreach(t *testing.T) {
 	executor := NewExecutor(nil, nil).WithLogger(logger)
 
 	tests := []struct {
-		name           string
-		step           *StepDefinition
-		workflowCtx    map[string]interface{}
-		wantErr        bool
-		checkResults   func(t *testing.T, output map[string]interface{})
-		errContains    string
+		name         string
+		step         *StepDefinition
+		workflowCtx  map[string]interface{}
+		wantErr      bool
+		checkResults func(t *testing.T, output map[string]interface{})
+		errContains  string
 	}{
 		{
 			name: "basic foreach with array",
 			step: &StepDefinition{
-				ID:   "test_foreach",
-				Type: StepTypeParallel,
+				ID:      "test_foreach",
+				Type:    StepTypeParallel,
 				Foreach: "{{.steps.data_step.response}}",
 				Steps: []StepDefinition{
 					{
@@ -63,13 +63,13 @@ func TestExecutor_Foreach(t *testing.T) {
 		{
 			name: "foreach with empty array",
 			step: &StepDefinition{
-				ID:   "test_foreach",
-				Type: StepTypeParallel,
+				ID:      "test_foreach",
+				Type:    StepTypeParallel,
 				Foreach: "{{.steps.data_step.response}}",
 				Steps: []StepDefinition{
 					{
-						ID:   "process",
-						Type: StepTypeLLM,
+						ID:     "process",
+						Type:   StepTypeLLM,
 						Prompt: "Item: {{.item}}",
 					},
 				},
@@ -98,13 +98,13 @@ func TestExecutor_Foreach(t *testing.T) {
 		{
 			name: "foreach with non-array input (object)",
 			step: &StepDefinition{
-				ID:   "test_foreach",
-				Type: StepTypeParallel,
+				ID:      "test_foreach",
+				Type:    StepTypeParallel,
 				Foreach: "{{.steps.data_step.response}}",
 				Steps: []StepDefinition{
 					{
-						ID:   "process",
-						Type: StepTypeLLM,
+						ID:     "process",
+						Type:   StepTypeLLM,
 						Prompt: "Item: {{.item}}",
 					},
 				},
@@ -124,13 +124,13 @@ func TestExecutor_Foreach(t *testing.T) {
 		{
 			name: "foreach with non-array input (string)",
 			step: &StepDefinition{
-				ID:   "test_foreach",
-				Type: StepTypeParallel,
+				ID:      "test_foreach",
+				Type:    StepTypeParallel,
 				Foreach: "{{.steps.data_step.response}}",
 				Steps: []StepDefinition{
 					{
-						ID:   "process",
-						Type: StepTypeLLM,
+						ID:     "process",
+						Type:   StepTypeLLM,
 						Prompt: "Item: {{.item}}",
 					},
 				},
@@ -150,13 +150,13 @@ func TestExecutor_Foreach(t *testing.T) {
 		{
 			name: "foreach with null input",
 			step: &StepDefinition{
-				ID:   "test_foreach",
-				Type: StepTypeParallel,
+				ID:      "test_foreach",
+				Type:    StepTypeParallel,
 				Foreach: "{{.steps.data_step.response}}",
 				Steps: []StepDefinition{
 					{
-						ID:   "process",
-						Type: StepTypeLLM,
+						ID:     "process",
+						Type:   StepTypeLLM,
 						Prompt: "Item: {{.item}}",
 					},
 				},

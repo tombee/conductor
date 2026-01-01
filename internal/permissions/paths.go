@@ -21,10 +21,10 @@ func CheckPathRead(ctx *PermissionContext, path string) error {
 	if len(ctx.Paths.Read) == 0 {
 		// No read patterns = no read access
 		return &PermissionError{
-			Type:      "paths.read",
-			Resource:  path,
-			Allowed:   ctx.Paths.Read,
-			Message:   "no read permissions configured",
+			Type:     "paths.read",
+			Resource: path,
+			Allowed:  ctx.Paths.Read,
+			Message:  "no read permissions configured",
 		}
 	}
 

@@ -74,12 +74,12 @@ type RunData struct {
 
 // RunDiff represents the differences between two runs.
 type RunDiff struct {
-	Run1           RunData        `json:"run1"`
-	Run2           RunData        `json:"run2"`
-	StatusDiff     bool           `json:"status_diff"`
-	InputDiffs     []FieldDiff    `json:"input_diffs,omitempty"`
-	OutputDiffs    []FieldDiff    `json:"output_diffs,omitempty"`
-	ErrorDiff      bool           `json:"error_diff"`
+	Run1        RunData     `json:"run1"`
+	Run2        RunData     `json:"run2"`
+	StatusDiff  bool        `json:"status_diff"`
+	InputDiffs  []FieldDiff `json:"input_diffs,omitempty"`
+	OutputDiffs []FieldDiff `json:"output_diffs,omitempty"`
+	ErrorDiff   bool        `json:"error_diff"`
 }
 
 // FieldDiff represents a difference in a specific field.

@@ -35,9 +35,9 @@ type ShellTool struct {
 // NewShellTool creates a new shell tool with default settings.
 func NewShellTool() *ShellTool {
 	return &ShellTool{
-		timeout:         30 * time.Second,                  // 30 second default
-		workingDir:      "",                                // Current directory
-		allowedCommands: []string{},                        // No restrictions by default
+		timeout:         30 * time.Second,                      // 30 second default
+		workingDir:      "",                                    // Current directory
+		allowedCommands: []string{},                            // No restrictions by default
 		securityConfig:  security.DefaultShellSecurityConfig(), // Secure defaults
 	}
 }

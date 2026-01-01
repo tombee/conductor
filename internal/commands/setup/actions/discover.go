@@ -112,16 +112,16 @@ func DiscoverModels(ctx context.Context, baseURL, apiKey string) ([]string, erro
 type ModelTier string
 
 const (
-	TierFast       ModelTier = "fast"       // Quick tasks, low cost
-	TierBalanced   ModelTier = "balanced"   // General purpose
-	TierStrategic  ModelTier = "strategic"  // Complex reasoning
+	TierFast      ModelTier = "fast"      // Quick tasks, low cost
+	TierBalanced  ModelTier = "balanced"  // General purpose
+	TierStrategic ModelTier = "strategic" // Complex reasoning
 )
 
 // ModelMapping maps tiers to specific model names
 type ModelMapping struct {
-	Fast       string
-	Balanced   string
-	Strategic  string
+	Fast      string
+	Balanced  string
+	Strategic string
 }
 
 // SuggestTierMappings attempts to intelligently map discovered models to tiers

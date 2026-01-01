@@ -11,12 +11,12 @@ import (
 
 // GitHubError represents a GitHub API error response.
 type GitHubError struct {
-	Message          string                   `json:"message"`
-	DocumentationURL string                   `json:"documentation_url,omitempty"`
-	Errors           []GitHubValidationError `json:"errors,omitempty"`
-	StatusCode       int
+	Message            string                  `json:"message"`
+	DocumentationURL   string                  `json:"documentation_url,omitempty"`
+	Errors             []GitHubValidationError `json:"errors,omitempty"`
+	StatusCode         int
 	RateLimitRemaining int
-	RateLimitReset   time.Time
+	RateLimitReset     time.Time
 }
 
 // GitHubValidationError represents a validation error in a GitHub API response.
@@ -74,8 +74,8 @@ func ParseError(resp *transport.Response) error {
 	// Try to parse error body
 	if len(resp.Body) > 0 {
 		var errResp struct {
-			Message          string                   `json:"message"`
-			DocumentationURL string                   `json:"documentation_url"`
+			Message          string                  `json:"message"`
+			DocumentationURL string                  `json:"documentation_url"`
 			Errors           []GitHubValidationError `json:"errors"`
 		}
 

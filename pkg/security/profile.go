@@ -46,7 +46,7 @@ var builtinProfiles = map[string]*SecurityProfile{
 		Isolation: IsolationNone,
 		Limits: ResourceLimits{
 			TimeoutPerTool: 60 * time.Second,
-			TotalRuntime:   0, // No limit
+			TotalRuntime:   0,                // No limit
 			MaxFileSize:    10 * 1024 * 1024, // 10 MB
 		},
 	},
@@ -54,11 +54,11 @@ var builtinProfiles = map[string]*SecurityProfile{
 		Name: ProfileStandard,
 		Filesystem: FilesystemConfig{
 			Read: []string{
-				".",              // Current workspace
+				".",                // Current workspace
 				"/tmp/conductor-*", // Temp files
 			},
 			Write: []string{
-				".",              // Current workspace
+				".",                // Current workspace
 				"/tmp/conductor-*", // Temp files
 			},
 			Deny: []string{

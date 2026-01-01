@@ -40,7 +40,7 @@ type DocsResponse struct {
 // NewDocsCommand creates the docs command
 func NewDocsCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "docs",
+		Use: "docs",
 		Annotations: map[string]string{
 			"group": "documentation",
 		},

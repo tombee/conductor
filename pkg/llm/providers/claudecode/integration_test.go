@@ -68,7 +68,7 @@ steps:
 				Content: "You are a helpful assistant with access to Conductor tools via MCP.",
 			},
 			{
-				Role: llm.MessageRoleUser,
+				Role:    llm.MessageRoleUser,
 				Content: fmt.Sprintf("Use the conductor_validate tool to validate this workflow YAML:\n\n```yaml\n%s\n```", workflowYAML),
 			},
 		},

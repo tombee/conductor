@@ -228,8 +228,8 @@ func TestRetryTransport_RespectsRetryAfterHeader(t *testing.T) {
 
 func TestRetryTransport_OnlyRetriesIdempotentMethods(t *testing.T) {
 	tests := []struct {
-		method         string
-		shouldRetry    bool
+		method           string
+		shouldRetry      bool
 		expectedAttempts int32
 	}{
 		{"GET", true, 3},
@@ -357,10 +357,10 @@ func TestCalculateBackoff(t *testing.T) {
 		minExpected time.Duration
 		maxExpected time.Duration
 	}{
-		{1, 80 * time.Millisecond, 140 * time.Millisecond},   // 100ms * 2^0 ± 20%
-		{2, 160 * time.Millisecond, 280 * time.Millisecond},  // 100ms * 2^1 ± 20%
-		{3, 320 * time.Millisecond, 560 * time.Millisecond},  // 100ms * 2^2 ± 20%
-		{10, 8 * time.Second, 12 * time.Second},              // Capped at 10s ± 20%
+		{1, 80 * time.Millisecond, 140 * time.Millisecond},  // 100ms * 2^0 ± 20%
+		{2, 160 * time.Millisecond, 280 * time.Millisecond}, // 100ms * 2^1 ± 20%
+		{3, 320 * time.Millisecond, 560 * time.Millisecond}, // 100ms * 2^2 ± 20%
+		{10, 8 * time.Second, 12 * time.Second},             // Capped at 10s ± 20%
 	}
 
 	for _, tt := range tests {

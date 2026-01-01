@@ -156,7 +156,7 @@ func NewAgent(llm LLMProvider, registry *tools.Registry) *Agent {
 	return &Agent{
 		llm:            llm,
 		registry:       registry,
-		maxIterations:  20, // Default max iterations
+		maxIterations:  20,                        // Default max iterations
 		contextManager: NewContextManager(100000), // 100k token context window
 	}
 }

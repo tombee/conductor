@@ -34,7 +34,7 @@ import (
 // NewProvidersCommand creates the providers command
 func NewProvidersCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "providers",
+		Use: "providers",
 		Annotations: map[string]string{
 			"group": "diagnostics",
 		},

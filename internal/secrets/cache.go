@@ -162,11 +162,11 @@ func (c *Cache) set(runID, reference string, secret cachedSecret) {
 
 // Stats returns cache statistics for observability.
 type CacheStats struct {
-	RunCount     int            `json:"run_count"`      // Number of runs with cached secrets
-	SecretCount  int            `json:"secret_count"`   // Total number of cached secrets across all runs
-	RunStats     map[string]int `json:"run_stats"`      // Secrets per run
-	OldestSecret time.Time      `json:"oldest_secret"`  // Timestamp of oldest cached secret
-	NewestSecret time.Time      `json:"newest_secret"`  // Timestamp of newest cached secret
+	RunCount     int            `json:"run_count"`     // Number of runs with cached secrets
+	SecretCount  int            `json:"secret_count"`  // Total number of cached secrets across all runs
+	RunStats     map[string]int `json:"run_stats"`     // Secrets per run
+	OldestSecret time.Time      `json:"oldest_secret"` // Timestamp of oldest cached secret
+	NewestSecret time.Time      `json:"newest_secret"` // Timestamp of newest cached secret
 }
 
 // GetStats returns cache statistics for monitoring.
@@ -175,8 +175,8 @@ func (c *Cache) GetStats() CacheStats {
 	defer c.mu.RUnlock()
 
 	stats := CacheStats{
-		RunCount:  len(c.cache),
-		RunStats:  make(map[string]int),
+		RunCount: len(c.cache),
+		RunStats: make(map[string]int),
 	}
 
 	for runID, secrets := range c.cache {

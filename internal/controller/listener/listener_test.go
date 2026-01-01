@@ -212,9 +212,9 @@ func TestIsRemoteAddr(t *testing.T) {
 		{"[::1]:8080", false}, // IPv6 localhost with brackets
 
 		// Remote/wildcard addresses
-		{":8080", true},           // Just port
-		{"0.0.0.0:8080", true},    // All interfaces
-		{"::", true},              // All IPv6 interfaces
+		{":8080", true},            // Just port
+		{"0.0.0.0:8080", true},     // All interfaces
+		{"::", true},               // All IPv6 interfaces
 		{"192.168.1.1:8080", true}, // Specific remote IP
 		{"10.0.0.1:8080", true},
 		{"example.com:8080", true}, // Hostname
@@ -252,16 +252,16 @@ func TestParseConductorHost(t *testing.T) {
 			wantErr:    false,
 		},
 		{
-			name:       "tcp",
-			host:       "tcp://localhost:9000",
-			wantTCP:    "localhost:9000",
-			wantErr:    false,
+			name:    "tcp",
+			host:    "tcp://localhost:9000",
+			wantTCP: "localhost:9000",
+			wantErr: false,
 		},
 		{
-			name:       "https",
-			host:       "https://api.example.com:443",
-			wantTCP:    "api.example.com:443",
-			wantErr:    false,
+			name:    "https",
+			host:    "https://api.example.com:443",
+			wantTCP: "api.example.com:443",
+			wantErr: false,
 		},
 		{
 			name:    "invalid format",

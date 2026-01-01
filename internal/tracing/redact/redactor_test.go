@@ -26,9 +26,9 @@ func TestRedactor_RedactString_StandardMode(t *testing.T) {
 	r := NewRedactor(ModeStandard)
 
 	tests := []struct {
-		name     string
-		input    string
-		contains string // What should remain or be redacted
+		name        string
+		input       string
+		contains    string // What should remain or be redacted
 		notContains string // What should be removed
 	}{
 		{

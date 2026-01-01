@@ -10,8 +10,8 @@ import (
 
 // JiraError represents a Jira API error response.
 type JiraError struct {
-	ErrorMessages []string               `json:"errorMessages,omitempty"`
-	Errors        map[string]string      `json:"errors,omitempty"`
+	ErrorMessages []string          `json:"errorMessages,omitempty"`
+	Errors        map[string]string `json:"errors,omitempty"`
 	StatusCode    int
 }
 

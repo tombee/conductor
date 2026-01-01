@@ -14,8 +14,8 @@ import (
 func testSecurityConfig() *security.HTTPSecurityConfig {
 	config := security.DefaultHTTPSecurityConfig()
 	config.AllowedSchemes = []string{"http", "https"} // Allow HTTP for tests
-	config.DenyPrivateIPs = false                      // Allow localhost
-	config.DenyMetadata = false                        // Not needed for tests
+	config.DenyPrivateIPs = false                     // Allow localhost
+	config.DenyMetadata = false                       // Not needed for tests
 	config.ResolveBeforeValidation = false            // Skip DNS for local tests
 	return config
 }

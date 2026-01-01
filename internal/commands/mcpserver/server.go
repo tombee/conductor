@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/tombee/conductor/internal/mcp/server"
 	"github.com/tombee/conductor/internal/commands/shared"
+	"github.com/tombee/conductor/internal/mcp/server"
 )
 
 // NewCommand creates the mcp-server command

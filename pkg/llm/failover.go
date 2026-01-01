@@ -294,10 +294,10 @@ func shouldFailover(err error) bool {
 
 // circuitBreaker tracks provider health and prevents requests to unhealthy providers.
 type circuitBreaker struct {
-	mu                 sync.RWMutex
-	states             map[string]*circuitState
-	failureThreshold   int
-	recoveryTimeout    time.Duration
+	mu               sync.RWMutex
+	states           map[string]*circuitState
+	failureThreshold int
+	recoveryTimeout  time.Duration
 }
 
 type circuitState struct {

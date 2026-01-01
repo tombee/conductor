@@ -55,10 +55,10 @@ Example:
 }
 
 type analyzeOutput struct {
-	WorkflowPath string                       `json:"workflow_path"`
-	Requirements workflowRequirements         `json:"requirements"`
-	Compatibility map[string]compatibilityInfo `json:"compatibility"`
-	Recommendations []string                   `json:"recommendations,omitempty"`
+	WorkflowPath    string                       `json:"workflow_path"`
+	Requirements    workflowRequirements         `json:"requirements"`
+	Compatibility   map[string]compatibilityInfo `json:"compatibility"`
+	Recommendations []string                     `json:"recommendations,omitempty"`
 }
 
 type workflowRequirements struct {

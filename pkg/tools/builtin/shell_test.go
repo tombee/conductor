@@ -516,8 +516,8 @@ func TestValidateCommand_Logging(t *testing.T) {
 	tool := NewShellTool().WithAllowedCommands([]string{"git"})
 
 	tests := []struct {
-		name          string
-		command       string
+		name           string
+		command        string
 		expectedReason string
 	}{
 		{"path traversal", "../bin/git", "path_traversal"},

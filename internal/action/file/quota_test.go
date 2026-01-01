@@ -156,8 +156,8 @@ func TestQuotaTracker_MostSpecificPrefix(t *testing.T) {
 	}
 
 	tracker := NewQuotaTracker(config)
-	tracker.SetQuota("/tmp", 10000)           // broad quota
-	tracker.SetQuota("/tmp/out", 1000)        // specific quota
+	tracker.SetQuota("/tmp", 10000)    // broad quota
+	tracker.SetQuota("/tmp/out", 1000) // specific quota
 
 	// Write to /tmp/out/file.txt should use the more specific quota
 	err := tracker.TrackWrite("/tmp/out/file.txt", 500)

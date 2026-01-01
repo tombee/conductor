@@ -46,7 +46,7 @@ func (c *JiraIntegration) createIssue(ctx context.Context, inputs map[string]int
 	// Allow arbitrary additional fields
 	for key, value := range inputs {
 		if key != "project" && key != "summary" && key != "issuetype" &&
-		   key != "description" && key != "assignee" && key != "priority" && key != "labels" {
+			key != "description" && key != "assignee" && key != "priority" && key != "labels" {
 			fields[key] = value
 		}
 	}

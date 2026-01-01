@@ -26,17 +26,17 @@ import (
 )
 
 const (
-	dryRunTimeout      = 5 * time.Minute  // NFR9: dry-run timeout
-	executionTimeout   = 30 * time.Minute // NFR9: execution timeout
+	dryRunTimeout    = 5 * time.Minute  // NFR9: dry-run timeout
+	executionTimeout = 30 * time.Minute // NFR9: execution timeout
 )
 
 // RunResult represents the result of running a workflow
 type RunResult struct {
-	Success       bool          `json:"success"`
-	Mode          string        `json:"mode"` // "dry_run" or "executed"
-	ExecutionPlan []StepPlan    `json:"execution_plan"`
-	Outputs       interface{}   `json:"outputs,omitempty"`
-	Error         *RunError     `json:"error,omitempty"`
+	Success       bool        `json:"success"`
+	Mode          string      `json:"mode"` // "dry_run" or "executed"
+	ExecutionPlan []StepPlan  `json:"execution_plan"`
+	Outputs       interface{} `json:"outputs,omitempty"`
+	Error         *RunError   `json:"error,omitempty"`
 }
 
 // StepPlan represents a step in the execution plan

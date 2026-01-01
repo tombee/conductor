@@ -136,9 +136,9 @@ func parseStepOverrides(pairs []string) (map[string]any, error) {
 
 // ReplayCostEstimate represents the cost estimate response.
 type ReplayCostEstimate struct {
-	TotalCost     float64            `json:"total_cost"`
-	SkippedCost   float64            `json:"skipped_cost"`
-	NewCost       float64            `json:"new_cost"`
+	TotalCost     float64             `json:"total_cost"`
+	SkippedCost   float64             `json:"skipped_cost"`
+	NewCost       float64             `json:"new_cost"`
 	StepBreakdown []StepCostBreakdown `json:"step_breakdown,omitempty"`
 }
 
@@ -230,10 +230,10 @@ type ReplayRequest struct {
 
 // ReplayResponse represents the response from submitting a replay.
 type ReplayResponse struct {
-	RunID         string  `json:"run_id"`
-	ParentRunID   string  `json:"parent_run_id"`
-	SkippedSteps  int     `json:"skipped_steps"`
-	CostSavings   float64 `json:"cost_savings"`
+	RunID        string  `json:"run_id"`
+	ParentRunID  string  `json:"parent_run_id"`
+	SkippedSteps int     `json:"skipped_steps"`
+	CostSavings  float64 `json:"cost_savings"`
 }
 
 // submitReplay submits a replay request to the API.

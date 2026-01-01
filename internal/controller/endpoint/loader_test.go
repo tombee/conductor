@@ -232,10 +232,10 @@ func TestFindWorkflow(t *testing.T) {
 
 	// Create test files
 	files := map[string]string{
-		"test.yaml":            "name: test",
-		"another.yml":          "name: another",
-		"noext":                "name: noext",
-		"subdir/nested.yaml":   "name: nested",
+		"test.yaml":          "name: test",
+		"another.yml":        "name: another",
+		"noext":              "name: noext",
+		"subdir/nested.yaml": "name: nested",
 	}
 
 	for path, content := range files {
@@ -307,12 +307,12 @@ func TestFindWorkflow(t *testing.T) {
 
 func TestParseRateLimit(t *testing.T) {
 	tests := []struct {
-		name          string
-		rateLimit     string
-		wantCount     int
-		wantDuration  time.Duration
-		wantErr       bool
-		errSubstr     string
+		name         string
+		rateLimit    string
+		wantCount    int
+		wantDuration time.Duration
+		wantErr      bool
+		errSubstr    string
 	}{
 		{
 			name:         "valid per second",

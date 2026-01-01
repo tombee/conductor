@@ -29,7 +29,7 @@ type Metrics struct {
 	PermissionPrompts int64
 
 	// Rate limiting metrics
-	RateLimitHits    int64
+	RateLimitHits     int64
 	ThrottledRequests int64
 
 	// Audit metrics
@@ -39,9 +39,9 @@ type Metrics struct {
 	AuditBufferUsed     int
 
 	// Profile metrics
-	ActiveProfile        string
-	ProfileSwitches      int64
-	ProfileLoadFailures  int64
+	ActiveProfile       string
+	ProfileSwitches     int64
+	ProfileLoadFailures int64
 
 	// Resource metrics by type
 	FileAccessRequests    int64

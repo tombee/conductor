@@ -11,10 +11,10 @@ import (
 
 // mockTransport is a mock transport for testing.
 type mockTransport struct {
-	lastRequest  *transport.Request
-	response     *transport.Response
-	err          error
-	rateLimiter  transport.RateLimiter
+	lastRequest *transport.Request
+	response    *transport.Response
+	err         error
+	rateLimiter transport.RateLimiter
 }
 
 func (m *mockTransport) Execute(ctx context.Context, req *transport.Request) (*transport.Response, error) {

@@ -23,11 +23,11 @@ import (
 
 func TestDeterminePermissions(t *testing.T) {
 	tests := []struct {
-		name            string
-		path            string
-		expectedFile    os.FileMode
-		expectedDir     os.FileMode
-		description     string
+		name         string
+		path         string
+		expectedFile os.FileMode
+		expectedDir  os.FileMode
+		description  string
 	}{
 		// Config patterns
 		{

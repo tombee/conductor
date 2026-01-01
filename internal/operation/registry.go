@@ -10,9 +10,9 @@ import (
 
 // Registry manages a collection of operation providers for a workflow.
 type Registry struct {
-	mu         sync.RWMutex
-	providers  map[string]Provider
-	config     *Config
+	mu        sync.RWMutex
+	providers map[string]Provider
+	config    *Config
 }
 
 // NewRegistry creates a new operation registry.

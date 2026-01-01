@@ -25,17 +25,17 @@ import (
 
 func TestDoctorCommand(t *testing.T) {
 	tests := []struct {
-		name           string
-		setupConfig    string
-		wantErr        bool
-		expectHealthy  bool
-		skipIfNoSpawn  bool // Skip if SKIP_SPAWN_TESTS is set (runs external processes)
+		name          string
+		setupConfig   string
+		wantErr       bool
+		expectHealthy bool
+		skipIfNoSpawn bool // Skip if SKIP_SPAWN_TESTS is set (runs external processes)
 	}{
 		{
-			name:           "no config file",
-			setupConfig:    "",
-			wantErr:        true, // Should fail if no config is set up
-			expectHealthy:  false,
+			name:          "no config file",
+			setupConfig:   "",
+			wantErr:       true, // Should fail if no config is set up
+			expectHealthy: false,
 		},
 		{
 			name: "valid config with claude-code",

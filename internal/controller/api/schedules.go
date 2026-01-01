@@ -136,4 +136,3 @@ func (h *SchedulesHandler) handleDisable(w http.ResponseWriter, r *http.Request)
 		"message": "Schedule disabled",
 	})
 }
-

@@ -50,7 +50,7 @@ func TestResolver_ResolveIntegrationRequirements(t *testing.T) {
 				Name: "test-workflow",
 				Requires: &workflow.RequirementsDefinition{
 					Integrations: []string{
-						  "github",
+						"github",
 					},
 				},
 				Integrations: map[string]workflow.IntegrationDefinition{
@@ -74,7 +74,7 @@ func TestResolver_ResolveIntegrationRequirements(t *testing.T) {
 				Name: "test-workflow",
 				Requires: &workflow.RequirementsDefinition{
 					Integrations: []string{
-						  "github",
+						"github",
 					},
 				},
 				Integrations: map[string]workflow.IntegrationDefinition{
@@ -98,7 +98,7 @@ func TestResolver_ResolveIntegrationRequirements(t *testing.T) {
 				Name: "test-workflow",
 				Requires: &workflow.RequirementsDefinition{
 					Integrations: []string{
-						  "github",
+						"github",
 					},
 				},
 			},
@@ -140,7 +140,7 @@ func TestResolver_ResolveIntegrationRequirements(t *testing.T) {
 			}
 
 			inheritEnv := profile.InheritEnvConfig{Enabled: true}
-	resolver := NewResolver(registry, inheritEnv)
+			resolver := NewResolver(registry, inheritEnv)
 
 			resCtx := &ResolutionContext{
 				Profile:   tt.profile,
@@ -287,7 +287,7 @@ func TestResolver_ResolveMCPServerRequirements(t *testing.T) {
 			}
 
 			inheritEnv := profile.InheritEnvConfig{Enabled: true}
-	resolver := NewResolver(registry, inheritEnv)
+			resolver := NewResolver(registry, inheritEnv)
 
 			resCtx := &ResolutionContext{
 				Profile:   tt.profile,

@@ -14,12 +14,12 @@ import (
 // with proper configuration.
 func TestObservabilityIntegrationCreation(t *testing.T) {
 	tests := []struct {
-		name          string
+		name            string
 		integrationName string
-		operations    map[string]workflow.OperationDefinition
+		operations      map[string]workflow.OperationDefinition
 	}{
 		{
-			name:          "datadog integration",
+			name:            "datadog integration",
 			integrationName: "datadog",
 			operations: map[string]workflow.OperationDefinition{
 				"log": {
@@ -29,7 +29,7 @@ func TestObservabilityIntegrationCreation(t *testing.T) {
 			},
 		},
 		{
-			name:          "splunk integration",
+			name:            "splunk integration",
 			integrationName: "splunk",
 			operations: map[string]workflow.OperationDefinition{
 				"log": {
@@ -39,7 +39,7 @@ func TestObservabilityIntegrationCreation(t *testing.T) {
 			},
 		},
 		{
-			name:          "loki integration",
+			name:            "loki integration",
 			integrationName: "loki",
 			operations: map[string]workflow.OperationDefinition{
 				"push": {
@@ -49,7 +49,7 @@ func TestObservabilityIntegrationCreation(t *testing.T) {
 			},
 		},
 		{
-			name:          "elasticsearch integration",
+			name:            "elasticsearch integration",
 			integrationName: "elasticsearch",
 			operations: map[string]workflow.OperationDefinition{
 				"index": {
@@ -200,34 +200,34 @@ func TestElasticsearchIndexValidation(t *testing.T) {
 // TestDefaultFieldInjectionIntegration tests that default fields are injected.
 func TestDefaultFieldInjectionIntegration(t *testing.T) {
 	tests := []struct {
-		name          string
+		name            string
 		integrationName string
-		operation     string
-		inputs        map[string]interface{}
-		expectFields  []string
+		operation       string
+		inputs          map[string]interface{}
+		expectFields    []string
 	}{
 		{
-			name:          "datadog adds timestamp and hostname",
+			name:            "datadog adds timestamp and hostname",
 			integrationName: "datadog",
-			operation:     "log",
+			operation:       "log",
 			inputs: map[string]interface{}{
 				"message": "Test log",
 			},
 			expectFields: []string{"timestamp", "hostname"},
 		},
 		{
-			name:          "loki adds timestamp",
+			name:            "loki adds timestamp",
 			integrationName: "loki",
-			operation:     "push",
+			operation:       "push",
 			inputs: map[string]interface{}{
 				"line": "Test log",
 			},
 			expectFields: []string{"timestamp"},
 		},
 		{
-			name:          "cloudwatch adds timestamp",
+			name:            "cloudwatch adds timestamp",
 			integrationName: "cloudwatch",
-			operation:     "log",
+			operation:       "log",
 			inputs: map[string]interface{}{
 				"message": "Test log",
 			},

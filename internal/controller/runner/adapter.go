@@ -248,7 +248,6 @@ func stepResultToOutput(result *workflow.StepResult) workflow.StepOutput {
 	return output
 }
 
-
 // MockExecutionAdapter is a test double for ExecutionAdapter.
 type MockExecutionAdapter struct {
 	mu sync.Mutex

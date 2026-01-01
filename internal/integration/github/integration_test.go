@@ -14,9 +14,9 @@ import (
 
 func TestNewGitHubIntegration(t *testing.T) {
 	tests := []struct {
-		name       string
-		config     *api.ProviderConfig
-		wantError  bool
+		name        string
+		config      *api.ProviderConfig
+		wantError   bool
 		wantBaseURL string
 	}{
 		{
@@ -26,7 +26,7 @@ func TestNewGitHubIntegration(t *testing.T) {
 				Token:     "test-token",
 				Transport: &transport.HTTPTransport{},
 			},
-			wantError:  false,
+			wantError:   false,
 			wantBaseURL: "https://github.example.com/api/v3",
 		},
 		{
@@ -35,7 +35,7 @@ func TestNewGitHubIntegration(t *testing.T) {
 				Token:     "test-token",
 				Transport: &transport.HTTPTransport{},
 			},
-			wantError:  false,
+			wantError:   false,
 			wantBaseURL: "https://api.github.com",
 		},
 	}
@@ -88,18 +88,18 @@ func TestGitHubIntegration_Operations(t *testing.T) {
 
 	// Verify operation names
 	expectedOps := map[string]bool{
-		"create_issue":       true,
-		"update_issue":       true,
-		"close_issue":        true,
-		"add_comment":        true,
-		"list_issues":        true,
-		"create_pr":          true,
-		"merge_pr":           true,
-		"list_prs":           true,
-		"get_file":           true,
-		"list_repos":         true,
-		"create_release":     true,
-		"get_workflow_runs":  true,
+		"create_issue":      true,
+		"update_issue":      true,
+		"close_issue":       true,
+		"add_comment":       true,
+		"list_issues":       true,
+		"create_pr":         true,
+		"merge_pr":          true,
+		"list_prs":          true,
+		"get_file":          true,
+		"list_repos":        true,
+		"create_release":    true,
+		"get_workflow_runs": true,
 	}
 
 	for _, op := range ops {

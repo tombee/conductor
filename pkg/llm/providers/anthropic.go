@@ -1043,12 +1043,12 @@ type anthropicErrorResponse struct {
 
 // anthropicStreamEvent represents a streaming event from the Anthropic API.
 type anthropicStreamEvent struct {
-	Type         string                   `json:"type"`
-	Index        int                      `json:"index,omitempty"`
-	ContentBlock map[string]interface{}   `json:"content_block,omitempty"`
-	Delta        map[string]interface{}   `json:"delta,omitempty"`
-	Message      *anthropicResponse       `json:"message,omitempty"`
-	Usage        *anthropicUsage          `json:"usage,omitempty"`
+	Type         string                 `json:"type"`
+	Index        int                    `json:"index,omitempty"`
+	ContentBlock map[string]interface{} `json:"content_block,omitempty"`
+	Delta        map[string]interface{} `json:"delta,omitempty"`
+	Message      *anthropicResponse     `json:"message,omitempty"`
+	Usage        *anthropicUsage        `json:"usage,omitempty"`
 }
 
 // anthropicTool represents a tool in Anthropic's API format.

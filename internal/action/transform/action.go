@@ -110,9 +110,9 @@ func (c *TransformAction) Execute(ctx context.Context, operation string, inputs 
 		return c.concat(ctx, inputs)
 	default:
 		return nil, &OperationError{
-			Operation: operation,
-			Message:   "unknown operation",
-			ErrorType: ErrorTypeValidation,
+			Operation:  operation,
+			Message:    "unknown operation",
+			ErrorType:  ErrorTypeValidation,
 			Suggestion: "Valid operations: parse_json, parse_xml, extract, split, map, filter, flatten, sort, group, merge, concat",
 		}
 	}

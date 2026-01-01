@@ -7,8 +7,8 @@ import (
 // DangerousEnvVars are environment variables that should be blocked by default
 // to prevent privilege escalation or information leakage.
 var DangerousEnvVars = []string{
-	"LD_PRELOAD",      // Can inject malicious libraries
-	"LD_LIBRARY_PATH", // Can redirect library loading
+	"LD_PRELOAD",            // Can inject malicious libraries
+	"LD_LIBRARY_PATH",       // Can redirect library loading
 	"DYLD_INSERT_LIBRARIES", // macOS equivalent of LD_PRELOAD
 	"DYLD_LIBRARY_PATH",     // macOS library path
 }
@@ -91,13 +91,13 @@ func CheckEnvVar(ctx *PermissionContext, envVar string) error {
 func SanitizeCommand(command string) error {
 	// Check for obvious code injection patterns
 	dangerousPatterns := []string{
-		"$(curl",   // Command substitution with network access
-		"`curl",    // Backtick command substitution
-		"eval ",    // Dynamic code evaluation
-		"exec ",    // Replace shell process
-		"; curl",   // Command chaining with network access
-		"&& curl",  // Conditional chaining with network access
-		"| curl",   // Piping to network command
+		"$(curl",  // Command substitution with network access
+		"`curl",   // Backtick command substitution
+		"eval ",   // Dynamic code evaluation
+		"exec ",   // Replace shell process
+		"; curl",  // Command chaining with network access
+		"&& curl", // Conditional chaining with network access
+		"| curl",  // Piping to network command
 	}
 
 	commandLower := strings.ToLower(command)

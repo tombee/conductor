@@ -39,13 +39,13 @@ func (c *JenkinsIntegration) getQueueItem(ctx context.Context, inputs map[string
 
 	// Return simplified result
 	result := map[string]interface{}{
-		"id":         queueItem.ID,
-		"blocked":    queueItem.Blocked,
-		"buildable":  queueItem.Buildable,
-		"stuck":      queueItem.Stuck,
-		"cancelled":  queueItem.Cancelled,
-		"why":        queueItem.Why,
-		"task_name":  queueItem.Task.Name,
+		"id":        queueItem.ID,
+		"blocked":   queueItem.Blocked,
+		"buildable": queueItem.Buildable,
+		"stuck":     queueItem.Stuck,
+		"cancelled": queueItem.Cancelled,
+		"why":       queueItem.Why,
+		"task_name": queueItem.Task.Name,
 	}
 
 	// Add executable info if build has started

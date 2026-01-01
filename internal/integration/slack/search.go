@@ -62,25 +62,25 @@ func (c *SlackIntegration) searchMessages(ctx context.Context, inputs map[string
 	matches := make([]map[string]interface{}, len(searchResp.Messages.Matches))
 	for i, match := range searchResp.Messages.Matches {
 		matches[i] = map[string]interface{}{
-			"type":      match.Type,
-			"channel":   match.Channel.Name,
+			"type":       match.Type,
+			"channel":    match.Channel.Name,
 			"channel_id": match.Channel.ID,
-			"user":      match.User,
-			"username":  match.Username,
-			"text":      match.Text,
-			"timestamp": match.Timestamp,
-			"permalink": match.Permalink,
+			"user":       match.User,
+			"username":   match.Username,
+			"text":       match.Text,
+			"timestamp":  match.Timestamp,
+			"permalink":  match.Permalink,
 		}
 	}
 
 	// Return operation result
 	return c.ToResult(resp, map[string]interface{}{
-		"query":       searchResp.Query,
-		"total":       searchResp.Messages.Total,
-		"matches":     matches,
-		"ok":          searchResp.OK,
-		"page":        searchResp.Messages.Pagination.Page,
-		"page_count":  searchResp.Messages.Pagination.PageCount,
+		"query":      searchResp.Query,
+		"total":      searchResp.Messages.Total,
+		"matches":    matches,
+		"ok":         searchResp.OK,
+		"page":       searchResp.Messages.Pagination.Page,
+		"page_count": searchResp.Messages.Pagination.PageCount,
 	}), nil
 }
 

@@ -25,7 +25,7 @@ import (
 // NewInitCommand creates the init command
 func NewInitCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "init [name]",
+		Use: "init [name]",
 		Annotations: map[string]string{
 			"group": "workflow",
 		},

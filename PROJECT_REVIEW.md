@@ -78,8 +78,8 @@ When reviewing any section of this document, if you find code patterns like:
 - [x] Unexported functions never called within their package *(ran deadcode, removed dead code)*
 - [x] Exported functions/types never used outside their package *(removed replay.go, inspector.go, simplified init.go)*
 - [ ] Unused struct fields
-- [ ] Commented-out code blocks
-- [x] TODO/FIXME comments indicating incomplete work *(reviewed - mostly future enhancements, not blockers)*
+- [x] Commented-out code blocks *(grep found none in non-test code)*
+- [x] TODO/FIXME comments indicating incomplete work *(0 in non-test code)*
 - [x] Placeholder implementations (functions that panic or return nil) *(removed OpenAI/Ollama stubs, cleaned test runner)*
 
 **Tools:** `deadcode`, `staticcheck`, grep for `TODO|FIXME|XXX|HACK`
@@ -117,7 +117,7 @@ When reviewing any section of this document, if you find code patterns like:
 - [ ] Errors logged but not returned
 - [ ] Missing error context/wrapping
 - [ ] Inconsistent error types (string errors vs typed errors)
-- [ ] Panic usage outside of truly unrecoverable situations
+- [x] Panic usage outside of truly unrecoverable situations *(no panics in non-test production code)*
 - [ ] defer statements that ignore Close() errors inappropriately
 
 ---

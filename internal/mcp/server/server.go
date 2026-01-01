@@ -265,4 +265,3 @@ func checkMark(ok bool) string {
 	}
 	return "✗"
 }
-

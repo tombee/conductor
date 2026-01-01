@@ -21,7 +21,7 @@ import (
 // NewMCPCommand creates the mcp command for MCP server management.
 func NewMCPCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "mcp",
+		Use: "mcp",
 		Annotations: map[string]string{
 			"group": "mcp",
 		},

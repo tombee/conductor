@@ -82,7 +82,7 @@ type Run struct {
 	MCPDev     bool          `json:"mcp_dev,omitempty"`     // MCP development mode
 
 	// Debug configuration
-	LogLevel         string   `json:"log_level,omitempty"`          // Log level override
+	LogLevel         string   `json:"log_level,omitempty"`         // Log level override
 	DebugBreakpoints []string `json:"debug_breakpoints,omitempty"` // Step IDs where execution should pause
 
 	// Internal

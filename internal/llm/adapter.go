@@ -139,10 +139,10 @@ func wrapWithRetry(provider llm.Provider, llmCfg config.LLMConfig) llm.Provider 
 		MaxRetries:      llmCfg.MaxRetries,
 		InitialDelay:    llmCfg.RetryBackoffBase,
 		MaxDelay:        10 * llmCfg.RetryBackoffBase, // 10x base as max
-		Multiplier:      2.0,                           // Exponential backoff
-		Jitter:          0.1,                           // 10% jitter
-		AbsoluteTimeout: 2 * llmCfg.RequestTimeout,     // 2x request timeout as absolute max
-		RetryableErrors: nil,                           // Use default retry logic
+		Multiplier:      2.0,                          // Exponential backoff
+		Jitter:          0.1,                          // 10% jitter
+		AbsoluteTimeout: 2 * llmCfg.RequestTimeout,    // 2x request timeout as absolute max
+		RetryableErrors: nil,                          // Use default retry logic
 	}
 
 	return llm.NewRetryableProvider(provider, retryConfig)

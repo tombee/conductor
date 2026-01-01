@@ -6,10 +6,10 @@ import (
 
 func TestIntegrationDefinitionValidate(t *testing.T) {
 	tests := []struct {
-		name      string
+		name        string
 		integration IntegrationDefinition
-		wantErr   bool
-		errMsg    string
+		wantErr     bool
+		errMsg      string
 	}{
 		{
 			name: "valid inline integration",

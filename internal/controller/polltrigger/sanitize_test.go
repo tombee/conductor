@@ -48,8 +48,8 @@ func TestStripSensitiveFields(t *testing.T) {
 		{
 			name: "strips integration-specific fields - pagerduty",
 			event: map[string]interface{}{
-				"id":              "789",
-				"title":           "Alert",
+				"id":                "789",
+				"title":             "Alert",
 				"conference_bridge": "secret-bridge",
 			},
 			integration: "pagerduty",

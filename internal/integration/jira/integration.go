@@ -48,9 +48,9 @@ func NewJiraIntegration(config *api.ProviderConfig) (operation.Provider, error) 
 
 	return &JiraIntegration{
 		BaseProvider: base,
-		email:         email,
-		apiToken:      config.Token,
-		transport:     config.Transport,
+		email:        email,
+		apiToken:     config.Token,
+		transport:    config.Transport,
 	}, nil
 }
 

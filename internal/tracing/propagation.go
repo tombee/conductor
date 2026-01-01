@@ -71,8 +71,8 @@ func TracingMiddleware(next http.Handler) http.Handler {
 
 		// Add HTTP attributes
 		span.SetAttributes(
-			// Use semantic convention attribute constructors if available
-			// For now, using simple string keys
+		// Use semantic convention attribute constructors if available
+		// For now, using simple string keys
 		)
 
 		// Update request with span context

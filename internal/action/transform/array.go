@@ -33,9 +33,9 @@ func (c *TransformAction) split(ctx context.Context, inputs map[string]interface
 	arr, ok := data.([]interface{})
 	if !ok {
 		return nil, &OperationError{
-			Operation: "split",
-			Message:   "input must be an array",
-			ErrorType: ErrorTypeTypeError,
+			Operation:  "split",
+			Message:    "input must be an array",
+			ErrorType:  ErrorTypeTypeError,
 			Suggestion: "Use transform.split only with array inputs. For non-array values, consider using transform.extract to create an array first.",
 		}
 	}

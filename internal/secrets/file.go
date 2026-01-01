@@ -57,10 +57,10 @@ type FileBackend struct {
 
 // encryptedData represents the structure of the encrypted secrets file.
 type encryptedData struct {
-	Salt    []byte            `json:"salt"`    // Salt for Argon2 key derivation
-	Nonce   []byte            `json:"nonce"`   // GCM nonce
-	Data    []byte            `json:"data"`    // Encrypted secrets data
-	Secrets map[string]string `json:"-"`       // In-memory plaintext (not serialized)
+	Salt    []byte            `json:"salt"`  // Salt for Argon2 key derivation
+	Nonce   []byte            `json:"nonce"` // GCM nonce
+	Data    []byte            `json:"data"`  // Encrypted secrets data
+	Secrets map[string]string `json:"-"`     // In-memory plaintext (not serialized)
 }
 
 // NewFileBackend creates a new encrypted file backend.

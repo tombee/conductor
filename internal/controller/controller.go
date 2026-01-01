@@ -68,25 +68,25 @@ type Options struct {
 
 // Controller is the main conductor controller service.
 type Controller struct {
-	cfg          *config.Config
-	opts         Options
-	logger       *slog.Logger
-	server       *http.Server
-	publicServer *publicapi.Server // Optional public API server for webhooks
-	ln           net.Listener
-	pidFile      string
-	runner          *runner.Runner
-	backend         backend.Backend
-	checkpoints     *checkpoint.Manager
-	scheduler       *scheduler.Scheduler
-	fileWatcher     *filewatcher.Service
-	endpointHandler *endpoint.Handler
-	authMw          *auth.Middleware
-	leader          *leader.Elector
-	mcpRegistry     *mcp.Registry
-	mcpLogCapture   *mcp.LogCapture
-	otelProvider    *tracing.OTelProvider
-	retentionMgr    *tracing.RetentionManager
+	cfg                *config.Config
+	opts               Options
+	logger             *slog.Logger
+	server             *http.Server
+	publicServer       *publicapi.Server // Optional public API server for webhooks
+	ln                 net.Listener
+	pidFile            string
+	runner             *runner.Runner
+	backend            backend.Backend
+	checkpoints        *checkpoint.Manager
+	scheduler          *scheduler.Scheduler
+	fileWatcher        *filewatcher.Service
+	endpointHandler    *endpoint.Handler
+	authMw             *auth.Middleware
+	leader             *leader.Elector
+	mcpRegistry        *mcp.Registry
+	mcpLogCapture      *mcp.LogCapture
+	otelProvider       *tracing.OTelProvider
+	retentionMgr       *tracing.RetentionManager
 	auditLogger        *audit.Logger
 	pollTriggerService *polltrigger.Service
 	debugSessionMgr    *debug.SessionManager
@@ -1232,7 +1232,7 @@ func (a *mcpStatusAdapter) GetSummary() api.MCPServerSummary {
 	summary := a.registry.GetSummary()
 	return api.MCPServerSummary{
 		Total:   summary.Total,
-		Running:summary.Running,
+		Running: summary.Running,
 		Stopped: summary.Stopped,
 		Error:   summary.Error,
 	}

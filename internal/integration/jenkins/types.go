@@ -4,36 +4,36 @@ import "time"
 
 // Build represents a Jenkins build.
 type Build struct {
-	ID          string    `json:"id"`
-	Number      int       `json:"number"`
-	URL         string    `json:"url"`
-	Result      string    `json:"result"` // SUCCESS, FAILURE, UNSTABLE, ABORTED, null (in progress)
-	Building    bool      `json:"building"`
-	Duration    int64     `json:"duration"` // milliseconds
-	Timestamp   int64     `json:"timestamp"` // Unix timestamp in milliseconds
-	DisplayName string    `json:"displayName"`
-	FullDisplayName string `json:"fullDisplayName"`
-	Description string    `json:"description"`
-	QueueID     int       `json:"queueId"`
-	Actions     []Action  `json:"actions"`
-	ChangeSet   ChangeSet `json:"changeSet"`
+	ID              string    `json:"id"`
+	Number          int       `json:"number"`
+	URL             string    `json:"url"`
+	Result          string    `json:"result"` // SUCCESS, FAILURE, UNSTABLE, ABORTED, null (in progress)
+	Building        bool      `json:"building"`
+	Duration        int64     `json:"duration"`  // milliseconds
+	Timestamp       int64     `json:"timestamp"` // Unix timestamp in milliseconds
+	DisplayName     string    `json:"displayName"`
+	FullDisplayName string    `json:"fullDisplayName"`
+	Description     string    `json:"description"`
+	QueueID         int       `json:"queueId"`
+	Actions         []Action  `json:"actions"`
+	ChangeSet       ChangeSet `json:"changeSet"`
 }
 
 // Job represents a Jenkins job.
 type Job struct {
-	Name        string      `json:"name"`
-	URL         string      `json:"url"`
-	Description string      `json:"description"`
-	Color       string      `json:"color"` // blue, red, yellow, etc.
-	Buildable   bool        `json:"buildable"`
-	InQueue     bool        `json:"inQueue"`
-	LastBuild   *BuildRef   `json:"lastBuild"`
-	LastSuccessfulBuild *BuildRef `json:"lastSuccessfulBuild"`
-	LastFailedBuild     *BuildRef `json:"lastFailedBuild"`
-	NextBuildNumber     int       `json:"nextBuildNumber"`
-	Jobs        []Job       `json:"jobs"` // For folders
-	Property    []Property  `json:"property"`
-	HealthReport []HealthReport `json:"healthReport"`
+	Name                string         `json:"name"`
+	URL                 string         `json:"url"`
+	Description         string         `json:"description"`
+	Color               string         `json:"color"` // blue, red, yellow, etc.
+	Buildable           bool           `json:"buildable"`
+	InQueue             bool           `json:"inQueue"`
+	LastBuild           *BuildRef      `json:"lastBuild"`
+	LastSuccessfulBuild *BuildRef      `json:"lastSuccessfulBuild"`
+	LastFailedBuild     *BuildRef      `json:"lastFailedBuild"`
+	NextBuildNumber     int            `json:"nextBuildNumber"`
+	Jobs                []Job          `json:"jobs"` // For folders
+	Property            []Property     `json:"property"`
+	HealthReport        []HealthReport `json:"healthReport"`
 }
 
 // BuildRef represents a reference to a build.
@@ -44,17 +44,17 @@ type BuildRef struct {
 
 // QueueItem represents an item in the Jenkins build queue.
 type QueueItem struct {
-	ID         int       `json:"id"`
-	Blocked    bool      `json:"blocked"`
-	Buildable  bool      `json:"buildable"`
-	InQueueSince int64   `json:"inQueueSince"` // Unix timestamp in milliseconds
-	Params     string    `json:"params"`
-	Stuck      bool      `json:"stuck"`
-	Task       Task      `json:"task"`
-	Why        string    `json:"why"`
-	URL        string    `json:"url"`
-	Cancelled  bool      `json:"cancelled"`
-	Executable *Executable `json:"executable,omitempty"` // Present when build starts
+	ID           int         `json:"id"`
+	Blocked      bool        `json:"blocked"`
+	Buildable    bool        `json:"buildable"`
+	InQueueSince int64       `json:"inQueueSince"` // Unix timestamp in milliseconds
+	Params       string      `json:"params"`
+	Stuck        bool        `json:"stuck"`
+	Task         Task        `json:"task"`
+	Why          string      `json:"why"`
+	URL          string      `json:"url"`
+	Cancelled    bool        `json:"cancelled"`
+	Executable   *Executable `json:"executable,omitempty"` // Present when build starts
 }
 
 // Task represents a Jenkins task (job) reference.
@@ -72,12 +72,12 @@ type Executable struct {
 
 // TestReport represents test results for a build.
 type TestReport struct {
-	Duration   float64       `json:"duration"`
-	Empty      bool          `json:"empty"`
-	FailCount  int           `json:"failCount"`
-	PassCount  int           `json:"passCount"`
-	SkipCount  int           `json:"skipCount"`
-	Suites     []TestSuite   `json:"suites"`
+	Duration  float64     `json:"duration"`
+	Empty     bool        `json:"empty"`
+	FailCount int         `json:"failCount"`
+	PassCount int         `json:"passCount"`
+	SkipCount int         `json:"skipCount"`
+	Suites    []TestSuite `json:"suites"`
 }
 
 // TestSuite represents a test suite within a test report.
@@ -90,24 +90,24 @@ type TestSuite struct {
 
 // TestCase represents an individual test case.
 type TestCase struct {
-	ClassName  string  `json:"className"`
-	Name       string  `json:"name"`
-	Duration   float64 `json:"duration"`
-	Status     string  `json:"status"` // PASSED, FAILED, SKIPPED
-	ErrorDetails string `json:"errorDetails,omitempty"`
-	ErrorStackTrace string `json:"errorStackTrace,omitempty"`
+	ClassName       string  `json:"className"`
+	Name            string  `json:"name"`
+	Duration        float64 `json:"duration"`
+	Status          string  `json:"status"` // PASSED, FAILED, SKIPPED
+	ErrorDetails    string  `json:"errorDetails,omitempty"`
+	ErrorStackTrace string  `json:"errorStackTrace,omitempty"`
 }
 
 // Node represents a Jenkins build agent/node.
 type Node struct {
-	DisplayName     string         `json:"displayName"`
-	Description     string         `json:"description"`
-	NumExecutors    int            `json:"numExecutors"`
-	Mode            string         `json:"mode"` // NORMAL, EXCLUSIVE
-	Offline         bool           `json:"offline"`
-	OfflineCause    *OfflineCause  `json:"offlineCause,omitempty"`
-	TemporarilyOffline bool        `json:"temporarilyOffline"`
-	MonitorData     MonitorData    `json:"monitorData"`
+	DisplayName        string        `json:"displayName"`
+	Description        string        `json:"description"`
+	NumExecutors       int           `json:"numExecutors"`
+	Mode               string        `json:"mode"` // NORMAL, EXCLUSIVE
+	Offline            bool          `json:"offline"`
+	OfflineCause       *OfflineCause `json:"offlineCause,omitempty"`
+	TemporarilyOffline bool          `json:"temporarilyOffline"`
+	MonitorData        MonitorData   `json:"monitorData"`
 }
 
 // OfflineCause represents why a node is offline.
@@ -118,12 +118,12 @@ type OfflineCause struct {
 
 // MonitorData contains node monitoring information.
 type MonitorData struct {
-	Architecture       *ArchitectureMonitor       `json:"hudson.node_monitors.ArchitectureMonitor,omitempty"`
-	Clock              *ClockMonitor              `json:"hudson.node_monitors.ClockMonitor,omitempty"`
-	DiskSpace          *DiskSpaceMonitor          `json:"hudson.node_monitors.DiskSpaceMonitor,omitempty"`
-	ResponseTime       *ResponseTimeMonitor       `json:"hudson.node_monitors.ResponseTimeMonitor,omitempty"`
-	SwapSpace          *SwapSpaceMonitor          `json:"hudson.node_monitors.SwapSpaceMonitor,omitempty"`
-	TemporarySpace     *DiskSpaceMonitor          `json:"hudson.node_monitors.TemporarySpaceMonitor,omitempty"`
+	Architecture   *ArchitectureMonitor `json:"hudson.node_monitors.ArchitectureMonitor,omitempty"`
+	Clock          *ClockMonitor        `json:"hudson.node_monitors.ClockMonitor,omitempty"`
+	DiskSpace      *DiskSpaceMonitor    `json:"hudson.node_monitors.DiskSpaceMonitor,omitempty"`
+	ResponseTime   *ResponseTimeMonitor `json:"hudson.node_monitors.ResponseTimeMonitor,omitempty"`
+	SwapSpace      *SwapSpaceMonitor    `json:"hudson.node_monitors.SwapSpaceMonitor,omitempty"`
+	TemporarySpace *DiskSpaceMonitor    `json:"hudson.node_monitors.TemporarySpaceMonitor,omitempty"`
 }
 
 // ArchitectureMonitor contains architecture information.
@@ -151,9 +151,9 @@ type ResponseTimeMonitor struct {
 // SwapSpaceMonitor contains swap space information.
 type SwapSpaceMonitor struct {
 	AvailablePhysicalMemory int64 `json:"availablePhysicalMemory"` // bytes
-	AvailableSwapSpace      int64 `json:"availableSwapSpace"` // bytes
-	TotalPhysicalMemory     int64 `json:"totalPhysicalMemory"` // bytes
-	TotalSwapSpace          int64 `json:"totalSwapSpace"` // bytes
+	AvailableSwapSpace      int64 `json:"availableSwapSpace"`      // bytes
+	TotalPhysicalMemory     int64 `json:"totalPhysicalMemory"`     // bytes
+	TotalSwapSpace          int64 `json:"totalSwapSpace"`          // bytes
 }
 
 // Action represents a build action (parameters, causes, etc.).
@@ -195,8 +195,8 @@ type Change struct {
 
 // Author represents a commit author.
 type Author struct {
-	FullName     string `json:"fullName"`
-	AbsoluteURL  string `json:"absoluteUrl"`
+	FullName    string `json:"fullName"`
+	AbsoluteURL string `json:"absoluteUrl"`
 }
 
 // Property represents a job property.

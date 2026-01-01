@@ -9,12 +9,12 @@ import (
 
 // PackageDefinition represents an integration package YAML file.
 type PackageDefinition struct {
-	Version     string                                 `yaml:"version"`
-	Name        string                                 `yaml:"name"`
-	Description string                                 `yaml:"description"`
-	BaseURL     string                                 `yaml:"base_url"`
-	Headers     map[string]string                      `yaml:"headers,omitempty"`
-	RateLimit   *workflow.RateLimitConfig              `yaml:"rate_limit,omitempty"`
+	Version     string                                  `yaml:"version"`
+	Name        string                                  `yaml:"name"`
+	Description string                                  `yaml:"description"`
+	BaseURL     string                                  `yaml:"base_url"`
+	Headers     map[string]string                       `yaml:"headers,omitempty"`
+	RateLimit   *workflow.RateLimitConfig               `yaml:"rate_limit,omitempty"`
 	Operations  map[string]workflow.OperationDefinition `yaml:"operations"`
 }
 
@@ -31,8 +31,8 @@ func loadPackage(from string) (*PackageDefinition, error) {
 
 	// Future: support local files and remote packages
 	return nil, &Error{
-		Type:       ErrorTypeNotImplemented,
-		Message:    fmt.Sprintf("integration package source %q not yet supported", from),
+		Type:        ErrorTypeNotImplemented,
+		Message:     fmt.Sprintf("integration package source %q not yet supported", from),
 		SuggestText: "use bundled integrations (from: integrations/<name>) or inline definitions",
 	}
 }

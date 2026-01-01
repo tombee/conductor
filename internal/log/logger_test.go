@@ -229,7 +229,7 @@ func TestParseLevel(t *testing.T) {
 		{"error", slog.LevelError},
 		{"ERROR", slog.LevelError},
 		{"invalid", slog.LevelInfo}, // defaults to info
-		{"", slog.LevelInfo},         // defaults to info
+		{"", slog.LevelInfo},        // defaults to info
 	}
 
 	for _, tt := range tests {

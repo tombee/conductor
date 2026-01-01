@@ -411,7 +411,6 @@ func (m *Manager) Restart(name string) error {
 	}
 }
 
-
 // Close shuts down the manager and all managed servers.
 func (m *Manager) Close() error {
 	m.cancel()

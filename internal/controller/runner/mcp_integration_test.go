@@ -375,4 +375,3 @@ func TestMCPMultipleServers(t *testing.T) {
 	require.False(t, mockMgr.IsRunning("server1"))
 	require.False(t, mockMgr.IsRunning("server2"))
 }
-

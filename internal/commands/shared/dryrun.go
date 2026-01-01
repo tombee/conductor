@@ -65,13 +65,14 @@ func (d *DryRunOutput) DryRunDeleteWithCount(path, count string) {
 
 // String returns the formatted dry-run output.
 // Format:
-//   Dry run: The following actions would be performed:
 //
-//   CREATE: <config-dir>/config.yaml
-//   MODIFY: <config-dir>/config.yaml (add provider)
-//   DELETE: <cache-dir>/session-123
+//	Dry run: The following actions would be performed:
 //
-//   Run without --dry-run to execute.
+//	CREATE: <config-dir>/config.yaml
+//	MODIFY: <config-dir>/config.yaml (add provider)
+//	DELETE: <cache-dir>/session-123
+//
+//	Run without --dry-run to execute.
 func (d *DryRunOutput) String() string {
 	if len(d.actions) == 0 {
 		return "Dry run: No actions would be performed."

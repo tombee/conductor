@@ -54,11 +54,11 @@ func TestInterceptorWithNoContext(t *testing.T) {
 
 func TestInterceptorFileAccess(t *testing.T) {
 	tests := []struct {
-		name        string
-		profile     string
-		toolName    string
-		inputs      map[string]interface{}
-		wantError   bool
+		name      string
+		profile   string
+		toolName  string
+		inputs    map[string]interface{}
+		wantError bool
 	}{
 		{
 			name:     "standard profile allows workspace read",

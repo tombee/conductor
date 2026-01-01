@@ -23,31 +23,31 @@ import (
 // NewCommand creates the run command
 func NewCommand() *cobra.Command {
 	var (
-		inputs                        []string
-		inputFile                     string
-		outputFile                    string
-		noStats                       bool
-		provider                      string
-		model                         string
-		timeout                       string
-		dryRun                        bool
-		quiet                         bool
-		verbose                       bool
-		background                    bool
-		mcpDev                        bool
-		noCache                       bool
-		noInteractive                 bool
-		helpInputs                    bool
-		securityMode                  string
-		allowHosts                    []string
-		allowPaths                    []string
-		workspace                     string
-		profile                       string
-		bindIntegrations              []string
+		inputs                         []string
+		inputFile                      string
+		outputFile                     string
+		noStats                        bool
+		provider                       string
+		model                          string
+		timeout                        string
+		dryRun                         bool
+		quiet                          bool
+		verbose                        bool
+		background                     bool
+		mcpDev                         bool
+		noCache                        bool
+		noInteractive                  bool
+		helpInputs                     bool
+		securityMode                   string
+		allowHosts                     []string
+		allowPaths                     []string
+		workspace                      string
+		profile                        string
+		bindIntegrations               []string
 		acceptUnenforceablePermissions bool
-		logLevel                      string
-		step                          string
-		breakpoints                   []string
+		logLevel                       string
+		step                           string
+		breakpoints                    []string
 	)
 
 	cmd := &cobra.Command{

@@ -27,7 +27,7 @@ import (
 // NewCacheCommand creates the cache management command.
 func NewCacheCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "cache",
+		Use: "cache",
 		Annotations: map[string]string{
 			"group": "management",
 		},

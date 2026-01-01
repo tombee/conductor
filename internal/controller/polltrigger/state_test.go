@@ -154,7 +154,7 @@ func TestStateManager_PruneSeenEvents(t *testing.T) {
 	now := time.Now().Unix()
 
 	state := &PollState{
-		TriggerID:  "test-trigger-4",
+		TriggerID: "test-trigger-4",
 		SeenEvents: map[string]int64{
 			"old1":   now - 90000, // >24h old
 			"old2":   now - 86500, // >24h old

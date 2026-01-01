@@ -211,10 +211,10 @@ func TestReplayFlow_CostEstimationAccuracy(t *testing.T) {
 	}
 
 	tests := []struct {
-		name             string
-		fromStep         string
-		expectedSavings  float64
-		expectedSkipped  int
+		name            string
+		fromStep        string
+		expectedSavings float64
+		expectedSkipped int
 	}{
 		{
 			name:            "replay from step 3",

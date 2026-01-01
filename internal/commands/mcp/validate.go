@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 )
+
 // Validate command
 
 func newMCPValidateCommand() *cobra.Command {

@@ -29,9 +29,9 @@ import (
 
 // DoctorResult represents the health check result
 type DoctorResult struct {
-	Healthy      bool            `json:"healthy"`
-	Version      string          `json:"version"`
-	Checks       []HealthCheck   `json:"checks"`
+	Healthy bool          `json:"healthy"`
+	Version string        `json:"version"`
+	Checks  []HealthCheck `json:"checks"`
 }
 
 // HealthCheck represents a single health check
@@ -151,8 +151,8 @@ func checkDefaultProvider() HealthCheck {
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
 		return HealthCheck{
-			Name:   "Default Provider",
-			Status: "fail",
+			Name:    "Default Provider",
+			Status:  "fail",
 			Message: "Cannot load config to check provider",
 		}
 	}
@@ -188,8 +188,8 @@ func checkProviderHealth(ctx context.Context) HealthCheck {
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
 		return HealthCheck{
-			Name:   "Provider Health",
-			Status: "warn",
+			Name:    "Provider Health",
+			Status:  "warn",
 			Message: "Cannot check provider health",
 		}
 	}

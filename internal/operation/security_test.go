@@ -220,11 +220,11 @@ func TestMaskSensitiveValue(t *testing.T) {
 
 func TestMaskSensitiveHeaders(t *testing.T) {
 	headers := map[string][]string{
-		"Authorization":  {"Bearer token123"},
-		"X-API-Key":      {"key123"},
-		"Content-Type":   {"application/json"},
-		"User-Agent":     {"conductor/1.0"},
-		"X-Auth-Token":   {"auth123"},
+		"Authorization":   {"Bearer token123"},
+		"X-API-Key":       {"key123"},
+		"Content-Type":    {"application/json"},
+		"User-Agent":      {"conductor/1.0"},
+		"X-Auth-Token":    {"auth123"},
 		"X-Client-Secret": {"secret123"},
 	}
 

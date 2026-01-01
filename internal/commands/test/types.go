@@ -39,13 +39,13 @@ type TestFile struct {
 
 // TestResult represents the outcome of a single test
 type TestResult struct {
-	Name      string              // Test name
-	File      string              // Test file path
-	Status    TestStatus          // Pass, Fail, Error
-	Duration  time.Duration       // Execution time
-	Failures  []AssertionFailure  // Failed assertions
-	Error     string              // Error message if status is Error
-	StepCount int                 // Number of steps executed
+	Name      string             // Test name
+	File      string             // Test file path
+	Status    TestStatus         // Pass, Fail, Error
+	Duration  time.Duration      // Execution time
+	Failures  []AssertionFailure // Failed assertions
+	Error     string             // Error message if status is Error
+	StepCount int                // Number of steps executed
 }
 
 // TestStatus represents the outcome of a test

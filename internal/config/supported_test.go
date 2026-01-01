@@ -64,29 +64,29 @@ func TestIsSupportedProvider(t *testing.T) {
 
 func TestAllProvidersEnabled(t *testing.T) {
 	tests := []struct {
-		name    string
+		name     string
 		envValue string
-		want    bool
+		want     bool
 	}{
 		{
-			name:    "enabled when CONDUCTOR_ALL_PROVIDERS=1",
+			name:     "enabled when CONDUCTOR_ALL_PROVIDERS=1",
 			envValue: "1",
-			want:    true,
+			want:     true,
 		},
 		{
-			name:    "disabled when CONDUCTOR_ALL_PROVIDERS is empty",
+			name:     "disabled when CONDUCTOR_ALL_PROVIDERS is empty",
 			envValue: "",
-			want:    false,
+			want:     false,
 		},
 		{
-			name:    "disabled when CONDUCTOR_ALL_PROVIDERS=0",
+			name:     "disabled when CONDUCTOR_ALL_PROVIDERS=0",
 			envValue: "0",
-			want:    false,
+			want:     false,
 		},
 		{
-			name:    "disabled when CONDUCTOR_ALL_PROVIDERS=true",
+			name:     "disabled when CONDUCTOR_ALL_PROVIDERS=true",
 			envValue: "true",
-			want:    false,
+			want:     false,
 		},
 	}
 

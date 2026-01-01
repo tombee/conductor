@@ -10,8 +10,8 @@ import (
 
 // Input size limits per NFR5
 const (
-	MaxJSONSize  = 1 * 1024 * 1024 // 1MB
-	MaxArrayLen  = 10000           // 10,000 elements
+	MaxJSONSize = 1 * 1024 * 1024 // 1MB
+	MaxArrayLen = 10000           // 10,000 elements
 )
 
 // TemplateFuncMap returns the custom functions available in workflow templates.

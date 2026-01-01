@@ -65,7 +65,6 @@ type ModelInfo struct {
 	Description string
 }
 
-
 // GetModelByTier returns the first model matching the specified tier.
 // Returns nil if no model matches the tier.
 func GetModelByTier(models []ModelInfo, tier ModelTier) *ModelInfo {

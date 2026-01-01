@@ -32,11 +32,11 @@ func (c *JenkinsIntegration) listNodes(ctx context.Context, inputs map[string]in
 	result := make([]map[string]interface{}, len(nodeList.Computer))
 	for i, node := range nodeList.Computer {
 		nodeInfo := map[string]interface{}{
-			"display_name":   node.DisplayName,
-			"description":    node.Description,
-			"num_executors":  node.NumExecutors,
-			"offline":        node.Offline,
-			"mode":           node.Mode,
+			"display_name":  node.DisplayName,
+			"description":   node.Description,
+			"num_executors": node.NumExecutors,
+			"offline":       node.Offline,
+			"mode":          node.Mode,
 		}
 
 		// Add offline cause if present
@@ -89,11 +89,11 @@ func (c *JenkinsIntegration) getNode(ctx context.Context, inputs map[string]inte
 
 	// Return simplified result
 	result := map[string]interface{}{
-		"display_name":  node.DisplayName,
-		"description":   node.Description,
-		"num_executors": node.NumExecutors,
-		"offline":       node.Offline,
-		"mode":          node.Mode,
+		"display_name":        node.DisplayName,
+		"description":         node.Description,
+		"num_executors":       node.NumExecutors,
+		"offline":             node.Offline,
+		"mode":                node.Mode,
 		"temporarily_offline": node.TemporarilyOffline,
 	}
 

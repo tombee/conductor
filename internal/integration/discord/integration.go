@@ -27,9 +27,9 @@ func NewDiscordIntegration(config *api.ProviderConfig) (operation.Provider, erro
 
 	return &DiscordIntegration{
 		BaseProvider: base,
-		token:         config.Token,
-		transport:     config.Transport,
-		baseURL:       config.BaseURL,
+		token:        config.Token,
+		transport:    config.Transport,
+		baseURL:      config.BaseURL,
 	}, nil
 }
 

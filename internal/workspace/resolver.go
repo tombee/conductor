@@ -152,8 +152,8 @@ func (r *BindingResolver) ResolveBindings(
 				names = append(names, m.Name)
 			}
 			return nil, &MultipleIntegrationsError{
-				Type:           parsed.Type,
-				Workspace:      workspaceName,
+				Type:             parsed.Type,
+				Workspace:        workspaceName,
 				IntegrationNames: names,
 			}
 		}

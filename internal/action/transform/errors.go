@@ -36,7 +36,7 @@ type OperationError struct {
 	ErrorType  ErrorType
 	Cause      error
 	Suggestion string
-	Position   int // Character position for parse errors
+	Position   int    // Character position for parse errors
 	Context    string // Context preview (redacted)
 }
 

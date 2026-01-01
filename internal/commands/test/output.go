@@ -117,12 +117,12 @@ func outputJUnit(summary TestSummary, w io.Writer) error {
 	}
 
 	type JUnitTestCase struct {
-		Name      string          `xml:"name,attr"`
-		Classname string          `xml:"classname,attr"`
-		Time      string          `xml:"time,attr"`
-		Failure   *JUnitFailure   `xml:"failure,omitempty"`
-		Error     *JUnitFailure   `xml:"error,omitempty"`
-		Skipped   *struct{}       `xml:"skipped,omitempty"`
+		Name      string        `xml:"name,attr"`
+		Classname string        `xml:"classname,attr"`
+		Time      string        `xml:"time,attr"`
+		Failure   *JUnitFailure `xml:"failure,omitempty"`
+		Error     *JUnitFailure `xml:"error,omitempty"`
+		Skipped   *struct{}     `xml:"skipped,omitempty"`
 	}
 
 	type JUnitTestSuite struct {

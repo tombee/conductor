@@ -160,8 +160,8 @@ func DefaultConfig() Config {
 				Aggregates: 90 * 24 * time.Hour, // 90 days
 			},
 		},
-		Exporters:     nil,           // No exporters by default
-		BatchSize:     512,            // OTLP default batch size
+		Exporters:     nil,             // No exporters by default
+		BatchSize:     512,             // OTLP default batch size
 		BatchInterval: 5 * time.Second, // OTLP default batch interval
 		Redaction: RedactionConfig{
 			Level:    "strict", // Strict by default for safety

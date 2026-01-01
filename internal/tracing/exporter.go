@@ -167,7 +167,7 @@ func CreateExporter(ctx context.Context, cfg ExporterConfig) (sdktrace.SpanExpor
 
 		return export.NewOTLPHTTPExporter(ctx, export.OTLPHTTPConfig{
 			Endpoint:  cfg.Endpoint,
-			URLPath:   "",      // Use default /v1/traces
+			URLPath:   "", // Use default /v1/traces
 			Insecure:  !cfg.TLS.Enabled,
 			TLSConfig: tlsConfig,
 			Headers:   cfg.Headers,

@@ -100,7 +100,6 @@ type APITriggerConfig struct {
 	Secret string `yaml:"secret" json:"secret"`
 }
 
-
 // TriggerType represents the type of trigger.
 type TriggerType string
 
@@ -315,9 +314,9 @@ func (p *PollTriggerConfig) Validate() error {
 	// Validate startup if specified
 	if p.Startup != "" {
 		validStartup := map[string]bool{
-			"since_last":         true,
-			"ignore_historical":  true,
-			"backfill":           true,
+			"since_last":        true,
+			"ignore_historical": true,
+			"backfill":          true,
 		}
 		if !validStartup[p.Startup] {
 			return &errors.ValidationError{
@@ -531,7 +530,7 @@ type StepDefinition struct {
 	// Only valid for type: parallel steps.
 	Foreach string `yaml:"foreach,omitempty" json:"foreach,omitempty"`
 
-// MaxIterations limits loop iterations (required for type: loop).
+	// MaxIterations limits loop iterations (required for type: loop).
 	// Must be between 1 and 100.
 	MaxIterations int `yaml:"max_iterations,omitempty" json:"max_iterations,omitempty"`
 
@@ -561,7 +560,7 @@ const (
 	// StepTypeIntegration executes a declarative integration operation
 	StepTypeIntegration StepType = "integration"
 
-// StepTypeLoop executes nested steps repeatedly until a condition is met
+	// StepTypeLoop executes nested steps repeatedly until a condition is met
 	// or a maximum iteration count is reached
 	StepTypeLoop StepType = "loop"
 
@@ -1272,7 +1271,6 @@ func ParseIntegrationRequirement(req string) ParsedIntegrationRequirement {
 	}
 }
 
-
 // ParseDefinition parses a workflow definition from YAML bytes.
 func ParseDefinition(data []byte) (*Definition, error) {
 	var def Definition
@@ -1954,9 +1952,9 @@ func (c *IntegrationDefinition) Validate() error {
 	// Validate transport field if specified
 	if c.Transport != "" {
 		validTransports := map[string]bool{
-			"http":       true,
-			"aws_sigv4":  true,
-			"oauth2":     true,
+			"http":      true,
+			"aws_sigv4": true,
+			"oauth2":    true,
 		}
 		if !validTransports[c.Transport] {
 			return fmt.Errorf("invalid transport %q: must be http, aws_sigv4, or oauth2", c.Transport)

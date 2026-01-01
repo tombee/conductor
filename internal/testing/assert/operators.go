@@ -28,15 +28,15 @@ import (
 func AssertionFunctions() map[string]interface{} {
 	return map[string]interface{}{
 		// String operators (using alternative names to avoid reserved words)
-		"has":     containsOp,   // Alternative to "contains"
-		"match":   matchesOp,    // Alternative to "matches"
+		"has":   containsOp, // Alternative to "contains"
+		"match": matchesOp,  // Alternative to "matches"
 
 		// Collection operators
-		"includes": inOp,        // Alternative to "in"
+		"includes": inOp, // Alternative to "in"
 		"notIn":    notInOp,
 
 		// Pipe operators (for chaining)
-		"len":       lengthPipe,  // Alternative to "length" (expr has "count")
+		"len":       lengthPipe, // Alternative to "length" (expr has "count")
 		"lowercase": lowercasePipe,
 		"uppercase": uppercasePipe,
 		"json":      jsonPipe,

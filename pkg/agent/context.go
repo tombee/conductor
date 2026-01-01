@@ -146,10 +146,10 @@ func (cm *ContextManager) TruncateContent(content string, maxTokens int) string 
 
 // GetContextStats returns statistics about the current context usage.
 type ContextStats struct {
-	MessageCount  int
+	MessageCount    int
 	EstimatedTokens int
-	MaxTokens     int
-	UtilizationPct float64
+	MaxTokens       int
+	UtilizationPct  float64
 }
 
 // GetStats returns statistics about the context usage.

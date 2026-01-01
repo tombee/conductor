@@ -20,10 +20,10 @@ func TestBuildPromptWithSchema(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
-		prompt        string
-		retryAttempt  int
-		wantContains  []string
+		name         string
+		prompt       string
+		retryAttempt int
+		wantContains []string
 	}{
 		{
 			name:         "first attempt - subtle",
@@ -97,13 +97,13 @@ func TestExtractJSON(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name: "JSON in markdown code block",
+			name:     "JSON in markdown code block",
 			response: "```json\n" + `{"category": "bug"}` + "\n```",
 			wantData: map[string]interface{}{"category": "bug"},
 			wantErr:  false,
 		},
 		{
-			name: "JSON in generic code block",
+			name:     "JSON in generic code block",
 			response: "```\n" + `{"category": "bug"}` + "\n```",
 			wantData: map[string]interface{}{"category": "bug"},
 			wantErr:  false,
@@ -205,7 +205,7 @@ func TestExtractJSONEdgeCases(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name: "multiple JSON objects (takes first)",
+			name:     "multiple JSON objects (takes first)",
 			response: `{"first": true} {"second": true}`,
 			wantErr:  false,
 		},

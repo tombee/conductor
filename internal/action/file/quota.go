@@ -20,10 +20,10 @@ type QuotaTracker struct {
 
 // QuotaConfig holds quota configuration
 type QuotaConfig struct {
-	DefaultQuota   int64         // default quota in bytes (100MB)
-	WarnThreshold  float64       // threshold for warnings (0.8 = 80%)
-	ErrorThreshold float64       // threshold for errors (0.95 = 95%)
-	Logger         *slog.Logger  // optional logger
+	DefaultQuota   int64        // default quota in bytes (100MB)
+	WarnThreshold  float64      // threshold for warnings (0.8 = 80%)
+	ErrorThreshold float64      // threshold for errors (0.95 = 95%)
+	Logger         *slog.Logger // optional logger
 }
 
 // DefaultQuotaConfig returns sensible defaults

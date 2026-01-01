@@ -45,8 +45,8 @@ func TestIntegrationStepIntegration(t *testing.T) {
 	// Test 1: Execute a simple integration step
 	t.Run("simple integration step", func(t *testing.T) {
 		step := &StepDefinition{
-			ID:        "get_repo",
-			Type:      StepTypeIntegration,
+			ID:          "get_repo",
+			Type:        StepTypeIntegration,
 			Integration: "github.get_repo",
 			Inputs: map[string]interface{}{
 				"owner": "tombee",
@@ -89,10 +89,10 @@ func TestIntegrationStepIntegration(t *testing.T) {
 	// Test 2: Execute integration step with error handling
 	t.Run("integration step error handling", func(t *testing.T) {
 		step := &StepDefinition{
-			ID:        "unknown_op",
-			Type:      StepTypeIntegration,
+			ID:          "unknown_op",
+			Type:        StepTypeIntegration,
 			Integration: "unknown.operation",
-			Inputs:    map[string]interface{}{},
+			Inputs:      map[string]interface{}{},
 		}
 
 		workflowContext := map[string]interface{}{}
@@ -131,10 +131,10 @@ func TestIntegrationStepIntegration(t *testing.T) {
 		retryExecutor := NewExecutor(nil, nil).WithOperationRegistry(retryRegistry)
 
 		step := &StepDefinition{
-			ID:        "retry_test",
-			Type:      StepTypeIntegration,
+			ID:          "retry_test",
+			Type:        StepTypeIntegration,
 			Integration: "test.operation",
-			Inputs:    map[string]interface{}{},
+			Inputs:      map[string]interface{}{},
 			Retry: &RetryDefinition{
 				MaxAttempts:       3,
 				BackoffBase:       1,
@@ -205,8 +205,8 @@ func TestIntegrationStep_OutputAvailableToNextStep(t *testing.T) {
 
 	// Step 1: Get user data
 	step1 := &StepDefinition{
-		ID:        "get_user",
-		Type:      StepTypeIntegration,
+		ID:          "get_user",
+		Type:        StepTypeIntegration,
 		Integration: "github.get_user",
 		Inputs: map[string]interface{}{
 			"username": "testuser",
@@ -226,8 +226,8 @@ func TestIntegrationStep_OutputAvailableToNextStep(t *testing.T) {
 
 	// Step 2: Use step 1 output
 	step2 := &StepDefinition{
-		ID:        "notify_slack",
-		Type:      StepTypeIntegration,
+		ID:          "notify_slack",
+		Type:        StepTypeIntegration,
 		Integration: "slack.post_message",
 		Inputs: map[string]interface{}{
 			"channel": "#general",
@@ -269,8 +269,8 @@ func TestIntegrationStep_ErrorFlowsToOnError(t *testing.T) {
 
 	// Step that will fail
 	step := &StepDefinition{
-		ID:        "create_issue",
-		Type:      StepTypeIntegration,
+		ID:          "create_issue",
+		Type:        StepTypeIntegration,
 		Integration: "github.create_issue",
 		Inputs: map[string]interface{}{
 			"title": "Test Issue",
@@ -334,10 +334,10 @@ func TestIntegrationStep_WithResponseTransform(t *testing.T) {
 
 	// Execute integration that returns transformed response
 	step := &StepDefinition{
-		ID:        "get_items",
-		Type:      StepTypeIntegration,
+		ID:          "get_items",
+		Type:        StepTypeIntegration,
 		Integration: "api.list_items",
-		Inputs:    map[string]interface{}{},
+		Inputs:      map[string]interface{}{},
 	}
 
 	workflowContext := map[string]interface{}{}
@@ -406,22 +406,22 @@ func TestIntegrationStep_InParallelExecution(t *testing.T) {
 	// Define parallel steps
 	steps := []*StepDefinition{
 		{
-			ID:        "get_github_user",
-			Type:      StepTypeIntegration,
+			ID:          "get_github_user",
+			Type:        StepTypeIntegration,
 			Integration: "github.get_user",
-			Inputs:    map[string]interface{}{"username": "testuser"},
+			Inputs:      map[string]interface{}{"username": "testuser"},
 		},
 		{
-			ID:        "get_slack_profile",
-			Type:      StepTypeIntegration,
+			ID:          "get_slack_profile",
+			Type:        StepTypeIntegration,
 			Integration: "slack.get_profile",
-			Inputs:    map[string]interface{}{"user_id": "U123"},
+			Inputs:      map[string]interface{}{"user_id": "U123"},
 		},
 		{
-			ID:        "get_jira_issues",
-			Type:      StepTypeIntegration,
+			ID:          "get_jira_issues",
+			Type:        StepTypeIntegration,
 			Integration: "jira.get_issues",
-			Inputs:    map[string]interface{}{"project": "TEST"},
+			Inputs:      map[string]interface{}{"project": "TEST"},
 		},
 	}
 

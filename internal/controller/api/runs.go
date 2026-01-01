@@ -103,21 +103,21 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		// Remote workflow - ignore body and use ref
 		// Parse inputs from query params (excluding reserved params)
 		reservedParams := map[string]bool{
-			"remote_ref":        true,
-			"no_cache":          true,
-			"workspace":         true,
-			"profile":           true,
-			"provider":          true,
-			"model":             true,
-			"timeout":           true,
-			"dry_run":           true,
-			"security":          true,
-			"allow_hosts":       true,
-			"allow_paths":       true,
-			"mcp_dev":           true,
-			"log_level":         true,
-			"debug_step":        true,
-			"debug_breakpoint":  true,
+			"remote_ref":       true,
+			"no_cache":         true,
+			"workspace":        true,
+			"profile":          true,
+			"provider":         true,
+			"model":            true,
+			"timeout":          true,
+			"dry_run":          true,
+			"security":         true,
+			"allow_hosts":      true,
+			"allow_paths":      true,
+			"mcp_dev":          true,
+			"log_level":        true,
+			"debug_step":       true,
+			"debug_breakpoint": true,
 		}
 		inputs := make(map[string]any)
 		for key, values := range r.URL.Query() {

@@ -17,29 +17,29 @@ package shared
 // Error codes for structured JSON output
 const (
 	// Validation errors (E001-E099)
-	ErrorCodeMissingField       = "E001" // Missing required field
-	ErrorCodeInvalidYAML        = "E002" // Invalid YAML syntax
-	ErrorCodeSchemaViolation    = "E003" // Schema constraint violation
-	ErrorCodeInvalidReference   = "E004" // Invalid reference (unknown step ID)
+	ErrorCodeMissingField     = "E001" // Missing required field
+	ErrorCodeInvalidYAML      = "E002" // Invalid YAML syntax
+	ErrorCodeSchemaViolation  = "E003" // Schema constraint violation
+	ErrorCodeInvalidReference = "E004" // Invalid reference (unknown step ID)
 
 	// Execution errors (E100-E199)
-	ErrorCodeProviderNotFound   = "E101" // Provider not found
-	ErrorCodeProviderTimeout    = "E102" // Provider timeout
-	ErrorCodeStepFailed         = "E103" // Step execution failed
-	ErrorCodeWorkflowTimeout    = "E104" // Workflow timeout
+	ErrorCodeProviderNotFound = "E101" // Provider not found
+	ErrorCodeProviderTimeout  = "E102" // Provider timeout
+	ErrorCodeStepFailed       = "E103" // Step execution failed
+	ErrorCodeWorkflowTimeout  = "E104" // Workflow timeout
 
 	// Configuration errors (E200-E299)
-	ErrorCodeConfigNotFound     = "E201" // Config file not found
-	ErrorCodeInvalidConfig      = "E202" // Invalid provider configuration
-	ErrorCodeMissingAPIKey      = "E203" // Missing API key
+	ErrorCodeConfigNotFound = "E201" // Config file not found
+	ErrorCodeInvalidConfig  = "E202" // Invalid provider configuration
+	ErrorCodeMissingAPIKey  = "E203" // Missing API key
 
 	// Input errors (E300-E399)
-	ErrorCodeMissingInput       = "E301" // Required input missing
-	ErrorCodeInvalidInput       = "E302" // Invalid input format
-	ErrorCodeFileNotFound       = "E303" // File not found
+	ErrorCodeMissingInput = "E301" // Required input missing
+	ErrorCodeInvalidInput = "E302" // Invalid input format
+	ErrorCodeFileNotFound = "E303" // File not found
 
 	// Resource errors (E400-E499)
-	ErrorCodeNotFound           = "E401" // Resource not found
-	ErrorCodeInternal           = "E402" // Internal error
-	ErrorCodeExecutionFailed    = "E403" // Execution failed
+	ErrorCodeNotFound        = "E401" // Resource not found
+	ErrorCodeInternal        = "E402" // Internal error
+	ErrorCodeExecutionFailed = "E403" // Execution failed
 )

@@ -43,9 +43,9 @@ type Handler struct {
 	logger       *slog.Logger
 
 	// Metrics
-	requestsTotal        metric.Int64Counter
-	requestDuration      metric.Float64Histogram
-	rateLimitExceeded    metric.Int64Counter
+	requestsTotal     metric.Int64Counter
+	requestDuration   metric.Float64Histogram
+	rateLimitExceeded metric.Int64Counter
 }
 
 // NewHandler creates a new endpoint handler.

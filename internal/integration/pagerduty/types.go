@@ -14,29 +14,29 @@ type APIError struct {
 
 // Incident represents a PagerDuty incident.
 type Incident struct {
-	ID                string      `json:"id"`
-	Type              string      `json:"type"`
-	Summary           string      `json:"summary"`
-	Self              string      `json:"self"`
-	HTMLURL           string      `json:"html_url"`
-	IncidentNumber    int         `json:"incident_number"`
-	Title             string      `json:"title"`
-	CreatedAt         string      `json:"created_at"`
-	UpdatedAt         string      `json:"updated_at"`
-	Status            string      `json:"status"` // triggered, acknowledged, resolved
-	Urgency           string      `json:"urgency"` // high, low
-	Priority          *Priority   `json:"priority,omitempty"`
-	Service           *Reference  `json:"service,omitempty"`
-	Assignments       []Assignment `json:"assignments,omitempty"`
-	EscalationPolicy  *Reference  `json:"escalation_policy,omitempty"`
-	Teams             []Reference `json:"teams,omitempty"`
-	Acknowledgements  []Acknowledgement `json:"acknowledgements,omitempty"`
-	LastStatusChangeAt string     `json:"last_status_change_at,omitempty"`
-	LastStatusChangeBy *Reference `json:"last_status_change_by,omitempty"`
-	FirstTriggerLogEntry *Reference `json:"first_trigger_log_entry,omitempty"`
-	ResolveReason     *ResolveReason `json:"resolve_reason,omitempty"`
-	AlertCounts       *AlertCounts `json:"alert_counts,omitempty"`
-	Description       string      `json:"description,omitempty"`
+	ID                   string            `json:"id"`
+	Type                 string            `json:"type"`
+	Summary              string            `json:"summary"`
+	Self                 string            `json:"self"`
+	HTMLURL              string            `json:"html_url"`
+	IncidentNumber       int               `json:"incident_number"`
+	Title                string            `json:"title"`
+	CreatedAt            string            `json:"created_at"`
+	UpdatedAt            string            `json:"updated_at"`
+	Status               string            `json:"status"`  // triggered, acknowledged, resolved
+	Urgency              string            `json:"urgency"` // high, low
+	Priority             *Priority         `json:"priority,omitempty"`
+	Service              *Reference        `json:"service,omitempty"`
+	Assignments          []Assignment      `json:"assignments,omitempty"`
+	EscalationPolicy     *Reference        `json:"escalation_policy,omitempty"`
+	Teams                []Reference       `json:"teams,omitempty"`
+	Acknowledgements     []Acknowledgement `json:"acknowledgements,omitempty"`
+	LastStatusChangeAt   string            `json:"last_status_change_at,omitempty"`
+	LastStatusChangeBy   *Reference        `json:"last_status_change_by,omitempty"`
+	FirstTriggerLogEntry *Reference        `json:"first_trigger_log_entry,omitempty"`
+	ResolveReason        *ResolveReason    `json:"resolve_reason,omitempty"`
+	AlertCounts          *AlertCounts      `json:"alert_counts,omitempty"`
+	Description          string            `json:"description,omitempty"`
 }
 
 // Priority represents incident priority.
@@ -71,7 +71,7 @@ type Acknowledgement struct {
 
 // ResolveReason contains information about why an incident was resolved.
 type ResolveReason struct {
-	Type     string    `json:"type"`
+	Type     string     `json:"type"`
 	Incident *Reference `json:"incident,omitempty"`
 }
 
@@ -119,15 +119,15 @@ type GetCurrentUserResponse struct {
 
 // Service represents a PagerDuty service.
 type Service struct {
-	ID               string     `json:"id"`
-	Type             string     `json:"type"`
-	Summary          string     `json:"summary"`
-	Self             string     `json:"self"`
-	HTMLURL          string     `json:"html_url"`
-	Name             string     `json:"name"`
-	Description      string     `json:"description,omitempty"`
-	Status           string     `json:"status"` // active, warning, critical, maintenance, disabled
-	EscalationPolicy *Reference `json:"escalation_policy,omitempty"`
+	ID               string      `json:"id"`
+	Type             string      `json:"type"`
+	Summary          string      `json:"summary"`
+	Self             string      `json:"self"`
+	HTMLURL          string      `json:"html_url"`
+	Name             string      `json:"name"`
+	Description      string      `json:"description,omitempty"`
+	Status           string      `json:"status"` // active, warning, critical, maintenance, disabled
+	EscalationPolicy *Reference  `json:"escalation_policy,omitempty"`
 	Teams            []Reference `json:"teams,omitempty"`
 }
 
@@ -178,14 +178,14 @@ type CreateIncidentNoteResponse struct {
 
 // LogEntry represents a log entry for an incident.
 type LogEntry struct {
-	ID        string    `json:"id"`
-	Type      string    `json:"type"`
-	Summary   string    `json:"summary"`
-	Self      string    `json:"self"`
-	HTMLURL   string    `json:"html_url,omitempty"`
-	CreatedAt string    `json:"created_at"`
+	ID        string     `json:"id"`
+	Type      string     `json:"type"`
+	Summary   string     `json:"summary"`
+	Self      string     `json:"self"`
+	HTMLURL   string     `json:"html_url,omitempty"`
+	CreatedAt string     `json:"created_at"`
 	Agent     *Reference `json:"agent,omitempty"`
-	Channel   *Channel  `json:"channel,omitempty"`
+	Channel   *Channel   `json:"channel,omitempty"`
 	Incident  *Reference `json:"incident,omitempty"`
 	Service   *Reference `json:"service,omitempty"`
 }

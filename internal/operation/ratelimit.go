@@ -13,14 +13,14 @@ import (
 
 // RateLimiter enforces rate limits using a token bucket algorithm.
 type RateLimiter struct {
-	mu              sync.Mutex
-	config          *workflow.RateLimitConfig
-	tokens          float64
-	lastRefill      time.Time
-	stateFilePath   string
-	requestsPerSec  float64
-	maxTokens       float64
-	refillInterval  time.Duration
+	mu             sync.Mutex
+	config         *workflow.RateLimitConfig
+	tokens         float64
+	lastRefill     time.Time
+	stateFilePath  string
+	requestsPerSec float64
+	maxTokens      float64
+	refillInterval time.Duration
 }
 
 // RateLimiterState represents the persistent state of a rate limiter.
@@ -82,8 +82,8 @@ func (rl *RateLimiter) Wait(ctx context.Context) error {
 		// Check if we've exceeded the timeout
 		if time.Now().After(deadline) {
 			return &Error{
-				Type:       ErrorTypeRateLimit,
-				Message:    fmt.Sprintf("rate limit timeout after %v", timeout),
+				Type:        ErrorTypeRateLimit,
+				Message:     fmt.Sprintf("rate limit timeout after %v", timeout),
 				SuggestText: "Increase rate_limit.timeout or reduce request frequency",
 			}
 		}
@@ -193,12 +193,12 @@ func (rl *RateLimiter) GetStats() map[string]interface{} {
 	rl.refill()
 
 	return map[string]interface{}{
-		"enabled":           true,
-		"requests_per_sec":  rl.requestsPerSec,
-		"available_tokens":  rl.tokens,
-		"max_tokens":        rl.maxTokens,
-		"requests_per_min":  rl.config.RequestsPerMinute,
-		"timeout":           rl.config.Timeout,
+		"enabled":          true,
+		"requests_per_sec": rl.requestsPerSec,
+		"available_tokens": rl.tokens,
+		"max_tokens":       rl.maxTokens,
+		"requests_per_min": rl.config.RequestsPerMinute,
+		"timeout":          rl.config.Timeout,
 	}
 }
 

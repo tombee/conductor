@@ -158,7 +158,7 @@ func TestBearerAuthenticator_VerifyToken_TimingSafe(t *testing.T) {
 	tokens := []string{
 		"x" + secret[1:], // First character differs
 		secret[:len(secret)/2] + "x" + secret[len(secret)/2+1:], // Middle differs
-		secret[:len(secret)-1] + "x", // Last character differs
+		secret[:len(secret)-1] + "x",                            // Last character differs
 		"completely-different-token-that-has-similar-length-to-secret-key",
 	}
 

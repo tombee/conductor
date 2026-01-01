@@ -197,12 +197,12 @@ func TestWorkflowContext_GetStringOr(t *testing.T) {
 // TestWorkflowContext_GetInt64 tests int64 retrieval.
 func TestWorkflowContext_GetInt64(t *testing.T) {
 	tests := []struct {
-		name      string
-		inputs    map[string]any
-		key       string
-		want      int64
-		wantErr   bool
-		errType   string
+		name    string
+		inputs  map[string]any
+		key     string
+		want    int64
+		wantErr bool
+		errType string
 	}{
 		{
 			name:    "success - int64",

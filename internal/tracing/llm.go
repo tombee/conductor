@@ -106,16 +106,16 @@ func (t *TracedProvider) Complete(ctx context.Context, req llm.CompletionRequest
 
 	// Record token usage
 	span.SetAttributes(map[string]any{
-		"llm.response.model":                   resp.Model,
-		"llm.response.finish_reason":           string(resp.FinishReason),
-		"llm.response.request_id":              resp.RequestID,
-		"llm.usage.prompt_tokens":              resp.Usage.PromptTokens,
-		"llm.usage.completion_tokens":          resp.Usage.CompletionTokens,
-		"llm.usage.total_tokens":               resp.Usage.TotalTokens,
-		"llm.usage.cache_creation_tokens":      resp.Usage.CacheCreationTokens,
-		"llm.usage.cache_read_tokens":          resp.Usage.CacheReadTokens,
-		"llm.response.tool_calls_count":        len(resp.ToolCalls),
-		"llm.response.content_length":          len(resp.Content),
+		"llm.response.model":              resp.Model,
+		"llm.response.finish_reason":      string(resp.FinishReason),
+		"llm.response.request_id":         resp.RequestID,
+		"llm.usage.prompt_tokens":         resp.Usage.PromptTokens,
+		"llm.usage.completion_tokens":     resp.Usage.CompletionTokens,
+		"llm.usage.total_tokens":          resp.Usage.TotalTokens,
+		"llm.usage.cache_creation_tokens": resp.Usage.CacheCreationTokens,
+		"llm.usage.cache_read_tokens":     resp.Usage.CacheReadTokens,
+		"llm.response.tool_calls_count":   len(resp.ToolCalls),
+		"llm.response.content_length":     len(resp.Content),
 	})
 
 	// Record successful request metrics

@@ -28,19 +28,19 @@ import (
 // Batch mode accumulates all events during the debounce window and delivers
 // them together when the timer expires.
 type Debouncer struct {
-	mu         sync.Mutex
-	window     time.Duration
-	batch      bool
-	timers     map[string]*debounceTimer
-	onFlush    func([]*Context)
-	stopCh     chan struct{}
-	stoppedCh  chan struct{}
+	mu        sync.Mutex
+	window    time.Duration
+	batch     bool
+	timers    map[string]*debounceTimer
+	onFlush   func([]*Context)
+	stopCh    chan struct{}
+	stoppedCh chan struct{}
 }
 
 // debounceTimer tracks a pending timer for a specific file path.
 type debounceTimer struct {
-	timer   *time.Timer
-	events  []*Context // For batch mode
+	timer  *time.Timer
+	events []*Context // For batch mode
 }
 
 // NewDebouncer creates a new debouncer with the specified window duration.

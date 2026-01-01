@@ -54,14 +54,14 @@ type FileUploadResponse struct {
 
 // File represents a Slack file.
 type File struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Title     string `json:"title"`
-	Mimetype  string `json:"mimetype"`
-	Filetype  string `json:"filetype"`
-	Size      int    `json:"size"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Title      string `json:"title"`
+	Mimetype   string `json:"mimetype"`
+	Filetype   string `json:"filetype"`
+	Size       int    `json:"size"`
 	URLPrivate string `json:"url_private"`
-	Permalink string `json:"permalink"`
+	Permalink  string `json:"permalink"`
 }
 
 // Channel represents a Slack channel/conversation.
@@ -142,9 +142,9 @@ type SearchMessagesResponse struct {
 
 // SearchResults contains the search results.
 type SearchResults struct {
-	Total      int             `json:"total"`
+	Total      int              `json:"total"`
 	Pagination SearchPagination `json:"pagination,omitempty"`
-	Matches    []SearchMatch   `json:"matches"`
+	Matches    []SearchMatch    `json:"matches"`
 }
 
 // SearchPagination contains pagination info for search results.
@@ -159,13 +159,13 @@ type SearchPagination struct {
 
 // SearchMatch represents a single search result match.
 type SearchMatch struct {
-	Type      string  `json:"type"`
+	Type      string      `json:"type"`
 	Channel   ChannelInfo `json:"channel"`
-	User      string  `json:"user"`
-	Username  string  `json:"username"`
-	Text      string  `json:"text"`
-	Timestamp string  `json:"ts"`
-	Permalink string  `json:"permalink"`
+	User      string      `json:"user"`
+	Username  string      `json:"username"`
+	Text      string      `json:"text"`
+	Timestamp string      `json:"ts"`
+	Permalink string      `json:"permalink"`
 }
 
 // ChannelInfo contains channel information in search results.

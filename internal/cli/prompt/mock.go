@@ -22,10 +22,10 @@ import (
 // MockPrompter implements Prompter with scripted responses for testing.
 // It allows tests to simulate user input without requiring interactive terminals.
 type MockPrompter struct {
-	responses     []interface{}
-	currentIndex  int
-	interactive   bool
-	callLog       []string
+	responses    []interface{}
+	currentIndex int
+	interactive  bool
+	callLog      []string
 }
 
 // NewMockPrompter creates a new mock prompter with pre-scripted responses.

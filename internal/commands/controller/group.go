@@ -29,7 +29,7 @@ import (
 // NewCommand creates the controller command group.
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "controller",
+		Use: "controller",
 		Annotations: map[string]string{
 			"group": "system",
 		},
@@ -66,7 +66,7 @@ See also: conductor controller ping, conductor doctor, conductor runs list`,
 
   # Example 4: Check controller uptime
   conductor controller status --json | jq -r '.uptime'`,
-		RunE:  runControllerStatus,
+		RunE: runControllerStatus,
 	}
 }
 

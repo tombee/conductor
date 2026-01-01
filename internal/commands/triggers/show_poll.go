@@ -93,14 +93,14 @@ func runShowPoll(cmd *cobra.Command, args []string) error {
 	// Add state information
 	if state != nil {
 		output["state"] = map[string]interface{}{
-			"last_poll_time":   formatTime(state.LastPollTime),
-			"high_water_mark":  formatTime(state.HighWaterMark),
-			"seen_events":      len(state.SeenEvents),
-			"cursor":           state.Cursor,
-			"error_count":      state.ErrorCount,
-			"last_error":       state.LastError,
-			"created_at":       state.CreatedAt.Format(time.RFC3339),
-			"updated_at":       state.UpdatedAt.Format(time.RFC3339),
+			"last_poll_time":  formatTime(state.LastPollTime),
+			"high_water_mark": formatTime(state.HighWaterMark),
+			"seen_events":     len(state.SeenEvents),
+			"cursor":          state.Cursor,
+			"error_count":     state.ErrorCount,
+			"last_error":      state.LastError,
+			"created_at":      state.CreatedAt.Format(time.RFC3339),
+			"updated_at":      state.UpdatedAt.Format(time.RFC3339),
 		}
 
 		// Determine status

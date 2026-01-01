@@ -28,11 +28,11 @@ type RateLimiter struct {
 
 // tokenBucket implements a simple token bucket algorithm
 type tokenBucket struct {
-	mu            sync.Mutex
-	tokens        float64
-	maxTokens     float64
-	refillRate    float64 // tokens per second
-	lastRefill    time.Time
+	mu         sync.Mutex
+	tokens     float64
+	maxTokens  float64
+	refillRate float64 // tokens per second
+	lastRefill time.Time
 }
 
 // NewRateLimiter creates a rate limiter with specified limits

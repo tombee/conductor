@@ -45,7 +45,7 @@ var (
 // NewCommand creates the secrets command for secret management.
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "secrets",
+		Use: "secrets",
 		Annotations: map[string]string{
 			"group": "configuration",
 		},

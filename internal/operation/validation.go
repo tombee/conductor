@@ -58,13 +58,13 @@ func (v *Validator) ValidateLokiLabels(labels map[string]interface{}) error {
 
 // ValidDatadogSites lists all valid Datadog site configurations.
 var ValidDatadogSites = map[string]bool{
-	"datadoghq.com":       true, // US1
-	"us3.datadoghq.com":   true, // US3
-	"us5.datadoghq.com":   true, // US5
-	"datadoghq.eu":        true, // EU
-	"ap1.datadoghq.com":   true, // AP1
-	"ddog-gov.com":        true, // US1-FED (Government)
-	"us1.datadoghq.com":   true, // US1 (alternative)
+	"datadoghq.com":     true, // US1
+	"us3.datadoghq.com": true, // US3
+	"us5.datadoghq.com": true, // US5
+	"datadoghq.eu":      true, // EU
+	"ap1.datadoghq.com": true, // AP1
+	"ddog-gov.com":      true, // US1-FED (Government)
+	"us1.datadoghq.com": true, // US1 (alternative)
 }
 
 // ValidateDatadogSite validates a Datadog site configuration.

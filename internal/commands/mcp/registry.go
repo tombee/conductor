@@ -24,6 +24,7 @@ import (
 	"github.com/tombee/conductor/internal/commands/shared"
 	"github.com/tombee/conductor/internal/config"
 )
+
 // newMCPAddCommand creates the 'mcp add' command.
 func newMCPAddCommand() *cobra.Command {
 	var (

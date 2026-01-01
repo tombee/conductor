@@ -26,7 +26,7 @@ import (
 // LifecycleEvent represents a lifecycle event (start, stop, etc.).
 type LifecycleEvent struct {
 	Timestamp  time.Time         `json:"timestamp"`
-	Event      string            `json:"event"`       // "start", "stop", "health_check_failed", etc.
+	Event      string            `json:"event"` // "start", "stop", "health_check_failed", etc.
 	PID        int               `json:"pid,omitempty"`
 	Version    string            `json:"version,omitempty"`
 	ExitCode   int               `json:"exit_code,omitempty"`

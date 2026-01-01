@@ -402,10 +402,10 @@ func TestCache_WithRealEnvProvider(t *testing.T) {
 
 func TestParseReferenceScheme(t *testing.T) {
 	tests := []struct {
-		name         string
-		reference    string
-		wantScheme   string
-		wantKey      string
+		name       string
+		reference  string
+		wantScheme string
+		wantKey    string
 	}{
 		{
 			name:       "${VAR} syntax",

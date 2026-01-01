@@ -75,9 +75,9 @@ func (h *GitHubHandler) ExtractPayload(body []byte) (map[string]any, error) {
 
 // GitHubEvent contains common GitHub webhook event fields.
 type GitHubEvent struct {
-	Action     string            `json:"action"`
-	Sender     GitHubUser        `json:"sender"`
-	Repository GitHubRepository  `json:"repository"`
+	Action     string           `json:"action"`
+	Sender     GitHubUser       `json:"sender"`
+	Repository GitHubRepository `json:"repository"`
 }
 
 // GitHubUser represents a GitHub user.

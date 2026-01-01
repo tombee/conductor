@@ -125,49 +125,49 @@ func TestCalculateBackoff(t *testing.T) {
 			name:       "first retry",
 			attempt:    1,
 			retryAfter: 0,
-			wantMin:    1 * time.Second,              // base delay
+			wantMin:    1 * time.Second,                      // base delay
 			wantMax:    1*time.Second + 100*time.Millisecond, // base + max jitter
 		},
 		{
 			name:       "second retry",
 			attempt:    2,
 			retryAfter: 0,
-			wantMin:    2 * time.Second,              // 1s * 2^1
+			wantMin:    2 * time.Second, // 1s * 2^1
 			wantMax:    2*time.Second + 100*time.Millisecond,
 		},
 		{
 			name:       "third retry",
 			attempt:    3,
 			retryAfter: 0,
-			wantMin:    4 * time.Second,              // 1s * 2^2
+			wantMin:    4 * time.Second, // 1s * 2^2
 			wantMax:    4*time.Second + 100*time.Millisecond,
 		},
 		{
 			name:       "capped at max_backoff",
 			attempt:    10,
 			retryAfter: 0,
-			wantMin:    30 * time.Second,             // capped at MaxBackoff
+			wantMin:    30 * time.Second, // capped at MaxBackoff
 			wantMax:    30*time.Second + 100*time.Millisecond,
 		},
 		{
 			name:       "retry-after overrides if larger",
 			attempt:    1,
 			retryAfter: 5 * time.Second,
-			wantMin:    5 * time.Second,              // retry-after wins
+			wantMin:    5 * time.Second, // retry-after wins
 			wantMax:    5*time.Second + 100*time.Millisecond,
 		},
 		{
 			name:       "calculated backoff wins if larger than retry-after",
 			attempt:    3,
 			retryAfter: 1 * time.Second,
-			wantMin:    4 * time.Second,              // calculated (4s) > retry-after (1s)
+			wantMin:    4 * time.Second, // calculated (4s) > retry-after (1s)
 			wantMax:    4*time.Second + 100*time.Millisecond,
 		},
 		{
 			name:       "retry-after capped at max_backoff",
 			attempt:    1,
 			retryAfter: 60 * time.Second,
-			wantMin:    30 * time.Second,             // capped at MaxBackoff
+			wantMin:    30 * time.Second, // capped at MaxBackoff
 			wantMax:    30*time.Second + 100*time.Millisecond,
 		},
 	}

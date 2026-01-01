@@ -32,7 +32,7 @@ type VersionInfo struct {
 // NewVersionCommand creates the version command
 func NewVersionCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "version",
+		Use: "version",
 		Annotations: map[string]string{
 			"group": "system",
 		},

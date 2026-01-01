@@ -4,26 +4,26 @@ import "time"
 
 // Issue represents a Jira issue.
 type Issue struct {
-	ID     string     `json:"id"`
-	Key    string     `json:"key"`
-	Self   string     `json:"self"`
+	ID     string      `json:"id"`
+	Key    string      `json:"key"`
+	Self   string      `json:"self"`
 	Fields IssueFields `json:"fields"`
 }
 
 // IssueFields represents the fields of a Jira issue.
 type IssueFields struct {
-	Summary     string       `json:"summary"`
-	Description interface{}  `json:"description"` // Can be string or ADF object
-	IssueType   *IssueType   `json:"issuetype,omitempty"`
-	Project     *Project     `json:"project,omitempty"`
-	Status      *Status      `json:"status,omitempty"`
-	Priority    *Priority    `json:"priority,omitempty"`
-	Assignee    *User        `json:"assignee,omitempty"`
-	Reporter    *User        `json:"reporter,omitempty"`
-	Created     time.Time    `json:"created,omitempty"`
-	Updated     time.Time    `json:"updated,omitempty"`
-	Resolved    *time.Time   `json:"resolutiondate,omitempty"`
-	Labels      []string     `json:"labels,omitempty"`
+	Summary     string      `json:"summary"`
+	Description interface{} `json:"description"` // Can be string or ADF object
+	IssueType   *IssueType  `json:"issuetype,omitempty"`
+	Project     *Project    `json:"project,omitempty"`
+	Status      *Status     `json:"status,omitempty"`
+	Priority    *Priority   `json:"priority,omitempty"`
+	Assignee    *User       `json:"assignee,omitempty"`
+	Reporter    *User       `json:"reporter,omitempty"`
+	Created     time.Time   `json:"created,omitempty"`
+	Updated     time.Time   `json:"updated,omitempty"`
+	Resolved    *time.Time  `json:"resolutiondate,omitempty"`
+	Labels      []string    `json:"labels,omitempty"`
 }
 
 // IssueType represents a Jira issue type.
@@ -44,17 +44,17 @@ type Project struct {
 
 // Status represents a Jira issue status.
 type Status struct {
-	ID          string         `json:"id"`
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
+	ID             string          `json:"id"`
+	Name           string          `json:"name"`
+	Description    string          `json:"description"`
 	StatusCategory *StatusCategory `json:"statusCategory,omitempty"`
 }
 
 // StatusCategory represents a Jira status category.
 type StatusCategory struct {
-	ID    int    `json:"id"`
-	Key   string `json:"key"`
-	Name  string `json:"name"`
+	ID   int    `json:"id"`
+	Key  string `json:"key"`
+	Name string `json:"name"`
 }
 
 // Priority represents a Jira priority.
@@ -84,9 +84,9 @@ type Comment struct {
 
 // Transition represents a Jira issue transition.
 type Transition struct {
-	ID   string              `json:"id"`
-	Name string              `json:"name"`
-	To   Status              `json:"to"`
+	ID     string                     `json:"id"`
+	Name   string                     `json:"name"`
+	To     Status                     `json:"to"`
 	Fields map[string]TransitionField `json:"fields,omitempty"`
 }
 
@@ -126,11 +126,11 @@ type Attachment struct {
 
 // IssueLink represents a link between two Jira issues.
 type IssueLink struct {
-	ID           string       `json:"id"`
-	Self         string       `json:"self"`
+	ID           string        `json:"id"`
+	Self         string        `json:"self"`
 	Type         IssueLinkType `json:"type"`
-	InwardIssue  *Issue       `json:"inwardIssue,omitempty"`
-	OutwardIssue *Issue       `json:"outwardIssue,omitempty"`
+	InwardIssue  *Issue        `json:"inwardIssue,omitempty"`
+	OutwardIssue *Issue        `json:"outwardIssue,omitempty"`
 }
 
 // IssueLinkType represents the type of link between issues.
@@ -149,15 +149,15 @@ type CreateIssueRequest struct {
 
 // CreateIssueFields represents the fields for creating an issue.
 type CreateIssueFields struct {
-	Summary     string                 `json:"summary"`
-	Description interface{}            `json:"description,omitempty"`
-	Project     map[string]string      `json:"project"`
-	IssueType   map[string]string      `json:"issuetype"`
-	Assignee    map[string]string      `json:"assignee,omitempty"`
-	Priority    map[string]string      `json:"priority,omitempty"`
-	Labels      []string               `json:"labels,omitempty"`
+	Summary     string            `json:"summary"`
+	Description interface{}       `json:"description,omitempty"`
+	Project     map[string]string `json:"project"`
+	IssueType   map[string]string `json:"issuetype"`
+	Assignee    map[string]string `json:"assignee,omitempty"`
+	Priority    map[string]string `json:"priority,omitempty"`
+	Labels      []string          `json:"labels,omitempty"`
 	// Allow arbitrary additional fields
-	Additional  map[string]interface{} `json:"-"`
+	Additional map[string]interface{} `json:"-"`
 }
 
 // TransitionRequest represents a request to transition an issue.

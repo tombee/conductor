@@ -947,9 +947,9 @@ func (e *Executor) executeLLMWithSchema(ctx context.Context, basePrompt string, 
 		// T4.5: Strip extra fields (validator already does this implicitly)
 		// T4.6: Store validated output under "output" key
 		return map[string]interface{}{
-			"output":   data,                  // Structured output accessible as {{.steps.id.output.field}}
-			"response": response,              // Original response for debugging
-			"attempts": attempt + 1,           // T4.8: Track retry attempts
+			"output":   data,        // Structured output accessible as {{.steps.id.output.field}}
+			"response": response,    // Original response for debugging
+			"attempts": attempt + 1, // T4.8: Track retry attempts
 		}, nil
 	}
 

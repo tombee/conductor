@@ -3,8 +3,6 @@ package integration
 import (
 	"strings"
 
-	"github.com/tombee/conductor/internal/operation"
-	"github.com/tombee/conductor/internal/operation/api"
 	"github.com/tombee/conductor/internal/integration/cloudwatch"
 	"github.com/tombee/conductor/internal/integration/datadog"
 	"github.com/tombee/conductor/internal/integration/discord"
@@ -16,6 +14,8 @@ import (
 	"github.com/tombee/conductor/internal/integration/pagerduty"
 	"github.com/tombee/conductor/internal/integration/slack"
 	"github.com/tombee/conductor/internal/integration/splunk"
+	"github.com/tombee/conductor/internal/operation"
+	"github.com/tombee/conductor/internal/operation/api"
 )
 
 // BuiltinRegistry holds all built-in API integration factories.

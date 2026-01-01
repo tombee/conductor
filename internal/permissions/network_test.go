@@ -111,7 +111,7 @@ func TestCheckNetwork(t *testing.T) {
 			name: "custom blocked host",
 			permCtx: &PermissionContext{
 				Network: &workflow.NetworkPermissions{
-					AllowedHosts:  []string{"*"},
+					AllowedHosts: []string{"*"},
 					BlockedHosts: []string{"evil.com"},
 				},
 			},
@@ -123,7 +123,7 @@ func TestCheckNetwork(t *testing.T) {
 			name: "blocked takes precedence over allowed",
 			permCtx: &PermissionContext{
 				Network: &workflow.NetworkPermissions{
-					AllowedHosts:  []string{"*.example.com"},
+					AllowedHosts: []string{"*.example.com"},
 					BlockedHosts: []string{"bad.example.com"},
 				},
 			},

@@ -94,7 +94,7 @@ func TestRateLimit_BurstAllowed(t *testing.T) {
 func TestRateLimit_TimeoutEnforced(t *testing.T) {
 	config := &workflow.RateLimitConfig{
 		RequestsPerSecond: 0.2, // Very slow: 0.2 requests per second (1 every 5 seconds)
-		Timeout:           1,    // Very short timeout: 1 second
+		Timeout:           1,   // Very short timeout: 1 second
 	}
 
 	rl := NewRateLimiter(config, "")

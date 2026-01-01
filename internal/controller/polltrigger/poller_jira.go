@@ -291,23 +291,23 @@ type jiraSearchResponse struct {
 }
 
 type jiraIssue struct {
-	ID     string      `json:"id"`
-	Key    string      `json:"key"`
-	Self   string      `json:"self"`
-	Fields jiraFields  `json:"fields"`
+	ID     string     `json:"id"`
+	Key    string     `json:"key"`
+	Self   string     `json:"self"`
+	Fields jiraFields `json:"fields"`
 }
 
 type jiraFields struct {
-	Summary     string        `json:"summary"`
-	Description string        `json:"description"`
-	Status      *jiraStatus   `json:"status"`
+	Summary     string         `json:"summary"`
+	Description string         `json:"description"`
+	Status      *jiraStatus    `json:"status"`
 	IssueType   *jiraIssueType `json:"issuetype"`
-	Assignee    *jiraUser     `json:"assignee"`
-	Reporter    *jiraUser     `json:"reporter"`
-	Created     string        `json:"created"`
-	Updated     string        `json:"updated"`
-	Priority    *jiraPriority `json:"priority"`
-	Labels      []string      `json:"labels"`
+	Assignee    *jiraUser      `json:"assignee"`
+	Reporter    *jiraUser      `json:"reporter"`
+	Created     string         `json:"created"`
+	Updated     string         `json:"updated"`
+	Priority    *jiraPriority  `json:"priority"`
+	Labels      []string       `json:"labels"`
 }
 
 type jiraStatus struct {

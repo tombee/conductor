@@ -124,9 +124,9 @@ func runTestPoll(cmd *cobra.Command, args []string) error {
 	// Output results
 	if shared.GetJSON() {
 		result := map[string]interface{}{
-			"trigger":     triggerName,
-			"integration": pollTrigger.Integration,
-			"poll_time":   time.Now(),
+			"trigger":      triggerName,
+			"integration":  pollTrigger.Integration,
+			"poll_time":    time.Now(),
 			"total_events": len(events),
 			"new_events":   len(newEvents),
 			"cursor":       cursor,

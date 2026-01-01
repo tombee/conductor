@@ -60,11 +60,11 @@ type Entry struct {
 	Error     string    `json:"error,omitempty"`
 
 	// Replay-specific metadata
-	ParentRunID    string  `json:"parent_run_id,omitempty"`
-	FromStep       string  `json:"from_step,omitempty"`
-	OverrideKeys   []string `json:"override_keys,omitempty"`   // Keys of overridden inputs (not values)
-	CostUSD        float64 `json:"cost_usd,omitempty"`
-	CostSavedUSD   float64 `json:"cost_saved_usd,omitempty"`
+	ParentRunID  string   `json:"parent_run_id,omitempty"`
+	FromStep     string   `json:"from_step,omitempty"`
+	OverrideKeys []string `json:"override_keys,omitempty"` // Keys of overridden inputs (not values)
+	CostUSD      float64  `json:"cost_usd,omitempty"`
+	CostSavedUSD float64  `json:"cost_saved_usd,omitempty"`
 }
 
 // Logger writes audit log entries to an append-only log

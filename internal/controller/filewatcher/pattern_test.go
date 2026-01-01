@@ -43,8 +43,8 @@ func TestPatternMatcher_SimplePatterns(t *testing.T) {
 			includePatterns: []string{"*.txt"},
 			excludePatterns: nil,
 			testPaths: map[string]bool{
-				"/tmp/test.txt":       true,
-				"/tmp/test.pdf":       false,
+				"/tmp/test.txt":        true,
+				"/tmp/test.pdf":        false,
 				"/tmp/subdir/file.txt": true,
 			},
 		},
@@ -53,8 +53,8 @@ func TestPatternMatcher_SimplePatterns(t *testing.T) {
 			includePatterns: nil,
 			excludePatterns: []string{"*.log"},
 			testPaths: map[string]bool{
-				"/tmp/test.txt": true,
-				"/tmp/test.log": false,
+				"/tmp/test.txt":    true,
+				"/tmp/test.log":    false,
 				"/var/log/app.log": false,
 			},
 		},
@@ -63,10 +63,10 @@ func TestPatternMatcher_SimplePatterns(t *testing.T) {
 			includePatterns: []string{"*.txt"},
 			excludePatterns: []string{"temp*"},
 			testPaths: map[string]bool{
-				"/tmp/test.txt":    true,
-				"/tmp/temp.txt":    false,
+				"/tmp/test.txt":     true,
+				"/tmp/temp.txt":     false,
 				"/tmp/tempfile.txt": false,
-				"/tmp/test.pdf":    false,
+				"/tmp/test.pdf":     false,
 			},
 		},
 		{
@@ -74,11 +74,11 @@ func TestPatternMatcher_SimplePatterns(t *testing.T) {
 			includePatterns: nil,
 			excludePatterns: []string{"*.swp", "*.swo", ".*.sw?"},
 			testPaths: map[string]bool{
-				"/tmp/test.txt":     true,
+				"/tmp/test.txt":      true,
 				"/tmp/.test.txt.swp": false,
-				"/tmp/test.txt.swp": false,
-				"/tmp/test.txt.swo": false,
-				"/tmp/.test.swx":    false,
+				"/tmp/test.txt.swp":  false,
+				"/tmp/test.txt.swo":  false,
+				"/tmp/.test.swx":     false,
 			},
 		},
 	}
@@ -109,10 +109,10 @@ func TestPatternMatcher_RecursivePatterns(t *testing.T) {
 			includePatterns: []string{"**/src/**/*.go"},
 			excludePatterns: nil,
 			testPaths: map[string]bool{
-				"/project/src/main.go":            true,
-				"/project/src/pkg/util.go":        true,
-				"/project/test/test.go":           false,
-				"/project/vendor/src/lib.go":      true,
+				"/project/src/main.go":       true,
+				"/project/src/pkg/util.go":   true,
+				"/project/test/test.go":      false,
+				"/project/vendor/src/lib.go": true,
 			},
 		},
 		{
@@ -120,10 +120,10 @@ func TestPatternMatcher_RecursivePatterns(t *testing.T) {
 			includePatterns: []string{"*.go"},
 			excludePatterns: []string{"**/vendor/**"},
 			testPaths: map[string]bool{
-				"/project/main.go":                true,
-				"/project/pkg/util.go":            true,
-				"/project/vendor/lib/pkg.go":      false,
-				"/project/vendor/src/main.go":     false,
+				"/project/main.go":            true,
+				"/project/pkg/util.go":        true,
+				"/project/vendor/lib/pkg.go":  false,
+				"/project/vendor/src/main.go": false,
 			},
 		},
 		{
@@ -131,8 +131,8 @@ func TestPatternMatcher_RecursivePatterns(t *testing.T) {
 			includePatterns: nil,
 			excludePatterns: []string{"**/.git/**", "**/.vscode/**"},
 			testPaths: map[string]bool{
-				"/project/src/main.go":       true,
-				"/project/.git/config":       false,
+				"/project/src/main.go":           true,
+				"/project/.git/config":           false,
 				"/project/.vscode/settings.json": false,
 			},
 		},

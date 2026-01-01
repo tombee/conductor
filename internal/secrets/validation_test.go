@@ -225,17 +225,17 @@ func TestDetectCircularReferences(t *testing.T) {
 		{
 			name: "max depth exceeded",
 			bindings: map[string]string{
-				"A":  "env:B",
-				"B":  "env:C",
-				"C":  "env:D",
-				"D":  "env:E",
-				"E":  "env:F",
-				"F":  "env:G",
-				"G":  "env:H",
-				"H":  "env:I",
-				"I":  "env:J",
-				"J":  "env:K",
-				"K":  "env:L", // Depth 11, exceeds limit of 10
+				"A": "env:B",
+				"B": "env:C",
+				"C": "env:D",
+				"D": "env:E",
+				"E": "env:F",
+				"F": "env:G",
+				"G": "env:H",
+				"H": "env:I",
+				"I": "env:J",
+				"J": "env:K",
+				"K": "env:L", // Depth 11, exceeds limit of 10
 			},
 			wantError: true,
 			errorType: "depth",

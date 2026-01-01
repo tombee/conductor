@@ -270,7 +270,7 @@ func TestExecutor_ExecuteWithRetry(t *testing.T) {
 		Prompt: "test prompt",
 		Retry: &RetryDefinition{
 			MaxAttempts:       3,
-			BackoffBase:       1, // minimum 1 second for validation
+			BackoffBase:       1,    // minimum 1 second for validation
 			BackoffMultiplier: 1.01, // Very small multiplier for fast test
 		},
 		Timeout: 10, // 10 second timeout
@@ -302,15 +302,15 @@ func TestExecutor_RetryExhaustion(t *testing.T) {
 	ctx := context.Background()
 
 	step := &StepDefinition{
-		ID:       "step-6",
-		Name:     "failing-step",
-		Type:             StepTypeIntegration,
-		Action: "shell",
+		ID:        "step-6",
+		Name:      "failing-step",
+		Type:      StepTypeIntegration,
+		Action:    "shell",
 		Operation: "run",
 		Retry: &RetryDefinition{
-			MaxAttempts:        2,
-			BackoffBase:        1,
-			BackoffMultiplier:  1.0,
+			MaxAttempts:       2,
+			BackoffBase:       1,
+			BackoffMultiplier: 1.0,
 		},
 		Timeout: 10,
 	}
@@ -340,12 +340,12 @@ func TestExecutor_Timeout(t *testing.T) {
 	ctx := context.Background()
 
 	step := &StepDefinition{
-		ID:       "step-7",
-		Name:     "slow-step",
-		Type:             StepTypeIntegration,
-		Action: "shell",
+		ID:        "step-7",
+		Name:      "slow-step",
+		Type:      StepTypeIntegration,
+		Action:    "shell",
 		Operation: "run",
-		Timeout:  1, // 1 second timeout to trigger before tool completes
+		Timeout:   1, // 1 second timeout to trigger before tool completes
 	}
 
 	result, err := executor.Execute(ctx, step, nil)
@@ -370,10 +370,10 @@ func TestExecutor_ErrorStrategyIgnore(t *testing.T) {
 	ctx := context.Background()
 
 	step := &StepDefinition{
-		ID:       "step-8",
-		Name:     "ignore-error-step",
-		Type:             StepTypeIntegration,
-		Action: "shell",
+		ID:        "step-8",
+		Name:      "ignore-error-step",
+		Type:      StepTypeIntegration,
+		Action:    "shell",
 		Operation: "run",
 		OnError: &ErrorHandlingDefinition{
 			Strategy: ErrorStrategyIgnore,
@@ -406,10 +406,10 @@ func TestExecutor_ErrorStrategyFail(t *testing.T) {
 	ctx := context.Background()
 
 	step := &StepDefinition{
-		ID:       "step-9",
-		Name:     "fail-error-step",
-		Type:             StepTypeIntegration,
-		Action: "shell",
+		ID:        "step-9",
+		Name:      "fail-error-step",
+		Type:      StepTypeIntegration,
+		Action:    "shell",
 		Operation: "run",
 		OnError: &ErrorHandlingDefinition{
 			Strategy: ErrorStrategyFail,
@@ -438,10 +438,10 @@ func TestExecutor_ErrorStrategyFallback(t *testing.T) {
 	ctx := context.Background()
 
 	step := &StepDefinition{
-		ID:       "step-10",
-		Name:     "fallback-error-step",
-		Type:             StepTypeIntegration,
-		Action: "shell",
+		ID:        "step-10",
+		Name:      "fallback-error-step",
+		Type:      StepTypeIntegration,
+		Action:    "shell",
 		Operation: "run",
 		OnError: &ErrorHandlingDefinition{
 			Strategy:     ErrorStrategyFallback,
@@ -489,10 +489,10 @@ func TestExecutor_ActionWithoutToolRegistry(t *testing.T) {
 	ctx := context.Background()
 
 	step := &StepDefinition{
-		ID:       "step-12",
-		Name:     "no-registry-step",
-		Type:             StepTypeIntegration,
-		Action: "file",
+		ID:        "step-12",
+		Name:      "no-registry-step",
+		Type:      StepTypeIntegration,
+		Action:    "file",
 		Operation: "read",
 	}
 
@@ -1002,9 +1002,9 @@ func TestExecutor_ToolStepWithoutRegistry(t *testing.T) {
 	ctx := context.Background()
 
 	step := &StepDefinition{
-		ID:       "tool-step",
-		Type:             StepTypeIntegration,
-		Action: "file",
+		ID:        "tool-step",
+		Type:      StepTypeIntegration,
+		Action:    "file",
 		Operation: "read",
 	}
 
@@ -1453,10 +1453,10 @@ func TestStructuredOutputJSONExtraction(t *testing.T) {
 // TestStructuredOutputBuiltInTypes tests T1.3: built-in output types
 func TestStructuredOutputBuiltInTypes(t *testing.T) {
 	tests := []struct {
-		name         string
-		definition   StepDefinition
-		llmResponse  string
-		checkResult  func(*testing.T, map[string]interface{})
+		name        string
+		definition  StepDefinition
+		llmResponse string
+		checkResult func(*testing.T, map[string]interface{})
 	}{
 		{
 			name: "classification type",
@@ -1480,12 +1480,12 @@ func TestStructuredOutputBuiltInTypes(t *testing.T) {
 		{
 			name: "decision type",
 			definition: StepDefinition{
-				ID:     "decide",
-				Type:   StepTypeLLM,
-				Prompt: "Decide",
+				ID:         "decide",
+				Type:       StepTypeLLM,
+				Prompt:     "Decide",
 				OutputType: "decision",
 				OutputOptions: map[string]interface{}{
-					"choices":          []interface{}{"approve", "reject"},
+					"choices":           []interface{}{"approve", "reject"},
 					"require_reasoning": true,
 				},
 			},

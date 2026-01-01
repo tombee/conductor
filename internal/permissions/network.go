@@ -14,18 +14,18 @@ import (
 // These include cloud metadata endpoints and private network ranges.
 var DefaultBlockedHosts = []string{
 	// Cloud metadata endpoints
-	"169.254.169.254/32",      // AWS, Azure, GCP metadata
+	"169.254.169.254/32", // AWS, Azure, GCP metadata
 	"metadata.google.internal",
-	"169.254.169.253/32",      // AWS IMDSv2 fallback
+	"169.254.169.253/32", // AWS IMDSv2 fallback
 
 	// Private network ranges (CIDR notation)
-	"10.0.0.0/8",          // Private network
-	"172.16.0.0/12",       // Private network
-	"192.168.0.0/16",      // Private network
-	"127.0.0.0/8",         // Loopback
-	"::1/128",             // IPv6 loopback
-	"fc00::/7",            // IPv6 private
-	"fe80::/10",           // IPv6 link-local
+	"10.0.0.0/8",     // Private network
+	"172.16.0.0/12",  // Private network
+	"192.168.0.0/16", // Private network
+	"127.0.0.0/8",    // Loopback
+	"::1/128",        // IPv6 loopback
+	"fc00::/7",       // IPv6 private
+	"fe80::/10",      // IPv6 link-local
 }
 
 // CheckNetwork checks if a network request to a host is allowed.

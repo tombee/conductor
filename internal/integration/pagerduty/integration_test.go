@@ -131,11 +131,11 @@ func TestPagerDutyError_Error(t *testing.T) {
 
 func TestPagerDutyError_StatusChecks(t *testing.T) {
 	tests := []struct {
-		name         string
-		statusCode   int
-		isNotFound   bool
+		name          string
+		statusCode    int
+		isNotFound    bool
 		isRateLimited bool
-		isAuthError  bool
+		isAuthError   bool
 	}{
 		{name: "404", statusCode: 404, isNotFound: true, isRateLimited: false, isAuthError: false},
 		{name: "429", statusCode: 429, isNotFound: false, isRateLimited: true, isAuthError: false},

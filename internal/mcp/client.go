@@ -141,7 +141,7 @@ func (c *Client) initialize(ctx context.Context) error {
 	initReq := mcp.InitializeRequest{
 		Params: mcp.InitializeParams{
 			ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
-			Capabilities: mcp.ClientCapabilities{
+			Capabilities:    mcp.ClientCapabilities{
 				// Minimal capabilities for tool usage
 			},
 			ClientInfo: mcp.Implementation{

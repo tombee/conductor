@@ -79,7 +79,7 @@ func NewOTelProvider(serviceName, version string, opts ...sdktrace.TracerProvide
 	res, err := resource.Merge(
 		resource.Default(),
 		resource.NewWithAttributes(
-			"",  // Empty schema URL to avoid conflicts
+			"", // Empty schema URL to avoid conflicts
 			semconv.ServiceName(serviceName),
 			semconv.ServiceVersion(version),
 		),

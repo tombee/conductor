@@ -152,15 +152,15 @@ func (c *MockClient) SetCloseFunc(f func() error) {
 
 // MockServerConfig configures a mock MCP server.
 type MockServerConfig struct {
-	Name         string
-	Tools        []mcp.ToolDefinition
-	CallHandler  func(ctx context.Context, req mcp.ToolCallRequest) (*mcp.ToolCallResponse, error)
-	CallDelay    time.Duration
-	StartError   error
-	StartDelay   time.Duration
-	OnStart      func(config mcp.ServerConfig) error
-	OnStop       func(name string) error
-	OnGetClient  func(name string) error
+	Name        string
+	Tools       []mcp.ToolDefinition
+	CallHandler func(ctx context.Context, req mcp.ToolCallRequest) (*mcp.ToolCallResponse, error)
+	CallDelay   time.Duration
+	StartError  error
+	StartDelay  time.Duration
+	OnStart     func(config mcp.ServerConfig) error
+	OnStop      func(name string) error
+	OnGetClient func(name string) error
 }
 
 // MockManager implements mcp.MCPManagerProvider for testing.

@@ -14,10 +14,10 @@ import (
 
 // DatadogPoller implements polling for Datadog monitor alerts API.
 type DatadogPoller struct {
-	apiKey      string
-	appKey      string
-	site        string
-	client      *http.Client
+	apiKey string
+	appKey string
+	site   string
+	client *http.Client
 }
 
 // NewDatadogPoller creates a new Datadog poller.
@@ -194,12 +194,12 @@ func normalizeDatadogStatus(status string) string {
 // monitorToEvent converts a Datadog monitor to a generic event map.
 func (p *DatadogPoller) monitorToEvent(monitor datadogMonitor) map[string]interface{} {
 	event := map[string]interface{}{
-		"id":            monitor.ID,
-		"name":          monitor.Name,
-		"status":        monitor.OverallState,
-		"type":          monitor.Type,
-		"message":       monitor.Message,
-		"modified":      monitor.Modified,
+		"id":       monitor.ID,
+		"name":     monitor.Name,
+		"status":   monitor.OverallState,
+		"type":     monitor.Type,
+		"message":  monitor.Message,
+		"modified": monitor.Modified,
 	}
 
 	// Add query

@@ -98,10 +98,10 @@ func (c *SlackIntegration) createChannel(ctx context.Context, inputs map[string]
 
 	// Return operation result
 	return c.ToResult(resp, map[string]interface{}{
-		"channel_id":  createResp.Channel.ID,
+		"channel_id":   createResp.Channel.ID,
 		"channel_name": createResp.Channel.Name,
-		"is_private":  createResp.Channel.IsPrivate,
-		"ok":          createResp.OK,
+		"is_private":   createResp.Channel.IsPrivate,
+		"ok":           createResp.OK,
 	}), nil
 }
 

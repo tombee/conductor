@@ -33,10 +33,10 @@ const (
 
 // DryRunOptions configures dry-run behavior.
 type DryRunOptions struct {
-	Deep            bool // Perform deep template expansion
-	ValidateRefs    bool // Validate external references (URLs, files)
-	ShowConditions  bool // Show condition evaluation results
-	EstimateCost    bool // Provide detailed cost estimation
+	Deep           bool // Perform deep template expansion
+	ValidateRefs   bool // Validate external references (URLs, files)
+	ShowConditions bool // Show condition evaluation results
+	EstimateCost   bool // Provide detailed cost estimation
 }
 
 // DryRunPlan represents the execution plan for a workflow without running it.
@@ -53,17 +53,17 @@ type DryRunPlan struct {
 
 // DryRunStep represents a planned step execution.
 type DryRunStep struct {
-	ID                string            `json:"id"`
-	Name              string            `json:"name"`
-	Type              string            `json:"type"`
-	Provider          string            `json:"provider,omitempty"`
-	Model             string            `json:"model,omitempty"`
-	EstimatedTokens   int               `json:"estimated_tokens,omitempty"`
-	ExpandedPrompt    string            `json:"expanded_prompt,omitempty"`
-	ExpandedSystem    string            `json:"expanded_system,omitempty"`
-	ConditionResult   *ConditionResult  `json:"condition_result,omitempty"`
-	WillExecute       bool              `json:"will_execute"`
-	ValidationIssues  []string          `json:"validation_issues,omitempty"`
+	ID               string           `json:"id"`
+	Name             string           `json:"name"`
+	Type             string           `json:"type"`
+	Provider         string           `json:"provider,omitempty"`
+	Model            string           `json:"model,omitempty"`
+	EstimatedTokens  int              `json:"estimated_tokens,omitempty"`
+	ExpandedPrompt   string           `json:"expanded_prompt,omitempty"`
+	ExpandedSystem   string           `json:"expanded_system,omitempty"`
+	ConditionResult  *ConditionResult `json:"condition_result,omitempty"`
+	WillExecute      bool             `json:"will_execute"`
+	ValidationIssues []string         `json:"validation_issues,omitempty"`
 }
 
 // ConditionResult represents the evaluation of a step condition.
@@ -164,21 +164,21 @@ func (r *Runner) DryRun(ctx context.Context, req SubmitRequest) (*RunSnapshot, e
 	// Create a snapshot representing the dry-run result
 	now := time.Now()
 	snapshot := &RunSnapshot{
-		ID:          fmt.Sprintf("dry-run-%d", now.Unix()),
-		WorkflowID:  definition.Name,
-		Workflow:    definition.Name,
-		Status:      RunStatusDryRun,
-		Inputs:      req.Inputs,
-		CreatedAt:   now,
-		Workspace:   req.Workspace,
-		Profile:     req.Profile,
-		Provider:    req.Provider,
-		Model:       req.Model,
-		Timeout:     req.Timeout,
-		Security:    req.Security,
-		AllowHosts:  req.AllowHosts,
-		AllowPaths:  req.AllowPaths,
-		MCPDev:      req.MCPDev,
+		ID:         fmt.Sprintf("dry-run-%d", now.Unix()),
+		WorkflowID: definition.Name,
+		Workflow:   definition.Name,
+		Status:     RunStatusDryRun,
+		Inputs:     req.Inputs,
+		CreatedAt:  now,
+		Workspace:  req.Workspace,
+		Profile:    req.Profile,
+		Provider:   req.Provider,
+		Model:      req.Model,
+		Timeout:    req.Timeout,
+		Security:   req.Security,
+		AllowHosts: req.AllowHosts,
+		AllowPaths: req.AllowPaths,
+		MCPDev:     req.MCPDev,
 	}
 
 	// Attach the plan as output
@@ -221,10 +221,10 @@ func (r *Runner) DryRunWithOptions(ctx context.Context, req SubmitRequest, opts 
 
 	// Build dry-run plan
 	plan := &DryRunPlan{
-		Steps:           make([]DryRunStep, 0, len(definition.Steps)),
-		TotalSteps:      len(definition.Steps),
-		SecurityProfile: req.Security,
-		Warnings:        []string{},
+		Steps:            make([]DryRunStep, 0, len(definition.Steps)),
+		TotalSteps:       len(definition.Steps),
+		SecurityProfile:  req.Security,
+		Warnings:         []string{},
 		ValidationErrors: []string{},
 	}
 
@@ -321,21 +321,21 @@ func (r *Runner) DryRunWithOptions(ctx context.Context, req SubmitRequest, opts 
 	// Create snapshot
 	now := time.Now()
 	snapshot := &RunSnapshot{
-		ID:          fmt.Sprintf("dry-run-%d", now.Unix()),
-		WorkflowID:  definition.Name,
-		Workflow:    definition.Name,
-		Status:      RunStatusDryRun,
-		Inputs:      req.Inputs,
-		CreatedAt:   now,
-		Workspace:   req.Workspace,
-		Profile:     req.Profile,
-		Provider:    req.Provider,
-		Model:       req.Model,
-		Timeout:     req.Timeout,
-		Security:    req.Security,
-		AllowHosts:  req.AllowHosts,
-		AllowPaths:  req.AllowPaths,
-		MCPDev:      req.MCPDev,
+		ID:         fmt.Sprintf("dry-run-%d", now.Unix()),
+		WorkflowID: definition.Name,
+		Workflow:   definition.Name,
+		Status:     RunStatusDryRun,
+		Inputs:     req.Inputs,
+		CreatedAt:  now,
+		Workspace:  req.Workspace,
+		Profile:    req.Profile,
+		Provider:   req.Provider,
+		Model:      req.Model,
+		Timeout:    req.Timeout,
+		Security:   req.Security,
+		AllowHosts: req.AllowHosts,
+		AllowPaths: req.AllowPaths,
+		MCPDev:     req.MCPDev,
 	}
 
 	snapshot.Output = map[string]any{

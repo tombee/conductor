@@ -45,7 +45,7 @@ func TestProvidersCommand(t *testing.T) {
 			Type: "claude-code",
 		},
 		"other-provider": {
-			Type: "anthropic",
+			Type:   "anthropic",
 			APIKey: "test-key",
 		},
 	}
@@ -55,11 +55,11 @@ func TestProvidersCommand(t *testing.T) {
 	}
 
 	tests := []struct {
-		name        string
-		args        []string
-		wantErr     bool
-		wantOutput  string
-		skipOutput  bool
+		name       string
+		args       []string
+		wantErr    bool
+		wantOutput string
+		skipOutput bool
 	}{
 		{
 			name:       "list providers",
@@ -236,7 +236,7 @@ func TestProvidersRemove(t *testing.T) {
 			Type: "claude-code",
 		},
 		"other-provider": {
-			Type: "anthropic",
+			Type:   "anthropic",
 			APIKey: "test-key",
 		},
 	}

@@ -27,15 +27,15 @@ const docsBaseURL = "https://tombee.github.io/conductor"
 
 // CommandMetadata represents metadata about a command for JSON output
 type CommandMetadata struct {
-	Name        string              `json:"name"`
-	Short       string              `json:"short"`
-	Long        string              `json:"long,omitempty"`
-	Usage       string              `json:"usage"`
-	Flags       []FlagMetadata      `json:"flags,omitempty"`
-	Examples    string              `json:"examples,omitempty"`
-	Subcommands []string            `json:"subcommands,omitempty"`
-	Group       string              `json:"group,omitempty"`
-	Aliases     []string            `json:"aliases,omitempty"`
+	Name        string         `json:"name"`
+	Short       string         `json:"short"`
+	Long        string         `json:"long,omitempty"`
+	Usage       string         `json:"usage"`
+	Flags       []FlagMetadata `json:"flags,omitempty"`
+	Examples    string         `json:"examples,omitempty"`
+	Subcommands []string       `json:"subcommands,omitempty"`
+	Group       string         `json:"group,omitempty"`
+	Aliases     []string       `json:"aliases,omitempty"`
 }
 
 // FlagMetadata represents metadata about a flag
@@ -50,10 +50,10 @@ type FlagMetadata struct {
 // HelpResponse is the JSON response for help command
 type HelpResponse struct {
 	shared.JSONResponse
-	Commands     []CommandMetadata `json:"commands,omitempty"`
-	Command      *CommandMetadata  `json:"command,omitempty"`
-	GlobalFlags  []FlagMetadata    `json:"global_flags,omitempty"`
-	DocsURL      string            `json:"docs_url"`
+	Commands    []CommandMetadata `json:"commands,omitempty"`
+	Command     *CommandMetadata  `json:"command,omitempty"`
+	GlobalFlags []FlagMetadata    `json:"global_flags,omitempty"`
+	DocsURL     string            `json:"docs_url"`
 }
 
 // NewHelpCommand creates the help command

@@ -148,8 +148,8 @@ func TestParseIntegrationRequirement(t *testing.T) {
 
 func TestParseDefinition_WithRequires(t *testing.T) {
 	tests := []struct {
-		name     string
-		yaml     string
+		name             string
+		yaml             string
 		wantIntegrations int
 		wantMCPServers   int
 	}{

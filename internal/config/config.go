@@ -37,19 +37,19 @@ var (
 
 // Config represents the complete Conductor configuration.
 type Config struct {
-	Server     ServerConfig             `yaml:"server"`
-	Auth       AuthConfig               `yaml:"auth"`
-	Log        LogConfig                `yaml:"log"`
-	LLM        LLMConfig                `yaml:"llm"`        // Global LLM settings (timeouts, retries, etc.)
-	Controller ControllerConfig         `yaml:"controller"` // Controller service settings
-	Security   security.SecurityConfig  `yaml:"security"`   // Security framework settings
+	Server     ServerConfig            `yaml:"server"`
+	Auth       AuthConfig              `yaml:"auth"`
+	Log        LogConfig               `yaml:"log"`
+	LLM        LLMConfig               `yaml:"llm"`        // Global LLM settings (timeouts, retries, etc.)
+	Controller ControllerConfig        `yaml:"controller"` // Controller service settings
+	Security   security.SecurityConfig `yaml:"security"`   // Security framework settings
 
 	// Multi-provider configuration (new format)
-	DefaultProvider            string        `yaml:"default_provider,omitempty" json:"default_provider,omitempty"`
-	Providers                  ProvidersMap  `yaml:"providers,omitempty" json:"providers,omitempty"`
-	AgentMappings              AgentMappings `yaml:"agent_mappings,omitempty" json:"agent_mappings,omitempty"`
-	AcknowledgedDefaults       []string      `yaml:"acknowledged_defaults,omitempty" json:"acknowledged_defaults,omitempty"`
-	SuppressUnmappedWarnings   bool          `yaml:"suppress_unmapped_warnings,omitempty" json:"suppress_unmapped_warnings,omitempty"`
+	DefaultProvider          string        `yaml:"default_provider,omitempty" json:"default_provider,omitempty"`
+	Providers                ProvidersMap  `yaml:"providers,omitempty" json:"providers,omitempty"`
+	AgentMappings            AgentMappings `yaml:"agent_mappings,omitempty" json:"agent_mappings,omitempty"`
+	AcknowledgedDefaults     []string      `yaml:"acknowledged_defaults,omitempty" json:"acknowledged_defaults,omitempty"`
+	SuppressUnmappedWarnings bool          `yaml:"suppress_unmapped_warnings,omitempty" json:"suppress_unmapped_warnings,omitempty"`
 
 	// Workspaces configuration
 	// Workspaces contain profiles for workflow execution configuration
@@ -654,8 +654,8 @@ func Default() *Config {
 			RequestTimeout:          5 * time.Second,
 			MaxRetries:              3,
 			RetryBackoffBase:        100 * time.Millisecond,
-			FailoverProviders:       nil,  // Failover disabled by default
-			CircuitBreakerThreshold: 5,    // Default threshold
+			FailoverProviders:       nil, // Failover disabled by default
+			CircuitBreakerThreshold: 5,   // Default threshold
 			CircuitBreakerTimeout:   30 * time.Second,
 		},
 		Security: security.SecurityConfig{
@@ -671,9 +671,9 @@ func Default() *Config {
 				SocketPath:  socketPath,
 				AllowRemote: false,
 			},
-			PIDFile:            "", // No PID file by default
-			DataDir:            dataDir,
-			WorkflowsDir:       "./workflows",
+			PIDFile:      "", // No PID file by default
+			DataDir:      dataDir,
+			WorkflowsDir: "./workflows",
 			ControllerLog: ControllerLogConfig{
 				Level:  "info",
 				Format: "text",
@@ -737,7 +737,7 @@ func Default() *Config {
 						},
 						Bindings: profile.Bindings{
 							Integrations: make(map[string]profile.IntegrationBinding),
-							MCPServers: make(map[string]profile.MCPServerBinding),
+							MCPServers:   make(map[string]profile.MCPServerBinding),
 						},
 					},
 				},

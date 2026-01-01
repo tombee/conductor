@@ -16,7 +16,7 @@ import (
 // NewExamplesCommand creates the examples command
 func NewExamplesCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "examples",
+		Use: "examples",
 		Annotations: map[string]string{
 			"group": "workflow",
 		},

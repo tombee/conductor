@@ -29,7 +29,7 @@ import (
 // NewConfigCommand creates the config command with subcommands
 func NewConfigCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "config",
+		Use: "config",
 		Annotations: map[string]string{
 			"group": "configuration",
 		},

@@ -31,14 +31,14 @@ import (
 
 // DoctorResult contains the overall health check results
 type DoctorResult struct {
-	ConfigPath         string                    `json:"config_path"`
-	ConfigExists       bool                      `json:"config_exists"`
-	ConfigValid        bool                      `json:"config_valid"`
-	ConfigError        string                    `json:"config_error,omitempty"`
-	DefaultProvider    string                    `json:"default_provider"`
-	ProviderResults    map[string]ProviderHealth `json:"provider_results"`
-	Recommendations    []string                  `json:"recommendations"`
-	OverallHealthy     bool                      `json:"overall_healthy"`
+	ConfigPath      string                    `json:"config_path"`
+	ConfigExists    bool                      `json:"config_exists"`
+	ConfigValid     bool                      `json:"config_valid"`
+	ConfigError     string                    `json:"config_error,omitempty"`
+	DefaultProvider string                    `json:"default_provider"`
+	ProviderResults map[string]ProviderHealth `json:"provider_results"`
+	Recommendations []string                  `json:"recommendations"`
+	OverallHealthy  bool                      `json:"overall_healthy"`
 }
 
 // ProviderHealth contains health check results for a single provider
@@ -58,7 +58,7 @@ type ProviderHealth struct {
 // NewDoctorCommand creates the doctor command
 func NewDoctorCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "doctor",
+		Use: "doctor",
 		Annotations: map[string]string{
 			"group": "diagnostics",
 		},

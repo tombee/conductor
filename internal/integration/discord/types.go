@@ -4,19 +4,19 @@ import "time"
 
 // Message represents a Discord message.
 type Message struct {
-	ID              string        `json:"id"`
-	ChannelID       string        `json:"channel_id"`
-	Author          User          `json:"author"`
-	Content         string        `json:"content"`
-	Timestamp       time.Time     `json:"timestamp"`
-	EditedTimestamp *time.Time    `json:"edited_timestamp,omitempty"`
-	TTS             bool          `json:"tts"`
-	MentionEveryone bool          `json:"mention_everyone"`
-	Mentions        []User        `json:"mentions"`
-	Embeds          []Embed       `json:"embeds"`
-	Reactions       []Reaction    `json:"reactions,omitempty"`
-	Pinned          bool          `json:"pinned"`
-	Type            int           `json:"type"`
+	ID              string     `json:"id"`
+	ChannelID       string     `json:"channel_id"`
+	Author          User       `json:"author"`
+	Content         string     `json:"content"`
+	Timestamp       time.Time  `json:"timestamp"`
+	EditedTimestamp *time.Time `json:"edited_timestamp,omitempty"`
+	TTS             bool       `json:"tts"`
+	MentionEveryone bool       `json:"mention_everyone"`
+	Mentions        []User     `json:"mentions"`
+	Embeds          []Embed    `json:"embeds"`
+	Reactions       []Reaction `json:"reactions,omitempty"`
+	Pinned          bool       `json:"pinned"`
+	Type            int        `json:"type"`
 }
 
 // User represents a Discord user.
@@ -30,16 +30,16 @@ type User struct {
 
 // Channel represents a Discord channel.
 type Channel struct {
-	ID                   string                 `json:"id"`
-	Type                 int                    `json:"type"`
-	GuildID              string                 `json:"guild_id,omitempty"`
-	Position             int                    `json:"position,omitempty"`
-	Name                 string                 `json:"name,omitempty"`
-	Topic                string                 `json:"topic,omitempty"`
-	NSFW                 bool                   `json:"nsfw,omitempty"`
-	LastMessageID        string                 `json:"last_message_id,omitempty"`
-	ParentID             string                 `json:"parent_id,omitempty"`
-	PermissionOverwrites []PermissionOverwrite  `json:"permission_overwrites,omitempty"`
+	ID                   string                `json:"id"`
+	Type                 int                   `json:"type"`
+	GuildID              string                `json:"guild_id,omitempty"`
+	Position             int                   `json:"position,omitempty"`
+	Name                 string                `json:"name,omitempty"`
+	Topic                string                `json:"topic,omitempty"`
+	NSFW                 bool                  `json:"nsfw,omitempty"`
+	LastMessageID        string                `json:"last_message_id,omitempty"`
+	ParentID             string                `json:"parent_id,omitempty"`
+	PermissionOverwrites []PermissionOverwrite `json:"permission_overwrites,omitempty"`
 }
 
 // PermissionOverwrite represents permission overwrites for a role or user in a channel.
@@ -66,16 +66,16 @@ type Member struct {
 
 // Embed represents a Discord message embed.
 type Embed struct {
-	Title       string         `json:"title,omitempty"`
-	Description string         `json:"description,omitempty"`
-	URL         string         `json:"url,omitempty"`
-	Timestamp   *time.Time     `json:"timestamp,omitempty"`
-	Color       int            `json:"color,omitempty"`
-	Footer      *EmbedFooter   `json:"footer,omitempty"`
-	Image       *EmbedImage    `json:"image,omitempty"`
-	Thumbnail   *EmbedImage    `json:"thumbnail,omitempty"`
-	Author      *EmbedAuthor   `json:"author,omitempty"`
-	Fields      []EmbedField   `json:"fields,omitempty"`
+	Title       string       `json:"title,omitempty"`
+	Description string       `json:"description,omitempty"`
+	URL         string       `json:"url,omitempty"`
+	Timestamp   *time.Time   `json:"timestamp,omitempty"`
+	Color       int          `json:"color,omitempty"`
+	Footer      *EmbedFooter `json:"footer,omitempty"`
+	Image       *EmbedImage  `json:"image,omitempty"`
+	Thumbnail   *EmbedImage  `json:"thumbnail,omitempty"`
+	Author      *EmbedAuthor `json:"author,omitempty"`
+	Fields      []EmbedField `json:"fields,omitempty"`
 }
 
 // EmbedFooter represents the footer of an embed.
@@ -122,30 +122,30 @@ type Emoji struct {
 
 // Webhook represents a Discord webhook.
 type Webhook struct {
-	ID            string  `json:"id"`
-	Type          int     `json:"type"`
-	GuildID       string  `json:"guild_id,omitempty"`
-	ChannelID     string  `json:"channel_id"`
-	User          *User   `json:"user,omitempty"`
-	Name          string  `json:"name,omitempty"`
-	Avatar        string  `json:"avatar,omitempty"`
-	Token         string  `json:"token,omitempty"`
-	ApplicationID string  `json:"application_id,omitempty"`
-	URL           string  `json:"url,omitempty"`
+	ID            string `json:"id"`
+	Type          int    `json:"type"`
+	GuildID       string `json:"guild_id,omitempty"`
+	ChannelID     string `json:"channel_id"`
+	User          *User  `json:"user,omitempty"`
+	Name          string `json:"name,omitempty"`
+	Avatar        string `json:"avatar,omitempty"`
+	Token         string `json:"token,omitempty"`
+	ApplicationID string `json:"application_id,omitempty"`
+	URL           string `json:"url,omitempty"`
 }
 
 // Thread represents a Discord thread.
 type Thread struct {
-	ID                   string    `json:"id"`
-	GuildID              string    `json:"guild_id,omitempty"`
-	ParentID             string    `json:"parent_id,omitempty"`
-	OwnerID              string    `json:"owner_id,omitempty"`
-	Type                 int       `json:"type"`
-	Name                 string    `json:"name"`
-	LastMessageID        string    `json:"last_message_id,omitempty"`
-	MessageCount         int       `json:"message_count,omitempty"`
-	MemberCount          int       `json:"member_count,omitempty"`
-	ThreadMetadata       *ThreadMetadata `json:"thread_metadata,omitempty"`
+	ID             string          `json:"id"`
+	GuildID        string          `json:"guild_id,omitempty"`
+	ParentID       string          `json:"parent_id,omitempty"`
+	OwnerID        string          `json:"owner_id,omitempty"`
+	Type           int             `json:"type"`
+	Name           string          `json:"name"`
+	LastMessageID  string          `json:"last_message_id,omitempty"`
+	MessageCount   int             `json:"message_count,omitempty"`
+	MemberCount    int             `json:"member_count,omitempty"`
+	ThreadMetadata *ThreadMetadata `json:"thread_metadata,omitempty"`
 }
 
 // ThreadMetadata represents metadata about a thread.

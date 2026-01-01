@@ -65,14 +65,14 @@ func (c *AWSTransportConfig) Validate() error {
 
 // AWSTransport implements Transport for AWS services with SigV4 signing.
 type AWSTransport struct {
-	config       *AWSTransportConfig
-	client       *http.Client
-	awsConfig    aws.Config
-	signer       *v4.Signer
-	credentials  aws.Credentials
-	credExpiry   time.Time
-	credMutex    sync.RWMutex
-	rateLimiter  RateLimiter
+	config      *AWSTransportConfig
+	client      *http.Client
+	awsConfig   aws.Config
+	signer      *v4.Signer
+	credentials aws.Credentials
+	credExpiry  time.Time
+	credMutex   sync.RWMutex
+	rateLimiter RateLimiter
 }
 
 // NewAWSTransport creates a new AWS SigV4 transport.

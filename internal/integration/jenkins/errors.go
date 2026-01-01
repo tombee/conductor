@@ -110,25 +110,25 @@ func extractHTMLTitle(html string) string {
 // getDefaultMessage returns a default error message for a status code.
 func getDefaultMessage(statusCode int) string {
 	switch statusCode {
-		case 400:
-			return "Bad request - check your input parameters"
-		case 401:
-			return "Unauthorized - check your authentication credentials"
-		case 403:
-			return "Forbidden - you don't have permission to perform this action"
-		case 404:
-			return "Not found - the requested resource does not exist"
-		case 405:
-			return "Method not allowed"
-		case 409:
-			return "Conflict - the request conflicts with the current state"
-		case 500:
-			return "Internal server error - Jenkins encountered an error"
-		case 502:
-			return "Bad gateway - Jenkins proxy error"
-		case 503:
-			return "Service unavailable - Jenkins may be starting up or overloaded"
-		default:
-			return fmt.Sprintf("Request failed with status %d", statusCode)
+	case 400:
+		return "Bad request - check your input parameters"
+	case 401:
+		return "Unauthorized - check your authentication credentials"
+	case 403:
+		return "Forbidden - you don't have permission to perform this action"
+	case 404:
+		return "Not found - the requested resource does not exist"
+	case 405:
+		return "Method not allowed"
+	case 409:
+		return "Conflict - the request conflicts with the current state"
+	case 500:
+		return "Internal server error - Jenkins encountered an error"
+	case 502:
+		return "Bad gateway - Jenkins proxy error"
+	case 503:
+		return "Service unavailable - Jenkins may be starting up or overloaded"
+	default:
+		return fmt.Sprintf("Request failed with status %d", statusCode)
 	}
 }

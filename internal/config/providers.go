@@ -20,8 +20,8 @@ import (
 	"regexp"
 	"strings"
 
-	conductorerrors "github.com/tombee/conductor/pkg/errors"
 	"github.com/tombee/conductor/internal/secrets"
+	conductorerrors "github.com/tombee/conductor/pkg/errors"
 )
 
 var (
@@ -58,9 +58,9 @@ type AgentMappings map[string]string
 
 // ModelTierMap maps abstract model tiers to provider-specific model names
 type ModelTierMap struct {
-	Fast       string `yaml:"fast,omitempty" json:"fast,omitempty"`
-	Balanced   string `yaml:"balanced,omitempty" json:"balanced,omitempty"`
-	Strategic  string `yaml:"strategic,omitempty" json:"strategic,omitempty"`
+	Fast      string `yaml:"fast,omitempty" json:"fast,omitempty"`
+	Balanced  string `yaml:"balanced,omitempty" json:"balanced,omitempty"`
+	Strategic string `yaml:"strategic,omitempty" json:"strategic,omitempty"`
 }
 
 // ResolveSecretReference resolves a $secret:key reference to its actual value.

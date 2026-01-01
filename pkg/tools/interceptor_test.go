@@ -22,9 +22,9 @@ import (
 
 // mockInterceptor implements the Interceptor interface for testing
 type mockInterceptor struct {
-	interceptCalled    bool
-	postExecuteCalled  bool
-	shouldBlockAccess  bool
+	interceptCalled   bool
+	postExecuteCalled bool
+	shouldBlockAccess bool
 }
 
 func (m *mockInterceptor) Intercept(ctx context.Context, tool Tool, inputs map[string]interface{}) error {

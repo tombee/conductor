@@ -33,7 +33,7 @@ import (
 // NewRunsCommand creates the runs command group.
 func NewRunsCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "runs",
+		Use: "runs",
 		Annotations: map[string]string{
 			"group": "management",
 		},

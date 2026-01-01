@@ -423,10 +423,10 @@ func TestHandlerScopeFiltering(t *testing.T) {
 	handler.RegisterRoutes(mux)
 
 	tests := []struct {
-		name           string
-		userScopes     []string
-		expectedCount  int
-		expectedNames  []string
+		name          string
+		userScopes    []string
+		expectedCount int
+		expectedNames []string
 	}{
 		{
 			name:          "admin key sees all endpoints",
@@ -917,7 +917,7 @@ func TestValidateInputs(t *testing.T) {
 			errMsg:  "must be one of",
 		},
 		{
-			name: "input with default not required",
+			name:   "input with default not required",
 			inputs: map[string]any{},
 			inputDefs: []workflow.InputDefinition{
 				{Name: "optional", Type: "string", Required: true, Default: "default-value"},

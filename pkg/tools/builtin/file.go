@@ -28,8 +28,8 @@ type FileTool struct {
 // NewFileTool creates a new file tool with default settings.
 func NewFileTool() *FileTool {
 	return &FileTool{
-		maxFileSize:    10 * 1024 * 1024,                // 10 MB default
-		allowedPaths:   []string{},                      // No restrictions by default
+		maxFileSize:    10 * 1024 * 1024,                     // 10 MB default
+		allowedPaths:   []string{},                           // No restrictions by default
 		securityConfig: security.DefaultFileSecurityConfig(), // Secure defaults
 	}
 }

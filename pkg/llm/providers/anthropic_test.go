@@ -265,8 +265,8 @@ func TestMarshalUnmarshalToolInput(t *testing.T) {
 
 func TestEstimateTokens(t *testing.T) {
 	messages := []llm.Message{
-		{Content: "1234"},      // 1 token
-		{Content: "12345678"},  // 2 tokens
+		{Content: "1234"},         // 1 token
+		{Content: "12345678"},     // 2 tokens
 		{Content: "123456789012"}, // 3 tokens
 	}
 

@@ -32,7 +32,7 @@ func NewUsageCommand() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:   "usage",
+		Use: "usage",
 		Annotations: map[string]string{
 			"group": "workflow",
 		},

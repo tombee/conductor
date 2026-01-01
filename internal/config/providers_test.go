@@ -36,16 +36,16 @@ func TestResolveSecretReference(t *testing.T) {
 		errContains string
 	}{
 		{
-			name:     "plaintext value",
-			value:    "sk-ant-1234567890",
-			want:     "sk-ant-1234567890",
-			wantErr:  false,
+			name:    "plaintext value",
+			value:   "sk-ant-1234567890",
+			want:    "sk-ant-1234567890",
+			wantErr: false,
 		},
 		{
-			name:     "empty value",
-			value:    "",
-			want:     "",
-			wantErr:  false,
+			name:    "empty value",
+			value:   "",
+			want:    "",
+			wantErr: false,
 		},
 		{
 			name:     "secret reference with env backend",

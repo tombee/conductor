@@ -49,7 +49,7 @@ type PingResult struct {
 // NewPingCommand creates the ping command
 func NewPingCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "ping [provider]",
+		Use: "ping [provider]",
 		Annotations: map[string]string{
 			"group": "diagnostics",
 		},

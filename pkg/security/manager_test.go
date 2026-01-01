@@ -67,11 +67,11 @@ func TestCheckFileAccess(t *testing.T) {
 	tmpDir := os.TempDir()
 
 	tests := []struct {
-		name         string
-		profile      *SecurityProfile
-		request      AccessRequest
-		wantAllowed  bool
-		wantReason   string
+		name        string
+		profile     *SecurityProfile
+		request     AccessRequest
+		wantAllowed bool
+		wantReason  string
 	}{
 		{
 			name: "unrestricted allows all",
@@ -397,8 +397,8 @@ func TestCheckCommandAccess(t *testing.T) {
 
 func TestIsPrivateIP(t *testing.T) {
 	tests := []struct {
-		host    string
-		want    bool
+		host string
+		want bool
 	}{
 		{"127.0.0.1", true},
 		{"localhost", false}, // Hostnames not resolved for performance

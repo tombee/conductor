@@ -20,20 +20,20 @@ import (
 
 func TestCheckShellInjectionRisk(t *testing.T) {
 	tests := []struct {
-		name          string
-		def           *Definition
-		wantWarnings  int
-		wantStepID    string
-		wantType      string
+		name         string
+		def          *Definition
+		wantWarnings int
+		wantStepID   string
+		wantType     string
 	}{
 		{
 			name: "string command with template variable",
 			def: &Definition{
 				Steps: []StepDefinition{
 					{
-						ID:               "run_cmd",
-						Type:             StepTypeIntegration,
-						Action: "shell",
+						ID:        "run_cmd",
+						Type:      StepTypeIntegration,
+						Action:    "shell",
 						Operation: "run",
 						Inputs: map[string]interface{}{
 							"command": "git commit -m '{{.inputs.message}}'",
@@ -50,9 +50,9 @@ func TestCheckShellInjectionRisk(t *testing.T) {
 			def: &Definition{
 				Steps: []StepDefinition{
 					{
-						ID:               "run_cmd",
-						Type:             StepTypeIntegration,
-						Action: "shell",
+						ID:        "run_cmd",
+						Type:      StepTypeIntegration,
+						Action:    "shell",
 						Operation: "run",
 						Inputs: map[string]interface{}{
 							"command": []interface{}{"git", "commit", "-m", "{{.inputs.message}}"},
@@ -67,9 +67,9 @@ func TestCheckShellInjectionRisk(t *testing.T) {
 			def: &Definition{
 				Steps: []StepDefinition{
 					{
-						ID:               "run_cmd",
-						Type:             StepTypeIntegration,
-						Action: "shell",
+						ID:        "run_cmd",
+						Type:      StepTypeIntegration,
+						Action:    "shell",
 						Operation: "run",
 						Inputs: map[string]interface{}{
 							"command": "git status",
@@ -88,9 +88,9 @@ func TestCheckShellInjectionRisk(t *testing.T) {
 						Type: StepTypeParallel,
 						Steps: []StepDefinition{
 							{
-								ID:               "run_cmd",
-								Type:             StepTypeIntegration,
-								Action: "shell",
+								ID:        "run_cmd",
+								Type:      StepTypeIntegration,
+								Action:    "shell",
 								Operation: "run",
 								Inputs: map[string]interface{}{
 									"command": "echo {{.item}}",
@@ -109,9 +109,9 @@ func TestCheckShellInjectionRisk(t *testing.T) {
 			def: &Definition{
 				Steps: []StepDefinition{
 					{
-						ID:               "read_file",
-						Type:             StepTypeIntegration,
-						Action: "file",
+						ID:        "read_file",
+						Type:      StepTypeIntegration,
+						Action:    "file",
 						Operation: "read",
 						Inputs: map[string]interface{}{
 							"path": "{{.inputs.path}}",
@@ -378,9 +378,9 @@ func TestCheckOverlyPermissivePaths(t *testing.T) {
 			def: &Definition{
 				Steps: []StepDefinition{
 					{
-						ID:               "read_all",
-						Type:             StepTypeIntegration,
-						Action: "file",
+						ID:        "read_all",
+						Type:      StepTypeIntegration,
+						Action:    "file",
 						Operation: "read",
 						Inputs: map[string]interface{}{
 							"path": "/",
@@ -397,9 +397,9 @@ func TestCheckOverlyPermissivePaths(t *testing.T) {
 			def: &Definition{
 				Steps: []StepDefinition{
 					{
-						ID:               "read_home",
-						Type:             StepTypeIntegration,
-						Action: "file",
+						ID:        "read_home",
+						Type:      StepTypeIntegration,
+						Action:    "file",
 						Operation: "read",
 						Inputs: map[string]interface{}{
 							"path": "~",
@@ -416,9 +416,9 @@ func TestCheckOverlyPermissivePaths(t *testing.T) {
 			def: &Definition{
 				Steps: []StepDefinition{
 					{
-						ID:               "read_out",
-						Type:             StepTypeIntegration,
-						Action: "file",
+						ID:        "read_out",
+						Type:      StepTypeIntegration,
+						Action:    "file",
 						Operation: "write",
 						Inputs: map[string]interface{}{
 							"path": "$out/",
@@ -435,9 +435,9 @@ func TestCheckOverlyPermissivePaths(t *testing.T) {
 			def: &Definition{
 				Steps: []StepDefinition{
 					{
-						ID:               "read_config",
-						Type:             StepTypeIntegration,
-						Action: "file",
+						ID:        "read_config",
+						Type:      StepTypeIntegration,
+						Action:    "file",
 						Operation: "read",
 						Inputs: map[string]interface{}{
 							"path": "~/projects/myapp/config.json",
@@ -452,9 +452,9 @@ func TestCheckOverlyPermissivePaths(t *testing.T) {
 			def: &Definition{
 				Steps: []StepDefinition{
 					{
-						ID:               "run_shell",
-						Type:             StepTypeIntegration,
-						Action: "shell",
+						ID:        "run_shell",
+						Type:      StepTypeIntegration,
+						Action:    "shell",
 						Operation: "run",
 						Inputs: map[string]interface{}{
 							"command": "ls /",
@@ -473,9 +473,9 @@ func TestCheckOverlyPermissivePaths(t *testing.T) {
 						Type: StepTypeParallel,
 						Steps: []StepDefinition{
 							{
-								ID:               "read_root",
-								Type:             StepTypeIntegration,
-								Action: "file",
+								ID:        "read_root",
+								Type:      StepTypeIntegration,
+								Action:    "file",
 								Operation: "list",
 								Inputs: map[string]interface{}{
 									"path": "/",
@@ -660,18 +660,18 @@ func TestValidateSecurity_Integration(t *testing.T) {
 		},
 		Steps: []StepDefinition{
 			{
-				ID:               "run_dangerous",
-				Type:             StepTypeIntegration,
-				Action: "shell",
+				ID:        "run_dangerous",
+				Type:      StepTypeIntegration,
+				Action:    "shell",
 				Operation: "run",
 				Inputs: map[string]interface{}{
 					"command": "rm -rf {{.inputs.path}}",
 				},
 			},
 			{
-				ID:               "read_root",
-				Type:             StepTypeIntegration,
-				Action: "file",
+				ID:        "read_root",
+				Type:      StepTypeIntegration,
+				Action:    "file",
 				Operation: "list",
 				Inputs: map[string]interface{}{
 					"path": "/",

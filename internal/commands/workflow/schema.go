@@ -35,7 +35,7 @@ func NewSchemaCommand() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:   "schema",
+		Use: "schema",
 		Annotations: map[string]string{
 			"group": "workflow",
 		},

@@ -47,7 +47,7 @@ func Example() {
 		ID:   "example-workflow-1",
 		Name: "Example Workflow",
 		Metadata: map[string]interface{}{
-			"project": "demo",
+			"project":  "demo",
 			"priority": "high",
 		},
 	}
@@ -127,7 +127,7 @@ func Example_templateVariables() {
 	llmProvider := &mockLLMProvider{
 		responses: map[string]string{
 			"Review for security issues:\nfunc main() { ... }": "No security issues found",
-			"Summarize this review:\nNo security issues found":  "All security checks passed",
+			"Summarize this review:\nNo security issues found": "All security checks passed",
 		},
 	}
 

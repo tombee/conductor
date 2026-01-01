@@ -39,10 +39,10 @@ func NewJenkinsIntegration(config *api.ProviderConfig) (operation.Provider, erro
 
 	return &JenkinsIntegration{
 		BaseProvider: base,
-		baseURL:       config.BaseURL,
-		username:      username,
-		token:         config.Token,
-		transport:     config.Transport,
+		baseURL:      config.BaseURL,
+		username:     username,
+		token:        config.Token,
+		transport:    config.Transport,
 	}, nil
 }
 

@@ -182,9 +182,9 @@ func TestMasker_AddSecretsFromEnv(t *testing.T) {
 		{
 			name: "multiple secret patterns",
 			env: map[string]string{
-				"API_TOKEN":     "token-val",
-				"DB_SECRET":     "secret-val",
-				"ENCRYPT_KEY":   "key-val",
+				"API_TOKEN":      "token-val",
+				"DB_SECRET":      "secret-val",
+				"ENCRYPT_KEY":    "key-val",
 				"ADMIN_PASSWORD": "pass-val",
 			},
 			input: "token-val secret-val key-val pass-val",
@@ -232,10 +232,10 @@ func TestMasker_isSecretKey(t *testing.T) {
 		{"PATH", false},
 		{"GOPATH", false},
 		{"MY_VARIABLE", false},
-		{"TOKENIZER", false},      // TOKEN is not a suffix
-		{"SECRET_SAUCE", false},   // SECRET is not a suffix
-		{"KEYBOARD", false},       // KEY is not a suffix
-		{"PASSWORD_FILE", false},  // PASSWORD is not a suffix
+		{"TOKENIZER", false},     // TOKEN is not a suffix
+		{"SECRET_SAUCE", false},  // SECRET is not a suffix
+		{"KEYBOARD", false},      // KEY is not a suffix
+		{"PASSWORD_FILE", false}, // PASSWORD is not a suffix
 		{"", false},
 	}
 

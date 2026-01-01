@@ -22,10 +22,10 @@ import (
 
 func TestAccessChecker_FilesystemRead(t *testing.T) {
 	tests := []struct {
-		name      string
-		config    FilesystemAccess
-		path      string
-		wantAllow bool
+		name       string
+		config     FilesystemAccess
+		path       string
+		wantAllow  bool
 		wantReason string
 	}{
 		{

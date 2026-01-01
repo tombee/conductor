@@ -279,13 +279,13 @@ func isOverlyPermissivePath(path string) bool {
 
 	// Check for exact matches of overly broad paths
 	broadPaths := []string{
-		"/",        // Root directory
-		"~",        // Home directory without subdirectory
-		"~/",       // Home directory without subdirectory
-		"$out",     // Output directory without subdirectory
-		"$out/",    // Output directory without subdirectory
-		"$temp",    // Temp directory without subdirectory
-		"$temp/",   // Temp directory without subdirectory
+		"/",      // Root directory
+		"~",      // Home directory without subdirectory
+		"~/",     // Home directory without subdirectory
+		"$out",   // Output directory without subdirectory
+		"$out/",  // Output directory without subdirectory
+		"$temp",  // Temp directory without subdirectory
+		"$temp/", // Temp directory without subdirectory
 	}
 
 	for _, broad := range broadPaths {

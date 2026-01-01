@@ -161,12 +161,12 @@ func (c *PagerDutyIntegration) listOnCalls(ctx context.Context, inputs map[strin
 	oncalls := make([]map[string]interface{}, len(onCallsResp.OnCalls))
 	for i, oc := range onCallsResp.OnCalls {
 		oncalls[i] = map[string]interface{}{
-			"user_id":            oc.User.ID,
-			"user_name":          oc.User.Summary,
-			"escalation_level":   oc.EscalationLevel,
-			"escalation_policy":  oc.EscalationPolicy.Summary,
-			"start":              oc.Start,
-			"end":                oc.End,
+			"user_id":           oc.User.ID,
+			"user_name":         oc.User.Summary,
+			"escalation_level":  oc.EscalationLevel,
+			"escalation_policy": oc.EscalationPolicy.Summary,
+			"start":             oc.Start,
+			"end":               oc.End,
 		}
 		if oc.Schedule != nil {
 			oncalls[i]["schedule_id"] = oc.Schedule.ID

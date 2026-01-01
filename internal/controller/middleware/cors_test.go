@@ -52,9 +52,9 @@ func TestCORS_AllowedOrigin(t *testing.T) {
 	}))
 
 	tests := []struct {
-		name           string
-		origin         string
-		expectAllowed  bool
+		name          string
+		origin        string
+		expectAllowed bool
 	}{
 		{
 			name:          "exact match allowed",
@@ -240,9 +240,9 @@ func TestCORS_ExcludePaths(t *testing.T) {
 	}))
 
 	tests := []struct {
-		name         string
-		path         string
-		expectCORS   bool
+		name       string
+		path       string
+		expectCORS bool
 	}{
 		{
 			name:       "regular endpoint has CORS",

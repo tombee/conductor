@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 )
+
 // Test command
 
 func newMCPTestCommand() *cobra.Command {
@@ -179,4 +180,3 @@ func runMCPTest(name string, keep bool) error {
 	fmt.Printf("\nTest PASSED for MCP server: %s\n", name)
 	return nil
 }
-

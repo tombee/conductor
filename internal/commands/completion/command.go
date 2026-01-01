@@ -23,7 +23,7 @@ import (
 // NewCommand creates the completion command for generating shell completion scripts.
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "completion [bash|zsh|fish|powershell]",
+		Use: "completion [bash|zsh|fish|powershell]",
 		Annotations: map[string]string{
 			"group": "diagnostics",
 		},

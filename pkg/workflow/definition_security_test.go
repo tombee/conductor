@@ -177,7 +177,7 @@ steps:
 				if def.Security == nil {
 					t.Fatal("expected Security to be non-nil")
 				}
-				
+
 				// Validate filesystem
 				if len(def.Security.Filesystem.Read) != 2 {
 					t.Errorf("filesystem.read: expected 2, got %d", len(def.Security.Filesystem.Read))
@@ -188,12 +188,12 @@ steps:
 				if len(def.Security.Filesystem.Deny) != 1 {
 					t.Errorf("filesystem.deny: expected 1, got %d", len(def.Security.Filesystem.Deny))
 				}
-				
+
 				// Validate network
 				if len(def.Security.Network.Allow) != 2 {
 					t.Errorf("network.allow: expected 2, got %d", len(def.Security.Network.Allow))
 				}
-				
+
 				// Validate shell
 				if len(def.Security.Shell.Commands) != 2 {
 					t.Errorf("shell.commands: expected 2, got %d", len(def.Security.Shell.Commands))
@@ -227,7 +227,7 @@ steps:
 			if err := yaml.Unmarshal([]byte(tt.yaml), &def); err != nil {
 				t.Fatalf("failed to parse YAML: %v", err)
 			}
-			
+
 			tt.validate(t, &def)
 		})
 	}

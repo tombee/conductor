@@ -47,19 +47,19 @@ func ExpandTemplate(tmpl string, data map[string]interface{}) (string, error) {
 func restrictedFuncMap() template.FuncMap {
 	return template.FuncMap{
 		// String functions
-		"upper":    strings.ToUpper,
-		"lower":    strings.ToLower,
-		"trim":     strings.TrimSpace,
-		"trimLeft": func(cutset, s string) string { return strings.TrimLeft(s, cutset) },
+		"upper":     strings.ToUpper,
+		"lower":     strings.ToLower,
+		"trim":      strings.TrimSpace,
+		"trimLeft":  func(cutset, s string) string { return strings.TrimLeft(s, cutset) },
 		"trimRight": func(cutset, s string) string { return strings.TrimRight(s, cutset) },
-		"replace":  func(old, new, s string) string { return strings.ReplaceAll(s, old, new) },
-		"contains": func(substr, s string) bool { return strings.Contains(s, substr) },
+		"replace":   func(old, new, s string) string { return strings.ReplaceAll(s, old, new) },
+		"contains":  func(substr, s string) bool { return strings.Contains(s, substr) },
 		"hasPrefix": func(prefix, s string) bool { return strings.HasPrefix(s, prefix) },
 		"hasSuffix": func(suffix, s string) bool { return strings.HasSuffix(s, suffix) },
-		"repeat":   func(count int, s string) string { return strings.Repeat(s, count) },
-		"split":    func(sep, s string) []string { return strings.Split(s, sep) },
-		"join":     func(sep string, elems []string) string { return strings.Join(elems, sep) },
-		"title":    strings.Title,
+		"repeat":    func(count int, s string) string { return strings.Repeat(s, count) },
+		"split":     func(sep, s string) []string { return strings.Split(s, sep) },
+		"join":      func(sep string, elems []string) string { return strings.Join(elems, sep) },
+		"title":     strings.Title,
 
 		// Math functions
 		"add": func(a, b int) int { return a + b },

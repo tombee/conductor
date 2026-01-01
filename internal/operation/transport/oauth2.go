@@ -92,14 +92,14 @@ func (c *OAuth2TransportConfig) Validate() error {
 
 // OAuth2Transport implements Transport for OAuth2-protected APIs.
 type OAuth2Transport struct {
-	config         *OAuth2TransportConfig
-	client         *http.Client
-	tokenSource    oauth2.TokenSource
-	token          *oauth2.Token
-	tokenMutex     sync.RWMutex
-	refreshing     bool
-	refreshCond    *sync.Cond
-	rateLimiter    RateLimiter
+	config      *OAuth2TransportConfig
+	client      *http.Client
+	tokenSource oauth2.TokenSource
+	token       *oauth2.Token
+	tokenMutex  sync.RWMutex
+	refreshing  bool
+	refreshCond *sync.Cond
+	rateLimiter RateLimiter
 }
 
 // NewOAuth2Transport creates a new OAuth2 transport.

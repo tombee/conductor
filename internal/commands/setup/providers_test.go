@@ -28,9 +28,9 @@ func TestGetProviderTypes(t *testing.T) {
 
 	// Verify all expected provider types are present
 	expectedTypes := map[string]bool{
-		"claude-code":        false,
-		"ollama":             false,
-		"anthropic":          false,
+		"claude-code":       false,
+		"ollama":            false,
+		"anthropic":         false,
 		"openai-compatible": false,
 	}
 
@@ -50,9 +50,9 @@ func TestGetProviderTypes(t *testing.T) {
 
 func TestGetProviderType(t *testing.T) {
 	tests := []struct {
-		name    string
+		name     string
 		typeName string
-		wantOK  bool
+		wantOK   bool
 	}{
 		{
 			name:     "claude-code exists",
@@ -156,10 +156,10 @@ func TestCLIProviderDetection(t *testing.T) {
 
 func TestAPIProviderCharacteristics(t *testing.T) {
 	tests := []struct {
-		typeName         string
-		wantRequiresKey  bool
-		wantRequiresURL  bool
-		wantDefaultURL   string
+		typeName        string
+		wantRequiresKey bool
+		wantRequiresURL bool
+		wantDefaultURL  string
 	}{
 		{
 			typeName:        "anthropic",

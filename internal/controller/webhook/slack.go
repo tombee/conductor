@@ -155,9 +155,9 @@ type SlackSlashCommand struct {
 
 // Common Slack event types
 const (
-	SlackEventMessage        = "message"
-	SlackEventAppMention     = "app_mention"
-	SlackEventReactionAdded  = "reaction_added"
+	SlackEventMessage         = "message"
+	SlackEventAppMention      = "app_mention"
+	SlackEventReactionAdded   = "reaction_added"
 	SlackEventURLVerification = "url_verification"
 )
 

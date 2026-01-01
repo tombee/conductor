@@ -25,14 +25,14 @@ import (
 )
 
 var (
-	filePath              string
-	fileEvents            []string
-	fileIncludePatterns   []string
-	fileExcludePatterns   []string
-	fileDebounce          string
-	fileBatchMode         bool
-	fileRateLimit         int
-	fileInputs            []string
+	filePath            string
+	fileEvents          []string
+	fileIncludePatterns []string
+	fileExcludePatterns []string
+	fileDebounce        string
+	fileBatchMode       bool
+	fileRateLimit       int
+	fileInputs          []string
 )
 
 func newAddFileCommand() *cobra.Command {

@@ -26,8 +26,8 @@ import (
 	"github.com/tombee/conductor/internal/output"
 	"github.com/tombee/conductor/internal/permissions"
 	"github.com/tombee/conductor/pkg/workflow"
-	"github.com/tombee/conductor/pkg/workflow/subworkflow"
 	workflowschema "github.com/tombee/conductor/pkg/workflow/schema"
+	"github.com/tombee/conductor/pkg/workflow/subworkflow"
 	"gopkg.in/yaml.v3"
 )
 

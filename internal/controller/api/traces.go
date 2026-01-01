@@ -202,11 +202,11 @@ func (h *TracesHandler) GetRunTrace(w http.ResponseWriter, r *http.Request) {
 
 // TraceResponse represents a trace with metadata.
 type TraceResponse struct {
-	TraceID   string                  `json:"trace_id"`
-	StartTime time.Time               `json:"start_time"`
-	EndTime   time.Time               `json:"end_time"`
-	Duration  time.Duration           `json:"duration_ms"`
-	Status    string                  `json:"status"`
-	Spans     []*observability.Span   `json:"spans,omitempty"`
-	SpanCount int                     `json:"span_count"`
+	TraceID   string                `json:"trace_id"`
+	StartTime time.Time             `json:"start_time"`
+	EndTime   time.Time             `json:"end_time"`
+	Duration  time.Duration         `json:"duration_ms"`
+	Status    string                `json:"status"`
+	Spans     []*observability.Span `json:"spans,omitempty"`
+	SpanCount int                   `json:"span_count"`
 }

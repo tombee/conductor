@@ -95,8 +95,8 @@ func NewPermissionContext(permDef *workflow.PermissionDefinition) *PermissionCon
 func defaultBlockedHosts() []string {
 	return []string{
 		// Cloud metadata endpoints
-		"169.254.169.254",    // AWS, GCP, Azure metadata
-		"fd00:ec2::254",      // AWS IMDSv2 IPv6
+		"169.254.169.254",          // AWS, GCP, Azure metadata
+		"fd00:ec2::254",            // AWS IMDSv2 IPv6
 		"metadata.google.internal", // GCP metadata alternate
 		// Private IP ranges (CIDR notation)
 		"10.0.0.0/8",

@@ -12,11 +12,11 @@ import (
 
 // mockFailoverProvider is a test provider that can simulate various failures.
 type mockFailoverProvider struct {
-	name         string
-	shouldFail   bool
-	failWith     error
-	successResp  *CompletionResponse
-	callCount    int
+	name        string
+	shouldFail  bool
+	failWith    error
+	successResp *CompletionResponse
+	callCount   int
 }
 
 func (m *mockFailoverProvider) Name() string {

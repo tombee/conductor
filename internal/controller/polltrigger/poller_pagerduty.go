@@ -201,17 +201,17 @@ type pagerDutyIncidentsResponse struct {
 }
 
 type pagerDutyIncident struct {
-	ID          string                     `json:"id"`
-	Type        string                     `json:"type"`
-	Summary     string                     `json:"summary"`
-	Title       string                     `json:"title"`
-	Status      string                     `json:"status"`
-	Urgency     string                     `json:"urgency"`
-	CreatedAt   string                     `json:"created_at"`
-	HTMLURL     string                     `json:"html_url"`
-	Service     pagerDutyReference         `json:"service"`
-	Assignments []pagerDutyAssignment      `json:"assignments"`
-	Description string                     `json:"description,omitempty"`
+	ID          string                `json:"id"`
+	Type        string                `json:"type"`
+	Summary     string                `json:"summary"`
+	Title       string                `json:"title"`
+	Status      string                `json:"status"`
+	Urgency     string                `json:"urgency"`
+	CreatedAt   string                `json:"created_at"`
+	HTMLURL     string                `json:"html_url"`
+	Service     pagerDutyReference    `json:"service"`
+	Assignments []pagerDutyAssignment `json:"assignments"`
+	Description string                `json:"description,omitempty"`
 }
 
 type pagerDutyReference struct {

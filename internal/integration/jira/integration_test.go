@@ -59,8 +59,8 @@ func TestNewJiraIntegration(t *testing.T) {
 		{
 			name: "missing email",
 			config: &api.ProviderConfig{
-				BaseURL: "https://test.atlassian.net",
-				Token:   "test-token",
+				BaseURL:   "https://test.atlassian.net",
+				Token:     "test-token",
 				Transport: &mockTransport{},
 			},
 			expectError: true,
@@ -152,8 +152,8 @@ func TestJiraIntegrationOperations(t *testing.T) {
 
 func TestJiraIntegrationGetIssue(t *testing.T) {
 	issue := Issue{
-		ID:  "10001",
-		Key: "TEST-1",
+		ID:   "10001",
+		Key:  "TEST-1",
 		Self: "https://test.atlassian.net/rest/api/3/issue/10001",
 		Fields: IssueFields{
 			Summary: "Test Issue",

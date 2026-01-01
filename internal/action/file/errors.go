@@ -46,10 +46,10 @@ const (
 
 // OperationError represents an error from a file action operation.
 type OperationError struct {
-	Operation  string
-	Message    string
-	ErrorType  ErrorType
-	Cause      error
+	Operation string
+	Message   string
+	ErrorType ErrorType
+	Cause     error
 	// SuggestText provides actionable guidance for resolving the error.
 	// Renamed from Suggestion to avoid conflict with Suggestion() method.
 	SuggestText string

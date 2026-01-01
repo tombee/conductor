@@ -39,17 +39,17 @@ const (
 
 // RotatingFileDestination is a file destination that rotates logs.
 type RotatingFileDestination struct {
-	mu            sync.Mutex
-	basePath      string
-	currentPath   string
-	file          *os.File
-	format        string
-	maxSize       int64
-	maxAge        time.Duration
-	rotateDaily   bool
-	currentSize   int64
-	currentDate   string
-	compress      bool
+	mu          sync.Mutex
+	basePath    string
+	currentPath string
+	file        *os.File
+	format      string
+	maxSize     int64
+	maxAge      time.Duration
+	rotateDaily bool
+	currentSize int64
+	currentDate string
+	compress    bool
 }
 
 // RotationConfig configures log rotation.
@@ -388,9 +388,9 @@ func ListRotatedLogs(basePath string) ([]RotatedLogInfo, error) {
 		}
 
 		logs = append(logs, RotatedLogInfo{
-			Path:     match,
-			Size:     info.Size(),
-			ModTime:  info.ModTime(),
+			Path:      match,
+			Size:      info.Size(),
+			ModTime:   info.ModTime(),
 			IsGzipped: strings.HasSuffix(match, ".gz"),
 		})
 	}

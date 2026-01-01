@@ -19,9 +19,9 @@ import (
 // Supports bearer, basic, and API key authentication with configurable timeouts,
 // TLS settings, and default headers.
 type HTTPTransport struct {
-	config       *HTTPTransportConfig
-	client       *http.Client
-	rateLimiter  RateLimiter
+	config      *HTTPTransportConfig
+	client      *http.Client
+	rateLimiter RateLimiter
 }
 
 // HTTPTransportConfig configures the HTTP transport.

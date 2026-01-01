@@ -13,9 +13,9 @@ import (
 
 func TestNewSlackIntegration(t *testing.T) {
 	tests := []struct {
-		name       string
-		config     *api.ProviderConfig
-		wantError  bool
+		name        string
+		config      *api.ProviderConfig
+		wantError   bool
 		wantBaseURL string
 	}{
 		{
@@ -25,7 +25,7 @@ func TestNewSlackIntegration(t *testing.T) {
 				Token:     "test-token",
 				Transport: &transport.HTTPTransport{},
 			},
-			wantError:  false,
+			wantError:   false,
 			wantBaseURL: "https://custom.slack.com/api",
 		},
 		{
@@ -34,7 +34,7 @@ func TestNewSlackIntegration(t *testing.T) {
 				Token:     "test-token",
 				Transport: &transport.HTTPTransport{},
 			},
-			wantError:  false,
+			wantError:   false,
 			wantBaseURL: "https://slack.com/api",
 		},
 	}
