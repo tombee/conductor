@@ -82,10 +82,10 @@ type WizardFlow struct {
 // NewWizardFlow creates a new wizard flow instance.
 func NewWizardFlow(ctx context.Context, state *setup.SetupState) *WizardFlow {
 	return &WizardFlow{
-		ctx:          ctx,
-		state:        state,
-		stepHistory:  []WizardStep{},
-		currentStep:  StepWelcome,
+		ctx:         ctx,
+		state:       state,
+		stepHistory: []WizardStep{},
+		currentStep: StepWelcome,
 	}
 }
 
@@ -219,6 +219,11 @@ func (w *WizardFlow) runBackendSelectionStep() (WizardStep, error) {
 		// Set as default backend for future API keys
 		w.state.SecretsBackend = selectedBackend
 		w.state.MarkDirty()
+
+		// Log backend selection
+		if w.state.Audit != nil {
+			w.state.Audit.LogBackendSelected(selectedBackend)
+		}
 	}
 
 	return StepReview, nil

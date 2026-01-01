@@ -17,6 +17,7 @@ package forms
 import (
 	"context"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -198,10 +199,20 @@ func ShowFlattenedProviderSelection(ctx context.Context, state *setup.SetupState
 	return selected, nil
 }
 
-// detectCLIProvidersParallel performs parallel detection of CLI providers with a 2-second timeout.
+// detectCLIProvidersParallel performs parallel detection of CLI providers with a configurable timeout.
+// The timeout can be configured via CONDUCTOR_SETUP_CLI_TIMEOUT environment variable (e.g., "5s", "3000ms").
+// Defaults to 2 seconds if not set.
 func detectCLIProvidersParallel(ctx context.Context, providers []setup.ProviderType) []ProviderDetectionResult {
+	// Get timeout from environment variable, default to 2 seconds
+	timeout := 2 * time.Second
+	if envTimeout := os.Getenv("CONDUCTOR_SETUP_CLI_TIMEOUT"); envTimeout != "" {
+		if parsed, err := time.ParseDuration(envTimeout); err == nil {
+			timeout = parsed
+		}
+	}
+
 	// Create a timeout context for detection
-	detectionCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	detectionCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	// Channel to collect results
@@ -401,6 +412,11 @@ func addAPIProviderFlowDirect(ctx context.Context, state *setup.SetupState, prov
 			// Set as default backend for future API keys
 			state.SecretsBackend = selectedBackend
 			state.MarkDirty()
+
+			// Log backend selection
+			if state.Audit != nil {
+				state.Audit.LogBackendSelected(selectedBackend)
+			}
 		} else {
 			// Use existing default backend
 			selectedBackend = state.SecretsBackend

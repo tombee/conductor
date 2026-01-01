@@ -71,6 +71,15 @@ func ApplyTheme(form *huh.Form) *huh.Form {
 	return form.WithTheme(Theme())
 }
 
+// NewThemedForm creates a new form with Conductor theme and alt-screen applied.
+// This is a convenience helper that combines huh.NewForm, WithTheme, and WithAltScreen.
+// Usage: form := setup.NewThemedForm(group1, group2, ...)
+func NewThemedForm(groups ...*huh.Group) *huh.Form {
+	return huh.NewForm(groups...).
+		WithTheme(Theme()).
+		WithProgramOptions(WithAltScreen())
+}
+
 // WithAltScreen returns a tea.ProgramOption for enabling alternate screen buffer,
 // unless the NO_ALT_SCREEN environment variable is set to "1".
 // The alt-screen provides a clean, full-window experience that restores the

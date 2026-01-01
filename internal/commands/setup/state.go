@@ -46,6 +46,9 @@ type SetupState struct {
 	// Keys are in format: "provider:<name>:api_key" or "integration:<name>:<field>"
 	// This map is zeroed on exit for security.
 	CredentialStore map[string]string
+
+	// Audit is the audit logger for security and troubleshooting.
+	Audit *AuditLogger
 }
 
 // NewSetupState creates a new setup state with the given config.

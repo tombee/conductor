@@ -260,10 +260,10 @@ func TestWizardFlow_Back(t *testing.T) {
 			}
 
 			flow := &WizardFlow{
-				ctx:          context.Background(),
-				state:        state,
-				stepHistory:  tt.stepHistory,
-				currentStep:  tt.currentStep,
+				ctx:         context.Background(),
+				state:       state,
+				stepHistory: tt.stepHistory,
+				currentStep: tt.currentStep,
 			}
 
 			// For tests that require user interaction (dirty state), skip

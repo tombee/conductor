@@ -75,6 +75,9 @@ func runSetup(cmd *cobra.Command, accessible bool) error {
 		return fmt.Errorf("failed to load setup state: %w", err)
 	}
 
+	// Attach audit logger to state for use throughout wizard
+	state.Audit = audit
+
 	audit.LogSetupStarted(state.Original != nil)
 
 	// Initialize signal handler for graceful exit

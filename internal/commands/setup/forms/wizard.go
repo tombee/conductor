@@ -43,6 +43,12 @@ func (wizardRunner) Run(ctx context.Context, state *setup.SetupState, accessible
 		}
 	}()
 
+	// If accessible mode is enabled, use the text-based wizard
+	if accessibleMode {
+		wizard := NewAccessibleWizard(ctx, state)
+		return wizard.Run()
+	}
+
 	// Determine if this is first-run (no existing config)
 	isFirstRun := state.Original == nil || len(state.Original.Providers) == 0
 
@@ -50,7 +56,7 @@ func (wizardRunner) Run(ctx context.Context, state *setup.SetupState, accessible
 	useWizardFlow := os.Getenv("CONDUCTOR_SETUP_V2") == "1"
 
 	// For first-run users with the feature flag enabled, use the new wizard flow
-	if isFirstRun && useWizardFlow && !accessibleMode {
+	if isFirstRun && useWizardFlow {
 		flow := NewWizardFlow(ctx, state)
 		return flow.Run()
 	}
