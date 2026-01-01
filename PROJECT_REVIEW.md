@@ -2477,13 +2477,13 @@ conductor test examples/tests/  # Assuming test directory exists
 - [x] JSON parse/stringify - parse_json in transform/parse.go with markdown fence extraction
 - [x] JQ expressions - extract, filter, map, sort, group use gojq via internal/jq
 - [x] Array operations (filter, map) - Implemented in transform/array.go
-- [x] Object operations (pick, omit) - (NOT IMPLEMENTED - post-v1): only array ops exist
+- [x] Object operations (pick, omit) - Implemented in transform/object.go
 - [x] XML parse - parse_xml implemented with XXE prevention
 
 **Utility Action (`utility.*`):**
-- [x] `utility.sleep`: Delay execution - (NOT IMPLEMENTED - post-v1): no sleep operation
+- [x] `utility.sleep`: Delay execution - Implemented in utility/sleep.go with 5-minute max limit
 - [x] `utility.id_uuid`: Generate unique IDs - Implemented in utility/id.go
-- [x] `utility.timestamp`: Current time - (NOT IMPLEMENTED - post-v1): no timestamp op
+- [x] `utility.timestamp`: Current time - Implemented in utility/timestamp.go with multiple formats
 
 ---
 
@@ -2495,7 +2495,7 @@ conductor test examples/tests/  # Assuming test directory exists
 **GitHub Integration:**
 - [x] `github.list_repos`: Fetch repos - Note: get_repo not implemented, list_repos exists
 - [x] `github.list_prs`: List pull requests - Implemented in integration/github/pulls.go
-- [x] `github.get_pull`: Get specific PR details *(NOT IMPLEMENTED - post-v1: only list_prs exists; can use list_prs with filtering as workaround)*
+- [x] `github.get_pull`: Get specific PR details - Implemented in integration/github/pulls.go
 - [x] `github.create_issue`: Create issue - Implemented in integration/github/issues.go
 - [x] `github.add_comment`: Add PR comment - Implemented for issues/PRs
 - [x] Authentication via token - Uses Bearer token from BaseProvider config

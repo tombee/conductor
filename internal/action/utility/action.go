@@ -119,12 +119,18 @@ func (c *UtilityAction) Execute(ctx context.Context, operation string, inputs ma
 	case "math_max":
 		return c.mathMax(ctx, inputs)
 
+	// Time operations
+	case "timestamp":
+		return c.timestamp(ctx, inputs)
+	case "sleep":
+		return c.sleep(ctx, inputs)
+
 	default:
 		return nil, &OperationError{
 			Operation:  operation,
 			Message:    "unknown operation",
 			ErrorType:  ErrorTypeValidation,
-			Suggestion: "Valid operations: random_int, random_choose, random_weighted, random_sample, random_shuffle, id_uuid, id_nanoid, id_custom, math_clamp, math_round, math_min, math_max",
+			Suggestion: "Valid operations: random_int, random_choose, random_weighted, random_sample, random_shuffle, id_uuid, id_nanoid, id_custom, math_clamp, math_round, math_min, math_max, timestamp, sleep",
 		}
 	}
 }
@@ -135,5 +141,6 @@ func (c *UtilityAction) Operations() []string {
 		"random_int", "random_choose", "random_weighted", "random_sample", "random_shuffle",
 		"id_uuid", "id_nanoid", "id_custom",
 		"math_clamp", "math_round", "math_min", "math_max",
+		"timestamp", "sleep",
 	}
 }

@@ -28,6 +28,7 @@ type PullRequest struct {
 	State     string     `json:"state"`
 	HTMLURL   string     `json:"html_url"`
 	User      User       `json:"user"`
+	Labels    []Label    `json:"labels"`
 	Head      Branch     `json:"head"`
 	Base      Branch     `json:"base"`
 	Merged    bool       `json:"merged"`

@@ -45,6 +45,8 @@ func (c *GitHubIntegration) Execute(ctx context.Context, operation string, input
 	// Pull Requests
 	case "create_pr":
 		return c.createPR(ctx, inputs)
+	case "get_pull":
+		return c.getPull(ctx, inputs)
 	case "merge_pr":
 		return c.mergePR(ctx, inputs)
 	case "list_prs":
@@ -81,6 +83,7 @@ func (c *GitHubIntegration) Operations() []api.OperationInfo {
 
 		// Pull Requests
 		{Name: "create_pr", Description: "Create a pull request", Category: "pulls", Tags: []string{"write"}},
+		{Name: "get_pull", Description: "Get details for a specific pull request", Category: "pulls", Tags: []string{"read"}},
 		{Name: "merge_pr", Description: "Merge a pull request", Category: "pulls", Tags: []string{"write"}},
 		{Name: "list_prs", Description: "List pull requests with filtering", Category: "pulls", Tags: []string{"read", "paginated"}},
 

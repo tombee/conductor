@@ -108,12 +108,16 @@ func (c *TransformAction) Execute(ctx context.Context, operation string, inputs 
 		return c.merge(ctx, inputs)
 	case "concat":
 		return c.concat(ctx, inputs)
+	case "pick":
+		return c.pick(ctx, inputs)
+	case "omit":
+		return c.omit(ctx, inputs)
 	default:
 		return nil, &OperationError{
 			Operation:  operation,
 			Message:    "unknown operation",
 			ErrorType:  ErrorTypeValidation,
-			Suggestion: "Valid operations: parse_json, parse_xml, extract, split, map, filter, flatten, sort, group, merge, concat",
+			Suggestion: "Valid operations: parse_json, parse_xml, extract, split, map, filter, flatten, sort, group, merge, concat, pick, omit",
 		}
 	}
 }
@@ -221,3 +225,4 @@ func (c *TransformAction) parseXML(ctx context.Context, inputs map[string]interf
 // Note: split, filter, and mapArray are implemented in array.go
 // Note: flatten, merge, and concat are implemented in combine.go
 // Note: sort and group are implemented in sort.go
+// Note: pick and omit are implemented in object.go

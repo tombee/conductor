@@ -6,6 +6,71 @@ import (
 	"github.com/tombee/conductor/internal/operation"
 )
 
+// getPull fetches details for a specific pull request.
+func (c *GitHubIntegration) getPull(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
+	// Validate required parameters
+	if err := c.ValidateRequired(inputs, []string{"owner", "repo", "pull_number"}); err != nil {
+		return nil, err
+	}
+
+	// Build URL
+	url, err := c.BuildURL("/repos/{owner}/{repo}/pulls/{pull_number}", inputs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Execute request
+	resp, err := c.ExecuteRequest(ctx, "GET", url, c.defaultHeaders(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse error if any
+	if err := ParseError(resp); err != nil {
+		return nil, err
+	}
+
+	// Parse response
+	var pr PullRequest
+	if err := c.ParseJSONResponse(resp, &pr); err != nil {
+		return nil, err
+	}
+
+	// Transform labels to string slice
+	labels := make([]string, len(pr.Labels))
+	for i, label := range pr.Labels {
+		labels[i] = label.Name
+	}
+
+	// Return full PR details
+	result := map[string]interface{}{
+		"id":         pr.ID,
+		"number":     pr.Number,
+		"title":      pr.Title,
+		"body":       pr.Body,
+		"state":      pr.State,
+		"html_url":   pr.HTMLURL,
+		"user":       map[string]interface{}{"login": pr.User.Login, "id": pr.User.ID, "html_url": pr.User.HTMLURL},
+		"labels":     labels,
+		"head":       map[string]interface{}{"ref": pr.Head.Ref, "sha": pr.Head.SHA},
+		"base":       map[string]interface{}{"ref": pr.Base.Ref, "sha": pr.Base.SHA},
+		"merged":     pr.Merged,
+		"mergeable":  pr.Mergeable,
+		"created_at": pr.CreatedAt,
+		"updated_at": pr.UpdatedAt,
+	}
+
+	// Add optional fields if present
+	if pr.MergedAt != nil {
+		result["merged_at"] = pr.MergedAt
+	}
+	if pr.ClosedAt != nil {
+		result["closed_at"] = pr.ClosedAt
+	}
+
+	return c.ToResult(resp, result), nil
+}
+
 // createPR creates a new GitHub pull request.
 func (c *GitHubIntegration) createPR(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters

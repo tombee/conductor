@@ -60,6 +60,7 @@ func TestOperations(t *testing.T) {
 		"random_int", "random_choose", "random_weighted", "random_sample", "random_shuffle",
 		"id_uuid", "id_nanoid", "id_custom",
 		"math_clamp", "math_round", "math_min", "math_max",
+		"timestamp", "sleep",
 	}
 
 	if len(ops) != len(expected) {

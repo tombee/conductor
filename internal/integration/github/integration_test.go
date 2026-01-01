@@ -81,9 +81,9 @@ func TestGitHubIntegration_Operations(t *testing.T) {
 	gc := conn.(*GitHubIntegration)
 	ops := gc.Operations()
 
-	// Verify we have all 12 operations
-	if len(ops) != 12 {
-		t.Errorf("Operations() returned %d operations, want 12", len(ops))
+	// Verify we have all 13 operations
+	if len(ops) != 13 {
+		t.Errorf("Operations() returned %d operations, want 13", len(ops))
 	}
 
 	// Verify operation names
@@ -94,6 +94,7 @@ func TestGitHubIntegration_Operations(t *testing.T) {
 		"add_comment":       true,
 		"list_issues":       true,
 		"create_pr":         true,
+		"get_pull":          true,
 		"merge_pr":          true,
 		"list_prs":          true,
 		"get_file":          true,
@@ -714,5 +715,215 @@ func TestGitHubIntegration_UnsupportedPaginatedOperation(t *testing.T) {
 
 	if err.Error() != "operation create_issue does not support pagination" {
 		t.Errorf("Unexpected error message: %v", err)
+	}
+}
+
+func TestGitHubIntegration_GetPull(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify request path
+		expectedPath := "/repos/test-owner/test-repo/pulls/123"
+		if r.URL.Path != expectedPath {
+			t.Errorf("Expected path %s, got %s", expectedPath, r.URL.Path)
+		}
+
+		// Verify method
+		if r.Method != "GET" {
+			t.Errorf("Expected GET method, got %s", r.Method)
+		}
+
+		// Verify headers
+		if r.Header.Get("Accept") != "application/vnd.github+json" {
+			t.Errorf("Expected Accept header 'application/vnd.github+json', got '%s'", r.Header.Get("Accept"))
+		}
+
+		// Return mock response
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(PullRequest{
+			ID:      12345,
+			Number:  123,
+			Title:   "Test PR",
+			Body:    "This is a test PR body",
+			State:   "open",
+			HTMLURL: "https://github.com/test-owner/test-repo/pull/123",
+			User: User{
+				ID:      1,
+				Login:   "test-user",
+				HTMLURL: "https://github.com/test-user",
+			},
+			Labels: []Label{
+				{Name: "bug"},
+				{Name: "enhancement"},
+			},
+			Head: Branch{
+				Ref: "feature-branch",
+				SHA: "abc123",
+			},
+			Base: Branch{
+				Ref: "main",
+				SHA: "def456",
+			},
+			Merged:    false,
+			CreatedAt: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
+			UpdatedAt: time.Date(2023, 1, 2, 0, 0, 0, 0, time.UTC),
+		})
+	}))
+	defer server.Close()
+
+	httpTransport, err := transport.NewHTTPTransport(&transport.HTTPTransportConfig{
+		BaseURL: server.URL,
+	})
+	if err != nil {
+		t.Fatalf("NewHTTPTransport() error = %v", err)
+	}
+
+	config := &api.ProviderConfig{
+		BaseURL:   server.URL,
+		Token:     "test-token",
+		Transport: httpTransport,
+	}
+
+	conn, err := NewGitHubIntegration(config)
+	if err != nil {
+		t.Fatalf("NewGitHubIntegration() error = %v", err)
+	}
+
+	result, err := conn.Execute(context.Background(), "get_pull", map[string]interface{}{
+		"owner":       "test-owner",
+		"repo":        "test-repo",
+		"pull_number": 123,
+	})
+
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	// Verify response
+	resp, ok := result.Response.(map[string]interface{})
+	if !ok {
+		t.Fatalf("Response is not a map")
+	}
+
+	if resp["number"] != 123 {
+		t.Errorf("Expected PR number 123, got %v", resp["number"])
+	}
+
+	if resp["title"] != "Test PR" {
+		t.Errorf("Expected title 'Test PR', got %v", resp["title"])
+	}
+
+	if resp["body"] != "This is a test PR body" {
+		t.Errorf("Expected body 'This is a test PR body', got %v", resp["body"])
+	}
+
+	if resp["state"] != "open" {
+		t.Errorf("Expected state 'open', got %v", resp["state"])
+	}
+
+	// Verify user
+	user, ok := resp["user"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("User is not a map")
+	}
+	if user["login"] != "test-user" {
+		t.Errorf("Expected user login 'test-user', got %v", user["login"])
+	}
+
+	// Verify labels
+	labels, ok := resp["labels"].([]string)
+	if !ok {
+		t.Fatalf("Labels is not a string slice")
+	}
+	if len(labels) != 2 || labels[0] != "bug" || labels[1] != "enhancement" {
+		t.Errorf("Expected labels ['bug', 'enhancement'], got %v", labels)
+	}
+
+	// Verify head and base
+	head, ok := resp["head"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("Head is not a map")
+	}
+	if head["ref"] != "feature-branch" {
+		t.Errorf("Expected head ref 'feature-branch', got %v", head["ref"])
+	}
+
+	base, ok := resp["base"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("Base is not a map")
+	}
+	if base["ref"] != "main" {
+		t.Errorf("Expected base ref 'main', got %v", base["ref"])
+	}
+}
+
+func TestGitHubIntegration_GetPull_NotFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message":           "Not Found",
+			"documentation_url": "https://docs.github.com/rest",
+		})
+	}))
+	defer server.Close()
+
+	httpTransport, err := transport.NewHTTPTransport(&transport.HTTPTransportConfig{
+		BaseURL: server.URL,
+	})
+	if err != nil {
+		t.Fatalf("NewHTTPTransport() error = %v", err)
+	}
+
+	config := &api.ProviderConfig{
+		BaseURL:   server.URL,
+		Token:     "test-token",
+		Transport: httpTransport,
+	}
+
+	conn, err := NewGitHubIntegration(config)
+	if err != nil {
+		t.Fatalf("NewGitHubIntegration() error = %v", err)
+	}
+
+	_, err = conn.Execute(context.Background(), "get_pull", map[string]interface{}{
+		"owner":       "test-owner",
+		"repo":        "test-repo",
+		"pull_number": 999,
+	})
+
+	if err == nil {
+		t.Fatal("Expected error for not found, got nil")
+	}
+
+	// Verify error occurred
+	if err.Error() == "" {
+		t.Error("Expected non-empty error message")
+	}
+}
+
+func TestGitHubIntegration_GetPull_MissingParams(t *testing.T) {
+	httpTransport, err := transport.NewHTTPTransport(&transport.HTTPTransportConfig{
+		BaseURL: "https://api.github.com",
+	})
+	if err != nil {
+		t.Fatalf("NewHTTPTransport() error = %v", err)
+	}
+
+	config := &api.ProviderConfig{
+		Token:     "test-token",
+		Transport: httpTransport,
+	}
+
+	conn, err := NewGitHubIntegration(config)
+	if err != nil {
+		t.Fatalf("NewGitHubIntegration() error = %v", err)
+	}
+
+	// Missing pull_number
+	_, err = conn.Execute(context.Background(), "get_pull", map[string]interface{}{
+		"owner": "test-owner",
+		"repo":  "test-repo",
+	})
+
+	if err == nil {
+		t.Fatal("Expected error for missing pull_number, got nil")
 	}
 }
