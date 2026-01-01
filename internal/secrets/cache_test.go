@@ -408,8 +408,8 @@ func TestParseReferenceScheme(t *testing.T) {
 		wantKey    string
 	}{
 		{
-			name:       "${VAR} syntax",
-			reference:  "${GITHUB_TOKEN}",
+			name:       "env scheme",
+			reference:  "env:GITHUB_TOKEN",
 			wantScheme: "env",
 			wantKey:    "GITHUB_TOKEN",
 		},

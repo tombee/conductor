@@ -185,34 +185,6 @@ func (e *httpExecutor) buildTransportRequest(ctx context.Context, inputs map[str
 		headers[key] = expandedValue
 	}
 
-	// Apply authentication headers if auth is not handled by transport.
-	// This maintains backward compatibility with integrations that use plain auth values.
-	// When auth uses ${ENV_VAR} syntax, it's handled by the transport layer.
-	if e.integration.def.Auth != nil && !usesEnvVarSyntax(e.integration.def.Auth) {
-		// Create a temporary HTTP request to apply auth headers
-		tempReq, err := http.NewRequest(e.operation.Method, requestURL, nil)
-		if err != nil {
-			return nil, &Error{
-				Type:    ErrorTypeValidation,
-				Message: fmt.Sprintf("failed to create auth request: %v", err),
-			}
-		}
-
-		if err := ApplyAuth(tempReq, e.integration.def.Auth); err != nil {
-			return nil, &Error{
-				Type:    ErrorTypeAuth,
-				Message: fmt.Sprintf("authentication failed: %v", err),
-			}
-		}
-
-		// Copy auth headers to our headers map
-		for key, values := range tempReq.Header {
-			if len(values) > 0 {
-				headers[key] = values[0]
-			}
-		}
-	}
-
 	// Set Content-Type for JSON if body is present and not already set
 	if e.requiresBody() && headers["Content-Type"] == "" {
 		headers["Content-Type"] = "application/json"

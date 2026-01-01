@@ -5,12 +5,17 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
 func TestHTTPIntegration_Execute(t *testing.T) {
+	// Set up test environment variable for auth
+	os.Setenv("TEST_BEARER_TOKEN", "test-token")
+	defer os.Unsetenv("TEST_BEARER_TOKEN")
+
 	// Create a test HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify request
@@ -41,7 +46,7 @@ func TestHTTPIntegration_Execute(t *testing.T) {
 		BaseURL: server.URL,
 		Auth: &workflow.AuthDefinition{
 			Type:  "bearer",
-			Token: "test-token",
+			Token: "${TEST_BEARER_TOKEN}",
 		},
 		Operations: map[string]workflow.OperationDefinition{
 			"create_issue": {
@@ -102,6 +107,12 @@ func TestHTTPIntegration_Execute(t *testing.T) {
 }
 
 func TestHTTPIntegration_AuthTypes(t *testing.T) {
+	// Set up test environment variables for auth
+	os.Setenv("TEST_BEARER_TOKEN", "test-token")
+	os.Setenv("TEST_BASIC_PASSWORD", "pass")
+	defer os.Unsetenv("TEST_BEARER_TOKEN")
+	defer os.Unsetenv("TEST_BASIC_PASSWORD")
+
 	tests := []struct {
 		name     string
 		auth     *workflow.AuthDefinition
@@ -111,14 +122,7 @@ func TestHTTPIntegration_AuthTypes(t *testing.T) {
 			name: "bearer token",
 			auth: &workflow.AuthDefinition{
 				Type:  "bearer",
-				Token: "test-token",
-			},
-			wantAuth: "Bearer test-token",
-		},
-		{
-			name: "bearer token (inferred)",
-			auth: &workflow.AuthDefinition{
-				Token: "test-token",
+				Token: "${TEST_BEARER_TOKEN}",
 			},
 			wantAuth: "Bearer test-token",
 		},
@@ -127,7 +131,7 @@ func TestHTTPIntegration_AuthTypes(t *testing.T) {
 			auth: &workflow.AuthDefinition{
 				Type:     "basic",
 				Username: "user",
-				Password: "pass",
+				Password: "${TEST_BASIC_PASSWORD}",
 			},
 			wantAuth: "Basic dXNlcjpwYXNz", // base64(user:pass)
 		},
@@ -311,6 +315,12 @@ func TestHTTPIntegration_ErrorHandling(t *testing.T) {
 }
 
 func TestRegistry(t *testing.T) {
+	// Set up test environment variables for auth
+	os.Setenv("TEST_GITHUB_TOKEN", "test-token")
+	os.Setenv("TEST_SLACK_TOKEN", "slack-token")
+	defer os.Unsetenv("TEST_GITHUB_TOKEN")
+	defer os.Unsetenv("TEST_SLACK_TOKEN")
+
 	// Create workflow definition with operations
 	def := &workflow.Definition{
 		Name: "test-workflow",
@@ -319,7 +329,8 @@ func TestRegistry(t *testing.T) {
 				Name:    "github",
 				BaseURL: "https://api.github.com",
 				Auth: &workflow.AuthDefinition{
-					Token: "test-token",
+					Type:  "bearer",
+					Token: "${TEST_GITHUB_TOKEN}",
 				},
 				Operations: map[string]workflow.OperationDefinition{
 					"get_user": {
@@ -332,7 +343,8 @@ func TestRegistry(t *testing.T) {
 				Name:    "slack",
 				BaseURL: "https://slack.com/api",
 				Auth: &workflow.AuthDefinition{
-					Token: "slack-token",
+					Type:  "bearer",
+					Token: "${TEST_SLACK_TOKEN}",
 				},
 				Operations: map[string]workflow.OperationDefinition{
 					"post_message": {

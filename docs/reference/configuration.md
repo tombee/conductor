@@ -448,22 +448,30 @@ All configuration options can be set via environment variables. Environment vari
 | `CONDUCTOR_CONFIG` | Path to config file |
 | `CONDUCTOR_PROVIDER` | Default provider name (alias for `LLM_DEFAULT_PROVIDER`) |
 | `CONDUCTOR_ALL_PROVIDERS` | Enable all providers in interactive mode (set to `1`) |
+| `CONDUCTOR_WORKSPACE` | Default workspace path |
+| `CONDUCTOR_PROFILE` | Profile selection for workspace |
+| `CONDUCTOR_DEBUG` | Enable debug mode with source info (`1` or `true`) |
+| `CONDUCTOR_LOG_LEVEL` | Log level (takes precedence over `LOG_LEVEL`) |
 | `LOG_LEVEL` | Log level (`debug`, `info`, `warn`, `error`) |
 | `LOG_FORMAT` | Log format (`json`, `text`) |
 | `LOG_SOURCE` | Add source info to logs (`1` or `true`) |
 | `NO_COLOR` | Disable colored output |
+| `CONDUCTOR_NON_INTERACTIVE` | Disable interactive prompts (`true`) |
+| `CONDUCTOR_ACCESSIBLE` | Enable accessibility mode (`1`) |
 
 ### Server
 
 | Variable | Description |
 |----------|-------------|
-| `SERVER_SHUTDOWN_TIMEOUT` | Shutdown timeout |
+| `SERVER_SHUTDOWN_TIMEOUT` | Server shutdown timeout |
 
 ### Authentication
 
 | Variable | Description |
 |----------|-------------|
 | `AUTH_TOKEN_LENGTH` | Auth token length in bytes |
+| `CONDUCTOR_API_KEY` | API key for controller authentication |
+| `CONDUCTOR_API_TOKEN` | API token for CLI authentication |
 
 ### LLM
 
@@ -473,6 +481,9 @@ All configuration options can be set via environment variables. Environment vari
 | `LLM_REQUEST_TIMEOUT` | Request timeout duration |
 | `LLM_MAX_RETRIES` | Maximum retry attempts |
 | `LLM_RETRY_BACKOFF_BASE` | Backoff base duration |
+| `LLM_FAILOVER_PROVIDERS` | Comma-separated list of failover providers |
+| `LLM_CIRCUIT_BREAKER_THRESHOLD` | Number of failures before circuit opens |
+| `LLM_CIRCUIT_BREAKER_TIMEOUT` | Duration before circuit breaker resets |
 
 ### Provider API Keys
 
@@ -480,12 +491,56 @@ All configuration options can be set via environment variables. Environment vari
 |----------|-------------|
 | `ANTHROPIC_API_KEY` | Anthropic API key |
 | `OPENAI_API_KEY` | OpenAI API key |
+| `GITHUB_TOKEN` | GitHub token (standard) |
+| `CONDUCTOR_GITHUB_TOKEN` | GitHub token (Conductor-specific alternative) |
 
 ### Controller
 
 | Variable | Description |
 |----------|-------------|
-| `CONDUCTOR_CONTROLLER_SOCKET` | Path to controller socket |
+| `CONDUCTOR_SOCKET` | Path to controller socket (CLI side) |
+| `CONDUCTOR_LISTEN_SOCKET` | Path to controller listen socket (controller side) |
+| `CONDUCTOR_TCP_ADDR` | Controller TCP address |
+| `CONDUCTOR_DAEMON_URL` | Controller URL for CLI connections |
+| `CONDUCTOR_DAEMON_AUTO_START` | Auto-start controller (`1` or `true`) |
+| `CONDUCTOR_PID_FILE` | Controller PID file location |
+| `CONDUCTOR_DATA_DIR` | Controller data directory |
+| `CONDUCTOR_WORKFLOWS_DIR` | Workflows directory |
+| `CONDUCTOR_DAEMON_LOG_LEVEL` | Controller log level |
+| `CONDUCTOR_DAEMON_LOG_FORMAT` | Controller log format (`json`, `text`) |
+| `CONDUCTOR_MAX_CONCURRENT_RUNS` | Maximum concurrent workflow runs |
+| `CONDUCTOR_DEFAULT_TIMEOUT` | Default workflow timeout |
+| `CONDUCTOR_SHUTDOWN_TIMEOUT` | Controller shutdown timeout |
+| `CONDUCTOR_DRAIN_TIMEOUT` | Controller drain timeout |
+| `CONDUCTOR_CHECKPOINTS_ENABLED` | Enable workflow checkpoints (`1` or `true`) |
+
+### Public API
+
+| Variable | Description |
+|----------|-------------|
+| `CONDUCTOR_PUBLIC_API_ENABLED` | Enable public API (`1` or `true`) |
+| `CONDUCTOR_PUBLIC_API_TCP` | Public API TCP address |
+
+### Security
+
+| Variable | Description |
+|----------|-------------|
+| `CONDUCTOR_MASTER_KEY` | Master key for secrets encryption |
+| `CONDUCTOR_TRACE_KEY` | Encryption key for trace storage (32-byte base64 or passphrase) |
+| `CONDUCTOR_ALLOWED_PATHS` | Colon-separated list of allowed paths for MCP server file access |
+
+### Integrations
+
+| Variable | Description |
+|----------|-------------|
+| `SLACK_BOT_TOKEN` | Slack bot token for Slack integration |
+| `PAGERDUTY_TOKEN` | PagerDuty token for incident management |
+| `DATADOG_API_KEY` | Datadog API key |
+| `DATADOG_APP_KEY` | Datadog application key |
+| `DATADOG_SITE` | Datadog site (defaults to `datadoghq.com`) |
+| `JIRA_EMAIL` | Jira account email |
+| `JIRA_API_TOKEN` | Jira API token |
+| `JIRA_BASE_URL` | Jira instance base URL |
 
 ---
 

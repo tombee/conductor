@@ -19,11 +19,12 @@ import (
 	"fmt"
 	"log/slog"
 
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/tombee/conductor/internal/tracing/export"
 	"github.com/tombee/conductor/internal/tracing/storage"
 	"github.com/tombee/conductor/pkg/observability"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // StorageExporter exports OpenTelemetry spans to our SQLite storage.

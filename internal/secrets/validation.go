@@ -30,11 +30,8 @@ const (
 
 var (
 	// secretReferencePattern matches valid secret references.
-	// Supports: ${VAR}, env:VAR, file:/path, scheme:reference
-	secretReferencePattern = regexp.MustCompile(`^(\$\{[A-Z_][A-Z0-9_]*\}|[a-z][a-z0-9]*:.+)$`)
-
-	// unclosedBracePattern detects unclosed braces in ${VAR} syntax.
-	unclosedBracePattern = regexp.MustCompile(`\$\{[^}]*$`)
+	// Supports: env:VAR, file:/path, scheme:reference
+	secretReferencePattern = regexp.MustCompile(`^[a-z][a-z0-9]*:.+$`)
 
 	// malformedSchemePattern detects malformed scheme:reference format.
 	// Valid: "env:VAR", "file:/path"
@@ -45,8 +42,7 @@ var (
 // ValidateSecretReference validates the syntax of a secret reference.
 //
 // Valid formats:
-//   - ${GITHUB_TOKEN} - environment variable reference
-//   - env:API_KEY - explicit environment variable
+//   - env:API_KEY - environment variable
 //   - file:/etc/secrets/token - file-based secret
 //   - vault:secret/data/prod#token - vault secret (future)
 //
@@ -58,17 +54,6 @@ func ValidateSecretReference(reference string) error {
 			reference,
 			"",
 			"empty secret reference",
-			nil,
-		)
-	}
-
-	// Check for unclosed braces in ${VAR} syntax
-	if strings.Contains(reference, "${") && unclosedBracePattern.MatchString(reference) {
-		return profile.NewSecretResolutionError(
-			profile.ErrorCategoryInvalidSyntax,
-			reference,
-			"",
-			"unclosed brace in secret reference",
 			nil,
 		)
 	}

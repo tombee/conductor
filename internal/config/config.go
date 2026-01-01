@@ -1016,7 +1016,7 @@ func (c *Config) loadFromEnv() {
 	}
 
 	// Controller configuration (CLI-related)
-	if val := os.Getenv("CONDUCTOR_DAEMON_AUTO_START"); val != "" {
+	if val := os.Getenv("CONDUCTOR_CONTROLLER_AUTO_START"); val != "" {
 		c.Controller.AutoStart = val == "1" || strings.ToLower(val) == "true"
 	}
 	if val := os.Getenv("CONDUCTOR_SOCKET"); val != "" {
@@ -1048,10 +1048,10 @@ func (c *Config) loadFromEnv() {
 	if val := os.Getenv("CONDUCTOR_WORKFLOWS_DIR"); val != "" {
 		c.Controller.WorkflowsDir = val
 	}
-	if val := os.Getenv("CONDUCTOR_DAEMON_LOG_LEVEL"); val != "" {
+	if val := os.Getenv("CONDUCTOR_CONTROLLER_LOG_LEVEL"); val != "" {
 		c.Controller.ControllerLog.Level = val
 	}
-	if val := os.Getenv("CONDUCTOR_DAEMON_LOG_FORMAT"); val != "" {
+	if val := os.Getenv("CONDUCTOR_CONTROLLER_LOG_FORMAT"); val != "" {
 		c.Controller.ControllerLog.Format = val
 	}
 	if val := os.Getenv("CONDUCTOR_MAX_CONCURRENT_RUNS"); val != "" {

@@ -215,10 +215,13 @@ func TestHTTPTransport_Execute_Success(t *testing.T) {
 
 func TestHTTPTransport_Execute_BearerAuth(t *testing.T) {
 	// Create test server that checks Authorization header
+	// Set up env var for bearer token
+	t.Setenv("API_TOKEN", "test-bearer-token-123")
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")
-		// Expect env var syntax since credential substitution happens at config load time
-		if auth != "Bearer ${API_TOKEN}" {
+		// Expect expanded value since env vars are expanded at request time
+		if auth != "Bearer test-bearer-token-123" {
 			w.WriteHeader(401)
 			return
 		}
@@ -257,11 +260,14 @@ func TestHTTPTransport_Execute_BearerAuth(t *testing.T) {
 }
 
 func TestHTTPTransport_Execute_BasicAuth(t *testing.T) {
+	// Set up env var for password
+	t.Setenv("API_PASSWORD", "test-password-456")
+
 	// Create test server that checks basic auth
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, pass, ok := r.BasicAuth()
-		// Expect env var syntax since credential substitution happens at config load time
-		if !ok || user != "testuser" || pass != "${API_PASSWORD}" {
+		// Expect expanded value since env vars are expanded at request time
+		if !ok || user != "testuser" || pass != "test-password-456" {
 			w.WriteHeader(401)
 			return
 		}
@@ -301,11 +307,14 @@ func TestHTTPTransport_Execute_BasicAuth(t *testing.T) {
 }
 
 func TestHTTPTransport_Execute_APIKeyAuth(t *testing.T) {
+	// Set up env var for API key
+	t.Setenv("API_KEY", "test-api-key-789")
+
 	// Create test server that checks API key header
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		apiKey := r.Header.Get("X-API-Key")
-		// Expect env var syntax since credential substitution happens at config load time
-		if apiKey != "${API_KEY}" {
+		// Expect expanded value since env vars are expanded at request time
+		if apiKey != "test-api-key-789" {
 			w.WriteHeader(401)
 			return
 		}

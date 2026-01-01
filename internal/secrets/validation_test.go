@@ -29,9 +29,10 @@ func TestValidateSecretReference(t *testing.T) {
 		category  profile.ErrorCategory
 	}{
 		{
-			name:      "valid ${VAR} syntax",
+			name:      "${VAR} syntax is no longer supported",
 			reference: "${GITHUB_TOKEN}",
-			wantError: false,
+			wantError: true,
+			category:  profile.ErrorCategoryInvalidSyntax,
 		},
 		{
 			name:      "valid env: syntax",
@@ -55,7 +56,7 @@ func TestValidateSecretReference(t *testing.T) {
 			category:  profile.ErrorCategoryInvalidSyntax,
 		},
 		{
-			name:      "unclosed brace",
+			name:      "unclosed brace (invalid syntax)",
 			reference: "${GITHUB_TOKEN",
 			wantError: true,
 			category:  profile.ErrorCategoryInvalidSyntax,
@@ -180,8 +181,8 @@ func TestDetectCircularReferences(t *testing.T) {
 		{
 			name: "no circular references",
 			bindings: map[string]string{
-				"github_token": "${GITHUB_TOKEN}",
-				"api_key":      "${API_KEY}",
+				"github_token": "env:GITHUB_TOKEN",
+				"api_key":      "env:API_KEY",
 			},
 			wantError: false,
 		},
@@ -218,7 +219,7 @@ func TestDetectCircularReferences(t *testing.T) {
 				"A": "env:B",
 				"B": "env:C",
 				"C": "env:D",
-				"D": "${FINAL}",
+				"D": "env:FINAL",
 			},
 			wantError: false,
 		},
@@ -300,16 +301,16 @@ func TestValidateSecretReferences(t *testing.T) {
 		{
 			name: "all valid references",
 			bindings: map[string]string{
-				"github_token": "${GITHUB_TOKEN}",
+				"github_token": "env:GITHUB_TOKEN",
 				"api_key":      "env:API_KEY",
 				"secret_file":  "file:/etc/secrets/token",
 			},
 			wantError: false,
 		},
 		{
-			name: "invalid syntax",
+			name: "invalid ${VAR} syntax",
 			bindings: map[string]string{
-				"github_token": "${GITHUB_TOKEN",
+				"github_token": "${GITHUB_TOKEN}",
 			},
 			wantError: true,
 		},
@@ -324,7 +325,7 @@ func TestValidateSecretReferences(t *testing.T) {
 		{
 			name: "mixed valid and plain values",
 			bindings: map[string]string{
-				"token":    "${GITHUB_TOKEN}",
+				"token":    "env:GITHUB_TOKEN",
 				"base_url": "https://api.github.com",
 			},
 			wantError: false,

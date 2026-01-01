@@ -41,7 +41,7 @@ func (t *FileTool) WithMaxFileSize(size int64) *FileTool {
 }
 
 // WithAllowedPaths restricts file operations to specific directories.
-// This sets both read and write allowed paths for backward compatibility.
+// This sets both read and write allowed paths to the same value for convenience.
 func (t *FileTool) WithAllowedPaths(paths []string) *FileTool {
 	t.allowedPaths = paths
 	// Also update security config for consistency
@@ -346,7 +346,7 @@ func (t *FileTool) validatePath(path string, action security.AccessAction) error
 	}
 
 	// Fallback: basic validation with symlink resolution for defense in depth
-	// (maintains backward compatibility when no security config)
+	// when no security config is set (uses allowedPaths field directly)
 	if len(t.allowedPaths) == 0 {
 		return nil // Empty = allow all (D5)
 	}

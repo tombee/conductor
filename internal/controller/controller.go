@@ -548,7 +548,7 @@ func (c *Controller) Start(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// Start idle timeout monitor for auto-started daemons
+	// Start idle timeout monitor for auto-started controllers
 	c.startIdleTimeoutMonitor(ctx, cancel)
 
 	// Check permissions on critical directories and files at startup
@@ -1159,7 +1159,7 @@ func (c *Controller) logSecurityWarnings() {
 	// Warn if authentication is disabled
 	if !c.cfg.Controller.ControllerAuth.Enabled {
 		c.logger.Warn("security: authentication is disabled",
-			slog.String("recommendation", "enable daemon_auth.enabled for production use"))
+			slog.String("recommendation", "enable controller_auth.enabled for production use"))
 
 		// Extra warning if listening on non-localhost TCP
 		if c.cfg.Controller.Listen.TCPAddr != "" && !isLocalhostAddr(c.cfg.Controller.Listen.TCPAddr) {

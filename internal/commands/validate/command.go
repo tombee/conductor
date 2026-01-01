@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+
 	"github.com/tombee/conductor/internal/commands/completion"
 	"github.com/tombee/conductor/internal/commands/shared"
 	"github.com/tombee/conductor/internal/output"
@@ -28,7 +30,6 @@ import (
 	"github.com/tombee/conductor/pkg/workflow"
 	workflowschema "github.com/tombee/conductor/pkg/workflow/schema"
 	"github.com/tombee/conductor/pkg/workflow/subworkflow"
-	"gopkg.in/yaml.v3"
 )
 
 // NewCommand creates the validate command

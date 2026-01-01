@@ -2,7 +2,6 @@ package operation
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/tombee/conductor/internal/operation/transport"
@@ -17,32 +16,12 @@ func toHTTPTransportConfig(def *workflow.IntegrationDefinition) *transport.HTTPT
 		Headers: def.Headers,
 	}
 
-	// Only include auth if it uses environment variable syntax (NFR7 requirement).
-	// If auth uses plain values, it will be applied by the integration layer (backward compatibility).
-	if def.Auth != nil && usesEnvVarSyntax(def.Auth) {
+	// Include auth if present - converted to transport.AuthConfig
+	if def.Auth != nil {
 		config.Auth = toAuthConfig(def.Auth)
 	}
 
 	return config
-}
-
-// usesEnvVarSyntax checks if auth uses environment variable syntax (${VAR}).
-func usesEnvVarSyntax(auth *workflow.AuthDefinition) bool {
-	switch auth.Type {
-	case "bearer", "":
-		return hasEnvVarPrefix(auth.Token)
-	case "basic":
-		return hasEnvVarPrefix(auth.Password)
-	case "api_key":
-		return hasEnvVarPrefix(auth.Value)
-	default:
-		return false
-	}
-}
-
-// hasEnvVarPrefix checks if a string starts with ${ (environment variable syntax).
-func hasEnvVarPrefix(s string) bool {
-	return strings.HasPrefix(s, "${")
 }
 
 // toAuthConfig converts workflow AuthDefinition to transport AuthConfig.

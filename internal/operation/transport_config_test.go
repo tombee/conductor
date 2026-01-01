@@ -29,7 +29,7 @@ func TestToHTTPTransportConfig(t *testing.T) {
 			wantAuth: true,
 		},
 		{
-			name: "with plain token (backward compat)",
+			name: "with plain token",
 			def: &workflow.IntegrationDefinition{
 				BaseURL: "https://api.example.com",
 				Auth: &workflow.AuthDefinition{
@@ -37,7 +37,7 @@ func TestToHTTPTransportConfig(t *testing.T) {
 					Token: "plain-token",
 				},
 			},
-			wantAuth: false,
+			wantAuth: true,
 		},
 		{
 			name: "without auth",
@@ -207,72 +207,3 @@ func TestToOAuth2TransportConfig(t *testing.T) {
 	}
 }
 
-func TestUsesEnvVarSyntax(t *testing.T) {
-	tests := []struct {
-		name string
-		auth *workflow.AuthDefinition
-		want bool
-	}{
-		{
-			name: "bearer with env var",
-			auth: &workflow.AuthDefinition{
-				Type:  "bearer",
-				Token: "${API_TOKEN}",
-			},
-			want: true,
-		},
-		{
-			name: "bearer with plain token",
-			auth: &workflow.AuthDefinition{
-				Type:  "bearer",
-				Token: "plain-token",
-			},
-			want: false,
-		},
-		{
-			name: "basic with env var password",
-			auth: &workflow.AuthDefinition{
-				Type:     "basic",
-				Username: "user",
-				Password: "${PASSWORD}",
-			},
-			want: true,
-		},
-		{
-			name: "basic with plain password",
-			auth: &workflow.AuthDefinition{
-				Type:     "basic",
-				Username: "user",
-				Password: "plain-password",
-			},
-			want: false,
-		},
-		{
-			name: "api_key with env var",
-			auth: &workflow.AuthDefinition{
-				Type:   "api_key",
-				Header: "X-API-Key",
-				Value:  "${API_KEY}",
-			},
-			want: true,
-		},
-		{
-			name: "api_key with plain value",
-			auth: &workflow.AuthDefinition{
-				Type:   "api_key",
-				Header: "X-API-Key",
-				Value:  "plain-key",
-			},
-			want: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := usesEnvVarSyntax(tt.auth)
-			if got != tt.want {
-				t.Errorf("usesEnvVarSyntax() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}

@@ -28,8 +28,7 @@ import (
 // Registry routes secret references to specific providers based on URI schemes.
 //
 // Supported reference formats:
-//   - ${VAR_NAME} -> environment variable provider (recommended)
-//   - env:VAR_NAME -> environment variable provider (explicit scheme)
+//   - env:VAR_NAME -> environment variable provider
 //   - file:/path/to/secret -> file provider
 //   - vault:secret/path -> vault provider (future)
 type Registry struct {
@@ -37,9 +36,6 @@ type Registry struct {
 }
 
 var (
-	// envVarRegex matches ${VAR_NAME} syntax for environment variables
-	envVarRegex = regexp.MustCompile(`^\$\{([A-Z_][A-Z0-9_]*)\}$`)
-
 	// schemeRegex matches scheme:reference format
 	schemeRegex = regexp.MustCompile(`^([a-z][a-z0-9]*):(.+)$`)
 )
@@ -65,8 +61,7 @@ func (r *Registry) Register(provider profile.SecretProvider) error {
 // Resolve routes a secret reference to the appropriate provider and returns the value.
 //
 // Reference formats:
-//   - "${API_KEY}" -> env provider (recommended)
-//   - "env:GITHUB_TOKEN" -> env provider (explicit)
+//   - "env:GITHUB_TOKEN" -> env provider
 //   - "file:/etc/secrets/token" -> file provider
 //   - "vault:secret/data/prod#token" -> vault provider (future)
 //
@@ -122,17 +117,11 @@ func (r *Registry) GetProvider(scheme string) profile.SecretProvider {
 // parseReference extracts the scheme and key from a secret reference.
 //
 // Supported formats:
-//   - "${VAR_NAME}" -> ("env", "VAR_NAME")
 //   - "env:VAR_NAME" -> ("env", "VAR_NAME")
 //   - "file:/path/to/secret" -> ("file", "/path/to/secret")
 func (r *Registry) parseReference(reference string) (scheme, key string, err error) {
 	if reference == "" {
 		return "", "", fmt.Errorf("empty reference")
-	}
-
-	// Check for ${VAR} syntax
-	if matches := envVarRegex.FindStringSubmatch(reference); matches != nil {
-		return "env", matches[1], nil
 	}
 
 	// Check for scheme:reference format

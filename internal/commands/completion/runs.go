@@ -105,7 +105,7 @@ func getRunCompletions(activeOnly bool) ([]runInfo, error) {
 	runCacheMu.RUnlock()
 
 	// Cache miss - fetch from controller
-	runs, err := fetchRunsFromDaemon()
+	runs, err := fetchRunsFromController()
 	if err != nil {
 		return nil, err
 	}
@@ -125,8 +125,8 @@ func getRunCompletions(activeOnly bool) ([]runInfo, error) {
 	return runs, nil
 }
 
-// fetchRunsFromDaemon queries the controller API for runs with a timeout.
-func fetchRunsFromDaemon() ([]runInfo, error) {
+// fetchRunsFromController queries the controller API for runs with a timeout.
+func fetchRunsFromController() ([]runInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), controllerTimeout)
 	defer cancel()
 

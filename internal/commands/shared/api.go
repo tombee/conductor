@@ -28,7 +28,7 @@ import (
 // BuildAPIURL constructs a full API URL with query parameters
 func BuildAPIURL(path string, params map[string]string) string {
 	// Get controller URL from environment or use default
-	baseURL := os.Getenv("CONDUCTOR_DAEMON_URL")
+	baseURL := os.Getenv("CONDUCTOR_CONTROLLER_URL")
 	if baseURL == "" {
 		baseURL = "http://localhost:8080"
 	}

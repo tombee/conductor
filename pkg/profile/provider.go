@@ -23,8 +23,7 @@ import "context"
 // scheme (e.g., "env", "file", "vault").
 //
 // Secret references in profiles are resolved through providers at run time:
-//   - ${VAR} -> environment variable (recommended)
-//   - env:VAR_NAME -> environment variable (explicit scheme)
+//   - env:VAR_NAME -> environment variable
 //   - file:/path/to/secret -> file contents
 //   - vault:secret/path -> Vault KV secret (future)
 //
@@ -72,8 +71,7 @@ type SecretProviderRegistry interface {
 	// Resolve routes a secret reference to the appropriate provider and returns the value.
 	//
 	// Examples:
-	//   - "${API_KEY}" -> env provider (recommended)
-	//   - "env:GITHUB_TOKEN" -> env provider (explicit)
+	//   - "env:GITHUB_TOKEN" -> env provider
 	//   - "file:/etc/secrets/token" -> file provider
 	//   - "vault:secret/data/prod#token" -> vault provider (future)
 	//

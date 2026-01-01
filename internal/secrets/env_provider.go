@@ -24,9 +24,8 @@ import (
 
 // EnvProvider implements secret resolution from environment variables.
 //
-// Reference formats:
-//   - ${API_KEY} -> resolves API_KEY environment variable (recommended)
-//   - env:GITHUB_TOKEN -> resolves GITHUB_TOKEN environment variable (explicit)
+// Reference format:
+//   - env:GITHUB_TOKEN -> resolves GITHUB_TOKEN environment variable
 //
 // The provider respects profile inherit_env settings for access control.
 type EnvProvider struct {
@@ -49,8 +48,8 @@ func (e *EnvProvider) Scheme() string {
 
 // Resolve retrieves a secret value from an environment variable.
 //
-// The reference should be the environment variable name (without $ or {}).
-// Example: "GITHUB_TOKEN" not "${GITHUB_TOKEN}"
+// The reference should be the environment variable name.
+// Example: "GITHUB_TOKEN"
 //
 // Access control:
 //   - If inherit_env.enabled is false, all access is denied

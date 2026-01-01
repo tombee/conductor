@@ -197,14 +197,9 @@ func (c *Cache) GetStats() CacheStats {
 }
 
 // parseReferenceScheme extracts the scheme from a secret reference.
-// Returns ("env", "VAR", nil) for "${VAR}" or "env:VAR"
+// Returns ("env", "VAR", nil) for "env:VAR"
 // Returns ("file", "/path", nil) for "file:/path"
 func parseReferenceScheme(reference string) (scheme, key string, err error) {
-	// Try ${VAR} syntax
-	if len(reference) > 3 && reference[0] == '$' && reference[1] == '{' && reference[len(reference)-1] == '}' {
-		return "env", reference[2 : len(reference)-1], nil
-	}
-
 	// Try scheme:reference format
 	for i, c := range reference {
 		if c == ':' {

@@ -168,7 +168,7 @@ func runWorkflowViaController(workflowPath string, inputArgs []string, inputFile
 
 	c, err := client.EnsureController(autoStartCfg)
 	if err != nil {
-		return fmt.Errorf("failed to connect to controller: %w\n\nHint: Ensure 'conductord' is in your PATH", err)
+		return fmt.Errorf("failed to connect to controller: %w\n\nHint: Ensure 'conductor' is in your PATH", err)
 	}
 
 	// Submit workflow to controller

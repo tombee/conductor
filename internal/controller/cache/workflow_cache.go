@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"time"
 
-	daemonmetrics "github.com/tombee/conductor/internal/controller/metrics"
+	controllermetrics "github.com/tombee/conductor/internal/controller/metrics"
 	"github.com/tombee/conductor/pkg/security"
 )
 
@@ -130,7 +130,7 @@ func (c *WorkflowCache) Get(owner, repo, sha string) (*CachedWorkflow, error) {
 		if err := os.RemoveAll(cachePath); err != nil {
 			cacheIdentifier := fmt.Sprintf("%s/%s@%s", owner, repo, sha)
 			c.logger.Warn("failed to cleanup expired cache", "cache", cacheIdentifier, "error", err)
-			daemonmetrics.RecordPersistenceError("CleanupCache", categorizeError(err))
+			controllermetrics.RecordPersistenceError("CleanupCache", categorizeError(err))
 		}
 		return nil, nil
 	}

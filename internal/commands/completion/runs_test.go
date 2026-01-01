@@ -178,7 +178,7 @@ func TestRunCaching(t *testing.T) {
 	}
 }
 
-func TestCompleteRunIDs_DaemonNotRunning(t *testing.T) {
+func TestCompleteRunIDs_ControllerNotRunning(t *testing.T) {
 	// Clear cache
 	runCacheMu.Lock()
 	runCache = nil

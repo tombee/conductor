@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -127,6 +128,22 @@ func (c *HTTPTransportConfig) Validate() error {
 // hasEnvVarSyntax checks if a string uses ${VAR_NAME} syntax for environment variable substitution.
 func hasEnvVarSyntax(s string) bool {
 	return strings.HasPrefix(s, "${") && strings.HasSuffix(s, "}")
+}
+
+// expandEnvVar expands a ${VAR_NAME} reference to the actual environment variable value.
+// Returns the original string if it doesn't match the expected pattern.
+// Returns an error if the environment variable is not set.
+func expandEnvVar(s string) (string, error) {
+	if !hasEnvVarSyntax(s) {
+		return s, nil
+	}
+	// Extract variable name from ${VAR_NAME}
+	varName := s[2 : len(s)-1]
+	value := os.Getenv(varName)
+	if value == "" {
+		return "", fmt.Errorf("environment variable %q not set", varName)
+	}
+	return value, nil
 }
 
 // Validate checks if the auth configuration is valid.
@@ -398,18 +415,31 @@ func (t *HTTPTransport) buildHTTPRequest(ctx context.Context, req *Request) (*ht
 }
 
 // applyAuth applies authentication to the HTTP request.
+// Auth values are expected to use ${VAR_NAME} syntax and are expanded at request time.
 func (t *HTTPTransport) applyAuth(req *http.Request) error {
 	auth := t.config.Auth
 
 	switch auth.Type {
 	case "bearer":
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", auth.Token))
+		token, err := expandEnvVar(auth.Token)
+		if err != nil {
+			return fmt.Errorf("failed to expand bearer token: %w", err)
+		}
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 
 	case "basic":
-		req.SetBasicAuth(auth.Username, auth.Password)
+		password, err := expandEnvVar(auth.Password)
+		if err != nil {
+			return fmt.Errorf("failed to expand basic auth password: %w", err)
+		}
+		req.SetBasicAuth(auth.Username, password)
 
 	case "api_key":
-		req.Header.Set(auth.HeaderName, auth.HeaderValue)
+		value, err := expandEnvVar(auth.HeaderValue)
+		if err != nil {
+			return fmt.Errorf("failed to expand api_key value: %w", err)
+		}
+		req.Header.Set(auth.HeaderName, value)
 
 	default:
 		return fmt.Errorf("unsupported auth type: %q", auth.Type)
