@@ -27,11 +27,11 @@ import (
 type SettingsMenuChoice string
 
 const (
-	SettingsChangeBackend     SettingsMenuChoice = "change_backend"
-	SettingsAddBackend        SettingsMenuChoice = "add_backend"
-	SettingsViewCredentials   SettingsMenuChoice = "view_credentials"
-	SettingsMigratePlaintext  SettingsMenuChoice = "migrate_plaintext"
-	SettingsBack              SettingsMenuChoice = "back"
+	SettingsChangeBackend    SettingsMenuChoice = "change_backend"
+	SettingsAddBackend       SettingsMenuChoice = "add_backend"
+	SettingsViewCredentials  SettingsMenuChoice = "view_credentials"
+	SettingsMigratePlaintext SettingsMenuChoice = "migrate_plaintext"
+	SettingsBack             SettingsMenuChoice = "back"
 )
 
 // ShowSettingsMenu displays the settings management screen.
@@ -44,7 +44,7 @@ func ShowSettingsMenu(state *setup.SetupState) (SettingsMenuChoice, error) {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewNote().
-				Title("Settings\n\n" + backendList),
+				Title("Settings\n\n"+backendList),
 			huh.NewSelect[string]().
 				Title("What would you like to do?").
 				Options(

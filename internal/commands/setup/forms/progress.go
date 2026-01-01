@@ -31,7 +31,8 @@ type ProgressBar struct {
 
 // Render generates the formatted progress indicator with step number and progress bar.
 // Format: "Step N/M: Step Name"
-//         "[===>    ] XX%"
+//
+//	"[===>    ] XX%"
 func (p *ProgressBar) Render() string {
 	if p.CurrentStep < 1 || p.TotalSteps < 1 {
 		return ""

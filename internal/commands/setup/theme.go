@@ -16,14 +16,77 @@ package setup
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 )
 
 // Theme defines the visual theme for the setup wizard.
-var Theme = huh.ThemeCharm()
+// It's based on the Charm theme but customized with Conductor's color palette.
+func Theme() *huh.Theme {
+	t := huh.ThemeCharm()
+
+	// Customize with Conductor colors
+	// Focused field styles (when user is interacting)
+	t.Focused.Base = lipgloss.NewStyle()
+	t.Focused.Title = lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
+	t.Focused.Description = lipgloss.NewStyle().Foreground(ColorMuted)
+	t.Focused.ErrorIndicator = lipgloss.NewStyle().Foreground(ColorError).Bold(true)
+	t.Focused.ErrorMessage = lipgloss.NewStyle().Foreground(ColorError)
+
+	// Select field styles
+	t.Focused.SelectSelector = lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
+	t.Focused.Option = lipgloss.NewStyle()
+	t.Focused.NextIndicator = lipgloss.NewStyle().Foreground(ColorMuted)
+	t.Focused.PrevIndicator = lipgloss.NewStyle().Foreground(ColorMuted)
+
+	// Multi-select styles
+	t.Focused.MultiSelectSelector = lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
+	t.Focused.SelectedOption = lipgloss.NewStyle().Foreground(ColorSuccess)
+	t.Focused.SelectedPrefix = lipgloss.NewStyle().Foreground(ColorSuccess).SetString("✓ ")
+	t.Focused.UnselectedOption = lipgloss.NewStyle()
+	t.Focused.UnselectedPrefix = lipgloss.NewStyle().SetString("  ")
+
+	// Button styles
+	t.Focused.FocusedButton = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFF")).Background(ColorPrimary).Padding(0, 1).Bold(true)
+	t.Focused.BlurredButton = lipgloss.NewStyle().Foreground(ColorMuted).Padding(0, 1)
+
+	// Blurred field styles (when field is not active)
+	t.Blurred.Base = lipgloss.NewStyle()
+	t.Blurred.Title = lipgloss.NewStyle().Foreground(ColorMuted)
+	t.Blurred.Description = lipgloss.NewStyle().Foreground(ColorMuted)
+	t.Blurred.SelectSelector = lipgloss.NewStyle().Foreground(ColorMuted)
+	t.Blurred.NextIndicator = lipgloss.NewStyle().Foreground(ColorMuted)
+	t.Blurred.PrevIndicator = lipgloss.NewStyle().Foreground(ColorMuted)
+
+	return t
+}
+
+// ApplyTheme applies the Conductor theme to a form.
+// Usage: form := huh.NewForm(...); setup.ApplyTheme(form)
+func ApplyTheme(form *huh.Form) *huh.Form {
+	return form.WithTheme(Theme())
+}
+
+// WithAltScreen returns a tea.ProgramOption for enabling alternate screen buffer,
+// unless the NO_ALT_SCREEN environment variable is set to "1".
+// The alt-screen provides a clean, full-window experience that restores the
+// terminal state when the program exits.
+//
+// Usage:
+//
+//	form := huh.NewForm(...).WithProgramOptions(setup.WithAltScreen())
+func WithAltScreen() tea.ProgramOption {
+	// Check for escape hatch
+	if os.Getenv("NO_ALT_SCREEN") == "1" {
+		// Return a no-op option
+		return tea.WithoutCatchPanics()
+	}
+	return tea.WithAltScreen()
+}
 
 // Color definitions for consistent styling
 var (

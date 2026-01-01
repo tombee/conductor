@@ -59,9 +59,9 @@ type ProviderType interface {
 
 // providerRegistry holds all registered provider types
 var providerRegistry = map[string]ProviderType{
-	"claude-code":        &ClaudeCodeProviderType{},
-	"ollama":             &OllamaProviderType{},
-	"anthropic":          &AnthropicProviderType{},
+	"claude-code":       &ClaudeCodeProviderType{},
+	"ollama":            &OllamaProviderType{},
+	"anthropic":         &AnthropicProviderType{},
 	"openai-compatible": &OpenAICompatibleProviderType{},
 }
 
@@ -83,13 +83,13 @@ func GetProviderType(name string) (ProviderType, bool) {
 // ClaudeCodeProviderType implements ProviderType for Claude Code CLI
 type ClaudeCodeProviderType struct{}
 
-func (p *ClaudeCodeProviderType) Name() string                          { return "claude-code" }
-func (p *ClaudeCodeProviderType) DisplayName() string                   { return "Claude Code" }
-func (p *ClaudeCodeProviderType) Description() string                   { return "Uses the Claude Code CLI" }
-func (p *ClaudeCodeProviderType) IsCLI() bool                           { return true }
-func (p *ClaudeCodeProviderType) RequiresAPIKey() bool                  { return false }
-func (p *ClaudeCodeProviderType) RequiresBaseURL() bool                 { return false }
-func (p *ClaudeCodeProviderType) DefaultBaseURL() string                { return "" }
+func (p *ClaudeCodeProviderType) Name() string           { return "claude-code" }
+func (p *ClaudeCodeProviderType) DisplayName() string    { return "Claude Code" }
+func (p *ClaudeCodeProviderType) Description() string    { return "Uses the Claude Code CLI" }
+func (p *ClaudeCodeProviderType) IsCLI() bool            { return true }
+func (p *ClaudeCodeProviderType) RequiresAPIKey() bool   { return false }
+func (p *ClaudeCodeProviderType) RequiresBaseURL() bool  { return false }
+func (p *ClaudeCodeProviderType) DefaultBaseURL() string { return "" }
 func (p *ClaudeCodeProviderType) ValidateConfig(cfg config.ProviderConfig) error {
 	return nil
 }
@@ -121,13 +121,13 @@ func (p *ClaudeCodeProviderType) DetectCLI(ctx context.Context) (bool, string, e
 // OllamaProviderType implements ProviderType for Ollama CLI
 type OllamaProviderType struct{}
 
-func (p *OllamaProviderType) Name() string                          { return "ollama" }
-func (p *OllamaProviderType) DisplayName() string                   { return "Ollama" }
-func (p *OllamaProviderType) Description() string                   { return "Uses local Ollama models" }
-func (p *OllamaProviderType) IsCLI() bool                           { return true }
-func (p *OllamaProviderType) RequiresAPIKey() bool                  { return false }
-func (p *OllamaProviderType) RequiresBaseURL() bool                 { return false }
-func (p *OllamaProviderType) DefaultBaseURL() string                { return "http://localhost:11434" }
+func (p *OllamaProviderType) Name() string           { return "ollama" }
+func (p *OllamaProviderType) DisplayName() string    { return "Ollama" }
+func (p *OllamaProviderType) Description() string    { return "Uses local Ollama models" }
+func (p *OllamaProviderType) IsCLI() bool            { return true }
+func (p *OllamaProviderType) RequiresAPIKey() bool   { return false }
+func (p *OllamaProviderType) RequiresBaseURL() bool  { return false }
+func (p *OllamaProviderType) DefaultBaseURL() string { return "http://localhost:11434" }
 func (p *OllamaProviderType) ValidateConfig(cfg config.ProviderConfig) error {
 	return nil
 }
@@ -159,12 +159,12 @@ func (p *OllamaProviderType) DetectCLI(ctx context.Context) (bool, string, error
 // AnthropicProviderType implements ProviderType for Anthropic API
 type AnthropicProviderType struct{}
 
-func (p *AnthropicProviderType) Name() string         { return "anthropic" }
-func (p *AnthropicProviderType) DisplayName() string  { return "Anthropic API" }
-func (p *AnthropicProviderType) Description() string  { return "Uses Anthropic's Claude API directly" }
-func (p *AnthropicProviderType) IsCLI() bool          { return false }
-func (p *AnthropicProviderType) RequiresAPIKey() bool { return true }
-func (p *AnthropicProviderType) RequiresBaseURL() bool { return false }
+func (p *AnthropicProviderType) Name() string           { return "anthropic" }
+func (p *AnthropicProviderType) DisplayName() string    { return "Anthropic API" }
+func (p *AnthropicProviderType) Description() string    { return "Uses Anthropic's Claude API directly" }
+func (p *AnthropicProviderType) IsCLI() bool            { return false }
+func (p *AnthropicProviderType) RequiresAPIKey() bool   { return true }
+func (p *AnthropicProviderType) RequiresBaseURL() bool  { return false }
 func (p *AnthropicProviderType) DefaultBaseURL() string { return "https://api.anthropic.com" }
 func (p *AnthropicProviderType) ValidateConfig(cfg config.ProviderConfig) error {
 	return nil
@@ -182,12 +182,12 @@ func (p *AnthropicProviderType) DetectCLI(ctx context.Context) (bool, string, er
 // OpenAICompatibleProviderType implements ProviderType for OpenAI-compatible APIs
 type OpenAICompatibleProviderType struct{}
 
-func (p *OpenAICompatibleProviderType) Name() string         { return "openai-compatible" }
-func (p *OpenAICompatibleProviderType) DisplayName() string  { return "OpenAI-Compatible API" }
-func (p *OpenAICompatibleProviderType) Description() string  { return "Uses any OpenAI-compatible API" }
-func (p *OpenAICompatibleProviderType) IsCLI() bool          { return false }
-func (p *OpenAICompatibleProviderType) RequiresAPIKey() bool { return true }
-func (p *OpenAICompatibleProviderType) RequiresBaseURL() bool { return true }
+func (p *OpenAICompatibleProviderType) Name() string           { return "openai-compatible" }
+func (p *OpenAICompatibleProviderType) DisplayName() string    { return "OpenAI-Compatible API" }
+func (p *OpenAICompatibleProviderType) Description() string    { return "Uses any OpenAI-compatible API" }
+func (p *OpenAICompatibleProviderType) IsCLI() bool            { return false }
+func (p *OpenAICompatibleProviderType) RequiresAPIKey() bool   { return true }
+func (p *OpenAICompatibleProviderType) RequiresBaseURL() bool  { return true }
 func (p *OpenAICompatibleProviderType) DefaultBaseURL() string { return "https://api.openai.com/v1" }
 func (p *OpenAICompatibleProviderType) ValidateConfig(cfg config.ProviderConfig) error {
 	return nil

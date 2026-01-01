@@ -17,6 +17,7 @@ package forms
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/tombee/conductor/internal/commands/setup"
 	"github.com/tombee/conductor/internal/config"
@@ -34,6 +35,15 @@ type wizardRunner struct{}
 func (wizardRunner) Run(ctx context.Context, state *setup.SetupState, accessibleMode bool) error {
 	// Determine if this is first-run (no existing config)
 	isFirstRun := state.Original == nil || len(state.Original.Providers) == 0
+
+	// Check if new wizard flow is enabled via feature flag
+	useWizardFlow := os.Getenv("CONDUCTOR_SETUP_V2") == "1"
+
+	// For first-run users with the feature flag enabled, use the new wizard flow
+	if isFirstRun && useWizardFlow && !accessibleMode {
+		flow := NewWizardFlow(ctx, state)
+		return flow.Run()
+	}
 
 	// Show welcome screen for first-run, or go directly to main menu for returning users
 	if isFirstRun && !accessibleMode {

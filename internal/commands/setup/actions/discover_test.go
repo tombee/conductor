@@ -86,32 +86,32 @@ func TestDiscoverModels(t *testing.T) {
 
 func TestSuggestTierMappings(t *testing.T) {
 	tests := []struct {
-		name       string
-		models     []string
-		wantFast   string
-		wantTier2  string
-		wantTier3  string
+		name      string
+		models    []string
+		wantFast  string
+		wantTier2 string
+		wantTier3 string
 	}{
 		{
-			name:       "claude models",
-			models:     []string{"claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"},
-			wantFast:   "claude-3-haiku-20240307",
-			wantTier2:  "claude-3-sonnet-20240229",
-			wantTier3:  "claude-3-opus-20240229",
+			name:      "claude models",
+			models:    []string{"claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"},
+			wantFast:  "claude-3-haiku-20240307",
+			wantTier2: "claude-3-sonnet-20240229",
+			wantTier3: "claude-3-opus-20240229",
 		},
 		{
-			name:       "empty models",
-			models:     []string{},
-			wantFast:   "",
-			wantTier2:  "",
-			wantTier3:  "",
+			name:      "empty models",
+			models:    []string{},
+			wantFast:  "",
+			wantTier2: "",
+			wantTier3: "",
 		},
 		{
-			name:       "single model",
-			models:     []string{"model-1"},
-			wantFast:   "model-1",
-			wantTier2:  "model-1",
-			wantTier3:  "model-1",
+			name:      "single model",
+			models:    []string{"model-1"},
+			wantFast:  "model-1",
+			wantTier2: "model-1",
+			wantTier3: "model-1",
 		},
 	}
 
@@ -141,36 +141,36 @@ func TestValidateModelMapping(t *testing.T) {
 		{
 			name: "valid mapping",
 			mapping: ModelMapping{
-				Fast:       "model-fast",
-				Balanced:   "model-balanced",
-				Strategic:  "model-strategic",
+				Fast:      "model-fast",
+				Balanced:  "model-balanced",
+				Strategic: "model-strategic",
 			},
 			wantErr: false,
 		},
 		{
 			name: "missing fast",
 			mapping: ModelMapping{
-				Fast:       "",
-				Balanced:   "model-balanced",
-				Strategic:  "model-strategic",
+				Fast:      "",
+				Balanced:  "model-balanced",
+				Strategic: "model-strategic",
 			},
 			wantErr: true,
 		},
 		{
 			name: "missing balanced",
 			mapping: ModelMapping{
-				Fast:       "model-fast",
-				Balanced:   "",
-				Strategic:  "model-strategic",
+				Fast:      "model-fast",
+				Balanced:  "",
+				Strategic: "model-strategic",
 			},
 			wantErr: true,
 		},
 		{
 			name: "missing strategic",
 			mapping: ModelMapping{
-				Fast:       "model-fast",
-				Balanced:   "model-balanced",
-				Strategic:  "",
+				Fast:      "model-fast",
+				Balanced:  "model-balanced",
+				Strategic: "",
 			},
 			wantErr: true,
 		},

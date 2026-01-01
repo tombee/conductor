@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/huh"
 	"github.com/tombee/conductor/internal/commands/setup"
@@ -90,98 +91,189 @@ func buildProviderListSummary(state *setup.SetupState) string {
 	return strings.Join(lines, "\n")
 }
 
-// AddProviderFlow guides the user through adding a new provider.
-func AddProviderFlow(ctx context.Context, state *setup.SetupState) error {
-	// Step 1: Choose provider category (CLI or API)
-	var category string
-	categoryForm := huh.NewForm(
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title("What type of provider?").
-				Options(
-					huh.NewOption("CLI Providers - Local tools (Claude Code, Ollama)", "cli"),
-					huh.NewOption("API Providers - Cloud APIs requiring credentials", "api"),
-				).
-				Value(&category),
-		),
-	)
-
-	if err := categoryForm.Run(); err != nil {
-		return err
-	}
-
-	if category == "cli" {
-		return addCLIProviderFlow(ctx, state)
-	}
-	return addAPIProviderFlow(ctx, state)
+// ProviderDetectionResult holds the detection status for a provider.
+type ProviderDetectionResult struct {
+	ProviderType setup.ProviderType
+	Detected     bool
+	Path         string
+	Error        error
 }
 
-// addCLIProviderFlow handles adding CLI-based providers
-func addCLIProviderFlow(ctx context.Context, state *setup.SetupState) error {
-	// Get CLI provider types
-	cliProviders := []setup.ProviderType{}
-	for _, pt := range setup.GetProviderTypes() {
+// ShowFlattenedProviderSelection displays a single screen with all available providers,
+// grouped by category (Local vs Cloud APIs) with detection status indicators.
+// Performs parallel CLI auto-detection with a 2-second timeout.
+func ShowFlattenedProviderSelection(ctx context.Context, state *setup.SetupState) (string, error) {
+	// Get all provider types
+	allProviders := setup.GetProviderTypes()
+
+	// Separate CLI and API providers
+	var cliProviders, apiProviders []setup.ProviderType
+	for _, pt := range allProviders {
 		if pt.IsCLI() {
 			cliProviders = append(cliProviders, pt)
-		}
-	}
-
-	// Detect which are available
-	type cliStatus struct {
-		provider setup.ProviderType
-		detected bool
-		path     string
-	}
-	statuses := make([]cliStatus, 0, len(cliProviders))
-
-	for _, pt := range cliProviders {
-		detected, path, _ := pt.DetectCLI(ctx)
-		statuses = append(statuses, cliStatus{
-			provider: pt,
-			detected: detected,
-			path:     path,
-		})
-	}
-
-	// Build selection options
-	options := make([]huh.Option[string], 0, len(statuses)+1)
-	for _, status := range statuses {
-		label := status.provider.DisplayName()
-		if status.detected {
-			label += " ✓ Installed"
 		} else {
-			label += " ✗ Not found"
+			apiProviders = append(apiProviders, pt)
 		}
-		options = append(options, huh.NewOption(label, status.provider.Name()))
 	}
+
+	// Perform parallel CLI detection with 2-second timeout
+	cliDetectionResults := detectCLIProvidersParallel(ctx, cliProviders)
+
+	// Build grouped options
+	options := make([]huh.Option[string], 0, len(allProviders)+3) // +3 for group headers and back option
+
+	// Add Local Providers group header (as a disabled option for visual grouping)
+	if len(cliProviders) > 0 {
+		// Add CLI providers with detection status
+		for _, result := range cliDetectionResults {
+			label := result.ProviderType.DisplayName()
+			if result.Detected {
+				label += " [Detected: " + result.Path + "]"
+			} else {
+				label += " [Not found]"
+			}
+			options = append(options, huh.NewOption(label, result.ProviderType.Name()))
+		}
+	}
+
+	// Add separator
+	if len(cliProviders) > 0 && len(apiProviders) > 0 {
+		options = append(options, huh.NewOption("---", "separator-1"))
+	}
+
+	// Add Cloud API Providers
+	if len(apiProviders) > 0 {
+		for _, pt := range apiProviders {
+			label := pt.DisplayName() + " - " + pt.Description()
+			options = append(options, huh.NewOption(label, pt.Name()))
+		}
+	}
+
+	// Add back option
+	options = append(options, huh.NewOption("---", "separator-2"))
 	options = append(options, huh.NewOption("Back", "back"))
 
+	// Pre-select first detected provider, or first in list
+	var preSelected string
+	for _, result := range cliDetectionResults {
+		if result.Detected {
+			preSelected = result.ProviderType.Name()
+			break
+		}
+	}
+	if preSelected == "" && len(allProviders) > 0 {
+		preSelected = allProviders[0].Name()
+	}
+
 	var selected string
+	if preSelected != "" {
+		selected = preSelected
+	}
+
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
-				Title("Select CLI provider to add:").
+				Title("Select a provider to add:").
+				Description("Local providers use CLI tools, Cloud APIs require credentials").
 				Options(options...).
-				Value(&selected),
+				Value(&selected).
+				Filtering(true), // Enable filtering for easier navigation
 		),
 	)
 
 	if err := form.Run(); err != nil {
+		return "", err
+	}
+
+	// Handle separator and back selections
+	if selected == "back" || strings.HasPrefix(selected, "separator-") {
+		return "", nil
+	}
+
+	return selected, nil
+}
+
+// detectCLIProvidersParallel performs parallel detection of CLI providers with a 2-second timeout.
+func detectCLIProvidersParallel(ctx context.Context, providers []setup.ProviderType) []ProviderDetectionResult {
+	// Create a timeout context for detection
+	detectionCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	// Channel to collect results
+	resultsChan := make(chan ProviderDetectionResult, len(providers))
+
+	// Launch detection goroutines
+	for _, pt := range providers {
+		go func(providerType setup.ProviderType) {
+			detected, path, err := providerType.DetectCLI(detectionCtx)
+			resultsChan <- ProviderDetectionResult{
+				ProviderType: providerType,
+				Detected:     detected,
+				Path:         path,
+				Error:        err,
+			}
+		}(pt)
+	}
+
+	// Collect results
+	results := make([]ProviderDetectionResult, 0, len(providers))
+	for i := 0; i < len(providers); i++ {
+		select {
+		case result := <-resultsChan:
+			results = append(results, result)
+		case <-detectionCtx.Done():
+			// Timeout - add remaining providers as not detected
+			for j := i; j < len(providers); j++ {
+				results = append(results, ProviderDetectionResult{
+					ProviderType: providers[j],
+					Detected:     false,
+					Path:         "",
+					Error:        detectionCtx.Err(),
+				})
+			}
+			return results
+		}
+	}
+
+	return results
+}
+
+// AddProviderFlow guides the user through adding a new provider.
+func AddProviderFlow(ctx context.Context, state *setup.SetupState) error {
+	// Use flattened provider selection
+	selectedType, err := ShowFlattenedProviderSelection(ctx, state)
+	if err != nil {
 		return err
 	}
 
-	if selected == "back" {
+	// User selected back
+	if selectedType == "" {
 		return nil
 	}
 
-	// Add the selected provider
-	providerType, ok := setup.GetProviderType(selected)
+	// Get the provider type
+	providerType, ok := setup.GetProviderType(selectedType)
 	if !ok {
-		return fmt.Errorf("unknown provider type: %s", selected)
+		return fmt.Errorf("unknown provider type: %s", selectedType)
 	}
 
+	// Route to appropriate flow based on provider type
+	if providerType.IsCLI() {
+		return addCLIProviderFlowDirect(ctx, state, providerType)
+	}
+	return addAPIProviderFlowDirect(ctx, state, providerType)
+}
+
+// addCLIProviderFlowDirect adds a CLI provider directly without category selection.
+// This is used by the flattened provider selection flow.
+func addCLIProviderFlowDirect(ctx context.Context, state *setup.SetupState, providerType setup.ProviderType) error {
 	// Use provider type name as the instance name for CLI providers
-	instanceName := selected
+	instanceName := providerType.Name()
+
+	// Check if this provider is already configured
+	if _, exists := state.Working.Providers[instanceName]; exists {
+		return fmt.Errorf("provider %q is already configured", instanceName)
+	}
 
 	// Create provider config
 	providerCfg := providerType.CreateConfig()
@@ -196,52 +288,12 @@ func addCLIProviderFlow(ctx context.Context, state *setup.SetupState) error {
 	return nil
 }
 
-// addAPIProviderFlow handles adding API-based providers
-func addAPIProviderFlow(ctx context.Context, state *setup.SetupState) error {
-	// Get API provider types
-	apiProviders := []setup.ProviderType{}
-	for _, pt := range setup.GetProviderTypes() {
-		if !pt.IsCLI() {
-			apiProviders = append(apiProviders, pt)
-		}
-	}
-
-	// Build selection options
-	options := make([]huh.Option[string], 0, len(apiProviders)+1)
-	for _, pt := range apiProviders {
-		options = append(options, huh.NewOption(
-			pt.DisplayName()+" - "+pt.Description(),
-			pt.Name(),
-		))
-	}
-	options = append(options, huh.NewOption("Back", "back"))
-
-	var selectedType string
-	typeForm := huh.NewForm(
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title("Select API provider type:").
-				Options(options...).
-				Value(&selectedType),
-		),
-	)
-
-	if err := typeForm.Run(); err != nil {
-		return err
-	}
-
-	if selectedType == "back" {
-		return nil
-	}
-
-	providerType, ok := setup.GetProviderType(selectedType)
-	if !ok {
-		return fmt.Errorf("unknown provider type: %s", selectedType)
-	}
-
-	// Step 2: Get instance name
+// addAPIProviderFlowDirect adds an API provider directly without category selection.
+// This is used by the flattened provider selection flow.
+func addAPIProviderFlowDirect(ctx context.Context, state *setup.SetupState, providerType setup.ProviderType) error {
+	// Step 1: Get instance name
 	var instanceName string
-	defaultName := selectedType
+	defaultName := providerType.Name()
 	if defaultName == "openai-compatible" {
 		defaultName = "" // Force user to provide a descriptive name
 	}
@@ -273,7 +325,7 @@ func addAPIProviderFlow(ctx context.Context, state *setup.SetupState) error {
 		instanceName = defaultName
 	}
 
-	// Step 3: Configure provider-specific fields
+	// Step 2: Configure provider-specific fields
 	providerCfg := providerType.CreateConfig()
 
 	// If provider requires base URL, prompt for it
@@ -310,7 +362,7 @@ func addAPIProviderFlow(ctx context.Context, state *setup.SetupState) error {
 		_ = baseURL // Suppress unused variable warning for now
 	}
 
-	// Step 4: API Key configuration
+	// Step 3: API Key configuration
 	if providerType.RequiresAPIKey() {
 		// TODO: Implement API key + backend selection flow
 		// For now, just prompt for the key

@@ -68,10 +68,10 @@ func GetIntegrationType(id string) (IntegrationType, bool) {
 // GitHub integration type implementation (placeholder)
 type GitHubIntegrationType struct{}
 
-func (g *GitHubIntegrationType) ID() string            { return "github" }
-func (g *GitHubIntegrationType) DisplayName() string   { return "GitHub" }
-func (g *GitHubIntegrationType) Description() string   { return "GitHub API integration" }
-func (g *GitHubIntegrationType) RequiresBaseURL() bool { return false } // Optional for enterprise
+func (g *GitHubIntegrationType) ID() string             { return "github" }
+func (g *GitHubIntegrationType) DisplayName() string    { return "GitHub" }
+func (g *GitHubIntegrationType) Description() string    { return "GitHub API integration" }
+func (g *GitHubIntegrationType) RequiresBaseURL() bool  { return false } // Optional for enterprise
 func (g *GitHubIntegrationType) DefaultBaseURL() string { return "https://api.github.com" }
 func (g *GitHubIntegrationType) GetFields() []IntegrationField {
 	return []IntegrationField{

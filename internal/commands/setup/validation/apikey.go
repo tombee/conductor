@@ -21,22 +21,22 @@ import (
 
 // apiKeyPatterns maps provider types to their expected API key formats
 var apiKeyPatterns = map[string]*regexp.Regexp{
-	"anthropic":        regexp.MustCompile(`^sk-ant-api\d{2}-[A-Za-z0-9_-]{93}$`),
-	"openai":           regexp.MustCompile(`^sk-[A-Za-z0-9]{48}$`),
-	"openai-project":   regexp.MustCompile(`^sk-proj-[A-Za-z0-9_-]{48,}$`),
-	"github-pat":       regexp.MustCompile(`^ghp_[A-Za-z0-9]{36}$`),
-	"github-fine":      regexp.MustCompile(`^github_pat_[A-Za-z0-9]{22}_[A-Za-z0-9]{59}$`),
-	"github-oauth":     regexp.MustCompile(`^gho_[A-Za-z0-9]{36}$`),
-	"github-user":      regexp.MustCompile(`^ghu_[A-Za-z0-9]{36}$`),
-	"github-server":    regexp.MustCompile(`^ghs_[A-Za-z0-9]{36}$`),
-	"github-refresh":   regexp.MustCompile(`^ghr_[A-Za-z0-9]{36}$`),
-	"slack-bot":        regexp.MustCompile(`^xoxb-[0-9]+-[0-9]+-[A-Za-z0-9]+$`),
-	"slack-user":       regexp.MustCompile(`^xoxp-[0-9]+-[0-9]+-[A-Za-z0-9]+$`),
-	"slack-app":        regexp.MustCompile(`^xoxa-[0-9]+-[0-9]+-[A-Za-z0-9]+$`),
-	"slack-refresh":    regexp.MustCompile(`^xoxr-[0-9]+-[0-9]+-[A-Za-z0-9]+$`),
-	"google-api":       regexp.MustCompile(`^AIza[A-Za-z0-9_-]{35}$`),
-	"aws-access":       regexp.MustCompile(`^AKIA[A-Z0-9]{16}$`),
-	"gitlab-pat":       regexp.MustCompile(`^glpat-[A-Za-z0-9_-]{20}$`),
+	"anthropic":      regexp.MustCompile(`^sk-ant-api\d{2}-[A-Za-z0-9_-]{93}$`),
+	"openai":         regexp.MustCompile(`^sk-[A-Za-z0-9]{48}$`),
+	"openai-project": regexp.MustCompile(`^sk-proj-[A-Za-z0-9_-]{48,}$`),
+	"github-pat":     regexp.MustCompile(`^ghp_[A-Za-z0-9]{36}$`),
+	"github-fine":    regexp.MustCompile(`^github_pat_[A-Za-z0-9]{22}_[A-Za-z0-9]{59}$`),
+	"github-oauth":   regexp.MustCompile(`^gho_[A-Za-z0-9]{36}$`),
+	"github-user":    regexp.MustCompile(`^ghu_[A-Za-z0-9]{36}$`),
+	"github-server":  regexp.MustCompile(`^ghs_[A-Za-z0-9]{36}$`),
+	"github-refresh": regexp.MustCompile(`^ghr_[A-Za-z0-9]{36}$`),
+	"slack-bot":      regexp.MustCompile(`^xoxb-[0-9]+-[0-9]+-[A-Za-z0-9]+$`),
+	"slack-user":     regexp.MustCompile(`^xoxp-[0-9]+-[0-9]+-[A-Za-z0-9]+$`),
+	"slack-app":      regexp.MustCompile(`^xoxa-[0-9]+-[0-9]+-[A-Za-z0-9]+$`),
+	"slack-refresh":  regexp.MustCompile(`^xoxr-[0-9]+-[0-9]+-[A-Za-z0-9]+$`),
+	"google-api":     regexp.MustCompile(`^AIza[A-Za-z0-9_-]{35}$`),
+	"aws-access":     regexp.MustCompile(`^AKIA[A-Z0-9]{16}$`),
+	"gitlab-pat":     regexp.MustCompile(`^glpat-[A-Za-z0-9_-]{20}$`),
 }
 
 // ValidateAPIKey validates an API key for a specific provider type.

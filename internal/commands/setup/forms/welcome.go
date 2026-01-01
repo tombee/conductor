@@ -161,7 +161,7 @@ func ShowReturningUserMenu(state *setup.SetupState) (MenuChoice, error) {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewNote().
-				Title("⚡ Conductor Setup\n\n" + summary),
+				Title("⚡ Conductor Setup\n\n"+summary),
 			huh.NewSelect[string]().
 				Title("What would you like to do?").
 				Options(
