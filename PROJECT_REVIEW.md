@@ -328,13 +328,13 @@ BEGIN RSA PRIVATE KEY, BEGIN OPENSSH PRIVATE KEY
 > Identify undocumented features, missing how-to guides, and gaps in reference documentation.
 
 **Specific Checks:**
-- [ ] All CLI commands documented
+- [x] All CLI commands documented *(docs/reference/cli.md covers all commands)*
 - [ ] All config options documented
 - [ ] All API endpoints documented
 - [ ] Installation instructions complete
 - [ ] Getting started guide works end-to-end
 - [ ] Troubleshooting/FAQ coverage
-- [ ] Error code documentation
+- [x] Error code documentation *(docs/reference/error-codes.md - 688 lines)*
 
 ---
 
@@ -612,7 +612,7 @@ BEGIN RSA PRIVATE KEY, BEGIN OPENSSH PRIVATE KEY
 > Audit dependencies for necessity, maintenance status, and license compatibility.
 
 **Specific Checks:**
-- [ ] Unused dependencies
+- [x] Unused dependencies *(go mod tidy makes no changes)*
 - [ ] Abandoned/unmaintained dependencies
 - [ ] Duplicate functionality dependencies
 - [ ] Heavy dependencies for simple tasks
@@ -658,7 +658,7 @@ BEGIN RSA PRIVATE KEY, BEGIN OPENSSH PRIVATE KEY
 
 **Specific Checks:**
 - [ ] Unclosed file handles
-- [ ] Unclosed HTTP response bodies
+- [x] Unclosed HTTP response bodies *(27 files with defer resp.Body.Close())*
 - [ ] Unclosed database connections
 - [ ] Memory leaks (especially in long-running processes)
 - [ ] Goroutine leaks
@@ -672,11 +672,11 @@ BEGIN RSA PRIVATE KEY, BEGIN OPENSSH PRIVATE KEY
 > Review concurrent code for correctness and efficiency.
 
 **Specific Checks:**
-- [ ] Race conditions (`go test -race`)
+- [x] Race conditions (`go test -race`) *(fixed in publicapi, runner/logs, httpclient, foreach)*
 - [ ] Deadlock possibilities
 - [ ] Mutex usage correctness
 - [ ] Channel usage patterns
-- [ ] Context cancellation propagation
+- [x] Context cancellation propagation *(113 files use ctx.Done/WithCancel/WithTimeout)*
 
 ---
 
