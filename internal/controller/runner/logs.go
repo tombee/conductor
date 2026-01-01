@@ -19,16 +19,49 @@ import (
 	"time"
 )
 
+// subscriberChan wraps a channel with synchronization to prevent
+// race conditions between send and close operations.
+type subscriberChan struct {
+	ch     chan LogEntry
+	mu     sync.Mutex
+	closed bool
+}
+
+// send attempts to send entry without blocking. Returns false if closed or full.
+func (s *subscriberChan) send(entry LogEntry) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return false
+	}
+	select {
+	case s.ch <- entry:
+		return true
+	default:
+		return false // full
+	}
+}
+
+// close closes the underlying channel.
+func (s *subscriberChan) close() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.closed {
+		s.closed = true
+		close(s.ch)
+	}
+}
+
 // LogAggregator handles log collection and subscription routing.
 type LogAggregator struct {
 	mu          sync.RWMutex
-	subscribers map[string][]chan LogEntry
+	subscribers map[string][]*subscriberChan
 }
 
 // NewLogAggregator creates a new LogAggregator.
 func NewLogAggregator() *LogAggregator {
 	return &LogAggregator{
-		subscribers: make(map[string][]chan LogEntry),
+		subscribers: make(map[string][]*subscriberChan),
 	}
 }
 
@@ -69,26 +102,24 @@ func (l *LogAggregator) notifySubscribers(runID string, entry LogEntry) {
 	l.mu.RLock()
 	origSubs := l.subscribers[runID]
 	// Make a copy to avoid race with unsubscribe modifying the slice
-	subs := make([]chan LogEntry, len(origSubs))
+	subs := make([]*subscriberChan, len(origSubs))
 	copy(subs, origSubs)
 	l.mu.RUnlock()
 
-	for _, ch := range subs {
-		select {
-		case ch <- entry:
-		default:
-			// Channel full, skip
-		}
+	for _, sub := range subs {
+		sub.send(entry)
 	}
 }
 
 // Subscribe returns a channel that receives log entries for a run.
 // Returns the channel and an unsubscribe function.
 func (l *LogAggregator) Subscribe(runID string) (<-chan LogEntry, func()) {
-	ch := make(chan LogEntry, 100)
+	sub := &subscriberChan{
+		ch: make(chan LogEntry, 100),
+	}
 
 	l.mu.Lock()
-	l.subscribers[runID] = append(l.subscribers[runID], ch)
+	l.subscribers[runID] = append(l.subscribers[runID], sub)
 	l.mu.Unlock()
 
 	// Unsubscribe function removes the channel from the subscriber map.
@@ -96,11 +127,9 @@ func (l *LogAggregator) Subscribe(runID string) (<-chan LogEntry, func()) {
 	// to prevent unbounded map growth.
 	unsub := func() {
 		l.mu.Lock()
-		defer l.mu.Unlock()
-
 		subs := l.subscribers[runID]
-		for i, sub := range subs {
-			if sub == ch {
+		for i, s := range subs {
+			if s == sub {
 				l.subscribers[runID] = append(subs[:i], subs[i+1:]...)
 				break
 			}
@@ -110,12 +139,14 @@ func (l *LogAggregator) Subscribe(runID string) (<-chan LogEntry, func()) {
 		if len(l.subscribers[runID]) == 0 {
 			delete(l.subscribers, runID)
 		}
+		l.mu.Unlock()
 
-		// Close the channel to signal completion to readers
-		close(ch)
+		// Close the channel to signal completion to readers.
+		// Uses synchronized close to prevent race with concurrent sends.
+		sub.close()
 	}
 
-	return ch, unsub
+	return sub.ch, unsub
 }
 
 // SubscriberCount returns the number of subscribers for a run.

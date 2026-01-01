@@ -674,31 +674,6 @@ steps:
 
 // TestHandlerSyncInvalidTimeout tests invalid timeout parameter handling.
 func TestHandlerSyncInvalidTimeout(t *testing.T) {
-	registry := NewRegistry()
-	registry.Add(&Endpoint{
-		Name:     "test",
-		Workflow: "test.yaml",
-	})
-
-	tmpDir := t.TempDir()
-	workflowPath := filepath.Join(tmpDir, "test.yaml")
-	testWorkflow := `
-name: test
-steps:
-  - id: test-step
-    type: llm
-    prompt: "test"
-`
-	if err := os.WriteFile(workflowPath, []byte(testWorkflow), 0644); err != nil {
-		t.Fatalf("failed to write workflow: %v", err)
-	}
-
-	r := createTestRunner(t)
-	handler := NewHandler(registry, r, tmpDir)
-
-	mux := http.NewServeMux()
-	handler.RegisterRoutes(mux)
-
 	tests := []struct {
 		name    string
 		timeout string
@@ -728,6 +703,33 @@ steps:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Create fresh registry, runner, handler, and mux for each subtest
+			// to avoid race conditions from shared state
+			registry := NewRegistry()
+			registry.Add(&Endpoint{
+				Name:     "test",
+				Workflow: "test.yaml",
+			})
+
+			tmpDir := t.TempDir()
+			workflowPath := filepath.Join(tmpDir, "test.yaml")
+			testWorkflow := `
+name: test
+steps:
+  - id: test-step
+    type: llm
+    prompt: "test"
+`
+			if err := os.WriteFile(workflowPath, []byte(testWorkflow), 0644); err != nil {
+				t.Fatalf("failed to write workflow: %v", err)
+			}
+
+			r := createTestRunner(t)
+			handler := NewHandler(registry, r, tmpDir)
+
+			mux := http.NewServeMux()
+			handler.RegisterRoutes(mux)
+
 			req := httptest.NewRequest("POST", "/v1/endpoints/test/runs?wait=true&timeout="+tt.timeout, nil)
 			rec := httptest.NewRecorder()
 
