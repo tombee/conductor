@@ -47,12 +47,13 @@ func TestServerLifecycle(t *testing.T) {
 		errCh <- server.Start(ctx)
 	}()
 
-	// Wait for server to start
-	time.Sleep(100 * time.Millisecond)
-
-	// Verify server is running and has an address
-	if server.Addr() == "" {
-		t.Fatal("server address is empty")
+	// Wait for server to start (poll instead of fixed sleep)
+	deadline := time.Now().Add(2 * time.Second)
+	for server.Addr() == "" {
+		if time.Now().After(deadline) {
+			t.Fatal("timeout waiting for server to start")
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	// Stop server

@@ -253,20 +253,15 @@ func TestLogAggregator_Concurrent(t *testing.T) {
 	la := NewLogAggregator()
 	run := &Run{ID: "test-run"}
 
-	var wg sync.WaitGroup
-
-	// Concurrent subscriptions
+	// Subscribe first (no race with log additions)
+	var unsubs []func()
 	for i := 0; i < 5; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			_, unsub := la.Subscribe(run.ID)
-			time.Sleep(10 * time.Millisecond)
-			unsub()
-		}()
+		_, unsub := la.Subscribe(run.ID)
+		unsubs = append(unsubs, unsub)
 	}
 
 	// Concurrent log additions
+	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func(idx int) {
@@ -277,9 +272,17 @@ func TestLogAggregator_Concurrent(t *testing.T) {
 
 	wg.Wait()
 
-	// Verify logs were added
-	if len(run.Logs) < 10 {
-		t.Errorf("expected at least 10 logs, got %d", len(run.Logs))
+	// Unsubscribe after all logs are added (no race with notifications)
+	for _, unsub := range unsubs {
+		unsub()
+	}
+
+	// Verify logs were added (access run.Logs under lock)
+	run.mu.RLock()
+	logCount := len(run.Logs)
+	run.mu.RUnlock()
+	if logCount < 10 {
+		t.Errorf("expected at least 10 logs, got %d", logCount)
 	}
 }
 

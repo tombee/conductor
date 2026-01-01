@@ -23,6 +23,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/tombee/conductor/internal/config"
@@ -34,7 +35,9 @@ type Server struct {
 	cfg    config.PublicAPIConfig
 	logger *slog.Logger
 	server *http.Server
-	ln     net.Listener
+
+	mu sync.RWMutex
+	ln net.Listener
 }
 
 // New creates a new public API server.
@@ -62,7 +65,9 @@ func (s *Server) Start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to listen on %s: %w", s.cfg.TCP, err)
 	}
+	s.mu.Lock()
 	s.ln = ln
+	s.mu.Unlock()
 
 	s.logger.Info("public API server starting",
 		slog.String("listen_addr", ln.Addr().String()))
@@ -109,6 +114,8 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 // Addr returns the listener address, or empty string if not started.
 func (s *Server) Addr() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	if s.ln == nil {
 		return ""
 	}
