@@ -398,6 +398,47 @@ func addAPIProviderFlowDirect(ctx context.Context, state *setup.SetupState, prov
 
 		// Store reference in config with backend prefix
 		providerCfg.APIKey = fmt.Sprintf("$%s:%s_API_KEY", selectedBackend, strings.ToUpper(instanceName))
+
+		// Step 4: Connection testing with retry loop
+		testPassed := false
+		for !testPassed {
+			// Create a temporary config for testing that includes the actual API key
+			testCfg := providerCfg
+			testCfg.APIKey = apiKey
+
+			// Run connection test
+			result, err := ShowConnectionTest(ctx, providerType, testCfg)
+			if err != nil {
+				return err
+			}
+
+			// Handle test result
+			switch result.Action {
+			case TestActionContinue:
+				// Success - proceed
+				testPassed = true
+			case TestActionRetry:
+				// Retry the test
+				continue
+			case TestActionSkip:
+				// User chose to skip testing - proceed anyway
+				testPassed = true
+			case TestActionEdit:
+				// User wants to edit credentials - re-prompt for API key
+				apiKey, err = ShowAPIKeyForm(providerType, instanceName)
+				if err != nil {
+					return err
+				}
+				// Update credential store with new key
+				state.CredentialStore[credKey] = apiKey
+				// Loop will retry the test with new credentials
+			case TestActionCancel:
+				// User cancelled - exit without adding provider
+				return fmt.Errorf("provider configuration cancelled")
+			default:
+				return fmt.Errorf("unknown test action: %s", result.Action)
+			}
+		}
 	}
 
 	// Add to state
