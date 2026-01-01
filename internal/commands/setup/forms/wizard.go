@@ -33,6 +33,16 @@ type wizardRunner struct{}
 
 // Run executes the main wizard flow.
 func (wizardRunner) Run(ctx context.Context, state *setup.SetupState, accessibleMode bool) error {
+	// Panic recovery to ensure terminal state is restored
+	defer func() {
+		if r := recover(); r != nil {
+			// Log panic for debugging
+			fmt.Fprintf(os.Stderr, "\nPanic in setup wizard: %v\n", r)
+			// Terminal state should be automatically restored by bubbletea alt-screen
+			panic(r) // Re-panic after logging
+		}
+	}()
+
 	// Determine if this is first-run (no existing config)
 	isFirstRun := state.Original == nil || len(state.Original.Providers) == 0
 
@@ -83,6 +93,13 @@ func (wizardRunner) Run(ctx context.Context, state *setup.SetupState, accessible
 		case MenuSettings:
 			// Navigate to settings
 			if err := handleSettingsMenu(ctx, state); err != nil {
+				return err
+			}
+
+		case MenuRunWizard:
+			// Run the setup wizard flow
+			flow := NewWizardFlow(ctx, state)
+			if err := flow.Run(); err != nil {
 				return err
 			}
 

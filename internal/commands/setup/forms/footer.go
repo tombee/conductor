@@ -17,6 +17,7 @@ package forms
 import (
 	"strings"
 
+	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/tombee/conductor/internal/commands/setup"
 )
@@ -94,4 +95,20 @@ func RenderWithCustomShortcuts(shortcuts []string) string {
 		Foreground(setup.ColorMuted)
 
 	return style.Render(text)
+}
+
+// NewFooterNote creates a huh.Note field for use as a footer in forms.
+// The footer is automatically hidden in accessible mode.
+// Usage: Add to the end of your huh.NewGroup() elements.
+func NewFooterNote(context FooterContext) *huh.Note {
+	footer := &Footer{Context: context}
+	text := footer.Render()
+
+	// If empty (e.g., accessible mode), return an empty note
+	if text == "" {
+		return huh.NewNote()
+	}
+
+	return huh.NewNote().
+		Title(text)
 }

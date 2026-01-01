@@ -51,6 +51,7 @@ func ShowSettingsMenu(state *setup.SetupState) (SettingsMenuChoice, error) {
 					huh.NewOption("Back", string(SettingsBack)),
 				).
 				Value(&choice),
+			NewFooterNote(FooterContextSelection),
 		),
 	)
 
@@ -113,6 +114,7 @@ func ChangeDefaultBackend(state *setup.SetupState) error {
 				Description("This backend will be used for new credentials").
 				Options(options...).
 				Value(&selected),
+			NewFooterNote(FooterContextSelection),
 		),
 	)
 

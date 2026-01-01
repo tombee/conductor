@@ -118,6 +118,7 @@ Press Enter to continue...`
 				Value(&skipAutoDetect).
 				Affirmative("Skip").
 				Negative("Continue with auto-detect"),
+			NewFooterNote(FooterContextConfirm),
 		),
 	)
 
@@ -168,12 +169,14 @@ func ShowReturningUserMenu(state *setup.SetupState) (MenuChoice, error) {
 					huh.NewOption("Providers - Configure LLM access", string(MenuProviders)),
 					huh.NewOption("Integrations - GitHub, Slack, etc.", string(MenuIntegrations)),
 					huh.NewOption("Settings - Secrets backend, etc.", string(MenuSettings)),
+					huh.NewOption("Run Setup Wizard", string(MenuRunWizard)),
 					huh.NewOption("Save & Exit"+dirtyIndicator, string(MenuSaveExit)),
 					huh.NewOption("Exit (discard changes)", string(MenuDiscardExit)),
 				).
 				Value(&choice),
+			NewFooterNote(FooterContextSelection),
 		),
-	)
+	).WithProgramOptions(setup.WithAltScreen())
 
 	if err := form.Run(); err != nil {
 		return "", err
@@ -189,6 +192,7 @@ const (
 	MenuProviders    MenuChoice = "providers"
 	MenuIntegrations MenuChoice = "integrations"
 	MenuSettings     MenuChoice = "settings"
+	MenuRunWizard    MenuChoice = "run_wizard"
 	MenuSaveExit     MenuChoice = "save"
 	MenuDiscardExit  MenuChoice = "discard"
 )

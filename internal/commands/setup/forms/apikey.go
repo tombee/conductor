@@ -73,6 +73,7 @@ func ShowAPIKeyForm(providerType setup.ProviderType, providerName string) (strin
 
 					return nil
 				}),
+			NewFooterNote(FooterContextInput),
 		),
 	)
 
@@ -130,6 +131,7 @@ func ShowStorageBackendSelection(availableBackends []string, currentDefault stri
 				Description("This will be the default for all future API keys").
 				Options(options...).
 				Value(&selectedBackend),
+			NewFooterNote(FooterContextSelection),
 		),
 	)
 

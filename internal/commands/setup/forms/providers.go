@@ -59,6 +59,7 @@ func ShowProvidersMenu(state *setup.SetupState) (ProvidersMenuChoice, error) {
 					huh.NewOption("Done with providers", string(ProviderDone)),
 				).
 				Value(&choice),
+			NewFooterNote(FooterContextSelection),
 		),
 	)
 
@@ -179,6 +180,7 @@ func ShowFlattenedProviderSelection(ctx context.Context, state *setup.SetupState
 				Options(options...).
 				Value(&selected).
 				Filtering(true), // Enable filtering for easier navigation
+			NewFooterNote(FooterContextSelection),
 		),
 	)
 
@@ -315,6 +317,7 @@ func addAPIProviderFlowDirect(ctx context.Context, state *setup.SetupState, prov
 					}
 					return nil
 				}),
+			NewFooterNote(FooterContextInput),
 		),
 	)
 
@@ -347,6 +350,7 @@ func addAPIProviderFlowDirect(ctx context.Context, state *setup.SetupState, prov
 						// TODO: Add URL validation
 						return nil
 					}),
+				NewFooterNote(FooterContextInput),
 			),
 		)
 
@@ -475,6 +479,7 @@ func SelectProviderForEdit(state *setup.SetupState) (string, error) {
 				Title("Select provider to edit:").
 				Options(options...).
 				Value(&selected),
+			NewFooterNote(FooterContextSelection),
 		),
 	)
 
@@ -508,6 +513,7 @@ func SelectProviderForRemoval(state *setup.SetupState) (string, error) {
 				Title("Select provider to remove:").
 				Options(options...).
 				Value(&selected),
+			NewFooterNote(FooterContextSelection),
 		),
 	)
 
@@ -531,6 +537,7 @@ func ConfirmRemoveProvider(name string, isDefault bool) (bool, error) {
 			huh.NewConfirm().
 				Title(message).
 				Value(&confirm),
+			NewFooterNote(FooterContextConfirm),
 		),
 	)
 
@@ -604,6 +611,7 @@ func SelectDefaultProvider(state *setup.SetupState) error {
 				Description("The default provider is used when workflows don't specify one").
 				Options(options...).
 				Value(&selected),
+			NewFooterNote(FooterContextSelection),
 		),
 	)
 
@@ -674,6 +682,7 @@ func EditProviderFlow(ctx context.Context, state *setup.SetupState, providerName
 					Title("What would you like to do?").
 					Options(options...).
 					Value(&choice),
+				NewFooterNote(FooterContextSelection),
 			),
 		)
 
@@ -723,6 +732,7 @@ func updateProviderAPIKey(ctx context.Context, state *setup.SetupState, provider
 					}
 					return nil
 				}),
+			NewFooterNote(FooterContextInput),
 		),
 	)
 
@@ -760,6 +770,7 @@ func updateProviderBaseURL(state *setup.SetupState, providerName string) error {
 					}
 					return nil
 				}),
+			NewFooterNote(FooterContextInput),
 		),
 	)
 
@@ -799,6 +810,7 @@ func testSingleProvider(ctx context.Context, state *setup.SetupState, providerNa
 				Title("Press Enter to continue").
 				Affirmative("Continue").
 				Negative(""),
+			NewFooterNote(FooterContextConfirm),
 		),
 	)
 
@@ -816,6 +828,7 @@ func TestAllProviders(ctx context.Context, state *setup.SetupState) error {
 					Title("Press Enter to go back").
 					Affirmative("Back").
 					Negative(""),
+				NewFooterNote(FooterContextConfirm),
 			),
 		)
 		return form.Run()
@@ -839,6 +852,7 @@ func TestAllProviders(ctx context.Context, state *setup.SetupState) error {
 				Title("Press Enter to continue").
 				Affirmative("Continue").
 				Negative(""),
+			NewFooterNote(FooterContextConfirm),
 		),
 	)
 

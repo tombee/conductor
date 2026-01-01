@@ -45,6 +45,7 @@ func ConfirmDiscardChanges() (bool, error) {
 				Affirmative("Discard changes").
 				Negative("Go back").
 				Value(&discard),
+			NewFooterNote(FooterContextConfirm),
 		),
 	)
 
