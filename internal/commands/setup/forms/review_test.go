@@ -189,3 +189,187 @@ func TestMaskCredentialDoesNotAlterSecretReferences(t *testing.T) {
 		}
 	}
 }
+
+func TestGetStorageIcon(t *testing.T) {
+	tests := []struct {
+		name           string
+		apiKeyRef      string
+		defaultBackend string
+		wantIcon       string
+	}{
+		{
+			name:           "keychain reference",
+			apiKeyRef:      "$keychain:ANTHROPIC_API_KEY",
+			defaultBackend: "",
+			wantIcon:       "🔐",
+		},
+		{
+			name:           "env reference",
+			apiKeyRef:      "$env:OPENAI_API_KEY",
+			defaultBackend: "",
+			wantIcon:       "📄",
+		},
+		{
+			name:           "file reference",
+			apiKeyRef:      "$file:/path/to/key",
+			defaultBackend: "",
+			wantIcon:       "📄",
+		},
+		{
+			name:           "no secret",
+			apiKeyRef:      "",
+			defaultBackend: "keychain",
+			wantIcon:       "○",
+		},
+		{
+			name:           "default keychain",
+			apiKeyRef:      "some-key",
+			defaultBackend: "keychain",
+			wantIcon:       "🔐",
+		},
+		{
+			name:           "default env",
+			apiKeyRef:      "some-key",
+			defaultBackend: "env",
+			wantIcon:       "📄",
+		},
+		{
+			name:           "default unknown",
+			apiKeyRef:      "some-key",
+			defaultBackend: "unknown",
+			wantIcon:       "🔑",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getStorageIcon(tt.apiKeyRef, tt.defaultBackend)
+			if result != tt.wantIcon {
+				t.Errorf("getStorageIcon(%q, %q) = %q, want %q",
+					tt.apiKeyRef, tt.defaultBackend, result, tt.wantIcon)
+			}
+		})
+	}
+}
+
+func TestParseReviewChoice(t *testing.T) {
+	tests := []struct {
+		name         string
+		choice       string
+		wantAction   ReviewAction
+		wantProvider string
+	}{
+		{
+			name:         "edit provider",
+			choice:       "edit:anthropic",
+			wantAction:   ReviewActionEditProvider,
+			wantProvider: "anthropic",
+		},
+		{
+			name:         "remove provider",
+			choice:       "remove:openai",
+			wantAction:   ReviewActionRemoveProvider,
+			wantProvider: "openai",
+		},
+		{
+			name:         "save action",
+			choice:       "save",
+			wantAction:   ReviewActionSave,
+			wantProvider: "",
+		},
+		{
+			name:         "add provider action",
+			choice:       "add_provider",
+			wantAction:   ReviewActionAddProvider,
+			wantProvider: "",
+		},
+		{
+			name:         "cancel action",
+			choice:       "cancel",
+			wantAction:   ReviewActionCancel,
+			wantProvider: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := parseReviewChoice(tt.choice)
+			if result.Action != tt.wantAction {
+				t.Errorf("parseReviewChoice(%q).Action = %q, want %q",
+					tt.choice, result.Action, tt.wantAction)
+			}
+			if result.ProviderName != tt.wantProvider {
+				t.Errorf("parseReviewChoice(%q).ProviderName = %q, want %q",
+					tt.choice, result.ProviderName, tt.wantProvider)
+			}
+		})
+	}
+}
+
+func TestBuildReviewOptions(t *testing.T) {
+	state := &setup.SetupState{
+		SecretsBackend: "keychain",
+		Working: &config.Config{
+			DefaultProvider: "anthropic",
+			Providers: config.ProvidersMap{
+				"anthropic": config.ProviderConfig{
+					Type:   "anthropic",
+					APIKey: "$keychain:ANTHROPIC_API_KEY",
+				},
+				"openai": config.ProviderConfig{
+					Type:   "openai-compatible",
+					APIKey: "$env:OPENAI_API_KEY",
+				},
+			},
+		},
+	}
+
+	options := buildReviewOptions(state)
+
+	// Should have at least: 2 providers + separator + 3 actions
+	if len(options) < 6 {
+		t.Errorf("buildReviewOptions() returned %d options, want at least 6", len(options))
+	}
+
+	// Check that we have the expected actions
+	foundSave := false
+	foundAdd := false
+	foundCancel := false
+
+	for _, opt := range options {
+		if opt.Value == string(ReviewActionSave) {
+			foundSave = true
+		}
+		if opt.Value == string(ReviewActionAddProvider) {
+			foundAdd = true
+		}
+		if opt.Value == string(ReviewActionCancel) {
+			foundCancel = true
+		}
+	}
+
+	if !foundSave {
+		t.Error("buildReviewOptions() missing Save action")
+	}
+	if !foundAdd {
+		t.Error("buildReviewOptions() missing Add Provider action")
+	}
+	if !foundCancel {
+		t.Error("buildReviewOptions() missing Cancel action")
+	}
+}
+
+func TestBuildReviewOptionsEmptyProviders(t *testing.T) {
+	state := &setup.SetupState{
+		Working: &config.Config{
+			Providers: config.ProvidersMap{},
+		},
+	}
+
+	options := buildReviewOptions(state)
+
+	// Should have: Add Provider + Save + Cancel (no separator since no providers)
+	if len(options) < 3 {
+		t.Errorf("buildReviewOptions() returned %d options, want at least 3", len(options))
+	}
+}

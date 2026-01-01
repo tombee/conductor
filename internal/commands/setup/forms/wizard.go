@@ -17,6 +17,7 @@ package forms
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/tombee/conductor/internal/commands/setup"
 	"github.com/tombee/conductor/internal/config"
@@ -32,8 +33,33 @@ type wizardRunner struct{}
 
 // Run executes the main wizard flow.
 func (wizardRunner) Run(ctx context.Context, state *setup.SetupState, accessibleMode bool) error {
+	// Panic recovery to ensure terminal state is restored
+	defer func() {
+		if r := recover(); r != nil {
+			// Log panic for debugging
+			fmt.Fprintf(os.Stderr, "\nPanic in setup wizard: %v\n", r)
+			// Terminal state should be automatically restored by bubbletea alt-screen
+			panic(r) // Re-panic after logging
+		}
+	}()
+
+	// If accessible mode is enabled, use the text-based wizard
+	if accessibleMode {
+		wizard := NewAccessibleWizard(ctx, state)
+		return wizard.Run()
+	}
+
 	// Determine if this is first-run (no existing config)
 	isFirstRun := state.Original == nil || len(state.Original.Providers) == 0
+
+	// Check if new wizard flow is enabled via feature flag
+	useWizardFlow := os.Getenv("CONDUCTOR_SETUP_V2") == "1"
+
+	// For first-run users with the feature flag enabled, use the new wizard flow
+	if isFirstRun && useWizardFlow {
+		flow := NewWizardFlow(ctx, state)
+		return flow.Run()
+	}
 
 	// Show welcome screen for first-run, or go directly to main menu for returning users
 	if isFirstRun && !accessibleMode {
@@ -73,6 +99,13 @@ func (wizardRunner) Run(ctx context.Context, state *setup.SetupState, accessible
 		case MenuSettings:
 			// Navigate to settings
 			if err := handleSettingsMenu(ctx, state); err != nil {
+				return err
+			}
+
+		case MenuRunWizard:
+			// Run the setup wizard flow
+			flow := NewWizardFlow(ctx, state)
+			if err := flow.Run(); err != nil {
 				return err
 			}
 
@@ -225,23 +258,14 @@ func handleSettingsMenu(ctx context.Context, state *setup.SetupState) error {
 		}
 
 		switch choice {
-		case SettingsChangeBackend:
-			if err := ChangeDefaultBackend(state); err != nil {
+		case SettingsChangeDefaultProvider:
+			if err := SelectDefaultProvider(state); err != nil {
 				return err
 			}
 			state.MarkDirty()
 
-		case SettingsAddBackend:
-			// TODO: Implement add backend flow
-			fmt.Println("Add backend not yet implemented")
-
-		case SettingsViewCredentials:
-			if err := ViewStoredCredentials(state); err != nil {
-				return err
-			}
-
-		case SettingsMigratePlaintext:
-			if err := MigratePlaintextCredentials(state); err != nil {
+		case SettingsChangeBackend:
+			if err := ChangeDefaultBackend(state); err != nil {
 				return err
 			}
 			state.MarkDirty()
@@ -255,44 +279,60 @@ func handleSettingsMenu(ctx context.Context, state *setup.SetupState) error {
 
 // handleSaveAndExit shows the review screen and saves the configuration.
 func handleSaveAndExit(ctx context.Context, state *setup.SetupState) error {
-	// Show review screen
-	action, err := ShowReviewScreen(state)
-	if err != nil {
-		return err
-	}
-
-	switch action {
-	case ReviewActionSave:
-		// Save the configuration
-		if err := config.WriteConfig(state.Working, state.ConfigPath); err != nil {
-			return fmt.Errorf("failed to save configuration: %w", err)
-		}
-
-		// Mark as clean
-		state.Dirty = false
-
-		// Show completion message
-		if err := ShowCompletionMessage(state); err != nil {
+	// Show review screen in a loop to allow inline editing
+	for {
+		result, err := ShowReviewScreen(state)
+		if err != nil {
 			return err
 		}
 
-		// Clean exit
-		setup.HandleCleanExit(state)
-		return nil
+		switch result.Action {
+		case ReviewActionSave:
+			// Save the configuration
+			if err := config.WriteConfig(state.Working, state.ConfigPath); err != nil {
+				return fmt.Errorf("failed to save configuration: %w", err)
+			}
 
-	case ReviewActionEditProviders:
-		return handleProvidersMenu(ctx, state)
+			// Mark as clean
+			state.Dirty = false
 
-	case ReviewActionEditIntegrations:
-		return handleIntegrationsMenu(ctx, state)
+			// Show completion message
+			if err := ShowCompletionMessage(state); err != nil {
+				return err
+			}
 
-	case ReviewActionEditSettings:
-		return handleSettingsMenu(ctx, state)
+			// Clean exit
+			setup.HandleCleanExit(state)
+			return nil
 
-	case ReviewActionCancel:
-		// Return to main menu
-		return nil
+		case ReviewActionAddProvider:
+			// Add a new provider
+			if err := AddProviderFlow(ctx, state); err != nil {
+				return err
+			}
+			state.MarkDirty()
+			// Return to review screen
+			continue
+
+		case ReviewActionEditProvider:
+			// Edit the selected provider (T22 - inline edit)
+			if err := EditProviderFlow(ctx, state, result.ProviderName); err != nil {
+				return err
+			}
+			// Return to review screen
+			continue
+
+		case ReviewActionRemoveProvider:
+			// Remove the selected provider
+			if err := RemoveProvider(state, result.ProviderName); err != nil {
+				return err
+			}
+			// Return to review screen
+			continue
+
+		case ReviewActionCancel:
+			// Return to main menu
+			return nil
+		}
 	}
-
-	return nil
 }

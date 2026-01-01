@@ -23,60 +23,146 @@ import (
 )
 
 // ReviewAction represents the user's choice on the review screen.
-type ReviewAction int
+type ReviewAction string
 
 const (
-	ReviewActionSave ReviewAction = iota
-	ReviewActionEditProviders
-	ReviewActionEditIntegrations
-	ReviewActionEditSettings
-	ReviewActionCancel
+	// ReviewActionSave indicates save and exit
+	ReviewActionSave ReviewAction = "save"
+	// ReviewActionAddProvider indicates add a new provider
+	ReviewActionAddProvider ReviewAction = "add_provider"
+	// ReviewActionEditProvider indicates edit a specific provider
+	ReviewActionEditProvider ReviewAction = "edit_provider"
+	// ReviewActionRemoveProvider indicates remove a provider
+	ReviewActionRemoveProvider ReviewAction = "remove_provider"
+	// ReviewActionCancel indicates cancel without saving
+	ReviewActionCancel ReviewAction = "cancel"
 )
 
-// ShowReviewScreen displays a summary of all configuration changes before save.
-// Returns the user's choice: save, edit providers, edit integrations, edit settings, or cancel.
-func ShowReviewScreen(state *setup.SetupState) (ReviewAction, error) {
-	// Build review summary
-	summary := buildReviewSummary(state)
+// ReviewResult contains the action and any associated data.
+type ReviewResult struct {
+	Action       ReviewAction
+	ProviderName string // Used when Action is ReviewActionEditProvider or ReviewActionRemoveProvider
+}
+
+// ShowReviewScreen displays an editable list of configured providers with storage icons.
+// Returns the user's chosen action and optionally a provider name to edit/remove.
+func ShowReviewScreen(state *setup.SetupState) (*ReviewResult, error) {
+	// Build options list
+	options := buildReviewOptions(state)
+
+	// Show warning if no providers configured
+	var description string
+	if len(state.Working.Providers) == 0 {
+		description = setup.FormatWarning("⚠ No providers configured yet. Add at least one provider.")
+	} else {
+		description = fmt.Sprintf("Configured providers (%d)", len(state.Working.Providers))
+	}
 
 	var choice string
-	options := []huh.Option[string]{
-		huh.NewOption("Save configuration", "save"),
-		huh.NewOption("Edit providers", "providers"),
-		huh.NewOption("Edit integrations", "integrations"),
-		huh.NewOption("Edit settings", "settings"),
-		huh.NewOption("Cancel (don't save)", "cancel"),
-	}
 
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewNote().
 				Title("Review Configuration").
-				Description(summary),
+				Description(description),
 			huh.NewSelect[string]().
-				Title("What would you like to do?").
+				Title("Select an action:").
 				Options(options...).
 				Value(&choice),
 		),
 	)
 
 	if err := form.Run(); err != nil {
-		return ReviewActionCancel, err
+		return nil, err
 	}
 
-	switch choice {
-	case "save":
-		return ReviewActionSave, nil
-	case "providers":
-		return ReviewActionEditProviders, nil
-	case "integrations":
-		return ReviewActionEditIntegrations, nil
-	case "settings":
-		return ReviewActionEditSettings, nil
-	case "cancel":
-		return ReviewActionCancel, nil
+	// Parse the choice
+	return parseReviewChoice(choice), nil
+}
+
+// buildReviewOptions builds the options list for the review screen.
+// Format for provider items: "edit:<provider-name>" or "remove:<provider-name>"
+// Format for actions: "save", "add_provider", "cancel"
+func buildReviewOptions(state *setup.SetupState) []huh.Option[string] {
+	options := []huh.Option[string]{}
+
+	// Add provider items with storage icons
+	for name, provider := range state.Working.Providers {
+		// Determine storage icon
+		storageIcon := getStorageIcon(provider.APIKey, state.SecretsBackend)
+
+		// Build label
+		label := fmt.Sprintf("%s %s (%s)", storageIcon, name, provider.Type)
+		if name == state.Working.DefaultProvider {
+			label += " " + setup.FormatSuccess("[default]")
+		}
+
+		// Add edit option for this provider
+		options = append(options, huh.NewOption("Edit: "+label, "edit:"+name))
+	}
+
+	// Add separator if there are providers
+	if len(state.Working.Providers) > 0 {
+		options = append(options, huh.NewOption("---", "separator"))
+	}
+
+	// Add action options
+	options = append(options, huh.NewOption("Add another provider", string(ReviewActionAddProvider)))
+	options = append(options, huh.NewOption("Save & Exit", string(ReviewActionSave)))
+	options = append(options, huh.NewOption("Cancel (don't save)", string(ReviewActionCancel)))
+
+	return options
+}
+
+// getStorageIcon returns an icon representing where the secret is stored.
+func getStorageIcon(apiKeyRef, defaultBackend string) string {
+	if apiKeyRef == "" {
+		return "○" // No secret
+	}
+
+	// Check if it's a secret reference
+	if strings.HasPrefix(apiKeyRef, "$keychain:") {
+		return "🔐" // Keychain
+	}
+	if strings.HasPrefix(apiKeyRef, "$env:") {
+		return "📄" // Environment file
+	}
+	if strings.HasPrefix(apiKeyRef, "$file:") {
+		return "📄" // File
+	}
+
+	// Default backend
+	switch defaultBackend {
+	case "keychain":
+		return "🔐"
+	case "env":
+		return "📄"
 	default:
-		return ReviewActionCancel, nil
+		return "🔑"
+	}
+}
+
+// parseReviewChoice parses the user's choice and returns a ReviewResult.
+func parseReviewChoice(choice string) *ReviewResult {
+	// Check for edit/remove actions
+	if strings.HasPrefix(choice, "edit:") {
+		providerName := strings.TrimPrefix(choice, "edit:")
+		return &ReviewResult{
+			Action:       ReviewActionEditProvider,
+			ProviderName: providerName,
+		}
+	}
+	if strings.HasPrefix(choice, "remove:") {
+		providerName := strings.TrimPrefix(choice, "remove:")
+		return &ReviewResult{
+			Action:       ReviewActionRemoveProvider,
+			ProviderName: providerName,
+		}
+	}
+
+	// Direct action
+	return &ReviewResult{
+		Action: ReviewAction(choice),
 	}
 }
 

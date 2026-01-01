@@ -17,11 +17,15 @@ package forms
 import (
 	"context"
 	"fmt"
+	"os"
+	"regexp"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/huh"
 	"github.com/tombee/conductor/internal/commands/setup"
 	"github.com/tombee/conductor/internal/commands/setup/actions"
+	"github.com/tombee/conductor/internal/commands/setup/validation"
 )
 
 // ProvidersMenuChoice represents a selection in the providers menu
@@ -58,6 +62,7 @@ func ShowProvidersMenu(state *setup.SetupState) (ProvidersMenuChoice, error) {
 					huh.NewOption("Done with providers", string(ProviderDone)),
 				).
 				Value(&choice),
+			NewFooterNote(FooterContextSelection),
 		),
 	)
 
@@ -90,98 +95,201 @@ func buildProviderListSummary(state *setup.SetupState) string {
 	return strings.Join(lines, "\n")
 }
 
-// AddProviderFlow guides the user through adding a new provider.
-func AddProviderFlow(ctx context.Context, state *setup.SetupState) error {
-	// Step 1: Choose provider category (CLI or API)
-	var category string
-	categoryForm := huh.NewForm(
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title("What type of provider?").
-				Options(
-					huh.NewOption("CLI Providers - Local tools (Claude Code, Ollama)", "cli"),
-					huh.NewOption("API Providers - Cloud APIs requiring credentials", "api"),
-				).
-				Value(&category),
-		),
-	)
-
-	if err := categoryForm.Run(); err != nil {
-		return err
-	}
-
-	if category == "cli" {
-		return addCLIProviderFlow(ctx, state)
-	}
-	return addAPIProviderFlow(ctx, state)
+// ProviderDetectionResult holds the detection status for a provider.
+type ProviderDetectionResult struct {
+	ProviderType setup.ProviderType
+	Detected     bool
+	Path         string
+	Error        error
 }
 
-// addCLIProviderFlow handles adding CLI-based providers
-func addCLIProviderFlow(ctx context.Context, state *setup.SetupState) error {
-	// Get CLI provider types
-	cliProviders := []setup.ProviderType{}
-	for _, pt := range setup.GetProviderTypes() {
+// ShowFlattenedProviderSelection displays a single screen with all available providers,
+// grouped by category (Local vs Cloud APIs) with detection status indicators.
+// Performs parallel CLI auto-detection with a 2-second timeout.
+func ShowFlattenedProviderSelection(ctx context.Context, state *setup.SetupState) (string, error) {
+	// Get all provider types
+	allProviders := setup.GetProviderTypes()
+
+	// Separate CLI and API providers
+	var cliProviders, apiProviders []setup.ProviderType
+	for _, pt := range allProviders {
 		if pt.IsCLI() {
 			cliProviders = append(cliProviders, pt)
-		}
-	}
-
-	// Detect which are available
-	type cliStatus struct {
-		provider setup.ProviderType
-		detected bool
-		path     string
-	}
-	statuses := make([]cliStatus, 0, len(cliProviders))
-
-	for _, pt := range cliProviders {
-		detected, path, _ := pt.DetectCLI(ctx)
-		statuses = append(statuses, cliStatus{
-			provider: pt,
-			detected: detected,
-			path:     path,
-		})
-	}
-
-	// Build selection options
-	options := make([]huh.Option[string], 0, len(statuses)+1)
-	for _, status := range statuses {
-		label := status.provider.DisplayName()
-		if status.detected {
-			label += " ✓ Installed"
 		} else {
-			label += " ✗ Not found"
+			apiProviders = append(apiProviders, pt)
 		}
-		options = append(options, huh.NewOption(label, status.provider.Name()))
 	}
+
+	// Perform parallel CLI detection with 2-second timeout
+	cliDetectionResults := detectCLIProvidersParallel(ctx, cliProviders)
+
+	// Build grouped options
+	options := make([]huh.Option[string], 0, len(allProviders)+3) // +3 for group headers and back option
+
+	// Add Local Providers group header (as a disabled option for visual grouping)
+	if len(cliProviders) > 0 {
+		// Add CLI providers with detection status
+		for _, result := range cliDetectionResults {
+			label := result.ProviderType.DisplayName()
+			if result.Detected {
+				label = AddVerifiedIndicatorToCLIProvider(label)
+				label += " - " + result.Path
+			} else {
+				label += " [Not found]"
+			}
+			options = append(options, huh.NewOption(label, result.ProviderType.Name()))
+		}
+	}
+
+	// Add separator
+	if len(cliProviders) > 0 && len(apiProviders) > 0 {
+		options = append(options, huh.NewOption("---", "separator-1"))
+	}
+
+	// Add Cloud API Providers
+	if len(apiProviders) > 0 {
+		for _, pt := range apiProviders {
+			label := pt.DisplayName() + " - " + pt.Description()
+			options = append(options, huh.NewOption(label, pt.Name()))
+		}
+	}
+
+	// Add back option
+	options = append(options, huh.NewOption("---", "separator-2"))
 	options = append(options, huh.NewOption("Back", "back"))
 
+	// Pre-select first detected provider, or first in list
+	var preSelected string
+	for _, result := range cliDetectionResults {
+		if result.Detected {
+			preSelected = result.ProviderType.Name()
+			break
+		}
+	}
+	if preSelected == "" && len(allProviders) > 0 {
+		preSelected = allProviders[0].Name()
+	}
+
 	var selected string
+	if preSelected != "" {
+		selected = preSelected
+	}
+
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
-				Title("Select CLI provider to add:").
+				Title("Select a provider to add:").
+				Description("Local providers use CLI tools, Cloud APIs require credentials").
 				Options(options...).
-				Value(&selected),
+				Value(&selected).
+				Filtering(true), // Enable filtering for easier navigation
+			NewFooterNote(FooterContextSelection),
 		),
 	)
 
 	if err := form.Run(); err != nil {
+		return "", err
+	}
+
+	// Handle separator and back selections
+	if selected == "back" || strings.HasPrefix(selected, "separator-") {
+		return "", nil
+	}
+
+	return selected, nil
+}
+
+// detectCLIProvidersParallel performs parallel detection of CLI providers with a configurable timeout.
+// The timeout can be configured via CONDUCTOR_SETUP_CLI_TIMEOUT environment variable (e.g., "5s", "3000ms").
+// Defaults to 2 seconds if not set.
+func detectCLIProvidersParallel(ctx context.Context, providers []setup.ProviderType) []ProviderDetectionResult {
+	// Get timeout from environment variable, default to 2 seconds
+	timeout := 2 * time.Second
+	if envTimeout := os.Getenv("CONDUCTOR_SETUP_CLI_TIMEOUT"); envTimeout != "" {
+		if parsed, err := time.ParseDuration(envTimeout); err == nil {
+			timeout = parsed
+		}
+	}
+
+	// Create a timeout context for detection
+	detectionCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	// Channel to collect results
+	resultsChan := make(chan ProviderDetectionResult, len(providers))
+
+	// Launch detection goroutines
+	for _, pt := range providers {
+		go func(providerType setup.ProviderType) {
+			detected, path, err := providerType.DetectCLI(detectionCtx)
+			resultsChan <- ProviderDetectionResult{
+				ProviderType: providerType,
+				Detected:     detected,
+				Path:         path,
+				Error:        err,
+			}
+		}(pt)
+	}
+
+	// Collect results
+	results := make([]ProviderDetectionResult, 0, len(providers))
+	for i := 0; i < len(providers); i++ {
+		select {
+		case result := <-resultsChan:
+			results = append(results, result)
+		case <-detectionCtx.Done():
+			// Timeout - add remaining providers as not detected
+			for j := i; j < len(providers); j++ {
+				results = append(results, ProviderDetectionResult{
+					ProviderType: providers[j],
+					Detected:     false,
+					Path:         "",
+					Error:        detectionCtx.Err(),
+				})
+			}
+			return results
+		}
+	}
+
+	return results
+}
+
+// AddProviderFlow guides the user through adding a new provider.
+func AddProviderFlow(ctx context.Context, state *setup.SetupState) error {
+	// Use flattened provider selection
+	selectedType, err := ShowFlattenedProviderSelection(ctx, state)
+	if err != nil {
 		return err
 	}
 
-	if selected == "back" {
+	// User selected back
+	if selectedType == "" {
 		return nil
 	}
 
-	// Add the selected provider
-	providerType, ok := setup.GetProviderType(selected)
+	// Get the provider type
+	providerType, ok := setup.GetProviderType(selectedType)
 	if !ok {
-		return fmt.Errorf("unknown provider type: %s", selected)
+		return fmt.Errorf("unknown provider type: %s", selectedType)
 	}
 
+	// Route to appropriate flow based on provider type
+	if providerType.IsCLI() {
+		return addCLIProviderFlowDirect(ctx, state, providerType)
+	}
+	return addAPIProviderFlowDirect(ctx, state, providerType)
+}
+
+// addCLIProviderFlowDirect adds a CLI provider directly without category selection.
+// This is used by the flattened provider selection flow.
+func addCLIProviderFlowDirect(ctx context.Context, state *setup.SetupState, providerType setup.ProviderType) error {
 	// Use provider type name as the instance name for CLI providers
-	instanceName := selected
+	instanceName := providerType.Name()
+
+	// Check if this provider is already configured
+	if _, exists := state.Working.Providers[instanceName]; exists {
+		return fmt.Errorf("provider %q is already configured", instanceName)
+	}
 
 	// Create provider config
 	providerCfg := providerType.CreateConfig()
@@ -196,52 +304,12 @@ func addCLIProviderFlow(ctx context.Context, state *setup.SetupState) error {
 	return nil
 }
 
-// addAPIProviderFlow handles adding API-based providers
-func addAPIProviderFlow(ctx context.Context, state *setup.SetupState) error {
-	// Get API provider types
-	apiProviders := []setup.ProviderType{}
-	for _, pt := range setup.GetProviderTypes() {
-		if !pt.IsCLI() {
-			apiProviders = append(apiProviders, pt)
-		}
-	}
-
-	// Build selection options
-	options := make([]huh.Option[string], 0, len(apiProviders)+1)
-	for _, pt := range apiProviders {
-		options = append(options, huh.NewOption(
-			pt.DisplayName()+" - "+pt.Description(),
-			pt.Name(),
-		))
-	}
-	options = append(options, huh.NewOption("Back", "back"))
-
-	var selectedType string
-	typeForm := huh.NewForm(
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title("Select API provider type:").
-				Options(options...).
-				Value(&selectedType),
-		),
-	)
-
-	if err := typeForm.Run(); err != nil {
-		return err
-	}
-
-	if selectedType == "back" {
-		return nil
-	}
-
-	providerType, ok := setup.GetProviderType(selectedType)
-	if !ok {
-		return fmt.Errorf("unknown provider type: %s", selectedType)
-	}
-
-	// Step 2: Get instance name
+// addAPIProviderFlowDirect adds an API provider directly without category selection.
+// This is used by the flattened provider selection flow.
+func addAPIProviderFlowDirect(ctx context.Context, state *setup.SetupState, providerType setup.ProviderType) error {
+	// Step 1: Get instance name
 	var instanceName string
-	defaultName := selectedType
+	defaultName := providerType.Name()
 	if defaultName == "openai-compatible" {
 		defaultName = "" // Force user to provide a descriptive name
 	}
@@ -262,6 +330,7 @@ func addAPIProviderFlow(ctx context.Context, state *setup.SetupState) error {
 					}
 					return nil
 				}),
+			NewFooterNote(FooterContextInput),
 		),
 	)
 
@@ -273,7 +342,7 @@ func addAPIProviderFlow(ctx context.Context, state *setup.SetupState) error {
 		instanceName = defaultName
 	}
 
-	// Step 3: Configure provider-specific fields
+	// Step 2: Configure provider-specific fields
 	providerCfg := providerType.CreateConfig()
 
 	// If provider requires base URL, prompt for it
@@ -291,9 +360,19 @@ func addAPIProviderFlow(ctx context.Context, state *setup.SetupState) error {
 						if s == "" && defaultURL == "" {
 							return fmt.Errorf("base URL is required")
 						}
-						// TODO: Add URL validation
+						// Validate URL format and security
+						urlToValidate := s
+						if urlToValidate == "" {
+							urlToValidate = defaultURL
+						}
+						if urlToValidate != "" {
+							if err := validation.ValidateURL(urlToValidate); err != nil {
+								return err
+							}
+						}
 						return nil
 					}),
+				NewFooterNote(FooterContextInput),
 			),
 		)
 
@@ -304,43 +383,92 @@ func addAPIProviderFlow(ctx context.Context, state *setup.SetupState) error {
 		if baseURL == "" {
 			baseURL = defaultURL
 		}
-		// TODO: BaseURL field doesn't exist in config.ProviderConfig yet
-		// Will need to add this field or use a different approach
-		// providerCfg.BaseURL = baseURL
-		_ = baseURL // Suppress unused variable warning for now
+		// Persist the base URL to the provider configuration
+		providerCfg.BaseURL = baseURL
 	}
 
-	// Step 4: API Key configuration
+	// Step 3: API Key configuration with inline backend selection
 	if providerType.RequiresAPIKey() {
-		// TODO: Implement API key + backend selection flow
-		// For now, just prompt for the key
-		var apiKey string
-
-		keyForm := huh.NewForm(
-			huh.NewGroup(
-				huh.NewInput().
-					Title("API Key:").
-					EchoMode(huh.EchoModePassword).
-					Value(&apiKey).
-					Validate(func(s string) error {
-						if s == "" {
-							return fmt.Errorf("API key is required")
-						}
-						return nil
-					}),
-			),
-		)
-
-		if err := keyForm.Run(); err != nil {
+		// Prompt for API key with guidance
+		apiKey, err := ShowAPIKeyForm(providerType, instanceName)
+		if err != nil {
 			return err
+		}
+
+		// Check if this is the first API provider (need to select backend)
+		needsBackendSelection := state.SecretsBackend == ""
+
+		// Get available backends (in real implementation, this would come from pkg/secrets)
+		availableBackends := []string{"keychain", "env"}
+
+		// Select backend if needed
+		var selectedBackend string
+		if needsBackendSelection {
+			selectedBackend, err = ShowStorageBackendSelection(availableBackends, state.SecretsBackend)
+			if err != nil {
+				return err
+			}
+
+			// Set as default backend for future API keys
+			state.SecretsBackend = selectedBackend
+			state.MarkDirty()
+
+			// Log backend selection
+			if state.Audit != nil {
+				state.Audit.LogBackendSelected(selectedBackend)
+			}
+		} else {
+			// Use existing default backend
+			selectedBackend = state.SecretsBackend
 		}
 
 		// Store in credential store for later persistence
 		credKey := fmt.Sprintf("provider:%s:api_key", instanceName)
 		state.CredentialStore[credKey] = apiKey
 
-		// For now, store reference in config (TODO: implement backend selection)
-		providerCfg.APIKey = fmt.Sprintf("$secret:%s_API_KEY", strings.ToUpper(instanceName))
+		// Store reference in config with backend prefix
+		providerCfg.APIKey = fmt.Sprintf("$%s:%s_API_KEY", selectedBackend, strings.ToUpper(instanceName))
+
+		// Step 4: Connection testing with retry loop
+		testPassed := false
+		for !testPassed {
+			// Create a temporary config for testing that includes the actual API key
+			testCfg := providerCfg
+			testCfg.APIKey = apiKey
+
+			// Run connection test
+			result, err := ShowConnectionTest(ctx, providerType, testCfg)
+			if err != nil {
+				return err
+			}
+
+			// Handle test result
+			switch result.Action {
+			case TestActionContinue:
+				// Success - proceed
+				testPassed = true
+			case TestActionRetry:
+				// Retry the test
+				continue
+			case TestActionSkip:
+				// User chose to skip testing - proceed anyway
+				testPassed = true
+			case TestActionEdit:
+				// User wants to edit credentials - re-prompt for API key
+				apiKey, err = ShowAPIKeyForm(providerType, instanceName)
+				if err != nil {
+					return err
+				}
+				// Update credential store with new key
+				state.CredentialStore[credKey] = apiKey
+				// Loop will retry the test with new credentials
+			case TestActionCancel:
+				// User cancelled - exit without adding provider
+				return fmt.Errorf("provider configuration cancelled")
+			default:
+				return fmt.Errorf("unknown test action: %s", result.Action)
+			}
+		}
 	}
 
 	// Add to state
@@ -376,6 +504,7 @@ func SelectProviderForEdit(state *setup.SetupState) (string, error) {
 				Title("Select provider to edit:").
 				Options(options...).
 				Value(&selected),
+			NewFooterNote(FooterContextSelection),
 		),
 	)
 
@@ -409,6 +538,7 @@ func SelectProviderForRemoval(state *setup.SetupState) (string, error) {
 				Title("Select provider to remove:").
 				Options(options...).
 				Value(&selected),
+			NewFooterNote(FooterContextSelection),
 		),
 	)
 
@@ -432,6 +562,7 @@ func ConfirmRemoveProvider(name string, isDefault bool) (bool, error) {
 			huh.NewConfirm().
 				Title(message).
 				Value(&confirm),
+			NewFooterNote(FooterContextConfirm),
 		),
 	)
 
@@ -505,6 +636,7 @@ func SelectDefaultProvider(state *setup.SetupState) error {
 				Description("The default provider is used when workflows don't specify one").
 				Options(options...).
 				Value(&selected),
+			NewFooterNote(FooterContextSelection),
 		),
 	)
 
@@ -575,6 +707,7 @@ func EditProviderFlow(ctx context.Context, state *setup.SetupState, providerName
 					Title("What would you like to do?").
 					Options(options...).
 					Value(&choice),
+				NewFooterNote(FooterContextSelection),
 			),
 		)
 
@@ -624,6 +757,7 @@ func updateProviderAPIKey(ctx context.Context, state *setup.SetupState, provider
 					}
 					return nil
 				}),
+			NewFooterNote(FooterContextInput),
 		),
 	)
 
@@ -659,8 +793,13 @@ func updateProviderBaseURL(state *setup.SetupState, providerName string) error {
 					if s == "" {
 						return fmt.Errorf("base URL is required")
 					}
+					// Validate URL format and security
+					if err := validation.ValidateURL(s); err != nil {
+						return err
+					}
 					return nil
 				}),
+			NewFooterNote(FooterContextInput),
 		),
 	)
 
@@ -668,9 +807,9 @@ func updateProviderBaseURL(state *setup.SetupState, providerName string) error {
 		return err
 	}
 
-	// Store base URL in credential store for now
-	credKey := fmt.Sprintf("provider:%s:base_url", providerName)
-	state.CredentialStore[credKey] = baseURL
+	// Persist the base URL to the provider configuration
+	provider.BaseURL = baseURL
+	state.Working.Providers[providerName] = provider
 	state.MarkDirty()
 
 	return nil
@@ -689,7 +828,9 @@ func testSingleProvider(ctx context.Context, state *setup.SetupState, providerNa
 	// Display result
 	message := fmt.Sprintf("Testing %s...\n\n%s", providerName, result.Message)
 	if !result.Success && result.ErrorDetails != "" {
-		message += "\n\nError: " + result.ErrorDetails
+		// Sanitize error details to remove sensitive information
+		sanitized := sanitizeErrorDetails(result.ErrorDetails)
+		message += "\n\nError: " + sanitized
 	}
 
 	form := huh.NewForm(
@@ -700,6 +841,7 @@ func testSingleProvider(ctx context.Context, state *setup.SetupState, providerNa
 				Title("Press Enter to continue").
 				Affirmative("Continue").
 				Negative(""),
+			NewFooterNote(FooterContextConfirm),
 		),
 	)
 
@@ -717,6 +859,7 @@ func TestAllProviders(ctx context.Context, state *setup.SetupState) error {
 					Title("Press Enter to go back").
 					Affirmative("Back").
 					Negative(""),
+				NewFooterNote(FooterContextConfirm),
 			),
 		)
 		return form.Run()
@@ -740,6 +883,7 @@ func TestAllProviders(ctx context.Context, state *setup.SetupState) error {
 				Title("Press Enter to continue").
 				Affirmative("Continue").
 				Negative(""),
+			NewFooterNote(FooterContextConfirm),
 		),
 	)
 
@@ -756,4 +900,37 @@ func parseCredentialRef(ref string) (string, string) {
 		return "", ""
 	}
 	return parts[0], parts[1]
+}
+
+// sanitizeErrorDetails removes sensitive information from error messages.
+// This prevents leaking API keys, file paths, IP addresses, and other internal details.
+func sanitizeErrorDetails(errorMsg string) string {
+	sanitized := errorMsg
+
+	// Replace common sensitive patterns using regex
+	patterns := []struct {
+		regex   *regexp.Regexp
+		replace string
+	}{
+		// API keys (common patterns) - do these first to catch before path patterns
+		{regexp.MustCompile(`sk-ant-[a-zA-Z0-9_-]+`), "[API_KEY]"},
+		{regexp.MustCompile(`sk-[a-zA-Z0-9_-]{20,}`), "[API_KEY]"},
+		{regexp.MustCompile(`gsk-[a-zA-Z0-9_-]+`), "[API_KEY]"},
+		{regexp.MustCompile(`AIza[a-zA-Z0-9_-]+`), "[API_KEY]"},
+		// File paths (Unix and Windows)
+		{regexp.MustCompile(`/[a-zA-Z0-9_\-.~/]+(/[a-zA-Z0-9_\-.~/]+)+`), "[PATH]"},
+		{regexp.MustCompile(`[A-Z]:\\[a-zA-Z0-9_\-\\]+`), "[PATH]"},
+		// IP addresses
+		{regexp.MustCompile(`\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b`), "[IP]"},
+		// Environment variable values in error messages
+		{regexp.MustCompile(`ANTHROPIC_API_KEY=\S+`), "ANTHROPIC_API_KEY=[REDACTED]"},
+		{regexp.MustCompile(`OPENAI_API_KEY=\S+`), "OPENAI_API_KEY=[REDACTED]"},
+		{regexp.MustCompile(`API_KEY=\S+`), "API_KEY=[REDACTED]"},
+	}
+
+	for _, p := range patterns {
+		sanitized = p.regex.ReplaceAllString(sanitized, p.replace)
+	}
+
+	return sanitized
 }

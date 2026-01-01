@@ -118,6 +118,14 @@ func (a *AuditLogger) LogBackendChanged(oldBackend, newBackend string) {
 	)
 }
 
+// LogBackendSelected logs when a secrets backend is selected by the user.
+func (a *AuditLogger) LogBackendSelected(backend string) {
+	a.logger.Info("secrets_backend_selected",
+		"action", "select_backend",
+		"backend", backend,
+	)
+}
+
 // LogCredentialStored logs when a credential is stored in a backend.
 // The credential value is NEVER logged, only metadata.
 func (a *AuditLogger) LogCredentialStored(key, backend string) {
