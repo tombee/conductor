@@ -203,20 +203,78 @@ func (w *WizardFlow) runProviderConfigStep() (WizardStep, error) {
 
 // runBackendSelectionStep selects the secrets storage backend.
 func (w *WizardFlow) runBackendSelectionStep() (WizardStep, error) {
-	// TODO: Implement backend selection (Phase 4)
+	// Check if this is the first API provider (need to select backend)
+	needsBackendSelection := w.state.SecretsBackend == ""
+
+	if needsBackendSelection {
+		// Get available backends
+		availableBackends := []string{"keychain", "env"}
+
+		// Show storage backend selection
+		selectedBackend, err := ShowStorageBackendSelection(availableBackends, w.state.SecretsBackend)
+		if err != nil {
+			return StepExit, err
+		}
+
+		// Set as default backend for future API keys
+		w.state.SecretsBackend = selectedBackend
+		w.state.MarkDirty()
+	}
+
 	return StepReview, nil
 }
 
 // runReviewStep shows the review screen with inline editing.
 func (w *WizardFlow) runReviewStep() (WizardStep, error) {
-	// TODO: Implement review screen (Phase 6)
-	// For now, go to complete
-	return StepComplete, nil
+	for {
+		// Show review screen
+		result, err := ShowReviewScreen(w.state)
+		if err != nil {
+			return StepExit, err
+		}
+
+		// Handle the user's choice
+		switch result.Action {
+		case ReviewActionSave:
+			// User wants to save and exit - proceed to complete step
+			return StepComplete, nil
+
+		case ReviewActionAddProvider:
+			// User wants to add another provider - go to provider selection
+			return StepProviderSelection, nil
+
+		case ReviewActionEditProvider:
+			// User wants to edit a specific provider
+			if err := EditProviderFlow(w.ctx, w.state, result.ProviderName); err != nil {
+				return StepExit, err
+			}
+			// After editing, loop back to show review screen again
+
+		case ReviewActionRemoveProvider:
+			// User wants to remove a provider
+			if err := RemoveProvider(w.state, result.ProviderName); err != nil {
+				return StepExit, err
+			}
+			// After removing, loop back to show review screen again
+
+		case ReviewActionCancel:
+			// User wants to cancel - exit without saving
+			return StepExit, nil
+
+		default:
+			return StepExit, fmt.Errorf("unknown review action: %s", result.Action)
+		}
+	}
 }
 
 // runCompleteStep shows the completion message.
 func (w *WizardFlow) runCompleteStep() (WizardStep, error) {
-	// TODO: Show completion message
+	// Show completion message
+	if err := ShowCompletionMessage(w.state); err != nil {
+		return StepExit, err
+	}
+
+	// Exit the wizard
 	return StepExit, nil
 }
 

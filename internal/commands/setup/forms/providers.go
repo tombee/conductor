@@ -17,12 +17,14 @@ package forms
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/charmbracelet/huh"
 	"github.com/tombee/conductor/internal/commands/setup"
 	"github.com/tombee/conductor/internal/commands/setup/actions"
+	"github.com/tombee/conductor/internal/commands/setup/validation"
 )
 
 // ProvidersMenuChoice represents a selection in the providers menu
@@ -347,7 +349,16 @@ func addAPIProviderFlowDirect(ctx context.Context, state *setup.SetupState, prov
 						if s == "" && defaultURL == "" {
 							return fmt.Errorf("base URL is required")
 						}
-						// TODO: Add URL validation
+						// Validate URL format and security
+						urlToValidate := s
+						if urlToValidate == "" {
+							urlToValidate = defaultURL
+						}
+						if urlToValidate != "" {
+							if err := validation.ValidateURL(urlToValidate); err != nil {
+								return err
+							}
+						}
 						return nil
 					}),
 				NewFooterNote(FooterContextInput),
@@ -361,10 +372,8 @@ func addAPIProviderFlowDirect(ctx context.Context, state *setup.SetupState, prov
 		if baseURL == "" {
 			baseURL = defaultURL
 		}
-		// TODO: BaseURL field doesn't exist in config.ProviderConfig yet
-		// Will need to add this field or use a different approach
-		// providerCfg.BaseURL = baseURL
-		_ = baseURL // Suppress unused variable warning for now
+		// Persist the base URL to the provider configuration
+		providerCfg.BaseURL = baseURL
 	}
 
 	// Step 3: API Key configuration with inline backend selection
@@ -768,6 +777,10 @@ func updateProviderBaseURL(state *setup.SetupState, providerName string) error {
 					if s == "" {
 						return fmt.Errorf("base URL is required")
 					}
+					// Validate URL format and security
+					if err := validation.ValidateURL(s); err != nil {
+						return err
+					}
 					return nil
 				}),
 			NewFooterNote(FooterContextInput),
@@ -778,9 +791,9 @@ func updateProviderBaseURL(state *setup.SetupState, providerName string) error {
 		return err
 	}
 
-	// Store base URL in credential store for now
-	credKey := fmt.Sprintf("provider:%s:base_url", providerName)
-	state.CredentialStore[credKey] = baseURL
+	// Persist the base URL to the provider configuration
+	provider.BaseURL = baseURL
+	state.Working.Providers[providerName] = provider
 	state.MarkDirty()
 
 	return nil
@@ -799,7 +812,9 @@ func testSingleProvider(ctx context.Context, state *setup.SetupState, providerNa
 	// Display result
 	message := fmt.Sprintf("Testing %s...\n\n%s", providerName, result.Message)
 	if !result.Success && result.ErrorDetails != "" {
-		message += "\n\nError: " + result.ErrorDetails
+		// Sanitize error details to remove sensitive information
+		sanitized := sanitizeErrorDetails(result.ErrorDetails)
+		message += "\n\nError: " + sanitized
 	}
 
 	form := huh.NewForm(
@@ -869,4 +884,37 @@ func parseCredentialRef(ref string) (string, string) {
 		return "", ""
 	}
 	return parts[0], parts[1]
+}
+
+// sanitizeErrorDetails removes sensitive information from error messages.
+// This prevents leaking API keys, file paths, IP addresses, and other internal details.
+func sanitizeErrorDetails(errorMsg string) string {
+	sanitized := errorMsg
+
+	// Replace common sensitive patterns using regex
+	patterns := []struct {
+		regex   *regexp.Regexp
+		replace string
+	}{
+		// API keys (common patterns) - do these first to catch before path patterns
+		{regexp.MustCompile(`sk-ant-[a-zA-Z0-9_-]+`), "[API_KEY]"},
+		{regexp.MustCompile(`sk-[a-zA-Z0-9_-]{20,}`), "[API_KEY]"},
+		{regexp.MustCompile(`gsk-[a-zA-Z0-9_-]+`), "[API_KEY]"},
+		{regexp.MustCompile(`AIza[a-zA-Z0-9_-]+`), "[API_KEY]"},
+		// File paths (Unix and Windows)
+		{regexp.MustCompile(`/[a-zA-Z0-9_\-.~/]+(/[a-zA-Z0-9_\-.~/]+)+`), "[PATH]"},
+		{regexp.MustCompile(`[A-Z]:\\[a-zA-Z0-9_\-\\]+`), "[PATH]"},
+		// IP addresses
+		{regexp.MustCompile(`\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b`), "[IP]"},
+		// Environment variable values in error messages
+		{regexp.MustCompile(`ANTHROPIC_API_KEY=\S+`), "ANTHROPIC_API_KEY=[REDACTED]"},
+		{regexp.MustCompile(`OPENAI_API_KEY=\S+`), "OPENAI_API_KEY=[REDACTED]"},
+		{regexp.MustCompile(`API_KEY=\S+`), "API_KEY=[REDACTED]"},
+	}
+
+	for _, p := range patterns {
+		sanitized = p.regex.ReplaceAllString(sanitized, p.replace)
+	}
+
+	return sanitized
 }

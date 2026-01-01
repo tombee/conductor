@@ -40,6 +40,9 @@ type ProviderConfig struct {
 	// APIKey for direct API access providers (optional, can use env vars)
 	APIKey string `yaml:"api_key,omitempty" json:"api_key,omitempty"`
 
+	// BaseURL for API providers that support custom endpoints (e.g., openai-compatible)
+	BaseURL string `yaml:"base_url,omitempty" json:"base_url,omitempty"`
+
 	// ConfigPath for CLI-based providers that need custom config locations
 	ConfigPath string `yaml:"config_path,omitempty" json:"config_path,omitempty"`
 
