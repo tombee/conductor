@@ -371,7 +371,7 @@ controller:
 
 Security settings for controller API authentication. **Authentication is enabled by default** as a secure default.
 
-### daemon_auth.enabled
+### controller_auth.enabled
 
 **Type:** `boolean`
 **Default:** `true`
@@ -379,13 +379,13 @@ Security settings for controller API authentication. **Authentication is enabled
 Enable API authentication for the controller. When enabled, all API requests must include a valid authentication token.
 
 ```conductor
-daemon_auth:
+controller_auth:
   enabled: true  # Secure by default
 ```
 
 When authentication is disabled and the controller is accessible over the network, a security warning is logged at startup.
 
-### daemon_auth.allow_unix_socket
+### controller_auth.allow_unix_socket
 
 **Type:** `boolean`
 **Default:** `true`
@@ -393,7 +393,7 @@ When authentication is disabled and the controller is accessible over the networ
 Allow unauthenticated access via Unix socket. This is convenient for local development while maintaining security for network access.
 
 ```conductor
-daemon_auth:
+controller_auth:
   allow_unix_socket: true
 ```
 
@@ -621,7 +621,7 @@ controller:
   auto_start: true
   # Authentication is enabled by default - no need to specify
 
-daemon_auth:
+controller_auth:
   enabled: true  # Secure by default
   allow_unix_socket: true
 ```

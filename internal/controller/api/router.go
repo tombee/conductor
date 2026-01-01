@@ -221,7 +221,7 @@ func (r *Router) Mux() *http.ServeMux {
 // handleRoot handles GET / for basic connectivity.
 func (r *Router) handleRoot(w http.ResponseWriter, req *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{
-		"name":    "conductord",
+		"name":    "conductor",
 		"version": r.config.Version,
 	})
 }

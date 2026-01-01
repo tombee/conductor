@@ -174,7 +174,7 @@ func TestLoadWorkflowWithWarnings(t *testing.T) {
 
 	yamlContent := []byte(`
 name: platform-workflow
-listen:
+trigger:
   webhook:
     path: /webhook
 steps:

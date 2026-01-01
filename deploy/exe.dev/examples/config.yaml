@@ -6,17 +6,17 @@
 # Edit this file to customize your deployment.
 
 # =============================================================================
-# Daemon Configuration
+# Controller Configuration
 # =============================================================================
-daemon:
+controller:
   listen:
-    # TCP address for the daemon to listen on
+    # TCP address for the controller to listen on
     # Format: ":port" or "host:port"
     # Default: Unix socket (not usable for remote access)
     tcp_addr: ":9000"
 
     # Allow connections from non-localhost addresses
-    # Required for exe.dev proxy to reach the daemon
+    # Required for exe.dev proxy to reach the controller
     # WARNING: Only enable with authentication configured
     allow_remote: true
 
@@ -45,7 +45,7 @@ daemon:
 # Configure API keys for LLM providers used in your workflows.
 # Use environment variables to avoid storing secrets in config files.
 #
-# Set environment variables before starting the daemon:
+# Set environment variables before starting the controller:
 #   export ANTHROPIC_API_KEY=sk-ant-...
 #   export OPENAI_API_KEY=sk-...
 
@@ -98,10 +98,10 @@ providers:
 # 2. Store API keys in environment variables, not in this file
 #    Add to ~/.bashrc: export ANTHROPIC_API_KEY=sk-ant-...
 #
-# 3. After editing this file, restart the daemon:
+# 3. After editing this file, restart the controller:
 #    ~/stop-conductor.sh && ~/start-conductor.sh
 #
-# 4. The daemon logs to: ~/.local/share/conductor/conductor.log
+# 4. The controller logs to: ~/.local/share/conductor/conductor.log
 #    Check logs for configuration errors
 #
 # 5. Test configuration with:

@@ -35,7 +35,7 @@ func TestStartHandler_HandleStart(t *testing.T) {
 	// Create test workflow with listen.api
 	workflowWithAPI := `
 name: test-workflow
-listen:
+trigger:
   api:
     secret: "test-secret-token-12345678901234567890"
 steps:
@@ -67,7 +67,7 @@ steps:
 
 	workflowWithEnvSecret := `
 name: env-secret-workflow
-listen:
+trigger:
   api:
     secret: "${TEST_API_SECRET}"
 steps:
@@ -217,7 +217,7 @@ func TestStartHandler_RequestBodySizeLimit(t *testing.T) {
 
 	workflow := `
 name: test-workflow
-listen:
+trigger:
   api:
     secret: "test-secret-token-12345678901234567890"
 steps:
@@ -259,7 +259,7 @@ func TestStartHandler_Draining(t *testing.T) {
 
 	workflow := `
 name: test-workflow
-listen:
+trigger:
   api:
     secret: "test-secret-token-12345678901234567890"
 steps:

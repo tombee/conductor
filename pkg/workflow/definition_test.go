@@ -597,7 +597,7 @@ func TestPollTriggerValidation(t *testing.T) {
 			name: "valid poll trigger",
 			definition: `
 name: test-workflow
-listen:
+trigger:
   poll:
     integration: pagerduty
     query:
@@ -614,7 +614,7 @@ steps:
 			name: "missing integration",
 			definition: `
 name: test-workflow
-listen:
+trigger:
   poll:
     query:
       user_id: PUSER123
@@ -630,7 +630,7 @@ steps:
 			name: "invalid integration",
 			definition: `
 name: test-workflow
-listen:
+trigger:
   poll:
     integration: invalid
     query:
@@ -647,7 +647,7 @@ steps:
 			name: "missing query",
 			definition: `
 name: test-workflow
-listen:
+trigger:
   poll:
     integration: pagerduty
 steps:
@@ -662,7 +662,7 @@ steps:
 			name: "interval too small",
 			definition: `
 name: test-workflow
-listen:
+trigger:
   poll:
     integration: pagerduty
     query:
@@ -680,7 +680,7 @@ steps:
 			name: "invalid startup mode",
 			definition: `
 name: test-workflow
-listen:
+trigger:
   poll:
     integration: pagerduty
     query:
@@ -698,7 +698,7 @@ steps:
 			name: "backfill without duration",
 			definition: `
 name: test-workflow
-listen:
+trigger:
   poll:
     integration: pagerduty
     query:
@@ -716,7 +716,7 @@ steps:
 			name: "backfill exceeds 24h",
 			definition: `
 name: test-workflow
-listen:
+trigger:
   poll:
     integration: pagerduty
     query:
@@ -735,7 +735,7 @@ steps:
 			name: "invalid query parameter pattern",
 			definition: `
 name: test-workflow
-listen:
+trigger:
   poll:
     integration: pagerduty
     query:
@@ -779,7 +779,7 @@ func TestPollTriggerUnmarshal(t *testing.T) {
 name: test-workflow
 version: "1.0"
 
-listen:
+trigger:
   poll:
     integration: pagerduty
     query:
@@ -831,7 +831,7 @@ steps:
 name: test-workflow
 version: "1.0"
 
-listen:
+trigger:
   poll:
     integration: slack
     query:

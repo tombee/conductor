@@ -68,7 +68,7 @@ Override with CONDUCTOR_HOST environment variable:
 # Auto-Start
 
 When the controller isn't running and auto-start is configured, the client
-attempts to start conductord automatically:
+attempts to start the controller automatically:
 
 	// Ensure controller is running (starts it if needed)
 	c, err := client.EnsureController(client.AutoStartConfig{

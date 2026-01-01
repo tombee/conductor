@@ -21,10 +21,10 @@
       "default": "1.0",
       "examples": ["1.0", "1.1"]
     },
-    "listen": {
+    "trigger": {
       "type": "object",
-      "description": "Defines how this workflow can be invoked (webhooks, API endpoints, schedules). Replaces the deprecated 'triggers' field. If not specified, workflow can only be triggered manually via CLI.",
-      "$ref": "#/$defs/listen_config"
+      "description": "Defines how this workflow can be invoked (webhooks, API endpoints, schedules). If not specified, workflow can only be triggered manually via CLI.",
+      "$ref": "#/$defs/trigger_config"
     },
     "inputs": {
       "type": "array",
@@ -89,29 +89,29 @@
     }
   },
   "$defs": {
-    "listen_config": {
+    "trigger_config": {
       "type": "object",
-      "description": "Configuration for how this workflow can be invoked. Supports webhook listeners, API endpoints, and scheduled execution.",
+      "description": "Configuration for how this workflow can be invoked. Supports webhook triggers, API endpoints, and scheduled execution.",
       "properties": {
         "webhook": {
           "$ref": "#/$defs/webhook_trigger",
-          "description": "Webhook listener configuration. Enables this workflow to be triggered by HTTP webhooks from GitHub, Slack, or generic sources."
+          "description": "Webhook trigger configuration. Enables this workflow to be triggered by HTTP webhooks from GitHub, Slack, or generic sources."
         },
         "api": {
-          "$ref": "#/$defs/api_listener",
-          "description": "API endpoint listener configuration. Enables this workflow to be triggered via POST /v1/start/{workflow} with Bearer token authentication."
+          "$ref": "#/$defs/api_trigger",
+          "description": "API endpoint trigger configuration. Enables this workflow to be triggered via POST /v1/start/{workflow} with Bearer token authentication."
         },
         "schedule": {
           "$ref": "#/$defs/schedule_trigger",
-          "description": "Schedule listener configuration. Enables cron-based scheduled execution of this workflow."
+          "description": "Schedule trigger configuration. Enables cron-based scheduled execution of this workflow."
         }
       },
       "additionalProperties": false
     },
-    "api_listener": {
+    "api_trigger": {
       "type": "object",
       "required": ["secret"],
-      "description": "API endpoint listener configuration for Bearer token authentication. Enables workflows to be triggered via POST /v1/start/{workflow}.",
+      "description": "API endpoint trigger configuration for Bearer token authentication. Enables workflows to be triggered via POST /v1/start/{workflow}.",
       "properties": {
         "secret": {
           "type": "string",

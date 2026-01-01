@@ -45,7 +45,7 @@ func TestScanner_Scan_WorkflowWithWebhook(t *testing.T) {
 name: webhook-handler
 description: Handles webhook events
 
-listen:
+trigger:
   webhook:
     path: /webhooks/test
     secret: ${WEBHOOK_SECRET}
@@ -92,7 +92,7 @@ func TestScanner_Scan_WorkflowWithSchedule(t *testing.T) {
 name: scheduled-task
 description: Runs on schedule
 
-listen:
+trigger:
   schedule:
     cron: "0 * * * *"
     timezone: UTC
@@ -137,7 +137,7 @@ func TestScanner_Scan_MultipleTriggers(t *testing.T) {
 name: webhook-multi
 description: Webhook trigger
 
-listen:
+trigger:
   webhook:
     path: /webhooks/multi
 
@@ -150,7 +150,7 @@ steps:
 name: schedule-multi
 description: Schedule trigger
 
-listen:
+trigger:
   schedule:
     cron: "0 0 * * *"
 
@@ -285,7 +285,7 @@ func TestScanner_Scan_NestedDirectories(t *testing.T) {
 	// Create workflow in nested directory
 	workflowContent := `
 name: nested-workflow
-listen:
+trigger:
   webhook:
     path: /webhooks/nested
 steps:
@@ -315,7 +315,7 @@ func TestScanner_Scan_YMLExtension(t *testing.T) {
 	// Create workflow with .yml extension
 	workflowContent := `
 name: yml-workflow
-listen:
+trigger:
   schedule:
     cron: "0 0 * * *"
 steps:
@@ -447,7 +447,7 @@ func TestScanner_Scan_WorkflowWithFileTrigger(t *testing.T) {
 name: file-watcher
 description: Handles file events
 
-listen:
+trigger:
   file:
     paths:
       - /tmp/watch

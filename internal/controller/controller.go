@@ -729,7 +729,7 @@ func (c *Controller) Start(ctx context.Context) error {
 	}
 
 	// Log startup
-	c.logger.Info("conductord starting",
+	c.logger.Info("conductor controller starting",
 		slog.String("version", c.opts.Version),
 		slog.String("listen_addr", ln.Addr().String()))
 

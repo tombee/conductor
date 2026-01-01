@@ -35,7 +35,7 @@ func TestValidatePublicAPIRequirements(t *testing.T) {
 			workflows: map[string]string{
 				"webhook.yaml": `
 name: webhook-workflow
-listen:
+trigger:
   webhook:
     path: /test
     secret: test
@@ -59,7 +59,7 @@ steps:
 			workflows: map[string]string{
 				"webhook.yaml": `
 name: webhook-workflow
-listen:
+trigger:
   webhook:
     path: /test
     secret: test
@@ -78,7 +78,7 @@ steps:
 			workflows: map[string]string{
 				"api.yaml": `
 name: api-workflow
-listen:
+trigger:
   api:
     secret: test-secret-123
 steps:
@@ -96,7 +96,7 @@ steps:
 			workflows: map[string]string{
 				"webhook.yaml": `
 name: webhook-workflow
-listen:
+trigger:
   webhook:
     path: /test
     secret: test
@@ -107,7 +107,7 @@ steps:
 `,
 				"api.yaml": `
 name: api-workflow
-listen:
+trigger:
   api:
     secret: test-secret-123
 steps:
@@ -125,7 +125,7 @@ steps:
 			workflows: map[string]string{
 				"schedule.yaml": `
 name: schedule-workflow
-listen:
+trigger:
   schedule:
     cron: "0 * * * *"
 steps:
@@ -166,7 +166,7 @@ this is not valid yaml: [
 			workflows: map[string]string{
 				"webhook1.yaml": `
 name: webhook-1
-listen:
+trigger:
   webhook:
     path: /test1
 steps:
@@ -176,7 +176,7 @@ steps:
 `,
 				"webhook2.yaml": `
 name: webhook-2
-listen:
+trigger:
   webhook:
     path: /test2
 steps:

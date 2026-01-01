@@ -33,9 +33,8 @@ type Definition struct {
 	// Version tracks the workflow definition schema version (optional, defaults to "1.0")
 	Version string `yaml:"version" json:"version"`
 
-	// Listen defines how this workflow can be invoked (webhooks, API, schedules)
-	// Replaces the deprecated Triggers field
-	Trigger *TriggerConfig `yaml:"listen,omitempty" json:"listen,omitempty"`
+	// Trigger defines how this workflow can be invoked (webhooks, API, schedules)
+	Trigger *TriggerConfig `yaml:"trigger,omitempty" json:"trigger,omitempty"`
 
 	// Inputs defines the expected input parameters for the workflow
 	Inputs []InputDefinition `yaml:"inputs" json:"inputs"`

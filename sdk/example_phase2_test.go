@@ -161,7 +161,7 @@ func Example_loadWorkflowWithWarnings() {
 	// Load a workflow that has platform-only features
 	yamlContent := []byte(`
 name: platform-workflow
-listen:
+trigger:
   webhook:
     path: /trigger
 steps:
