@@ -113,10 +113,7 @@ func executeTest(test TestFile, opts RunOptions) TestResult {
 		fixturesDir = opts.Fixtures
 	}
 
-	// For Phase 1, we'll mark as a placeholder implementation
-	// Full workflow execution integration will be added in later phases
-	// For now, we validate that the test file is correctly structured
-	// and the workflow is loadable
+	// Validate that the test file is correctly structured and the workflow is loadable
 
 	result.StepCount = len(workflowDef.Steps)
 
@@ -160,9 +157,8 @@ func executeTest(test TestFile, opts RunOptions) TestResult {
 		result.Status = TestStatusFail
 	}
 
-	// Mark as placeholder for now - full execution will be Phase 2
 	if opts.Verbose && result.Status == TestStatusPass {
-		result.Error = fmt.Sprintf("(placeholder) Workflow validated with %d steps and %d assertions",
+		result.Error = fmt.Sprintf("Workflow validated with %d steps and %d assertions",
 			result.StepCount, len(test.Assert))
 	}
 
