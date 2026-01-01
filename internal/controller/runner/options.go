@@ -15,8 +15,6 @@
 package runner
 
 import (
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/tombee/conductor/internal/binding"
 	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/internal/mcp"
@@ -45,14 +43,5 @@ func WithConfig(cfg *config.Config) Option {
 func WithBindingResolver(resolver *binding.Resolver) Option {
 	return func(r *Runner) {
 		r.resolver = resolver
-	}
-}
-
-// WithWorkflowTracer sets the workflow tracer for distributed tracing.
-func WithWorkflowTracer(tracer trace.Tracer) Option {
-	return func(r *Runner) {
-		r.mu.Lock()
-		r.workflowTracer = tracer
-		r.mu.Unlock()
 	}
 }
