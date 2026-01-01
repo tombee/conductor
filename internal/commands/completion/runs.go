@@ -24,9 +24,9 @@ import (
 )
 
 const (
-	runCacheTTL     = 2 * time.Second
-	daemonTimeout   = 500 * time.Millisecond
-	maxCompletionMS = 200 * time.Millisecond
+	runCacheTTL       = 2 * time.Second
+	controllerTimeout = 500 * time.Millisecond
+	maxCompletionMS   = 200 * time.Millisecond
 )
 
 // runCacheEntry holds cached run completions with expiry.
@@ -127,7 +127,7 @@ func getRunCompletions(activeOnly bool) ([]runInfo, error) {
 
 // fetchRunsFromDaemon queries the controller API for runs with a timeout.
 func fetchRunsFromDaemon() ([]runInfo, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), daemonTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), controllerTimeout)
 	defer cancel()
 
 	c, err := client.FromEnvironment()

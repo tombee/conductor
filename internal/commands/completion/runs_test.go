@@ -296,7 +296,7 @@ func TestCompleteRunIDs_Timeout(t *testing.T) {
 
 	// Create a server that delays longer than the timeout
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(daemonTimeout + 100*time.Millisecond)
+		time.Sleep(controllerTimeout + 100*time.Millisecond)
 		resp := map[string]interface{}{
 			"runs": []interface{}{},
 		}
@@ -317,8 +317,8 @@ func TestCompleteRunIDs_Timeout(t *testing.T) {
 	}
 
 	// Verify it timed out around the expected time
-	if elapsed > daemonTimeout+200*time.Millisecond {
-		t.Errorf("timeout took too long: %v (expected ~%v)", elapsed, daemonTimeout)
+	if elapsed > controllerTimeout+200*time.Millisecond {
+		t.Errorf("timeout took too long: %v (expected ~%v)", elapsed, controllerTimeout)
 	}
 }
 
