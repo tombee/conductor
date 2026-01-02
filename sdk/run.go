@@ -179,9 +179,9 @@ func (s *SDK) RunAgent(ctx context.Context, systemPrompt, userPrompt string) (*A
 
 	// Convert tokens
 	result.Tokens = TokenUsage{
-		PromptTokens:     agentResult.TokensUsed.InputTokens,
-		CompletionTokens: agentResult.TokensUsed.OutputTokens,
-		TotalTokens:      agentResult.TokensUsed.TotalTokens,
+		InputTokens:  agentResult.TokensUsed.InputTokens,
+		OutputTokens: agentResult.TokensUsed.OutputTokens,
+		TotalTokens:  agentResult.TokensUsed.TotalTokens,
 	}
 
 	if agentResult.Error != "" {
@@ -262,6 +262,9 @@ func (s *SDK) executeWorkflow(ctx context.Context, wf *Workflow, inputs map[stri
 			Duration: stepResult.Duration,
 			Error:    stepResult.Error,
 		}
+		if stepResult.TokenUsage != nil {
+			sdkStepResult.Tokens = fromLLMTokenUsage(*stepResult.TokenUsage)
+		}
 
 		// Store result
 		result.Steps[stepDef.id] = sdkStepResult
@@ -276,8 +279,8 @@ func (s *SDK) executeWorkflow(ctx context.Context, wf *Workflow, inputs map[stri
 		stepTokens := sdkStepResult.Tokens.TotalTokens
 		result.Usage.ByStep[stepDef.id] = stepTokens
 		result.Usage.TotalTokens += stepTokens
-		result.Usage.InputTokens += sdkStepResult.Tokens.PromptTokens
-		result.Usage.OutputTokens += sdkStepResult.Tokens.CompletionTokens
+		result.Usage.InputTokens += sdkStepResult.Tokens.InputTokens
+		result.Usage.OutputTokens += sdkStepResult.Tokens.OutputTokens
 		result.Usage.CacheReadTokens += sdkStepResult.Tokens.CacheReadTokens
 		result.Usage.CacheWriteTokens += sdkStepResult.Tokens.CacheCreationTokens
 

@@ -372,8 +372,8 @@ func (p *AnthropicProvider) parseResponse(resp *anthropicResponse, requestID str
 
 	// Build usage stats
 	usage := llm.TokenUsage{
-		PromptTokens:        resp.Usage.InputTokens,
-		CompletionTokens:    resp.Usage.OutputTokens,
+		InputTokens:         resp.Usage.InputTokens,
+		OutputTokens:        resp.Usage.OutputTokens,
 		TotalTokens:         resp.Usage.InputTokens + resp.Usage.OutputTokens,
 		CacheCreationTokens: resp.Usage.CacheCreationTokens,
 		CacheReadTokens:     resp.Usage.CacheReadTokens,
@@ -667,8 +667,8 @@ func (p *AnthropicProvider) processStream(ctx context.Context, resp *http.Respon
 			}
 			if event.Usage != nil {
 				totalUsage = &llm.TokenUsage{
-					PromptTokens:        event.Usage.InputTokens,
-					CompletionTokens:    event.Usage.OutputTokens,
+					InputTokens:         event.Usage.InputTokens,
+					OutputTokens:        event.Usage.OutputTokens,
 					TotalTokens:         event.Usage.InputTokens + event.Usage.OutputTokens,
 					CacheCreationTokens: event.Usage.CacheCreationTokens,
 					CacheReadTokens:     event.Usage.CacheReadTokens,
@@ -825,9 +825,9 @@ func (m *MockAnthropicProvider) Complete(ctx context.Context, req llm.Completion
 	completionTokens := estimateTokens([]llm.Message{{Content: content}})
 
 	usage := llm.TokenUsage{
-		PromptTokens:     promptTokens,
-		CompletionTokens: completionTokens,
-		TotalTokens:      promptTokens + completionTokens,
+		InputTokens:  promptTokens,
+		OutputTokens: completionTokens,
+		TotalTokens:  promptTokens + completionTokens,
 	}
 
 	resp := &llm.CompletionResponse{
@@ -874,9 +874,9 @@ func (m *MockAnthropicProvider) Stream(ctx context.Context, req llm.CompletionRe
 		completionTokens := 10
 
 		usage := llm.TokenUsage{
-			PromptTokens:     promptTokens,
-			CompletionTokens: completionTokens,
-			TotalTokens:      promptTokens + completionTokens,
+			InputTokens:  promptTokens,
+			OutputTokens: completionTokens,
+			TotalTokens:  promptTokens + completionTokens,
 		}
 
 		// Track usage for cost tracking
@@ -907,9 +907,9 @@ func CreateMockResponse(content string, model string) *llm.CompletionResponse {
 		Content:      content,
 		FinishReason: llm.FinishReasonStop,
 		Usage: llm.TokenUsage{
-			PromptTokens:     10,
-			CompletionTokens: len(content) / 4,
-			TotalTokens:      10 + len(content)/4,
+			InputTokens:  10,
+			OutputTokens: len(content) / 4,
+			TotalTokens:  10 + len(content)/4,
 		},
 		Model:     model,
 		RequestID: uuid.New().String(),

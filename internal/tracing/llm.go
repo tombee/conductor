@@ -109,8 +109,8 @@ func (t *TracedProvider) Complete(ctx context.Context, req llm.CompletionRequest
 		"llm.response.model":              resp.Model,
 		"llm.response.finish_reason":      string(resp.FinishReason),
 		"llm.response.request_id":         resp.RequestID,
-		"llm.usage.prompt_tokens":         resp.Usage.PromptTokens,
-		"llm.usage.completion_tokens":     resp.Usage.CompletionTokens,
+		"llm.usage.input_tokens":          resp.Usage.InputTokens,
+		"llm.usage.output_tokens":         resp.Usage.OutputTokens,
 		"llm.usage.total_tokens":          resp.Usage.TotalTokens,
 		"llm.usage.cache_creation_tokens": resp.Usage.CacheCreationTokens,
 		"llm.usage.cache_read_tokens":     resp.Usage.CacheReadTokens,
@@ -121,7 +121,7 @@ func (t *TracedProvider) Complete(ctx context.Context, req llm.CompletionRequest
 	// Record successful request metrics
 	if t.metrics != nil {
 		t.metrics.RecordLLMRequest(ctx, t.provider.Name(), resp.Model, "success",
-			resp.Usage.PromptTokens, resp.Usage.CompletionTokens, 0, latency)
+			resp.Usage.InputTokens, resp.Usage.OutputTokens, 0, latency)
 	}
 
 	span.SetStatus(observability.StatusCodeOK, "")
@@ -209,8 +209,8 @@ func (t *TracedProvider) Stream(ctx context.Context, req llm.CompletionRequest) 
 				span.SetAttributes(map[string]any{
 					"llm.response.finish_reason":      string(chunk.FinishReason),
 					"llm.response.request_id":         chunk.RequestID,
-					"llm.usage.prompt_tokens":         usage.PromptTokens,
-					"llm.usage.completion_tokens":     usage.CompletionTokens,
+					"llm.usage.input_tokens":          usage.InputTokens,
+					"llm.usage.output_tokens":         usage.OutputTokens,
 					"llm.usage.total_tokens":          usage.TotalTokens,
 					"llm.usage.cache_creation_tokens": usage.CacheCreationTokens,
 					"llm.usage.cache_read_tokens":     usage.CacheReadTokens,
@@ -221,7 +221,7 @@ func (t *TracedProvider) Stream(ctx context.Context, req llm.CompletionRequest) 
 				// Record successful request metrics
 				if t.metrics != nil {
 					t.metrics.RecordLLMRequest(ctx, t.provider.Name(), req.Model, "success",
-						usage.PromptTokens, usage.CompletionTokens, 0, time.Since(startTime))
+						usage.InputTokens, usage.OutputTokens, 0, time.Since(startTime))
 				}
 
 				span.SetStatus(observability.StatusCodeOK, "")

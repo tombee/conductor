@@ -41,7 +41,7 @@ func NewLLMProvider(loader *fixture.Loader, realProvider workflow.LLMProvider, l
 }
 
 // Complete returns a fixture-based completion response.
-func (m *LLMProvider) Complete(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
+func (m *LLMProvider) Complete(ctx context.Context, prompt string, options map[string]interface{}) (*workflow.CompletionResult, error) {
 	// Extract step ID from context
 	stepID := extractStepIDFromContext(ctx)
 	m.logger.Info("[MOCK] LLM completion request", "step_id", stepID)
@@ -54,16 +54,20 @@ func (m *LLMProvider) Complete(ctx context.Context, prompt string, options map[s
 			m.logger.Debug("[MOCK] No fixture found, using real provider", "step_id", stepID, "error", err)
 			return m.realProvider.Complete(ctx, prompt, options)
 		}
-		return "", fmt.Errorf("mock mode: %w", err)
+		return nil, fmt.Errorf("mock mode: %w", err)
 	}
 
 	// Find matching response
 	responseText, err := m.findMatchingResponse(fixtureData, stepID, prompt, options)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return responseText, nil
+	// Return as CompletionResult (mock usage is nil - not applicable for mocks)
+	return &workflow.CompletionResult{
+		Content: responseText,
+		Model:   "mock",
+	}, nil
 }
 
 // findMatchingResponse finds the appropriate response from fixture data.

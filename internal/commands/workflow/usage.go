@@ -96,8 +96,8 @@ func getTotalUsage() llm.UsageAggregate {
 	for _, agg := range llm.AggregateUsageByProvider() {
 		total.TotalRequests += agg.TotalRequests
 		total.TotalTokens += agg.TotalTokens
-		total.TotalPromptTokens += agg.TotalPromptTokens
-		total.TotalCompletionTokens += agg.TotalCompletionTokens
+		total.TotalInputTokens += agg.TotalInputTokens
+		total.TotalOutputTokens += agg.TotalOutputTokens
 		total.TotalCacheCreationTokens += agg.TotalCacheCreationTokens
 		total.TotalCacheReadTokens += agg.TotalCacheReadTokens
 	}
@@ -124,8 +124,8 @@ func outputTotalUsage(data interface{}) error {
 	fmt.Printf("Total Tokens:       %s\n", llm.FormatTokens(agg.TotalTokens))
 	fmt.Println()
 	fmt.Println("Breakdown:")
-	fmt.Printf("  Prompt:           %s\n", llm.FormatTokens(agg.TotalPromptTokens))
-	fmt.Printf("  Completion:       %s\n", llm.FormatTokens(agg.TotalCompletionTokens))
+	fmt.Printf("  Input:            %s\n", llm.FormatTokens(agg.TotalInputTokens))
+	fmt.Printf("  Output:           %s\n", llm.FormatTokens(agg.TotalOutputTokens))
 	if agg.TotalCacheCreationTokens > 0 {
 		fmt.Printf("  Cache Creation:   %s\n", llm.FormatTokens(agg.TotalCacheCreationTokens))
 	}

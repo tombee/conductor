@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/tombee/conductor/pkg/errors"
+	"github.com/tombee/conductor/pkg/llm"
 	"github.com/tombee/conductor/pkg/security"
 	"github.com/tombee/conductor/pkg/workflow/expression"
 	"github.com/tombee/conductor/pkg/workflow/schema"
@@ -64,6 +65,10 @@ type StepResult struct {
 	// ChildTraceID is the trace ID of a sub-workflow execution (for observability)
 	// This field is only populated for type: workflow steps
 	ChildTraceID string
+
+	// TokenUsage contains token consumption for LLM steps.
+	// Nil for non-LLM steps (semantic: "not applicable").
+	TokenUsage *llm.TokenUsage
 }
 
 // DefaultParallelConcurrency is the default maximum number of concurrent parallel steps.
@@ -135,9 +140,23 @@ type Tool interface {
 
 // LLMProvider defines the interface for LLM interactions.
 type LLMProvider interface {
-	// Complete makes a synchronous LLM call
+	// Complete makes a synchronous LLM call and returns the result with token usage.
 	// tools parameter contains available tools for function calling (optional)
-	Complete(ctx context.Context, prompt string, options map[string]interface{}) (string, error)
+	Complete(ctx context.Context, prompt string, options map[string]interface{}) (*CompletionResult, error)
+}
+
+// CompletionResult represents the result of an LLM completion request.
+// It includes both the content and token usage statistics.
+type CompletionResult struct {
+	// Content is the generated text response.
+	Content string
+
+	// Usage contains token consumption information.
+	// Nil if the provider doesn't support usage tracking.
+	Usage *llm.TokenUsage
+
+	// Model is the actual model ID that handled the request.
+	Model string
 }
 
 // OperationRegistry defines the interface for operation lookup and execution.
@@ -335,6 +354,15 @@ func (e *Executor) Execute(ctx context.Context, step *StepDefinition, workflowCo
 			result.ChildTraceID = childTraceID
 			// Remove internal metadata from output
 			delete(result.Output, "_child_trace_id")
+		}
+	}
+
+	// Extract _usage from output for LLM steps
+	if result.Output != nil {
+		if usage, ok := result.Output["_usage"].(*llm.TokenUsage); ok {
+			result.TokenUsage = usage
+			// Remove internal metadata from output
+			delete(result.Output, "_usage")
 		}
 	}
 
@@ -875,7 +903,7 @@ func (e *Executor) executeLLM(ctx context.Context, step *StepDefinition, inputs 
 	}
 
 	// Standard unstructured LLM call
-	response, err := e.llmProvider.Complete(ctx, prompt, options)
+	result, err := e.llmProvider.Complete(ctx, prompt, options)
 	if err != nil {
 		return nil, fmt.Errorf("LLM call failed: %w", err)
 	}
@@ -883,13 +911,20 @@ func (e *Executor) executeLLM(ctx context.Context, step *StepDefinition, inputs 
 	// Log response at trace level
 	if e.logger != nil && e.logger.Enabled(nil, -8) {
 		e.logger.Log(nil, -8, "LLM response",
-			"response", response,
+			"response", result.Content,
 		)
 	}
 
-	return map[string]interface{}{
-		"response": response,
-	}, nil
+	output := map[string]interface{}{
+		"response": result.Content,
+	}
+
+	// Include usage data if available
+	if result.Usage != nil {
+		output["_usage"] = result.Usage
+	}
+
+	return output, nil
 }
 
 // executeLLMWithSchema executes an LLM call with structured output validation and retry.
@@ -900,6 +935,8 @@ func (e *Executor) executeLLMWithSchema(ctx context.Context, basePrompt string, 
 
 	var lastResponse string
 	var lastErr error
+	// Aggregate usage across all attempts (including failed validation attempts)
+	var aggregatedUsage llm.TokenUsage
 
 	for attempt := 0; attempt < maxAttempts; attempt++ {
 		// T4.2: Inject schema requirements into prompt
@@ -916,23 +953,32 @@ func (e *Executor) executeLLMWithSchema(ctx context.Context, basePrompt string, 
 		}
 
 		// Make LLM call
-		response, err := e.llmProvider.Complete(ctx, prompt, options)
+		result, err := e.llmProvider.Complete(ctx, prompt, options)
 		if err != nil {
 			return nil, fmt.Errorf("LLM call failed on attempt %d: %w", attempt+1, err)
 		}
 
-		lastResponse = response
+		lastResponse = result.Content
+
+		// Aggregate usage from this attempt
+		if result.Usage != nil {
+			aggregatedUsage.InputTokens += result.Usage.InputTokens
+			aggregatedUsage.OutputTokens += result.Usage.OutputTokens
+			aggregatedUsage.TotalTokens += result.Usage.TotalTokens
+			aggregatedUsage.CacheCreationTokens += result.Usage.CacheCreationTokens
+			aggregatedUsage.CacheReadTokens += result.Usage.CacheReadTokens
+		}
 
 		// Log response at trace level
 		if e.logger != nil && e.logger.Enabled(nil, -8) {
 			e.logger.Log(nil, -8, "LLM response with schema",
-				"response", response,
+				"response", result.Content,
 				"attempt", attempt+1,
 			)
 		}
 
 		// T3.2 & T4.3: Extract and parse JSON from response
-		data, err := schema.ExtractJSON(response)
+		data, err := schema.ExtractJSON(result.Content)
 		if err != nil {
 			lastErr = fmt.Errorf("failed to extract JSON: %w", err)
 			continue // Retry with clearer instructions
@@ -946,11 +992,18 @@ func (e *Executor) executeLLMWithSchema(ctx context.Context, basePrompt string, 
 
 		// T4.5: Strip extra fields (validator already does this implicitly)
 		// T4.6: Store validated output under "output" key
-		return map[string]interface{}{
-			"output":   data,        // Structured output accessible as {{.steps.id.output.field}}
-			"response": response,    // Original response for debugging
-			"attempts": attempt + 1, // T4.8: Track retry attempts
-		}, nil
+		output := map[string]interface{}{
+			"output":   data,           // Structured output accessible as {{.steps.id.output.field}}
+			"response": result.Content, // Original response for debugging
+			"attempts": attempt + 1,    // T4.8: Track retry attempts
+		}
+
+		// Include aggregated usage if we had any
+		if aggregatedUsage.TotalTokens > 0 {
+			output["_usage"] = &aggregatedUsage
+		}
+
+		return output, nil
 	}
 
 	// T4.7: All retries exhausted, return structured error

@@ -16,7 +16,7 @@ type sdkLLMProviderAdapter struct {
 }
 
 // Complete makes a synchronous LLM call
-func (a *sdkLLMProviderAdapter) Complete(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
+func (a *sdkLLMProviderAdapter) Complete(ctx context.Context, prompt string, options map[string]interface{}) (*pkgWorkflow.CompletionResult, error) {
 	// Extract model from options
 	model, ok := options["model"].(string)
 	if !ok || model == "" {
@@ -26,7 +26,7 @@ func (a *sdkLLMProviderAdapter) Complete(ctx context.Context, prompt string, opt
 	// Get provider for model
 	provider, err := a.sdk.providers.Get(model)
 	if err != nil {
-		return "", &ProviderError{
+		return nil, &ProviderError{
 			Provider:  model,
 			Cause:     err,
 			Retryable: false,
@@ -54,14 +54,31 @@ func (a *sdkLLMProviderAdapter) Complete(ctx context.Context, prompt string, opt
 
 	response, err := provider.Complete(ctx, req)
 	if err != nil {
-		return "", &ProviderError{
+		return nil, &ProviderError{
 			Provider:  model,
 			Cause:     err,
 			Retryable: true,
 		}
 	}
 
-	return response.Content, nil
+	// Build the result with token usage
+	result := &pkgWorkflow.CompletionResult{
+		Content: response.Content,
+		Model:   response.Model,
+	}
+
+	// Copy usage data if available
+	if response.Usage.TotalTokens > 0 {
+		result.Usage = &llm.TokenUsage{
+			InputTokens:         response.Usage.InputTokens,
+			OutputTokens:        response.Usage.OutputTokens,
+			TotalTokens:         response.Usage.TotalTokens,
+			CacheCreationTokens: response.Usage.CacheCreationTokens,
+			CacheReadTokens:     response.Usage.CacheReadTokens,
+		}
+	}
+
+	return result, nil
 }
 
 // sdkToolRegistryAdapter adapts SDK tool registry to pkg/workflow ToolRegistry interface
@@ -175,8 +192,8 @@ func (a *sdkAgentLLMProviderAdapter) Complete(ctx context.Context, messages []pk
 		ToolCalls:    []pkgAgent.ToolCall{},
 		FinishReason: "stop",
 		Usage: pkgAgent.TokenUsage{
-			InputTokens:  response.Usage.PromptTokens,
-			OutputTokens: response.Usage.CompletionTokens,
+			InputTokens:  response.Usage.InputTokens,
+			OutputTokens: response.Usage.OutputTokens,
 			TotalTokens:  response.Usage.TotalTokens,
 		},
 	}, nil

@@ -301,9 +301,10 @@ type mockLLMProvider struct {
 	responses map[string]string
 }
 
-func (m *mockLLMProvider) Complete(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
+func (m *mockLLMProvider) Complete(ctx context.Context, prompt string, options map[string]interface{}) (*workflow.CompletionResult, error) {
+	content := "default response"
 	if response, ok := m.responses[prompt]; ok {
-		return response, nil
+		content = response
 	}
-	return "default response", nil
+	return &workflow.CompletionResult{Content: content, Model: "mock"}, nil
 }
