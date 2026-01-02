@@ -54,7 +54,7 @@ func newControllerStatusCommand() *cobra.Command {
 		Short: "Show controller status and version",
 		Long: `Display the status, version, and health of the conductor controller.
 
-See also: conductor controller ping, conductor doctor, conductor runs list`,
+See also: conductor controller ping, conductor doctor, conductor history list`,
 		Example: `  # Example 1: Check controller status
   conductor controller status
 

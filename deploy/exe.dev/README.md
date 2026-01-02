@@ -21,7 +21,7 @@ ssh exe.dev share port conductor 9000
 # 4. Connect your local CLI
 export CONDUCTOR_HOST=https://<url-from-step-3>
 export CONDUCTOR_API_KEY=<your-api-key>
-conductor runs list
+conductor history list
 ```
 
 ## Prerequisites
@@ -93,7 +93,7 @@ export CONDUCTOR_API_KEY=<your-api-key>
 EOF
 
 # Test the connection
-conductor runs list
+conductor history list
 ```
 
 ### Step 5: Configure LLM Providers (Optional)

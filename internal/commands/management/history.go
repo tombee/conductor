@@ -30,96 +30,96 @@ import (
 	"github.com/tombee/conductor/internal/commands/shared"
 )
 
-// NewRunsCommand creates the runs command group.
-func NewRunsCommand() *cobra.Command {
+// NewHistoryCommand creates the history command group.
+func NewHistoryCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use: "runs",
+		Use: "history",
 		Annotations: map[string]string{
 			"group": "management",
 		},
-		Short: "Manage workflow runs",
-		Long: `Commands for listing, viewing, and managing workflow runs.
+		Short: "View workflow execution history",
+		Long: `Commands for listing, viewing, and managing past workflow executions.
 
-Runs are workflow executions managed by the conductor controller.`,
+Use 'conductor run' to execute a workflow. Use 'conductor history' to view past executions.`,
 	}
 
-	cmd.AddCommand(newRunsListCommand())
-	cmd.AddCommand(newRunsShowCommand())
-	cmd.AddCommand(newRunsOutputCommand())
-	cmd.AddCommand(newRunsLogsCommand())
-	cmd.AddCommand(newRunsCancelCommand())
+	cmd.AddCommand(newHistoryListCommand())
+	cmd.AddCommand(newHistoryShowCommand())
+	cmd.AddCommand(newHistoryOutputCommand())
+	cmd.AddCommand(newHistoryLogsCommand())
+	cmd.AddCommand(newHistoryCancelCommand())
 
 	return cmd
 }
 
-func newRunsListCommand() *cobra.Command {
+func newHistoryListCommand() *cobra.Command {
 	var status string
 	var workflow string
 	var failed bool
 
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List workflow runs",
-		Long: `List all workflow runs, optionally filtered by status or workflow.
+		Short: "List past workflow executions",
+		Long: `List all workflow executions, optionally filtered by status or workflow.
 
-See also: conductor runs show, conductor run, conductor controller status`,
-		Example: `  # Example 1: List all workflow runs
-  conductor runs list
+See also: conductor history show, conductor run, conductor controller status`,
+		Example: `  # Example 1: List all workflow executions
+  conductor history list
 
   # Example 2: Filter by status
-  conductor runs list --status running
+  conductor history list --status running
 
   # Example 3: Filter by workflow name
-  conductor runs list --workflow my-workflow
+  conductor history list --workflow my-workflow
 
-  # Example 4: List failed runs (shorthand)
-  conductor runs list --failed
+  # Example 4: List failed executions (shorthand)
+  conductor history list --failed
 
-  # Example 5: Get runs as JSON for monitoring
-  conductor runs list --json | jq '.runs[] | select(.status=="failed")'`,
+  # Example 5: Get executions as JSON for monitoring
+  conductor history list --json | jq '.runs[] | select(.status=="failed")'`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// If --failed flag is set, override status to "failed"
 			if failed {
 				status = "failed"
 			}
-			return runsList(status, workflow)
+			return historyList(status, workflow)
 		},
 	}
 
 	cmd.Flags().StringVar(&status, "status", "", "Filter by status (pending, running, completed, failed, cancelled)")
 	cmd.Flags().StringVar(&workflow, "workflow", "", "Filter by workflow name")
-	cmd.Flags().BoolVar(&failed, "failed", false, "Show only failed runs (shorthand for --status failed)")
+	cmd.Flags().BoolVar(&failed, "failed", false, "Show only failed executions (shorthand for --status failed)")
 
 	return cmd
 }
 
-func newRunsShowCommand() *cobra.Command {
+func newHistoryShowCommand() *cobra.Command {
 	var failed bool
 
 	cmd := &cobra.Command{
 		Use:   "show <run-id>",
-		Short: "Show run details",
-		Long: `Display detailed information about a specific workflow run.
+		Short: "Show execution details",
+		Long: `Display detailed information about a specific workflow execution.
 
-See also: conductor runs list, conductor runs logs, conductor runs output`,
-		Example: `  # Example 1: Show run details
-  conductor runs show abc123
+See also: conductor history list, conductor history logs, conductor history output`,
+		Example: `  # Example 1: Show execution details
+  conductor history show abc123
 
-  # Example 2: Get run details as JSON
-  conductor runs show abc123 --json
+  # Example 2: Get execution details as JSON
+  conductor history show abc123 --json
 
-  # Example 3: Extract run status
-  conductor runs show abc123 --json | jq -r '.status'
+  # Example 3: Extract execution status
+  conductor history show abc123 --json | jq -r '.status'
 
-  # Example 4: Check if run is complete
-  conductor runs show abc123 --json | jq -e '.status == "completed"'
+  # Example 4: Check if execution is complete
+  conductor history show abc123 --json | jq -e '.status == "completed"'
 
   # Example 5: Show failure details with suggested replay command
-  conductor runs show abc123 --failed`,
+  conductor history show abc123 --failed`,
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completion.CompleteRunIDs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runsShow(args[0], failed)
+			return historyShow(args[0], failed)
 		},
 	}
 
@@ -128,30 +128,30 @@ See also: conductor runs list, conductor runs logs, conductor runs output`,
 	return cmd
 }
 
-func newRunsOutputCommand() *cobra.Command {
+func newHistoryOutputCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:               "output <run-id>",
-		Short:             "Get run output",
-		Long:              `Display the output of a completed workflow run.`,
+		Short:             "Get execution output",
+		Long:              `Display the output of a completed workflow execution.`,
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completion.CompleteRunIDs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runsOutput(args[0])
+			return historyOutput(args[0])
 		},
 	}
 }
 
-func newRunsLogsCommand() *cobra.Command {
+func newHistoryLogsCommand() *cobra.Command {
 	var follow bool
 
 	cmd := &cobra.Command{
 		Use:               "logs <run-id>",
-		Short:             "View run logs",
-		Long:              `Display logs from a workflow run. Use -f to follow/stream logs.`,
+		Short:             "View execution logs",
+		Long:              `Display logs from a workflow execution. Use -f to follow/stream logs.`,
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completion.CompleteRunIDs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runsLogs(args[0], follow)
+			return historyLogs(args[0], follow)
 		},
 	}
 
@@ -160,7 +160,7 @@ func newRunsLogsCommand() *cobra.Command {
 	return cmd
 }
 
-func newRunsCancelCommand() *cobra.Command {
+func newHistoryCancelCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:               "cancel <run-id>",
 		Short:             "Cancel a running workflow",
@@ -168,12 +168,12 @@ func newRunsCancelCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completion.CompleteActiveRunIDs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runsCancel(args[0])
+			return historyCancel(args[0])
 		},
 	}
 }
 
-func runsList(status, workflow string) error {
+func historyList(status, workflow string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -197,7 +197,7 @@ func runsList(status, workflow string) error {
 
 	resp, err := c.Get(ctx, path)
 	if err != nil {
-		return fmt.Errorf("failed to list runs: %w", err)
+		return fmt.Errorf("failed to list executions: %w", err)
 	}
 
 	if shared.GetJSON() {
@@ -210,7 +210,7 @@ func runsList(status, workflow string) error {
 	}
 
 	if len(runs) == 0 {
-		fmt.Println("No runs found")
+		fmt.Println("No executions found")
 		return nil
 	}
 
@@ -233,7 +233,7 @@ func runsList(status, workflow string) error {
 	return nil
 }
 
-func runsShow(id string, showFailureDetails bool) error {
+func historyShow(id string, showFailureDetails bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -244,7 +244,7 @@ func runsShow(id string, showFailureDetails bool) error {
 
 	resp, err := c.Get(ctx, "/v1/runs/"+id)
 	if err != nil {
-		return fmt.Errorf("failed to get run: %w", err)
+		return fmt.Errorf("failed to get execution: %w", err)
 	}
 
 	if shared.GetJSON() {
@@ -318,14 +318,14 @@ func runsShow(id string, showFailureDetails bool) error {
 				fmt.Printf("conductor run replay %s --estimate\n", id)
 			}
 		} else {
-			fmt.Printf("\nNote: Run status is '%s', not 'failed'. Use --failed only with failed runs.\n", status)
+			fmt.Printf("\nNote: Execution status is '%s', not 'failed'. Use --failed only with failed executions.\n", status)
 		}
 	}
 
 	return nil
 }
 
-func runsOutput(id string) error {
+func historyOutput(id string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -344,7 +344,7 @@ func runsOutput(id string) error {
 	return enc.Encode(resp)
 }
 
-func runsLogs(id string, follow bool) error {
+func historyLogs(id string, follow bool) error {
 	c, err := client.FromEnvironment()
 	if err != nil {
 		return fmt.Errorf("failed to create client: %w", err)
@@ -442,7 +442,7 @@ func printLogEntry(log map[string]any) {
 	}
 }
 
-func runsCancel(id string) error {
+func historyCancel(id string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -452,10 +452,10 @@ func runsCancel(id string) error {
 	}
 
 	if err := c.Delete(ctx, "/v1/runs/"+id); err != nil {
-		return fmt.Errorf("failed to cancel run: %w", err)
+		return fmt.Errorf("failed to cancel execution: %w", err)
 	}
 
-	fmt.Printf("Run %s cancelled\n", id)
+	fmt.Printf("Execution %s cancelled\n", id)
 	return nil
 }
 

@@ -70,7 +70,7 @@ func CompleteRunIDs(cmd *cobra.Command, args []string, toComplete string) ([]str
 }
 
 // CompleteActiveRunIDs provides completion for active (running/pending) run IDs.
-// Used by 'runs cancel' command to only show cancelable runs.
+// Used by 'history cancel' command to only show cancelable runs.
 func CompleteActiveRunIDs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return SafeCompletionWrapper(func() ([]string, cobra.ShellCompDirective) {
 		runs, err := getRunCompletions(true)

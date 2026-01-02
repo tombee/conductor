@@ -619,7 +619,7 @@ Token limit errors occur when workflow execution exceeds configured token limits
 
 **Resolution steps:**
 
-1. Review token usage: `conductor runs show <run-id>`
+1. Review token usage: `conductor history show <run-id>`
 2. Increase limit in SDK configuration:
    ```go
    sdk.New(sdk.WithTokenLimit(100000))
@@ -670,11 +670,11 @@ conductor run workflow.yaml --dry-run
 ### Review Logs
 
 ```bash
-# Show recent workflow runs
-conductor runs list
+# Show recent workflow executions
+conductor history list
 
-# Show specific run details
-conductor runs show <run-id>
+# Show specific execution details
+conductor history show <run-id>
 
 # Show MCP server logs
 conductor mcp logs <server-name>

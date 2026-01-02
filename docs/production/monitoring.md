@@ -152,13 +152,13 @@ When debugging issues across systems:
 **Step 1: Get the workflow run ID**
 
 ```bash
-conductor runs list --status failed --limit 5
+conductor history list --status failed
 ```
 
 **Step 2: Get the correlation ID**
 
 ```bash
-conductor runs show <run-id> | grep correlation_id
+conductor history show <run-id> | grep correlation_id
 ```
 
 **Step 3: Search Conductor logs**

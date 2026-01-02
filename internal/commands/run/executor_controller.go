@@ -290,7 +290,7 @@ func runWorkflowViaController(workflowPath string, inputArgs []string, inputFile
 		}
 		if !quiet {
 			fmt.Printf("Workflow submitted. Run ID: %s\n", runID)
-			fmt.Println("Check status with: conductor runs show", runID)
+			fmt.Println("Check status with: conductor history show", runID)
 		}
 		return nil
 	}
@@ -503,7 +503,7 @@ func loadConfig() (*config.Config, error) {
 
 	// Check if config file exists
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("no configuration found. Run 'conductor init' to set up")
+		return nil, fmt.Errorf("no configuration found. Run 'conductor provider add' to set up an LLM provider")
 	}
 
 	return config.Load(configPath)

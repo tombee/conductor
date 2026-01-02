@@ -23,7 +23,7 @@ ssh exe.dev share port conductor 9000
 # 4. Connect your local CLI
 export CONDUCTOR_HOST=https://<url-from-step-3>
 export CONDUCTOR_API_KEY=<your-api-key>
-conductor runs list
+conductor history list
 ```
 
 ### Webhook Support

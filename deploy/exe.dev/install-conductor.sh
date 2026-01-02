@@ -287,7 +287,7 @@ print_next_steps() {
     echo "   export CONDUCTOR_API_KEY=${CONDUCTOR_API_KEY}"
     echo ""
     echo "3. Test the connection:"
-    echo "   conductor runs list"
+    echo "   conductor history list"
     echo ""
     echo "Useful commands on this VM:"
     echo "  conductor daemon start   - Start the daemon"

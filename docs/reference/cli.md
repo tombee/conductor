@@ -37,7 +37,7 @@ Conductor is a command-line tool for orchestrating complex workflows with Large 
 - `validate` - Validate workflow syntax
 - `providers` - Manage LLM provider configurations
 - `controller` - Manage the conductor controller
-- `runs` - View workflow run history
+- `history` - View workflow execution history
 - `config` - Manage configuration
 - `health` - Diagnose setup issues
 - `examples` - Browse example workflows
@@ -509,39 +509,40 @@ Controller is running (latency: 2ms)
 
 ---
 
-### conductor runs
+### conductor history
 
-View workflow run history.
+View workflow execution history.
 
 ```bash
-conductor runs [command]
+conductor history [command]
 ```
 
 **Description:**
 
-Manage and view workflow execution history.
+View and manage past workflow executions.
 
 **Subcommands:**
 
-- `list` - List recent workflow runs
-- `show` - Show details for a specific run
-- `logs` - View logs for a run
+- `list` - List workflow executions
+- `show` - Show details for a specific execution
+- `logs` - View logs for an execution
+- `output` - Get execution output
 - `cancel` - Cancel a running workflow
 
 **Examples:**
 
 ```bash
-# List recent runs
-conductor runs list
+# List executions
+conductor history list
 
-# Show run details
-conductor runs show <run-id>
+# Show execution details
+conductor history show <run-id>
 
 # View logs
-conductor runs logs <run-id>
+conductor history logs <run-id>
 
 # Cancel running workflow
-conductor runs cancel <run-id>
+conductor history cancel <run-id>
 ```
 
 ---
@@ -770,7 +771,7 @@ conductor run workflow.yaml \
 RUN_ID=$(conductor run workflow.yaml --background --json | jq -r '.run_id')
 
 # Check status later
-conductor runs show $RUN_ID
+conductor history show $RUN_ID
 ```
 
 ### Pipeline Integration

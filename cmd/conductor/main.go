@@ -115,7 +115,7 @@ func main() {
 	rootCmd.AddCommand(mcpserver.NewCommand())
 
 	// Management commands
-	rootCmd.AddCommand(management.NewRunsCommand())
+	rootCmd.AddCommand(management.NewHistoryCommand())
 	rootCmd.AddCommand(triggers.NewTriggersCommand())
 
 	// Debug commands
