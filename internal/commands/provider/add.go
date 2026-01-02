@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -231,19 +232,22 @@ Examples:
 				return fmt.Errorf("failed to save config: %w", err)
 			}
 
-			fmt.Printf("\nProvider %q added successfully\n", providerName)
+			fmt.Printf("\n✓ Provider %q added successfully\n", providerName)
 			if setAsDefault {
-				fmt.Printf("Set as default provider\n")
+				fmt.Printf("  Set as default provider\n")
 			}
-			fmt.Printf("Config saved to: %s\n", cfgPath)
+			if len(providerCfg.Models) > 0 {
+				var modelNames []string
+				for name := range providerCfg.Models {
+					modelNames = append(modelNames, name)
+				}
+				sort.Strings(modelNames)
+				fmt.Printf("  Models: %s\n", strings.Join(modelNames, ", "))
+			}
+			fmt.Printf("  Config saved to: %s\n", cfgPath)
 			fmt.Println()
 			fmt.Println("Next steps:")
-			fmt.Println("  1. Test the provider:")
-			fmt.Printf("     conductor provider test %s\n", providerName)
-			fmt.Println("  2. Add models:")
-			fmt.Printf("     conductor model discover %s --register\n", providerName)
-			fmt.Println("  3. Configure tier mappings:")
-			fmt.Println("     conductor model set-tier fast <provider/model>")
+			fmt.Printf("  conductor provider test %s   # Test the provider\n", providerName)
 			fmt.Println()
 
 			return nil
