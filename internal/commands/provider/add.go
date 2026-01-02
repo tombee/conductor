@@ -102,7 +102,7 @@ Examples:
 
 			// Interactive mode if type not specified
 			if providerType == "" {
-				return fmt.Errorf("interactive TUI mode not yet implemented - use flags:\n  conductor provider add <name> --type <type> --api-key-env <VAR>\n\nFor now, use: conductor providers add")
+				return runAddInteractive(cmd, cfg, cfgPath)
 			}
 
 			// Non-interactive mode

@@ -51,7 +51,7 @@ func TestAddCommand_MissingRequiredFlags(t *testing.T) {
 		{
 			name:        "missing type flag",
 			args:        []string{"test-provider"},
-			expectedErr: "interactive TUI mode not yet implemented",
+			expectedErr: "interactive setup requires a terminal",
 		},
 		{
 			name:        "missing provider name with type flag",
