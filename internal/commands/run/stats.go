@@ -16,6 +16,7 @@ package run
 
 import (
 	"fmt"
+	"strings"
 )
 
 // parseStats parses statistics from an event map
@@ -51,33 +52,35 @@ func parseStatsFromRun(run map[string]any) *RunStats {
 
 // displayStats displays execution statistics
 func displayStats(stats *RunStats) {
+	// Don't display anything if we have no meaningful stats
+	hasStats := stats.CostUSD > 0 || stats.TokensIn > 0 || stats.TokensOut > 0 || stats.DurationMs > 0 || len(stats.StepCosts) > 0
+	if !hasStats {
+		return
+	}
+
 	fmt.Println("\n---")
 
-	costStr := "N/A"
+	var parts []string
+
 	if stats.CostUSD > 0 {
-		// Add accuracy indicator
 		prefix := ""
 		if stats.Accuracy == "estimated" {
 			prefix = "~"
-		} else if stats.Accuracy == "unavailable" {
-			costStr = fmt.Sprintf("-- (tokens: %d)", stats.TokensIn+stats.TokensOut)
 		}
-		if stats.Accuracy != "unavailable" {
-			costStr = fmt.Sprintf("%s$%.4f", prefix, stats.CostUSD)
-		}
+		parts = append(parts, fmt.Sprintf("Cost: %s$%.4f", prefix, stats.CostUSD))
 	}
 
-	tokensStr := "N/A"
 	if stats.TokensIn > 0 || stats.TokensOut > 0 {
-		tokensStr = fmt.Sprintf("%d in / %d out", stats.TokensIn, stats.TokensOut)
+		parts = append(parts, fmt.Sprintf("Tokens: %d in / %d out", stats.TokensIn, stats.TokensOut))
 	}
 
-	timeStr := "N/A"
 	if stats.DurationMs > 0 {
-		timeStr = fmt.Sprintf("%.1fs", float64(stats.DurationMs)/1000.0)
+		parts = append(parts, fmt.Sprintf("Time: %.1fs", float64(stats.DurationMs)/1000.0))
 	}
 
-	fmt.Printf("Cost: %s | Tokens: %s | Time: %s\n", costStr, tokensStr, timeStr)
+	if len(parts) > 0 {
+		fmt.Println(strings.Join(parts, " | "))
+	}
 
 	// Show per-step breakdown if available
 	if len(stats.StepCosts) > 0 {
