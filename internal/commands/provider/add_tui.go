@@ -100,9 +100,16 @@ func runAddInteractive(cmd *cobra.Command, cfg *config.Config, cfgPath string) e
 		}
 	}
 
-	// Initialize Models map
+	// Initialize Models map with defaults for provider type
 	if providerCfg.Models == nil {
 		providerCfg.Models = make(map[string]config.ModelConfig)
+	}
+
+	// Add default models for claude-code provider
+	if providerType == "claude-code" {
+		providerCfg.Models["haiku"] = config.ModelConfig{}
+		providerCfg.Models["sonnet"] = config.ModelConfig{}
+		providerCfg.Models["opus"] = config.ModelConfig{}
 	}
 
 	// Add provider to config

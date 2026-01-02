@@ -122,7 +122,7 @@ func newListCmd() *cobra.Command {
 func getConfigPathOrDefault() (string, error) {
 	cfgPath := shared.GetConfigPath()
 	if cfgPath == "" {
-		return config.ConfigPath()
+		return config.SettingsPath()
 	}
 	return cfgPath, nil
 }

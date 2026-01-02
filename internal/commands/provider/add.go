@@ -205,6 +205,13 @@ Examples:
 				providerCfg.Models = make(map[string]config.ModelConfig)
 			}
 
+			// Add default models for claude-code provider
+			if providerType == "claude-code" {
+				providerCfg.Models["haiku"] = config.ModelConfig{}
+				providerCfg.Models["sonnet"] = config.ModelConfig{}
+				providerCfg.Models["opus"] = config.ModelConfig{}
+			}
+
 			// Add provider to config
 			cfg.Providers[providerName] = providerCfg
 
