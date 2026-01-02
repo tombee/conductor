@@ -86,11 +86,11 @@ func SimpleTool(name, description string) llm.Tool {
 }
 
 // MockTokenUsage creates a TokenUsage struct for testing.
-func MockTokenUsage(prompt, completion int) llm.TokenUsage {
+func MockTokenUsage(input, output int) llm.TokenUsage {
 	return llm.TokenUsage{
-		PromptTokens:     prompt,
-		CompletionTokens: completion,
-		TotalTokens:      prompt + completion,
+		InputTokens:  input,
+		OutputTokens: output,
+		TotalTokens:  input + output,
 	}
 }
 

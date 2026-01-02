@@ -114,11 +114,11 @@ func TestRecordLLM(t *testing.T) {
 	if fixture.Metadata.DurationMs != 1500 {
 		t.Errorf("Expected duration 1500ms, got: %d", fixture.Metadata.DurationMs)
 	}
-	if fixture.Metadata.PromptTokens != 100 {
-		t.Errorf("Expected 100 prompt tokens, got: %d", fixture.Metadata.PromptTokens)
+	if fixture.Metadata.InputTokens != 100 {
+		t.Errorf("Expected 100 input tokens, got: %d", fixture.Metadata.InputTokens)
 	}
-	if fixture.Metadata.CompletionTokens != 50 {
-		t.Errorf("Expected 50 completion tokens, got: %d", fixture.Metadata.CompletionTokens)
+	if fixture.Metadata.OutputTokens != 50 {
+		t.Errorf("Expected 50 output tokens, got: %d", fixture.Metadata.OutputTokens)
 	}
 
 	// Verify comment

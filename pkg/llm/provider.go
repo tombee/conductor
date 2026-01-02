@@ -217,13 +217,13 @@ const (
 
 // TokenUsage tracks token consumption for cost calculation.
 type TokenUsage struct {
-	// PromptTokens is the number of tokens in the input.
-	PromptTokens int
+	// InputTokens is the number of tokens in the input (prompt).
+	InputTokens int
 
-	// CompletionTokens is the number of tokens in the output.
-	CompletionTokens int
+	// OutputTokens is the number of tokens in the output (completion).
+	OutputTokens int
 
-	// TotalTokens is the sum of prompt and completion tokens.
+	// TotalTokens is the sum of input and output tokens.
 	TotalTokens int
 
 	// CacheCreationTokens tracks tokens written to cache (billed at full rate).

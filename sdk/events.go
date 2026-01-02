@@ -75,8 +75,8 @@ type AgentIterationEvent struct {
 // TokenUsage tracks token consumption for cost calculation.
 // This is an SDK-level type that mirrors pkg/llm.TokenUsage.
 type TokenUsage struct {
-	PromptTokens        int
-	CompletionTokens    int
+	InputTokens         int
+	OutputTokens        int
 	TotalTokens         int
 	CacheCreationTokens int
 	CacheReadTokens     int
@@ -85,8 +85,8 @@ type TokenUsage struct {
 // fromLLMTokenUsage converts pkg/llm.TokenUsage to sdk.TokenUsage
 func fromLLMTokenUsage(usage llm.TokenUsage) TokenUsage {
 	return TokenUsage{
-		PromptTokens:        usage.PromptTokens,
-		CompletionTokens:    usage.CompletionTokens,
+		InputTokens:         usage.InputTokens,
+		OutputTokens:        usage.OutputTokens,
 		TotalTokens:         usage.TotalTokens,
 		CacheCreationTokens: usage.CacheCreationTokens,
 		CacheReadTokens:     usage.CacheReadTokens,

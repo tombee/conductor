@@ -80,8 +80,8 @@ func TestTracedProvider_Complete(t *testing.T) {
 				Content:      "test response",
 				FinishReason: llm.FinishReasonStop,
 				Usage: llm.TokenUsage{
-					PromptTokens:        10,
-					CompletionTokens:    20,
+					InputTokens:         10,
+					OutputTokens:        20,
 					TotalTokens:         30,
 					CacheCreationTokens: 5,
 					CacheReadTokens:     15,
@@ -136,8 +136,8 @@ func TestTracedProvider_Complete(t *testing.T) {
 		"llm.model":                       "test-model",
 		"llm.response.model":              "test-model",
 		"llm.response.request_id":         "req-123",
-		"llm.usage.prompt_tokens":         int64(10),
-		"llm.usage.completion_tokens":     int64(20),
+		"llm.usage.input_tokens":          int64(10),
+		"llm.usage.output_tokens":         int64(20),
 		"llm.usage.total_tokens":          int64(30),
 		"llm.usage.cache_creation_tokens": int64(5),
 		"llm.usage.cache_read_tokens":     int64(15),
@@ -247,9 +247,9 @@ func TestTracedProvider_Stream(t *testing.T) {
 					FinishReason: llm.FinishReasonStop,
 					RequestID:    "req-456",
 					Usage: &llm.TokenUsage{
-						PromptTokens:     15,
-						CompletionTokens: 25,
-						TotalTokens:      40,
+						InputTokens:  15,
+						OutputTokens: 25,
+						TotalTokens:  40,
 					},
 				}
 			}()
@@ -299,12 +299,12 @@ func TestTracedProvider_Stream(t *testing.T) {
 	// Verify usage attributes were set
 	attrs := span.Attributes
 	expectedAttrs := map[string]any{
-		"llm.provider":                "test-provider",
-		"llm.model":                   "test-model",
-		"llm.response.request_id":     "req-456",
-		"llm.usage.prompt_tokens":     int64(15),
-		"llm.usage.completion_tokens": int64(25),
-		"llm.usage.total_tokens":      int64(40),
+		"llm.provider":             "test-provider",
+		"llm.model":                "test-model",
+		"llm.response.request_id":  "req-456",
+		"llm.usage.input_tokens":   int64(15),
+		"llm.usage.output_tokens":  int64(25),
+		"llm.usage.total_tokens":   int64(40),
 	}
 
 	for key, expectedValue := range expectedAttrs {

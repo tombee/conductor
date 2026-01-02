@@ -18,14 +18,15 @@ type loopMockProvider struct {
 	approveOn int      // Which call number to return approved: true
 }
 
-func (m *loopMockProvider) Complete(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
+func (m *loopMockProvider) Complete(ctx context.Context, prompt string, options map[string]interface{}) (*CompletionResult, error) {
 	count := atomic.AddInt32(m.callCount, 1)
 	idx := int(count) - 1
 
+	content := `{"approved": false, "feedback": "needs improvement"}`
 	if idx < len(m.responses) {
-		return m.responses[idx], nil
+		content = m.responses[idx]
 	}
-	return `{"approved": false, "feedback": "needs improvement"}`, nil
+	return &CompletionResult{Content: content, Model: "mock"}, nil
 }
 
 // TestExecuteLoop_BasicTerminationByCondition tests that loop terminates when condition is met
@@ -155,13 +156,14 @@ func TestExecuteLoop_ContextVariables(t *testing.T) {
 	var receivedPrompts []string
 
 	provider := &mockLLMProviderFunc{
-		completeFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
+		completeFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (*CompletionResult, error) {
 			atomic.AddInt32(&callCount, 1)
 			receivedPrompts = append(receivedPrompts, prompt)
+			content := `{"done": false}`
 			if callCount >= 3 {
-				return `{"done": true}`, nil
+				content = `{"done": true}`
 			}
-			return `{"done": false}`, nil
+			return &CompletionResult{Content: content, Model: "mock"}, nil
 		},
 	}
 
@@ -203,7 +205,7 @@ func TestExecuteLoop_StepConditionSkip(t *testing.T) {
 	var applyCalls, reviewCalls int32
 
 	provider := &mockLLMProviderFunc{
-		completeFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
+		completeFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (*CompletionResult, error) {
 			atomic.AddInt32(&callCount, 1)
 			if prompt == "Apply feedback" {
 				atomic.AddInt32(&applyCalls, 1)
@@ -211,10 +213,11 @@ func TestExecuteLoop_StepConditionSkip(t *testing.T) {
 			if prompt == "Review code" {
 				atomic.AddInt32(&reviewCalls, 1)
 			}
+			content := `{"approved": false, "feedback": "improve"}`
 			if callCount >= 6 { // 2 steps per iteration (except first), 3 iterations
-				return `{"approved": true}`, nil
+				content = `{"approved": true}`
 			}
-			return `{"approved": false, "feedback": "improve"}`, nil
+			return &CompletionResult{Content: content, Model: "mock"}, nil
 		},
 	}
 
@@ -260,15 +263,16 @@ func TestExecuteLoop_StepFailWithIgnore(t *testing.T) {
 	callCount := int32(0)
 
 	provider := &mockLLMProviderFunc{
-		completeFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
+		completeFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (*CompletionResult, error) {
 			atomic.AddInt32(&callCount, 1)
 			if prompt == "Fail step" && callCount == 1 {
-				return "", errors.New("step failed")
+				return nil, errors.New("step failed")
 			}
+			content := `{"done": false}`
 			if callCount >= 3 {
-				return `{"done": true}`, nil
+				content = `{"done": true}`
 			}
-			return `{"done": false}`, nil
+			return &CompletionResult{Content: content, Model: "mock"}, nil
 		},
 	}
 
@@ -390,12 +394,13 @@ func TestExecuteLoop_HistoryTracking(t *testing.T) {
 	callCount := int32(0)
 
 	provider := &mockLLMProviderFunc{
-		completeFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
+		completeFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (*CompletionResult, error) {
 			count := atomic.AddInt32(&callCount, 1)
+			content := `{"done": false, "value": ` + string(rune('0'+count)) + `0}`
 			if count >= 3 {
-				return `{"done": true, "value": 100}`, nil
+				content = `{"done": true, "value": 100}`
 			}
-			return `{"done": false, "value": ` + string(rune('0'+count)) + `0}`, nil
+			return &CompletionResult{Content: content, Model: "mock"}, nil
 		},
 	}
 
@@ -438,8 +443,8 @@ func TestExecuteLoop_HistoryTracking(t *testing.T) {
 // TestExecuteLoop_SensitiveFieldMasking tests that sensitive fields are masked in history
 func TestExecuteLoop_SensitiveFieldMasking(t *testing.T) {
 	provider := &mockLLMProviderFunc{
-		completeFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
-			return `{"api_key": "secret123", "token": "abc", "data": "visible", "done": true}`, nil
+		completeFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (*CompletionResult, error) {
+			return &CompletionResult{Content: `{"api_key": "secret123", "token": "abc", "data": "visible", "done": true}`, Model: "mock"}, nil
 		},
 	}
 
@@ -548,20 +553,24 @@ func TestExecuteLoop_MultipleNestedSteps(t *testing.T) {
 	callCount := int32(0)
 
 	provider := &mockLLMProviderFunc{
-		completeFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
+		completeFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (*CompletionResult, error) {
 			atomic.AddInt32(&callCount, 1)
+			var content string
 			switch {
 			case prompt == "Step A":
-				return `{"a_result": "done_a"}`, nil
+				content = `{"a_result": "done_a"}`
 			case prompt == "Step B":
-				return `{"b_result": "done_b"}`, nil
+				content = `{"b_result": "done_b"}`
 			case prompt == "Check":
 				if callCount >= 6 { // 3 steps per iteration, 2 iterations
-					return `{"complete": true}`, nil
+					content = `{"complete": true}`
+				} else {
+					content = `{"complete": false}`
 				}
-				return `{"complete": false}`, nil
+			default:
+				content = `{}`
 			}
-			return `{}`, nil
+			return &CompletionResult{Content: content, Model: "mock"}, nil
 		},
 	}
 

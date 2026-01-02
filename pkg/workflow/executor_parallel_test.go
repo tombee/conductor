@@ -393,14 +393,15 @@ type conditionalMockProvider struct {
 	errors    map[string]error
 }
 
-func (m *conditionalMockProvider) Complete(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
+func (m *conditionalMockProvider) Complete(ctx context.Context, prompt string, options map[string]interface{}) (*CompletionResult, error) {
 	if err, ok := m.errors[prompt]; ok {
-		return "", err
+		return nil, err
 	}
+	content := "default response"
 	if resp, ok := m.responses[prompt]; ok {
-		return resp, nil
+		content = resp
 	}
-	return "default response", nil
+	return &CompletionResult{Content: content, Model: "mock"}, nil
 }
 
 type delayedMockProvider struct {
@@ -408,12 +409,12 @@ type delayedMockProvider struct {
 	response string
 }
 
-func (m *delayedMockProvider) Complete(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
+func (m *delayedMockProvider) Complete(ctx context.Context, prompt string, options map[string]interface{}) (*CompletionResult, error) {
 	select {
 	case <-time.After(m.delay):
-		return m.response, nil
+		return &CompletionResult{Content: m.response, Model: "mock"}, nil
 	case <-ctx.Done():
-		return "", ctx.Err()
+		return nil, ctx.Err()
 	}
 }
 
@@ -422,9 +423,9 @@ type trackingMockProvider struct {
 	onCall   func()
 }
 
-func (m *trackingMockProvider) Complete(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
+func (m *trackingMockProvider) Complete(ctx context.Context, prompt string, options map[string]interface{}) (*CompletionResult, error) {
 	if m.onCall != nil {
 		m.onCall()
 	}
-	return m.response, nil
+	return &CompletionResult{Content: m.response, Model: "mock"}, nil
 }

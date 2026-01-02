@@ -23,6 +23,7 @@ import (
 	"github.com/tombee/conductor/pkg/llm"
 	"github.com/tombee/conductor/pkg/llm/providers"
 	"github.com/tombee/conductor/pkg/llm/providers/claudecode"
+	"github.com/tombee/conductor/pkg/workflow"
 )
 
 // ProviderAdapter adapts the full llm.Provider interface to the simpler
@@ -38,7 +39,7 @@ func NewProviderAdapter(provider llm.Provider) *ProviderAdapter {
 
 // Complete implements workflow.LLMProvider interface.
 // It converts the simple interface to the full llm.CompletionRequest.
-func (a *ProviderAdapter) Complete(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
+func (a *ProviderAdapter) Complete(ctx context.Context, prompt string, options map[string]interface{}) (*workflow.CompletionResult, error) {
 	// Build messages from prompt
 	messages := []llm.Message{
 		{Role: llm.MessageRoleUser, Content: prompt},
@@ -75,10 +76,27 @@ func (a *ProviderAdapter) Complete(ctx context.Context, prompt string, options m
 	resp, err := a.provider.Complete(ctx, req)
 
 	if err != nil {
-		return "", fmt.Errorf("LLM completion failed: %w", err)
+		return nil, fmt.Errorf("LLM completion failed: %w", err)
 	}
 
-	return resp.Content, nil
+	// Build the result with token usage
+	result := &workflow.CompletionResult{
+		Content: resp.Content,
+		Model:   resp.Model,
+	}
+
+	// Copy usage data if available
+	if resp.Usage.TotalTokens > 0 {
+		result.Usage = &llm.TokenUsage{
+			InputTokens:         resp.Usage.InputTokens,
+			OutputTokens:        resp.Usage.OutputTokens,
+			TotalTokens:         resp.Usage.TotalTokens,
+			CacheCreationTokens: resp.Usage.CacheCreationTokens,
+			CacheReadTokens:     resp.Usage.CacheReadTokens,
+		}
+	}
+
+	return result, nil
 }
 
 // CreateProvider creates an llm.Provider from config.

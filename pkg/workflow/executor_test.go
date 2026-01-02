@@ -99,11 +99,11 @@ type mockLLMProvider struct {
 	err      error
 }
 
-func (m *mockLLMProvider) Complete(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
+func (m *mockLLMProvider) Complete(ctx context.Context, prompt string, options map[string]interface{}) (*CompletionResult, error) {
 	if m.err != nil {
-		return "", m.err
+		return nil, m.err
 	}
-	return m.response, nil
+	return &CompletionResult{Content: m.response, Model: "mock"}, nil
 }
 
 // mockFlakyLLMProvider is an LLM provider that fails a few times then succeeds
@@ -111,12 +111,12 @@ type mockFlakyLLMProvider struct {
 	attemptCount *int
 }
 
-func (m *mockFlakyLLMProvider) Complete(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
+func (m *mockFlakyLLMProvider) Complete(ctx context.Context, prompt string, options map[string]interface{}) (*CompletionResult, error) {
 	*m.attemptCount++
 	if *m.attemptCount < 3 {
-		return "", errors.New("temporary LLM failure")
+		return nil, errors.New("temporary LLM failure")
 	}
-	return "success", nil
+	return &CompletionResult{Content: "success", Model: "mock"}, nil
 }
 
 func TestNewExecutor(t *testing.T) {
@@ -1275,17 +1275,20 @@ func TestStructuredOutputRetry(t *testing.T) {
 	// Replace the executor's Complete method
 	executor := &Executor{
 		llmProvider: &mockLLMProviderFunc{
-			completeFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
+			completeFunc: func(ctx context.Context, prompt string, options map[string]interface{}) (*CompletionResult, error) {
 				*retryLLM.attempts++
+				var content string
 				if *retryLLM.attempts == 1 {
 					// First attempt: invalid JSON
-					return "This is not valid JSON", nil
+					content = "This is not valid JSON"
 				} else if *retryLLM.attempts == 2 {
 					// Second attempt: wrong enum value
-					return `{"category": "invalid", "priority": "high"}`, nil
+					content = `{"category": "invalid", "priority": "high"}`
+				} else {
+					// Third attempt: success
+					content = `{"category": "bug", "priority": "high"}`
 				}
-				// Third attempt: success
-				return `{"category": "bug", "priority": "high"}`, nil
+				return &CompletionResult{Content: content, Model: "mock"}, nil
 			},
 		},
 	}
@@ -1329,10 +1332,10 @@ func TestStructuredOutputRetry(t *testing.T) {
 
 // mockLLMProviderFunc allows custom function-based mocking
 type mockLLMProviderFunc struct {
-	completeFunc func(context.Context, string, map[string]interface{}) (string, error)
+	completeFunc func(context.Context, string, map[string]interface{}) (*CompletionResult, error)
 }
 
-func (m *mockLLMProviderFunc) Complete(ctx context.Context, prompt string, options map[string]interface{}) (string, error) {
+func (m *mockLLMProviderFunc) Complete(ctx context.Context, prompt string, options map[string]interface{}) (*CompletionResult, error) {
 	return m.completeFunc(ctx, prompt, options)
 }
 

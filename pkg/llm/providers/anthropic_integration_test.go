@@ -67,11 +67,11 @@ func TestAnthropicComplete_RealAPI(t *testing.T) {
 	if resp.Usage.TotalTokens == 0 {
 		t.Error("Total tokens is 0")
 	}
-	if resp.Usage.PromptTokens == 0 {
-		t.Error("Prompt tokens is 0")
+	if resp.Usage.InputTokens == 0 {
+		t.Error("Input tokens is 0")
 	}
-	if resp.Usage.CompletionTokens == 0 {
-		t.Error("Completion tokens is 0")
+	if resp.Usage.OutputTokens == 0 {
+		t.Error("Output tokens is 0")
 	}
 
 	// Track cost

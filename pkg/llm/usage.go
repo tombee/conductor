@@ -90,8 +90,8 @@ func (t *UsageTracker) AggregateByProvider() map[string]UsageAggregate {
 		agg := aggregates[record.Provider]
 		agg.TotalRequests++
 		agg.TotalTokens += record.Usage.TotalTokens
-		agg.TotalPromptTokens += record.Usage.PromptTokens
-		agg.TotalCompletionTokens += record.Usage.CompletionTokens
+		agg.TotalInputTokens += record.Usage.InputTokens
+		agg.TotalOutputTokens += record.Usage.OutputTokens
 		agg.TotalCacheCreationTokens += record.Usage.CacheCreationTokens
 		agg.TotalCacheReadTokens += record.Usage.CacheReadTokens
 		aggregates[record.Provider] = agg
@@ -109,8 +109,8 @@ func (t *UsageTracker) AggregateByModel() map[string]UsageAggregate {
 		agg := aggregates[record.Model]
 		agg.TotalRequests++
 		agg.TotalTokens += record.Usage.TotalTokens
-		agg.TotalPromptTokens += record.Usage.PromptTokens
-		agg.TotalCompletionTokens += record.Usage.CompletionTokens
+		agg.TotalInputTokens += record.Usage.InputTokens
+		agg.TotalOutputTokens += record.Usage.OutputTokens
 		agg.TotalCacheCreationTokens += record.Usage.CacheCreationTokens
 		agg.TotalCacheReadTokens += record.Usage.CacheReadTokens
 		aggregates[record.Model] = agg
@@ -133,11 +133,11 @@ type UsageAggregate struct {
 	// TotalTokens is the sum of all tokens used.
 	TotalTokens int
 
-	// TotalPromptTokens is the sum of all prompt tokens.
-	TotalPromptTokens int
+	// TotalInputTokens is the sum of all input tokens.
+	TotalInputTokens int
 
-	// TotalCompletionTokens is the sum of all completion tokens.
-	TotalCompletionTokens int
+	// TotalOutputTokens is the sum of all output tokens.
+	TotalOutputTokens int
 
 	// TotalCacheCreationTokens is the sum of all cache creation tokens.
 	TotalCacheCreationTokens int
