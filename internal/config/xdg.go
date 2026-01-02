@@ -58,7 +58,8 @@ func ConfigDir() (string, error) {
 	return configDir, nil
 }
 
-// ConfigPath returns the full path to the config file
+// ConfigPath returns the full path to the config file (legacy).
+// For new code, use SettingsPath() which returns settings.yaml.
 func ConfigPath() (string, error) {
 	dir, err := ConfigDir()
 	if err != nil {

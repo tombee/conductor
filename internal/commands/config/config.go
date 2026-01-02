@@ -37,12 +37,14 @@ func NewConfigCommand() *cobra.Command {
 		Long: `View and manage Conductor configuration.
 
 Subcommands:
-  show - Display current configuration
-  path - Show config file location`,
+  show     - Display current configuration
+  path     - Show config file location
+  validate - Validate configuration file`,
 	}
 
 	cmd.AddCommand(newConfigShowCommand())
 	cmd.AddCommand(newConfigPathCommand())
+	cmd.AddCommand(NewValidateCommand())
 
 	// If no subcommand provided, default to 'show'
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {

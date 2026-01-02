@@ -46,9 +46,13 @@ type ProviderConfig struct {
 	// ConfigPath for CLI-based providers that need custom config locations
 	ConfigPath string `yaml:"config_path,omitempty" json:"config_path,omitempty"`
 
-	// Models maps abstract model tiers to provider-specific model names
-	// If not specified, provider-specific defaults are used
-	Models ModelTierMap `yaml:"models,omitempty" json:"models,omitempty"`
+	// Models maps model names to their configuration (new format).
+	// Model names should match provider-specific identifiers (e.g., "claude-3-5-haiku-20241022").
+	// This is the primary model registry; tier mappings reference these via "provider/model" format.
+	Models map[string]ModelConfig `yaml:"models,omitempty" json:"models,omitempty"`
+
+	// Deprecated: Use root-level Tiers map instead
+	ModelTiers ModelTierMap `yaml:"model_tiers,omitempty" json:"model_tiers,omitempty"`
 }
 
 // ProvidersMap is a map of provider names to their configurations
@@ -60,10 +64,24 @@ type ProvidersMap map[string]ProviderConfig
 type AgentMappings map[string]string
 
 // ModelTierMap maps abstract model tiers to provider-specific model names
+// Deprecated: Use Tiers map at the root Config level with provider/model format.
 type ModelTierMap struct {
 	Fast      string `yaml:"fast,omitempty" json:"fast,omitempty"`
 	Balanced  string `yaml:"balanced,omitempty" json:"balanced,omitempty"`
 	Strategic string `yaml:"strategic,omitempty" json:"strategic,omitempty"`
+}
+
+// ModelConfig defines configuration for a specific model under a provider.
+// Models are registered with optional pricing and capability metadata.
+type ModelConfig struct {
+	// ContextWindow is the model's maximum context size in tokens
+	ContextWindow int `yaml:"context_window,omitempty" json:"context_window,omitempty"`
+
+	// InputPricePerMTok is the input cost per million tokens (USD)
+	InputPricePerMTok float64 `yaml:"input_price_per_mtok,omitempty" json:"input_price_per_mtok,omitempty"`
+
+	// OutputPricePerMTok is the output cost per million tokens (USD)
+	OutputPricePerMTok float64 `yaml:"output_price_per_mtok,omitempty" json:"output_price_per_mtok,omitempty"`
 }
 
 // ResolveSecretReference resolves a $secret:key reference to its actual value.
