@@ -352,22 +352,6 @@ conductor tools list
 conductor tools info file.read
 ```
 
-### Initialization
-
-```bash
-# Setup wizard
-conductor init
-
-# Create new workflow
-conductor init my-workflow
-
-# Create single file
-conductor init --file workflow.yaml
-
-# List templates
-conductor init --list
-```
-
 ## Model Tiers
 
 | Tier | Speed | Cost | Use Case |

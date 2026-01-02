@@ -211,15 +211,15 @@ func (s *Server) registerTools() error {
 		},
 	}, s.handleRun)
 
-	// Tool: conductor_doctor
+	// Tool: conductor_health
 	s.mcpServer.AddTool(mcp.Tool{
-		Name:        "conductor_doctor",
+		Name:        "conductor_health",
 		Description: "Check Conductor installation and configuration health. Returns diagnostic information and remediation steps.",
 		InputSchema: mcp.ToolInputSchema{
 			Type:       "object",
 			Properties: map[string]interface{}{},
 		},
-	}, s.handleDoctor)
+	}, s.handleHealth)
 
 	return nil
 }

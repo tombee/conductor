@@ -23,7 +23,7 @@ import (
 	"github.com/tombee/conductor/internal/commands/shared"
 )
 
-func TestDoctorCommand(t *testing.T) {
+func TestHealthCommand(t *testing.T) {
 	tests := []struct {
 		name          string
 		setupConfig   string
@@ -73,19 +73,19 @@ providers:
 			defer func() { shared.SetConfigPathForTest("") }()
 
 			// Create and run command
-			cmd := NewDoctorCommand()
+			cmd := NewHealthCommand()
 			cmd.SetArgs([]string{})
 
 			err := cmd.Execute()
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("doctor command error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("health command error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestDoctorJSONOutput(t *testing.T) {
+func TestHealthJSONOutput(t *testing.T) {
 	// Skip if SKIP_SPAWN_TESTS is set - this test runs Claude CLI
 	if os.Getenv("SKIP_SPAWN_TESTS") != "" {
 		t.Skip("skipping test that requires spawning external processes")
@@ -113,18 +113,18 @@ providers:
 	_, _, jsonPtr, _ := shared.RegisterFlagPointers()
 	rootCmd.PersistentFlags().BoolVar(jsonPtr, "json", false, "JSON output")
 
-	cmd := NewDoctorCommand()
+	cmd := NewHealthCommand()
 	rootCmd.AddCommand(cmd)
 
 	// Run with --json flag
-	rootCmd.SetArgs([]string{"doctor", "--json"})
+	rootCmd.SetArgs([]string{"health", "--json"})
 
 	// Should not panic
 	_ = rootCmd.Execute()
 }
 
-func TestDoctorCommand_NoProviders(t *testing.T) {
-	// Skip if SKIP_SPAWN_TESTS is set - doctor auto-detects Claude CLI even without providers
+func TestHealthCommand_NoProviders(t *testing.T) {
+	// Skip if SKIP_SPAWN_TESTS is set - health auto-detects Claude CLI even without providers
 	if os.Getenv("SKIP_SPAWN_TESTS") != "" {
 		t.Skip("skipping test that requires spawning external processes")
 	}
@@ -146,17 +146,17 @@ log:
 	shared.SetConfigPathForTest(configPath)
 	defer func() { shared.SetConfigPathForTest("") }()
 
-	cmd := NewDoctorCommand()
+	cmd := NewHealthCommand()
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
 	// Should succeed but report unhealthy state (no error, but recommendations)
 	if err != nil {
-		t.Logf("doctor command with no providers returned: %v", err)
+		t.Logf("health command with no providers returned: %v", err)
 	}
 }
 
-func TestDoctorCommand_InvalidProviderType(t *testing.T) {
+func TestHealthCommand_InvalidProviderType(t *testing.T) {
 	// Create temp directory for config
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
@@ -175,14 +175,14 @@ providers:
 	shared.SetConfigPathForTest(configPath)
 	defer func() { shared.SetConfigPathForTest("") }()
 
-	cmd := NewDoctorCommand()
+	cmd := NewHealthCommand()
 	cmd.SetArgs([]string{})
 
 	// Should execute without panicking, even with invalid provider
 	_ = cmd.Execute()
 }
 
-func TestDoctorCommand_MultipleProviders(t *testing.T) {
+func TestHealthCommand_MultipleProviders(t *testing.T) {
 	// Skip if SKIP_SPAWN_TESTS is set - this test runs Claude CLI
 	if os.Getenv("SKIP_SPAWN_TESTS") != "" {
 		t.Skip("skipping test that requires spawning external processes")
@@ -209,7 +209,7 @@ providers:
 	shared.SetConfigPathForTest(configPath)
 	defer func() { shared.SetConfigPathForTest("") }()
 
-	cmd := NewDoctorCommand()
+	cmd := NewHealthCommand()
 	cmd.SetArgs([]string{})
 
 	// Should check all providers

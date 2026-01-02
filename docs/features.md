@@ -97,7 +97,7 @@ Enterprise-grade security, observability, and cost controls.
 | **Correlation IDs** | Distributed tracing | UUID-based request tracking across services | [Monitoring](production/monitoring.md#correlation-ids) |
 | **Token Tracking** | Usage monitoring | Per-request token counts including cache tokens | [Cost Tracking](production/cost-tracking.md) |
 | **Cost Calculation** | Budget management | Provider-specific pricing with alerts and limits | [Cost Tracking](production/cost-tracking.md) |
-| **Health Checks** | Diagnostics | `conductor doctor` for troubleshooting | [CLI Reference](reference/cli.md) |
+| **Health Checks** | Diagnostics | `conductor health` for troubleshooting | [CLI Reference](reference/cli.md) |
 
 ---
 

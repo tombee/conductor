@@ -39,7 +39,7 @@ Conductor is a command-line tool for orchestrating complex workflows with Large 
 - `controller` - Manage the conductor controller
 - `runs` - View workflow run history
 - `config` - Manage configuration
-- `doctor` - Diagnose setup issues
+- `health` - Diagnose setup issues
 - `examples` - Browse example workflows
 - `version` - Show version information
 - `completion` - Generate shell completion scripts
@@ -579,12 +579,12 @@ conductor config edit
 
 ---
 
-### conductor doctor
+### conductor health
 
 Diagnose setup issues.
 
 ```bash
-conductor doctor
+conductor health
 ```
 
 **Description:**
@@ -601,7 +601,7 @@ Runs diagnostic checks to identify and help resolve common setup issues:
 
 ```bash
 # Run diagnostics
-conductor doctor
+conductor health
 ```
 
 **Output:**

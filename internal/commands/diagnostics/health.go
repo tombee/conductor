@@ -29,8 +29,8 @@ import (
 	"github.com/tombee/conductor/pkg/llm/providers/claudecode"
 )
 
-// DoctorResult contains the overall health check results
-type DoctorResult struct {
+// HealthResult contains the overall health check results
+type HealthResult struct {
 	ConfigPath      string                    `json:"config_path"`
 	ConfigExists    bool                      `json:"config_exists"`
 	ConfigValid     bool                      `json:"config_valid"`
@@ -55,10 +55,10 @@ type ProviderHealth struct {
 	Version       string `json:"version,omitempty"`
 }
 
-// NewDoctorCommand creates the doctor command
-func NewDoctorCommand() *cobra.Command {
+// NewHealthCommand creates the health command
+func NewHealthCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use: "doctor",
+		Use: "health",
 		Annotations: map[string]string{
 			"group": "diagnostics",
 		},
@@ -73,29 +73,29 @@ This command checks:
 
 Provides actionable recommendations for fixing any issues found.
 
-See also: conductor init, conductor providers test, conductor config show`,
+See also: conductor setup, conductor providers test, conductor config show`,
 		Example: `  # Example 1: Basic health check
-  conductor doctor
+  conductor health
 
   # Example 2: Get health status as JSON for automation
-  conductor doctor --json
+  conductor health --json
 
   # Example 3: Check health and extract provider status
-  conductor doctor --json | jq '.provider_results'
+  conductor health --json | jq '.provider_results'
 
   # Example 4: Use in CI to verify configuration
-  conductor doctor --json | jq -e '.overall_healthy'`,
-		RunE: runDoctor,
+  conductor health --json | jq -e '.overall_healthy'`,
+		RunE: runHealth,
 	}
 
 	return cmd
 }
 
-func runDoctor(cmd *cobra.Command, args []string) error {
+func runHealth(cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	result := DoctorResult{
+	result := HealthResult{
 		ProviderResults: make(map[string]ProviderHealth),
 		Recommendations: []string{},
 		OverallHealthy:  true,
@@ -125,7 +125,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		result.ConfigExists = false
 		result.OverallHealthy = false
 		result.Recommendations = append(result.Recommendations,
-			"No configuration file found. Run 'conductor init' to create one.")
+			"No configuration file found. Run 'conductor setup' to create one.")
 	} else {
 		result.ConfigError = fmt.Sprintf("Failed to check config file: %v", err)
 		result.OverallHealthy = false
@@ -139,7 +139,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 			result.ConfigError = fmt.Sprintf("Config validation failed: %v", err)
 			result.OverallHealthy = false
 			result.Recommendations = append(result.Recommendations,
-				"Fix configuration errors or run 'conductor init --force' to recreate config.")
+				"Fix configuration errors or run 'conductor setup --force' to recreate config.")
 		} else {
 			result.ConfigValid = true
 			result.DefaultProvider = cfg.DefaultProvider
@@ -148,14 +148,14 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 			if cfg.DefaultProvider == "" {
 				result.OverallHealthy = false
 				result.Recommendations = append(result.Recommendations,
-					"No default provider configured. Add 'default_provider' to config or run 'conductor init'.")
+					"No default provider configured. Add 'default_provider' to config or run 'conductor setup'.")
 			}
 
 			// Step 3: Test all configured providers
 			if len(cfg.Providers) == 0 {
 				result.OverallHealthy = false
 				result.Recommendations = append(result.Recommendations,
-					"No providers configured. Run 'conductor init' to set up a provider.")
+					"No providers configured. Run 'conductor setup' to set up a provider.")
 			} else {
 				// Test each provider
 				for name, providerCfg := range cfg.Providers {
@@ -181,7 +181,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 
 		if health.Installed {
 			result.Recommendations = append(result.Recommendations,
-				"Claude Code CLI detected. Run 'conductor init' to configure it.")
+				"Claude Code CLI detected. Run 'conductor setup' to configure it.")
 		} else {
 			result.Recommendations = append(result.Recommendations,
 				"Install Claude Code CLI for easy setup: https://claude.ai/download")
@@ -190,9 +190,9 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 
 	// Output results
 	if shared.GetJSON() {
-		return outputDoctorJSON(result)
+		return outputHealthJSON(result)
 	}
-	return outputDoctorText(result)
+	return outputHealthText(result)
 }
 
 // testProvider tests a configured provider's health
@@ -272,15 +272,15 @@ func testClaudeCodeProvider(ctx context.Context, provider *claudecode.Provider) 
 	return health
 }
 
-// outputDoctorJSON outputs results in JSON format
-func outputDoctorJSON(result DoctorResult) error {
+// outputHealthJSON outputs results in JSON format
+func outputHealthJSON(result HealthResult) error {
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(result)
 }
 
-// outputDoctorText outputs results in human-readable format
-func outputDoctorText(result DoctorResult) error {
+// outputHealthText outputs results in human-readable format
+func outputHealthText(result HealthResult) error {
 	fmt.Println("Conductor Health Check")
 	fmt.Println(strings.Repeat("=", 50))
 	fmt.Println()

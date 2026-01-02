@@ -63,7 +63,7 @@ If you have [Claude Code](https://claude.ai/code) installed, you're ready to go:
 conductor run examples/write-song/workflow.yaml
 ```
 
-Conductor also supports Anthropic, OpenAI, and Ollama APIs. Run `conductor init` to configure a different provider.
+Conductor also supports Anthropic, OpenAI, and Ollama APIs. Run `conductor setup` to configure a different provider.
 
 ## Documentation
 

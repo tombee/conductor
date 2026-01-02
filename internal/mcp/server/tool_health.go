@@ -28,8 +28,8 @@ import (
 	"github.com/tombee/conductor/pkg/llm/providers/claudecode"
 )
 
-// DoctorResult represents the health check result
-type DoctorResult struct {
+// HealthToolResult represents the health check result
+type HealthToolResult struct {
 	Healthy bool          `json:"healthy"`
 	Version string        `json:"version"`
 	Checks  []HealthCheck `json:"checks"`
@@ -43,8 +43,8 @@ type HealthCheck struct {
 	Remediation string `json:"remediation,omitempty"`
 }
 
-// handleDoctor implements the conductor_doctor tool
-func (s *Server) handleDoctor(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// handleHealth implements the conductor_health tool
+func (s *Server) handleHealth(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Check rate limit
 	if !s.rateLimiter.AllowCall() {
 		return errorResponse("Rate limit exceeded. Please try again later."), nil
@@ -59,15 +59,15 @@ func (s *Server) handleDoctor(ctx context.Context, request mcp.CallToolRequest) 
 	// Marshal to JSON
 	resultJSON, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
-		return errorResponse(fmt.Sprintf("Failed to encode doctor result: %v", err)), nil
+		return errorResponse(fmt.Sprintf("Failed to encode health result: %v", err)), nil
 	}
 
 	return textResponse(string(resultJSON)), nil
 }
 
 // runHealthChecks performs all health checks
-func runHealthChecks(ctx context.Context, version string) DoctorResult {
-	result := DoctorResult{
+func runHealthChecks(ctx context.Context, version string) HealthToolResult {
+	result := HealthToolResult{
 		Healthy: true,
 		Version: version,
 		Checks:  []HealthCheck{},
@@ -124,7 +124,7 @@ func checkConfig() HealthCheck {
 			Name:        "Configuration File",
 			Status:      "fail",
 			Message:     "Config file not found",
-			Remediation: "Run 'conductor init' to create configuration",
+			Remediation: "Run 'conductor setup' to create configuration",
 		}
 	}
 
@@ -135,7 +135,7 @@ func checkConfig() HealthCheck {
 			Name:        "Configuration File",
 			Status:      "fail",
 			Message:     fmt.Sprintf("Config validation failed: %v", err),
-			Remediation: "Fix configuration errors or run 'conductor init --force' to recreate",
+			Remediation: "Fix configuration errors or run 'conductor setup --force' to recreate",
 		}
 	}
 
@@ -163,7 +163,7 @@ func checkDefaultProvider() HealthCheck {
 			Name:        "Default Provider",
 			Status:      "fail",
 			Message:     "No default provider configured",
-			Remediation: "Add 'default_provider' to config or run 'conductor init'",
+			Remediation: "Add 'default_provider' to config or run 'conductor setup'",
 		}
 	}
 
@@ -172,7 +172,7 @@ func checkDefaultProvider() HealthCheck {
 			Name:        "Default Provider",
 			Status:      "fail",
 			Message:     "No providers configured",
-			Remediation: "Run 'conductor init' to configure a provider",
+			Remediation: "Run 'conductor setup' to configure a provider",
 		}
 	}
 
@@ -309,5 +309,5 @@ func getProviderRemediation(result llm.HealthCheckResult) string {
 	if !result.Working {
 		return "Provider is not working properly. Check provider logs for details."
 	}
-	return "Run 'conductor doctor' CLI command for detailed diagnostics"
+	return "Run 'conductor health' CLI command for detailed diagnostics"
 }

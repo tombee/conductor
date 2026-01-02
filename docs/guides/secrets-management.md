@@ -137,7 +137,7 @@ This will:
 
 ### Solo Developer (Recommended Setup)
 
-After running `conductor init`, your config will be:
+After running `conductor setup`, your config will be:
 
 ```yaml
 default_provider: claude

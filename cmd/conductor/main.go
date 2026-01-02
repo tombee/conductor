@@ -26,15 +26,12 @@ import (
 	"github.com/tombee/conductor/internal/commands/debug"
 	"github.com/tombee/conductor/internal/commands/diagnostics"
 	"github.com/tombee/conductor/internal/commands/docs"
-	"github.com/tombee/conductor/internal/commands/endpoint"
 	"github.com/tombee/conductor/internal/commands/integrations"
 	"github.com/tombee/conductor/internal/commands/management"
 	"github.com/tombee/conductor/internal/commands/mcp"
 	"github.com/tombee/conductor/internal/commands/mcpserver"
-	"github.com/tombee/conductor/internal/commands/override"
 	"github.com/tombee/conductor/internal/commands/run"
 	"github.com/tombee/conductor/internal/commands/secrets"
-	"github.com/tombee/conductor/internal/commands/security"
 	"github.com/tombee/conductor/internal/commands/setup"
 	_ "github.com/tombee/conductor/internal/commands/setup/forms" // Register wizard runner
 	"github.com/tombee/conductor/internal/commands/test"
@@ -106,7 +103,6 @@ func main() {
 	rootCmd.AddCommand(test.NewCommand())
 
 	// Workflow management commands
-	rootCmd.AddCommand(workflow.NewInitCommand())
 	rootCmd.AddCommand(workflow.NewExamplesCommand())
 	rootCmd.AddCommand(workflow.NewSchemaCommand())
 	rootCmd.AddCommand(workflow.NewUsageCommand())
@@ -120,8 +116,6 @@ func main() {
 
 	// Management commands
 	rootCmd.AddCommand(management.NewRunsCommand())
-	rootCmd.AddCommand(management.NewCacheCommand())
-	rootCmd.AddCommand(endpoint.NewCommand())
 	rootCmd.AddCommand(triggers.NewTriggersCommand())
 
 	// Debug commands
@@ -133,11 +127,9 @@ func main() {
 	rootCmd.AddCommand(integrations.NewCommand())
 	rootCmd.AddCommand(workspacecmd.NewCommand())
 	rootCmd.AddCommand(secrets.NewCommand())
-	rootCmd.AddCommand(security.NewCommand())
-	rootCmd.AddCommand(override.NewCommand())
 
 	// Diagnostics commands
-	rootCmd.AddCommand(diagnostics.NewDoctorCommand())
+	rootCmd.AddCommand(diagnostics.NewHealthCommand())
 	rootCmd.AddCommand(diagnostics.NewPingCommand())
 	rootCmd.AddCommand(diagnostics.NewProvidersCommand())
 	rootCmd.AddCommand(completion.NewCommand())

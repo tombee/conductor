@@ -312,7 +312,7 @@ When using `--json` output format, Conductor returns structured error codes for 
 
 | Code | Name | Description | Resolution |
 |------|------|-------------|------------|
-| E201 | `ErrorCodeConfigNotFound` | Configuration file not found | Run `conductor init` to create default config |
+| E201 | `ErrorCodeConfigNotFound` | Configuration file not found | Run `conductor setup` to create default config |
 | E202 | `ErrorCodeInvalidConfig` | Invalid provider configuration | Check config syntax and required fields |
 | E203 | `ErrorCodeMissingAPIKey` | Missing API key | Set environment variable or add to config |
 
