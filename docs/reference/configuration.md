@@ -671,7 +671,7 @@ conductor config edit
 ### Validate Configuration
 
 ```bash
-conductor doctor
+conductor health
 ```
 
 ---

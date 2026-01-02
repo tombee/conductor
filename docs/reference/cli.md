@@ -789,7 +789,7 @@ conductor run workflow.yaml \
 
 ```bash
 # Initialize with provider
-conductor init --advanced
+conductor setup --advanced
 
 # Add additional provider
 conductor providers add openai --type openai
