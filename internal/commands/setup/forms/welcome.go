@@ -89,40 +89,44 @@ func RunPreFlightCheck(ctx context.Context) (*PreFlightCheckResult, error) {
 // ShowWelcomeScreen displays the welcome screen for first-time setup.
 // It shows pre-flight check results and auto-detected providers.
 func ShowWelcomeScreen(ctx context.Context, checks *PreFlightCheckResult) error {
-	// Build welcome message
+	// Build welcome message with detected providers
 	var message string
 	if checks.AutoDetectedClaude {
 		message = fmt.Sprintf(`Welcome to Conductor! ⚡
 
 Let's get you set up in 2 minutes.
 
-✓ Claude Code CLI detected at: %s
-
-Press Enter to continue or 's' to skip auto-detection`, checks.ClaudeCodePath)
+✓ Claude Code CLI detected at: %s`, checks.ClaudeCodePath)
 	} else {
 		message = `Welcome to Conductor! ⚡
 
-Let's get you set up in 2 minutes.
-
-Press Enter to continue...`
+Let's get you set up in 2 minutes.`
 	}
 
-	var skipAutoDetect bool
+	var continueSetup bool
 
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewNote().
 				Title(message),
 			huh.NewConfirm().
-				Title("Skip auto-detection?").
-				Value(&skipAutoDetect).
-				Affirmative("Skip").
-				Negative("Continue with auto-detect"),
+				Title("Ready to begin?").
+				Value(&continueSetup).
+				Affirmative("Continue").
+				Negative("Exit"),
 			NewFooterNote(FooterContextConfirm),
 		),
 	)
 
-	return form.Run()
+	if err := form.Run(); err != nil {
+		return err
+	}
+
+	if !continueSetup {
+		return fmt.Errorf("setup cancelled")
+	}
+
+	return nil
 }
 
 // ShowReturningUserMenu shows the main menu for users with existing config.
