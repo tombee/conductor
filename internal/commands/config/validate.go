@@ -191,24 +191,24 @@ func outputValidationResult(result ValidationResult, strict bool) error {
 	} else {
 		// Human-readable output
 		if result.Valid {
-			fmt.Println("✓ Configuration is valid")
+			fmt.Println(shared.RenderOK("Configuration is valid"))
 		} else {
-			fmt.Println("✗ Configuration validation failed")
+			fmt.Println(shared.RenderError("Configuration validation failed"))
 		}
 		fmt.Println()
 
 		if len(result.Errors) > 0 {
-			fmt.Println("Errors:")
+			fmt.Println(shared.Header.Render("Errors:"))
 			for _, err := range result.Errors {
-				fmt.Printf("  - %s\n", err)
+				fmt.Printf("  %s %s\n", shared.StatusError.Render(shared.SymbolError), err)
 			}
 			fmt.Println()
 		}
 
 		if len(result.Warnings) > 0 {
-			fmt.Println("Warnings:")
+			fmt.Println(shared.Header.Render("Warnings:"))
 			for _, warn := range result.Warnings {
-				fmt.Printf("  - %s\n", warn)
+				fmt.Printf("  %s %s\n", shared.StatusWarn.Render(shared.SymbolWarn), warn)
 			}
 			fmt.Println()
 		}

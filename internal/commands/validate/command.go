@@ -341,12 +341,12 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, workspace
 
 		return output.EmitJSON(resp)
 	} else {
-		cmd.Println("Validation Results:")
-		cmd.Println("  [OK] Syntax valid")
-		cmd.Println("  [OK] Schema valid")
-		cmd.Println("  [OK] All step references resolve correctly")
+		cmd.Println(shared.Header.Render("Validation Results:"))
+		cmd.Printf("  %s Syntax valid\n", shared.RenderStatus(true, "OK"))
+		cmd.Printf("  %s Schema valid\n", shared.RenderStatus(true, "OK"))
+		cmd.Printf("  %s All step references resolve correctly\n", shared.RenderStatus(true, "OK"))
 		if subworkflowCount > 0 {
-			cmd.Printf("  [OK] All sub-workflow references valid (%d sub-workflow(s))\n", subworkflowCount)
+			cmd.Printf("  %s All sub-workflow references valid (%d sub-workflow(s))\n", shared.RenderStatus(true, "OK"), subworkflowCount)
 		}
 
 		// Show profile information if specified
@@ -364,31 +364,31 @@ func runValidate(cmd *cobra.Command, args []string, schemaPath string, workspace
 
 		// Show security warnings
 		if securityResult != nil && len(securityResult.Warnings) > 0 {
-			cmd.Println("\nSecurity Warnings:")
+			cmd.Println("\n" + shared.Header.Render("Security Warnings:"))
 			for _, warning := range securityResult.Warnings {
-				cmd.Printf("  ⚠ [%s] %s\n", warning.StepID, warning.Message)
+				cmd.Printf("  %s [%s] %s\n", shared.StatusWarn.Render(shared.SymbolWarn), warning.StepID, warning.Message)
 				if warning.Suggestion != "" {
 					// Indent suggestion for readability
-					fmt.Fprintf(cmd.OutOrStdout(), "    %s\n", warning.Suggestion)
+					fmt.Fprintf(cmd.OutOrStdout(), "    %s\n", shared.Muted.Render(warning.Suggestion))
 				}
 			}
-			cmd.Println("\nNote: Security warnings are non-blocking but should be reviewed.")
+			cmd.Printf("\n%s\n", shared.Muted.Render("Note: Security warnings are non-blocking but should be reviewed."))
 		}
 
-		// Show permission enforcement warnings (SPEC-141)
+		// Show permission enforcement warnings
 		if permissionResult != nil {
-			cmd.Println("\nPermission Enforcement:")
-			cmd.Printf("  Provider: %s\n", permissionResult.Provider)
+			cmd.Println("\n" + shared.Header.Render("Permission Enforcement:"))
+			cmd.Printf("  %s %s\n", shared.Muted.Render("Provider:"), permissionResult.Provider)
 			if permissionResult.AllEnforceable {
-				cmd.Println("  Status: ✓ All permissions can be enforced")
+				cmd.Printf("  %s %s\n", shared.Muted.Render("Status:"), shared.RenderOK("All permissions can be enforced"))
 			} else {
-				cmd.Println("  Status: ⚠ Some permissions cannot be enforced")
+				cmd.Printf("  %s %s\n", shared.Muted.Render("Status:"), shared.RenderWarn("Some permissions cannot be enforced"))
 				cmd.Println("\n  Warnings:")
 				for _, warning := range permissionResult.Warnings {
-					cmd.Printf("    • %s\n", warning)
+					cmd.Printf("    %s %s\n", shared.StatusInfo.Render(shared.SymbolInfo), warning)
 				}
-				cmd.Println("\n  Note: Unenforceable permissions will be logged but not blocked.")
-				cmd.Println("  Use --accept-unenforceable-permissions with 'conductor run' to proceed.")
+				cmd.Printf("\n  %s\n", shared.Muted.Render("Note: Unenforceable permissions will be logged but not blocked."))
+				cmd.Printf("  %s\n", shared.Muted.Render("Use --accept-unenforceable-permissions with 'conductor run' to proceed."))
 			}
 		}
 

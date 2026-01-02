@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/tombee/conductor/internal/client"
 	"github.com/tombee/conductor/internal/config"
 	controllerpkg "github.com/tombee/conductor/internal/controller"
 	"github.com/tombee/conductor/internal/lifecycle"
@@ -248,10 +249,7 @@ func runStart(ctx context.Context, opts startOptions) error {
 	startTime := time.Now()
 	fmt.Printf("Starting controller (PID %d)...\n", pid)
 
-	healthEndpoint := getHealthEndpoint(cfg)
-	checker := lifecycle.NewHealthChecker(healthEndpoint)
-
-	if err := checker.WaitUntilHealthy(opts.timeout); err != nil {
+	if err := waitForHealthy(cfg, opts.timeout); err != nil {
 		// Controller failed to become healthy - try to clean up
 		_ = lifecycle.SendSignal(pid, 15) // SIGTERM
 

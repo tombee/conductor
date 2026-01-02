@@ -19,6 +19,7 @@ var (
 	verboseFlag bool
 	quietFlag   bool
 	jsonFlag    bool
+	noColorFlag bool
 	configFlag  string
 
 	// Build-time version information
@@ -29,8 +30,8 @@ var (
 
 // RegisterFlagPointers returns pointers to flag variables for binding.
 // Called by root command to register flags.
-func RegisterFlagPointers() (*bool, *bool, *bool, *string) {
-	return &verboseFlag, &quietFlag, &jsonFlag, &configFlag
+func RegisterFlagPointers() (*bool, *bool, *bool, *bool, *string) {
+	return &verboseFlag, &quietFlag, &jsonFlag, &noColorFlag, &configFlag
 }
 
 // SetVersion sets the version information (called from main)
@@ -53,6 +54,11 @@ func GetQuiet() bool {
 // GetJSON returns the JSON output flag value
 func GetJSON() bool {
 	return jsonFlag
+}
+
+// GetNoColor returns the no-color flag value
+func GetNoColor() bool {
+	return noColorFlag
 }
 
 // GetConfigPath returns the config file path

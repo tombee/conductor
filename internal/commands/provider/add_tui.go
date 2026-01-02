@@ -346,12 +346,12 @@ func configureAPIProvider(ctx context.Context, providerName, providerType string
 	}
 
 	// Run health check with timeout
-	fmt.Println("\nVerifying API key...")
+	fmt.Println("\n" + shared.Muted.Render("Verifying API key..."))
 	if err := runHealthCheck(ctx, providerType, cfg); err != nil {
-		fmt.Fprintf(os.Stderr, "⚠ %s\n", err)
-		fmt.Fprintf(os.Stderr, "Provider will be saved but may not work until the issue is resolved.\n")
+		fmt.Fprintf(os.Stderr, "%s\n", shared.RenderWarn(err.Error()))
+		fmt.Fprintf(os.Stderr, "%s\n", shared.Muted.Render("Provider will be saved but may not work until the issue is resolved."))
 	} else {
-		fmt.Println("✓ API key verified")
+		fmt.Println(shared.RenderOK("API key verified"))
 	}
 
 	return nil
@@ -417,8 +417,8 @@ func configureOllama(ctx context.Context, cfg *config.ProviderConfig) error {
 	}
 
 	cfg.BaseURL = baseURL
-	fmt.Printf("\n✓ Configured Ollama at %s\n", baseURL)
-	fmt.Println("Note: Make sure Ollama is running when you use this provider.")
+	fmt.Printf("\n%s\n", shared.RenderOK(fmt.Sprintf("Configured Ollama at %s", baseURL)))
+	fmt.Println(shared.Muted.Render("Note: Make sure Ollama is running when you use this provider."))
 
 	return nil
 }

@@ -40,12 +40,13 @@ Run 'conductor examples' to see available workflow examples.`,
 	}
 
 	// Get flag pointers from shared package
-	verbose, quiet, json, config := shared.RegisterFlagPointers()
+	verbose, quiet, json, noColor, config := shared.RegisterFlagPointers()
 
 	// Add global flags
 	cmd.PersistentFlags().BoolVarP(verbose, "verbose", "v", false, "Enable verbose output")
 	cmd.PersistentFlags().BoolVarP(quiet, "quiet", "q", false, "Suppress non-error output")
 	cmd.PersistentFlags().BoolVar(json, "json", false, "Output in JSON format")
+	cmd.PersistentFlags().BoolVar(noColor, "no-color", false, "Disable colored output")
 	cmd.PersistentFlags().StringVar(config, "config", "", "Path to config file (default: ~/.config/conductor/config.yaml)")
 
 	return cmd
