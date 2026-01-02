@@ -28,7 +28,7 @@ func newListCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all configured triggers",
-		Long: `List all configured triggers (webhooks, schedules, poll triggers, API endpoints, and file watchers).
+		Long: `List all configured triggers (webhooks, schedules, poll triggers, API triggers, and file watchers).
 
 Shows triggers currently defined in the config file. Note that changes require
 a controller restart to take effect.`,
@@ -43,7 +43,7 @@ a controller restart to take effect.`,
 		RunE: runList,
 	}
 
-	cmd.Flags().String("type", "", "Filter by trigger type (webhook, schedule, poll, endpoint)")
+	cmd.Flags().String("type", "", "Filter by trigger type (webhook, schedule, poll, api)")
 
 	return cmd
 }
@@ -66,11 +66,11 @@ func runList(cmd *cobra.Command, args []string) error {
 	// Determine which trigger types to fetch based on filter
 	showWebhooks := typeFilter == "" || typeFilter == "webhook"
 	showSchedules := typeFilter == "" || typeFilter == "schedule"
-	showEndpoints := typeFilter == "" || typeFilter == "endpoint"
+	showAPITriggers := typeFilter == "" || typeFilter == "api"
 
 	// Validate filter if provided
-	if typeFilter != "" && !showWebhooks && !showSchedules && !showEndpoints {
-		return fmt.Errorf("invalid trigger type %q (must be: webhook, schedule, poll, or endpoint)", typeFilter)
+	if typeFilter != "" && !showWebhooks && !showSchedules && !showAPITriggers {
+		return fmt.Errorf("invalid trigger type %q (must be: webhook, schedule, poll, or api)", typeFilter)
 	}
 
 	// Get trigger lists
@@ -84,9 +84,9 @@ func runList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to list schedules: %w", err)
 	}
 
-	endpoints, err := mgr.ListEndpoints(ctx)
-	if err != nil && showEndpoints {
-		return fmt.Errorf("failed to list endpoints: %w", err)
+	apiTriggers, err := mgr.ListEndpoints(ctx)
+	if err != nil && showAPITriggers {
+		return fmt.Errorf("failed to list API triggers: %w", err)
 	}
 
 	fileWatchers, err := mgr.ListFileWatchers(ctx)
@@ -102,8 +102,8 @@ func runList(cmd *cobra.Command, args []string) error {
 		if showSchedules {
 			output["schedules"] = schedules
 		}
-		if showEndpoints {
-			output["endpoints"] = endpoints
+		if showAPITriggers {
+			output["api_triggers"] = apiTriggers
 		}
 		output["file_watchers"] = fileWatchers
 		enc := json.NewEncoder(cmd.OutOrStdout())
@@ -150,18 +150,18 @@ func runList(cmd *cobra.Command, args []string) error {
 		fmt.Fprintln(cmd.OutOrStdout())
 	}
 
-	if showEndpoints {
-		fmt.Fprintln(cmd.OutOrStdout(), "Endpoints:")
-		if len(endpoints) == 0 {
+	if showAPITriggers {
+		fmt.Fprintln(cmd.OutOrStdout(), "API Triggers:")
+		if len(apiTriggers) == 0 {
 			fmt.Fprintln(cmd.OutOrStdout(), "  (none)")
 		} else {
-			for _, ep := range endpoints {
-				desc := ep.Description
+			for _, trigger := range apiTriggers {
+				desc := trigger.Description
 				if desc == "" {
 					desc = "(no description)"
 				}
 				fmt.Fprintf(cmd.OutOrStdout(), "  %s -> %s: %s\n",
-					ep.Name, ep.Workflow, desc)
+					trigger.Name, trigger.Workflow, desc)
 			}
 		}
 	}

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://tombee.github.io/conductor/schemas/workflow.schema.json",
   "title": "Conductor Workflow Definition",
-  "description": "Schema for Conductor workflow YAML files. Conductor is a workflow orchestration tool for LLM-powered automation that enables multi-step AI workflows with tool use, error handling, and agent preferences.",
+  "description": "Schema for Conductor workflow YAML files. Conductor is a workflow orchestration tool for LLM-powered automation that enables multi-step AI workflows with tool use, error handling, and agent preferences. Note: Triggers must be configured via the 'conductor triggers' CLI command, not inline in workflow files.",
   "type": "object",
   "required": ["name", "steps"],
   "properties": {
@@ -20,11 +20,6 @@
       "description": "Workflow definition schema version. Optional - defaults to '1.0' if not specified.",
       "default": "1.0",
       "examples": ["1.0", "1.1"]
-    },
-    "trigger": {
-      "type": "object",
-      "description": "Defines how this workflow can be invoked (webhooks, API endpoints, schedules). If not specified, workflow can only be triggered manually via CLI.",
-      "$ref": "#/$defs/trigger_config"
     },
     "inputs": {
       "type": "array",
@@ -89,110 +84,6 @@
     }
   },
   "$defs": {
-    "trigger_config": {
-      "type": "object",
-      "description": "Configuration for how this workflow can be invoked. Supports webhook triggers, API endpoints, and scheduled execution.",
-      "properties": {
-        "webhook": {
-          "$ref": "#/$defs/webhook_trigger",
-          "description": "Webhook trigger configuration. Enables this workflow to be triggered by HTTP webhooks from GitHub, Slack, or generic sources."
-        },
-        "api": {
-          "$ref": "#/$defs/api_trigger",
-          "description": "API endpoint trigger configuration. Enables this workflow to be triggered via POST /v1/start/{workflow} with Bearer token authentication."
-        },
-        "schedule": {
-          "$ref": "#/$defs/schedule_trigger",
-          "description": "Schedule trigger configuration. Enables cron-based scheduled execution of this workflow."
-        }
-      },
-      "additionalProperties": false
-    },
-    "api_trigger": {
-      "type": "object",
-      "required": ["secret"],
-      "description": "API endpoint trigger configuration for Bearer token authentication. Enables workflows to be triggered via POST /v1/start/{workflow}.",
-      "properties": {
-        "secret": {
-          "type": "string",
-          "description": "Bearer token required to trigger this workflow via API. Callers must provide this as 'Authorization: Bearer <secret>'. MUST use environment variable reference like ${API_SECRET} - never hardcode secrets. Recommended: at least 32 bytes of cryptographically random data (use: openssl rand -base64 32).",
-          "pattern": "^\\$\\{[A-Z_][A-Z0-9_]*\\}$",
-          "examples": ["${API_SECRET}", "${DEPLOY_SECRET}", "${TRIGGER_TOKEN}"]
-        }
-      },
-      "additionalProperties": false
-    },
-    "webhook_trigger": {
-      "type": "object",
-      "required": ["path"],
-      "properties": {
-        "path": {
-          "type": "string",
-          "description": "URL path for the webhook endpoint. Must start with '/'. Example: '/webhooks/my-workflow'",
-          "pattern": "^/",
-          "examples": ["/webhooks/github-pr", "/webhooks/slack-event"]
-        },
-        "source": {
-          "type": "string",
-          "description": "Webhook source type for built-in integrations. Enables source-specific parsing and validation.",
-          "enum": ["github", "slack", "generic"],
-          "examples": ["github", "slack"]
-        },
-        "events": {
-          "type": "array",
-          "description": "Filter which events trigger the workflow. Interpretation depends on source type (e.g., GitHub events: 'pull_request.opened').",
-          "items": {
-            "type": "string"
-          },
-          "examples": [["pull_request.opened", "pull_request.synchronize"], ["issue.created"]]
-        },
-        "secret": {
-          "type": "string",
-          "description": "Secret for signature verification. MUST use environment variable reference like ${WEBHOOK_SECRET} - never hardcode secrets.",
-          "pattern": "^\\$\\{[A-Z_][A-Z0-9_]*\\}$",
-          "examples": ["${GITHUB_WEBHOOK_SECRET}", "${SLACK_SIGNING_SECRET}"]
-        },
-        "input_mapping": {
-          "type": "object",
-          "description": "Maps webhook payload fields to workflow inputs. Keys are workflow input names, values are JSONPath expressions like '$.pull_request.number'.",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "examples": [
-            {
-              "pr_number": "$.pull_request.number",
-              "repo": "$.repository.full_name"
-            }
-          ]
-        }
-      }
-    },
-    "schedule_trigger": {
-      "type": "object",
-      "required": ["cron"],
-      "properties": {
-        "cron": {
-          "type": "string",
-          "description": "Cron expression for schedule timing. Standard 5-field format: minute hour day month weekday. Example: '0 9 * * 1-5' runs at 9am on weekdays.",
-          "examples": ["0 9 * * 1-5", "*/15 * * * *", "0 0 * * 0"]
-        },
-        "timezone": {
-          "type": "string",
-          "description": "Timezone for cron expression evaluation. Uses IANA timezone database names. Defaults to UTC if not specified.",
-          "examples": ["America/New_York", "Europe/London", "Asia/Tokyo"]
-        },
-        "enabled": {
-          "type": "boolean",
-          "description": "Controls whether this schedule is active. Set to false to temporarily disable without removing the trigger.",
-          "default": true
-        },
-        "inputs": {
-          "type": "object",
-          "description": "Static input values to pass when workflow is triggered by schedule. Keys must match workflow input definitions.",
-          "additionalProperties": true
-        }
-      }
-    },
     "input": {
       "type": "object",
       "required": ["name", "type"],

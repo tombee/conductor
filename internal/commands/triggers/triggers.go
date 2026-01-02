@@ -23,10 +23,13 @@ func NewTriggersCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "triggers",
 		Short: "Manage workflow triggers",
-		Long: `Manage workflow triggers (webhooks, schedules, poll triggers, and API endpoints).
+		Long: `Manage workflow triggers (webhooks, schedules, poll triggers, and API triggers).
 
 Triggers determine how workflows are invoked. This command allows you to add,
 list, and remove triggers without manually editing config.yaml.
+
+Workflows should not contain trigger definitions - triggers must be configured
+via this CLI command only.
 
 Note: Changes to triggers require restarting the controller to take effect.
 

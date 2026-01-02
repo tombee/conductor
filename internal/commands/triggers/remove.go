@@ -30,13 +30,13 @@ func newRemoveCommand() *cobra.Command {
 Subcommands:
   webhook   - Remove a webhook trigger
   schedule  - Remove a schedule trigger
-  endpoint  - Remove an API endpoint trigger
+  api       - Remove an API trigger
   file      - Remove a file watcher trigger`,
 	}
 
 	cmd.AddCommand(newRemoveWebhookCommand())
 	cmd.AddCommand(newRemoveScheduleCommand())
-	cmd.AddCommand(newRemoveEndpointCommand())
+	cmd.AddCommand(newRemoveAPICommand())
 	cmd.AddCommand(newRemoveFileCommand())
 
 	return cmd
@@ -110,21 +110,21 @@ func runRemoveSchedule(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func newRemoveEndpointCommand() *cobra.Command {
+func newRemoveAPICommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "endpoint NAME",
-		Short: "Remove an API endpoint trigger",
-		Long:  `Remove an API endpoint trigger by its name.`,
-		Example: `  # Remove endpoint
-  conductor triggers remove endpoint deploy-trigger`,
+		Use:   "api NAME",
+		Short: "Remove an API trigger",
+		Long:  `Remove an API trigger by its name.`,
+		Example: `  # Remove API trigger
+  conductor triggers remove api deploy-trigger`,
 		Args: cobra.ExactArgs(1),
-		RunE: runRemoveEndpoint,
+		RunE: runRemoveAPI,
 	}
 
 	return cmd
 }
 
-func runRemoveEndpoint(cmd *cobra.Command, args []string) error {
+func runRemoveAPI(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	mgr, err := getManager()
@@ -134,10 +134,10 @@ func runRemoveEndpoint(cmd *cobra.Command, args []string) error {
 
 	ctx := context.Background()
 	if err := mgr.RemoveEndpoint(ctx, name); err != nil {
-		return fmt.Errorf("failed to remove endpoint: %w", err)
+		return fmt.Errorf("failed to remove API trigger: %w", err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "Endpoint trigger removed: %s\n", name)
+	fmt.Fprintf(cmd.OutOrStdout(), "API trigger removed: %s\n", name)
 	fmt.Fprintf(cmd.OutOrStdout(), "\nRestart the controller for changes to take effect:\n")
 	fmt.Fprintf(cmd.OutOrStdout(), "  conductor controller restart\n")
 

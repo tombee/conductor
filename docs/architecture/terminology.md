@@ -16,18 +16,23 @@ The controller runs as a persistent service (started with `conductor` command) a
 
 ### Trigger
 
-A **trigger** defines how a workflow is invoked. Workflows can have one trigger configuration that specifies:
-- API endpoints
-- Webhook events
-- Scheduled execution (cron)
+A **trigger** defines how a workflow is invoked. Triggers are configured exclusively via the `conductor triggers` CLI command (not inline in workflow files). Trigger types include:
+- API triggers for programmatic invocation
+- Webhook triggers for GitHub, Slack, and other services
+- Schedule triggers for cron-based execution
 
-**Example:**
-```yaml
-name: pr-review
-trigger:
-  github:
-    events: [pull_request]
-    actions: [opened, synchronize]
+**Example (CLI configuration):**
+```bash
+# Add a webhook trigger for GitHub pull requests
+conductor triggers add webhook pr-review.yaml \
+  --path=/webhooks/github/pr-review \
+  --source=github \
+  --events=pull_request.opened,pull_request.synchronize
+
+# Add a schedule trigger
+conductor triggers add schedule daily-report.yaml \
+  --name=daily-9am \
+  --cron="0 9 * * *"
 ```
 
 ## Actions vs Service Integrations

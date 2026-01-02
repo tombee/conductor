@@ -122,26 +122,32 @@ curl http://localhost:9000/runs?workflow=code-review&status=completed
 
 ## Webhooks
 
+Triggers are configured via the CLI, not inline in workflow files. This keeps workflows portable across environments.
+
 ### GitHub Webhooks
 
-**Workflow configuration:**
-```conductor
+**Workflow file (portable, no trigger):**
+```yaml
 name: pr-review
-trigger:
-  github:
-    events: [pull_request]
-    actions: [opened, synchronize]
-
 inputs:
   - name: pr_number
-    from: github.event.pull_request.number
+    type: number
   - name: repo
-    from: github.event.repository.full_name
+    type: string
 
 steps:
   - id: review
     type: llm
     prompt: "Review PR #{{.inputs.pr_number}} in {{.inputs.repo}}..."
+```
+
+**Add the trigger via CLI:**
+```bash
+conductor triggers add webhook pr-review.yaml \
+  --path=/webhooks/github/pr-review \
+  --source=github \
+  --events=pull_request.opened,pull_request.synchronize \
+  --secret='${GITHUB_WEBHOOK_SECRET}'
 ```
 
 **GitHub webhook URL:**
@@ -153,22 +159,18 @@ http://your-server:9000/webhooks/github/pr-review
 - Payload URL: Your controller URL
 - Content type: `application/json`
 - Events: Pull requests
-- Secret: (optional but recommended)
+- Secret: Match the secret configured in the trigger
 
 ### Slack Webhooks
 
-**Workflow configuration:**
-```conductor
+**Workflow file:**
+```yaml
 name: slack-assistant
-trigger:
-  slack:
-    events: [message]
-
 inputs:
   - name: text
-    from: slack.event.text
+    type: string
   - name: channel
-    from: slack.event.channel
+    type: string
 
 steps:
   - id: respond
@@ -181,6 +183,14 @@ steps:
       text: "{{.steps.respond.response}}"
 ```
 
+**Add the trigger via CLI:**
+```bash
+conductor triggers add webhook slack-assistant.yaml \
+  --path=/webhooks/slack/slack-assistant \
+  --source=slack \
+  --secret='${SLACK_SIGNING_SECRET}'
+```
+
 **Slack webhook URL:**
 ```
 http://your-server:9000/webhooks/slack/slack-assistant
@@ -188,14 +198,9 @@ http://your-server:9000/webhooks/slack/slack-assistant
 
 ## Scheduled Workflows
 
-Run workflows on a schedule:
-
-```conductor
+**Workflow file:**
+```yaml
 name: daily-report
-trigger:
-  schedule:
-    cron: "0 9 * * *"  # 9 AM daily
-
 steps:
   - id: generate
     type: llm
@@ -205,6 +210,13 @@ steps:
     slack.post_message:
       channel: "#reports"
       text: "{{.steps.generate.response}}"
+```
+
+**Add the schedule trigger via CLI:**
+```bash
+conductor triggers add schedule daily-report.yaml \
+  --name=daily-9am \
+  --cron="0 9 * * *"
 ```
 
 **Cron format:**
@@ -333,10 +345,12 @@ controller:
 ```
 
 **2. Validate webhook signatures:**
-```conductor
-trigger:
-  github:
-    secret: ${GITHUB_WEBHOOK_SECRET}
+```bash
+# Include secret when adding webhook triggers
+conductor triggers add webhook pr-review.yaml \
+  --path=/webhooks/github/pr-review \
+  --source=github \
+  --secret='${GITHUB_WEBHOOK_SECRET}'
 ```
 
 **3. Set resource limits:**

@@ -27,13 +27,13 @@ func newAddCommand() *cobra.Command {
 Subcommands:
   webhook   - Add a webhook trigger
   schedule  - Add a schedule trigger
-  endpoint  - Add an API endpoint trigger
+  api       - Add an API trigger
   file      - Add a file watcher trigger`,
 	}
 
 	cmd.AddCommand(newAddWebhookCommand())
 	cmd.AddCommand(newAddScheduleCommand())
-	cmd.AddCommand(newAddEndpointCommand())
+	cmd.AddCommand(newAddAPICommand())
 	cmd.AddCommand(newAddFileCommand())
 
 	return cmd
