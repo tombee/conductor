@@ -17,6 +17,7 @@ package run
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // parseStats parses statistics from an event map
@@ -41,13 +42,30 @@ func parseStats(event map[string]any) *RunStats {
 
 // parseStatsFromRun parses statistics from a run response
 func parseStatsFromRun(run map[string]any) *RunStats {
+	var stats *RunStats
+
 	// Check if there's a stats object
 	if statsData, ok := run["stats"].(map[string]any); ok {
-		return parseStats(statsData)
+		stats = parseStats(statsData)
+	} else {
+		// Try to extract from top-level fields
+		stats = parseStats(run)
 	}
 
-	// Try to extract from top-level fields
-	return parseStats(run)
+	// Compute duration from timestamps if not already set
+	if stats.DurationMs == 0 {
+		if startedAt, ok := run["started_at"].(string); ok {
+			if completedAt, ok := run["completed_at"].(string); ok {
+				if start, err := time.Parse(time.RFC3339Nano, startedAt); err == nil {
+					if end, err := time.Parse(time.RFC3339Nano, completedAt); err == nil {
+						stats.DurationMs = end.Sub(start).Milliseconds()
+					}
+				}
+			}
+		}
+	}
+
+	return stats
 }
 
 // displayStats displays execution statistics
