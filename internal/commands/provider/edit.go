@@ -19,6 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tombee/conductor/internal/commands/completion"
+	"github.com/tombee/conductor/internal/commands/shared"
 	"github.com/tombee/conductor/internal/config"
 )
 
@@ -93,8 +94,8 @@ func newEditCmd() *cobra.Command {
 				return fmt.Errorf("failed to save config: %w", err)
 			}
 
-			fmt.Printf("\nProvider %q updated successfully\n", providerName)
-			fmt.Printf("Config saved to: %s\n", cfgPath)
+			fmt.Printf("\n%s\n", shared.RenderOK(fmt.Sprintf("Provider %q updated successfully", providerName)))
+			fmt.Printf("%s %s\n", shared.Muted.Render("Config saved to:"), cfgPath)
 			return nil
 		},
 	}

@@ -197,7 +197,7 @@ See also: conductor examples show, conductor examples list, conductor init`,
 				return fmt.Errorf("failed to write file: %w", err)
 			}
 
-			fmt.Printf("✓ Copied example %q to %s\n", name, destPath)
+			fmt.Println(shared.RenderOK(fmt.Sprintf("Copied example %q to %s", name, destPath)))
 
 			return nil
 		},

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/tombee/conductor/internal/commands/shared"
 )
 
 // Test command
@@ -58,13 +59,13 @@ func runMCPTest(name string, keep bool) error {
 	client := newMCPAPIClient()
 	ctx := context.Background()
 
-	fmt.Printf("Testing MCP server: %s\n\n", name)
+	fmt.Printf("%s %s\n\n", shared.Header.Render("Testing MCP server:"), name)
 
 	// Step 1: Check if server exists and get status
 	fmt.Print("1. Checking server configuration... ")
 	data, err := client.get(ctx, "/v1/mcp/servers/"+name)
 	if err != nil {
-		fmt.Println("FAILED")
+		fmt.Println(shared.StatusError.Render("FAILED"))
 		return err
 	}
 
@@ -73,32 +74,32 @@ func runMCPTest(name string, keep bool) error {
 		Status string `json:"status"`
 	}
 	if err := json.Unmarshal(data, &server); err != nil {
-		fmt.Println("FAILED")
+		fmt.Println(shared.StatusError.Render("FAILED"))
 		return fmt.Errorf("failed to parse server info: %w", err)
 	}
-	fmt.Println("OK")
+	fmt.Println(shared.StatusOK.Render("OK"))
 
 	// Step 2: Start server if not running
 	wasRunning := server.Status == "running"
 	if !wasRunning {
 		fmt.Print("2. Starting server... ")
 		if _, err := client.post(ctx, "/v1/mcp/servers/"+name+"/start", nil); err != nil {
-			fmt.Println("FAILED")
+			fmt.Println(shared.StatusError.Render("FAILED"))
 			return err
 		}
-		fmt.Println("OK")
+		fmt.Println(shared.StatusOK.Render("OK"))
 
 		// Wait a bit for server to initialize
 		time.Sleep(500 * time.Millisecond)
 	} else {
-		fmt.Println("2. Server already running... OK")
+		fmt.Printf("2. Server already running... %s\n", shared.StatusOK.Render("OK"))
 	}
 
 	// Step 3: Health check (ping)
 	fmt.Print("3. Checking health (ping)... ")
 	healthData, err := client.get(ctx, "/v1/mcp/servers/"+name+"/health")
 	if err != nil {
-		fmt.Println("FAILED")
+		fmt.Println(shared.StatusError.Render("FAILED"))
 		if !wasRunning && !keep {
 			_, _ = client.post(ctx, "/v1/mcp/servers/"+name+"/stop", nil)
 		}
@@ -110,7 +111,7 @@ func runMCPTest(name string, keep bool) error {
 		LatencyMs int64  `json:"latency_ms"`
 	}
 	if err := json.Unmarshal(healthData, &health); err != nil {
-		fmt.Println("FAILED")
+		fmt.Println(shared.StatusError.Render("FAILED"))
 		if !wasRunning && !keep {
 			_, _ = client.post(ctx, "/v1/mcp/servers/"+name+"/stop", nil)
 		}
@@ -118,19 +119,19 @@ func runMCPTest(name string, keep bool) error {
 	}
 
 	if health.Status != "healthy" {
-		fmt.Printf("UNHEALTHY (%s)\n", health.Status)
+		fmt.Printf("%s (%s)\n", shared.StatusWarn.Render("UNHEALTHY"), health.Status)
 		if !wasRunning && !keep {
 			_, _ = client.post(ctx, "/v1/mcp/servers/"+name+"/stop", nil)
 		}
 		return fmt.Errorf("server health check failed: %s", health.Status)
 	}
-	fmt.Printf("OK (%dms)\n", health.LatencyMs)
+	fmt.Printf("%s (%dms)\n", shared.StatusOK.Render("OK"), health.LatencyMs)
 
 	// Step 4: List tools
 	fmt.Print("4. Listing tools... ")
 	toolsData, err := client.get(ctx, "/v1/mcp/servers/"+name+"/tools")
 	if err != nil {
-		fmt.Println("FAILED")
+		fmt.Println(shared.StatusError.Render("FAILED"))
 		if !wasRunning && !keep {
 			_, _ = client.post(ctx, "/v1/mcp/servers/"+name+"/stop", nil)
 		}
@@ -144,13 +145,13 @@ func runMCPTest(name string, keep bool) error {
 		} `json:"tools"`
 	}
 	if err := json.Unmarshal(toolsData, &toolsResp); err != nil {
-		fmt.Println("FAILED")
+		fmt.Println(shared.StatusError.Render("FAILED"))
 		if !wasRunning && !keep {
 			_, _ = client.post(ctx, "/v1/mcp/servers/"+name+"/stop", nil)
 		}
 		return err
 	}
-	fmt.Printf("OK (%d tools found)\n", len(toolsResp.Tools))
+	fmt.Printf("%s (%d tools found)\n", shared.StatusOK.Render("OK"), len(toolsResp.Tools))
 
 	if len(toolsResp.Tools) > 0 {
 		fmt.Println("\n   Available tools:")
@@ -167,16 +168,16 @@ func runMCPTest(name string, keep bool) error {
 	if !wasRunning && !keep {
 		fmt.Print("\n5. Stopping server... ")
 		if _, err := client.post(ctx, "/v1/mcp/servers/"+name+"/stop", nil); err != nil {
-			fmt.Println("FAILED")
+			fmt.Println(shared.StatusError.Render("FAILED"))
 			return err
 		}
-		fmt.Println("OK")
+		fmt.Println(shared.StatusOK.Render("OK"))
 	} else if keep {
-		fmt.Println("\n5. Keeping server running (--keep flag)")
+		fmt.Printf("\n5. Keeping server running %s\n", shared.Muted.Render("(--keep flag)"))
 	} else {
-		fmt.Println("\n5. Server was already running, leaving it running")
+		fmt.Printf("\n5. Server was already running, leaving it running\n")
 	}
 
-	fmt.Printf("\nTest PASSED for MCP server: %s\n", name)
+	fmt.Printf("\n%s\n", shared.RenderOK(fmt.Sprintf("Test PASSED for MCP server: %s", name)))
 	return nil
 }

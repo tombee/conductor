@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/tombee/conductor/internal/commands/shared"
 	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/internal/lifecycle"
 )
@@ -161,6 +162,6 @@ func runStop(ctx context.Context, opts stopOptions) error {
 		fmt.Fprintf(os.Stderr, "Warning: failed to write lifecycle log: %v\n", err)
 	}
 
-	fmt.Printf("Controller stopped successfully\n")
+	fmt.Println(shared.RenderOK("Controller stopped successfully"))
 	return nil
 }

@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/tombee/conductor/internal/commands/shared"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -107,21 +108,21 @@ func runMCPInit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to generate MCP server: %w", err)
 	}
 
-	fmt.Printf("✓ Created MCP server: %s\n", name)
-	fmt.Printf("  Language: %s\n", mcpLang)
-	fmt.Printf("  Template: %s\n", mcpTemplate)
-	fmt.Printf("\nNext steps:\n")
-	fmt.Printf("  cd %s\n", name)
+	fmt.Println(shared.RenderOK(fmt.Sprintf("Created MCP server: %s", name)))
+	fmt.Printf("  %s %s\n", shared.Muted.Render("Language:"), mcpLang)
+	fmt.Printf("  %s %s\n", shared.Muted.Render("Template:"), mcpTemplate)
+	fmt.Printf("\n%s\n", shared.Header.Render("Next steps:"))
+	fmt.Printf("  %s\n", shared.StatusInfo.Render(fmt.Sprintf("cd %s", name)))
 
 	if mcpLang == "python" {
-		fmt.Printf("  pip install -r requirements.txt\n")
-		fmt.Printf("  python server.py\n")
+		fmt.Printf("  %s\n", shared.StatusInfo.Render("pip install -r requirements.txt"))
+		fmt.Printf("  %s\n", shared.StatusInfo.Render("python server.py"))
 	} else {
-		fmt.Printf("  npm install\n")
-		fmt.Printf("  npm run dev\n")
+		fmt.Printf("  %s\n", shared.StatusInfo.Render("npm install"))
+		fmt.Printf("  %s\n", shared.StatusInfo.Render("npm run dev"))
 	}
 
-	fmt.Printf("\nSee README.md for more information.\n")
+	fmt.Printf("\n%s\n", shared.Muted.Render("See README.md for more information."))
 
 	return nil
 }

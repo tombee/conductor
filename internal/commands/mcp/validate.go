@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/tombee/conductor/internal/commands/shared"
 )
 
 // Validate command
@@ -74,7 +75,7 @@ func runMCPValidate(name string) error {
 		return fmt.Errorf("failed to parse server info: %w", err)
 	}
 
-	fmt.Printf("Validating MCP server: %s\n\n", name)
+	fmt.Printf("%s %s\n\n", shared.Header.Render("Validating MCP server:"), name)
 
 	issues := 0
 	warnings := 0
@@ -82,10 +83,10 @@ func runMCPValidate(name string) error {
 	// Check name format
 	fmt.Print("  Name format.............. ")
 	if isValidServerName(name) {
-		fmt.Println("OK")
+		fmt.Println(shared.StatusOK.Render("OK"))
 	} else {
-		fmt.Println("INVALID")
-		fmt.Println("    Error: Name must start with a letter and contain only letters, numbers, hyphens, and underscores")
+		fmt.Println(shared.StatusError.Render("INVALID"))
+		fmt.Printf("    %s Name must start with a letter and contain only letters, numbers, hyphens, and underscores\n", shared.StatusError.Render("Error:"))
 		issues++
 	}
 
@@ -95,10 +96,10 @@ func runMCPValidate(name string) error {
 		if server.Config.Command != "" {
 			fmt.Printf("'%s' ", server.Config.Command)
 			// Note: We can't check if command exists from CLI since controller runs it
-			fmt.Println("(check on controller)")
+			fmt.Printf("%s\n", shared.Muted.Render("(check on controller)"))
 		} else {
-			fmt.Println("MISSING")
-			fmt.Println("    Error: Command is required")
+			fmt.Println(shared.StatusError.Render("MISSING"))
+			fmt.Printf("    %s Command is required\n", shared.StatusError.Render("Error:"))
 			issues++
 		}
 
@@ -111,13 +112,13 @@ func runMCPValidate(name string) error {
 			}
 		}
 		if argIssues > 0 {
-			fmt.Println("WARNING")
-			fmt.Printf("    Warning: %d argument(s) contain shell metacharacters\n", argIssues)
+			fmt.Println(shared.StatusWarn.Render("WARNING"))
+			fmt.Printf("    %s %d argument(s) contain shell metacharacters\n", shared.StatusWarn.Render("Warning:"), argIssues)
 			warnings++
 		} else if len(server.Config.Args) > 0 {
-			fmt.Printf("OK (%d args)\n", len(server.Config.Args))
+			fmt.Printf("%s (%d args)\n", shared.StatusOK.Render("OK"), len(server.Config.Args))
 		} else {
-			fmt.Println("OK (none)")
+			fmt.Printf("%s %s\n", shared.StatusOK.Render("OK"), shared.Muted.Render("(none)"))
 		}
 
 		// Check environment variables
@@ -129,36 +130,36 @@ func runMCPValidate(name string) error {
 			}
 		}
 		if envIssues > 0 {
-			fmt.Println("WARNING")
-			fmt.Printf("    Warning: %d env var(s) missing '=' separator\n", envIssues)
+			fmt.Println(shared.StatusWarn.Render("WARNING"))
+			fmt.Printf("    %s %d env var(s) missing '=' separator\n", shared.StatusWarn.Render("Warning:"), envIssues)
 			warnings++
 		} else if len(server.Config.Env) > 0 {
-			fmt.Printf("OK (%d vars)\n", len(server.Config.Env))
+			fmt.Printf("%s (%d vars)\n", shared.StatusOK.Render("OK"), len(server.Config.Env))
 		} else {
-			fmt.Println("OK (none)")
+			fmt.Printf("%s %s\n", shared.StatusOK.Render("OK"), shared.Muted.Render("(none)"))
 		}
 
 		// Check timeout
 		fmt.Print("  Timeout.................. ")
 		if server.Config.Timeout > 0 {
-			fmt.Printf("OK (%ds)\n", server.Config.Timeout)
+			fmt.Printf("%s (%ds)\n", shared.StatusOK.Render("OK"), server.Config.Timeout)
 		} else {
-			fmt.Println("OK (default)")
+			fmt.Printf("%s %s\n", shared.StatusOK.Render("OK"), shared.Muted.Render("(default)"))
 		}
 	} else {
-		fmt.Println("  Config................... NOT FOUND")
+		fmt.Printf("  Config................... %s\n", shared.StatusError.Render("NOT FOUND"))
 		issues++
 	}
 
 	// Summary
 	fmt.Println()
 	if issues > 0 {
-		fmt.Printf("Validation FAILED: %d error(s), %d warning(s)\n", issues, warnings)
+		fmt.Println(shared.RenderError(fmt.Sprintf("Validation FAILED: %d error(s), %d warning(s)", issues, warnings)))
 		return fmt.Errorf("validation failed")
 	} else if warnings > 0 {
-		fmt.Printf("Validation PASSED with %d warning(s)\n", warnings)
+		fmt.Println(shared.RenderWarn(fmt.Sprintf("Validation PASSED with %d warning(s)", warnings)))
 	} else {
-		fmt.Println("Validation PASSED")
+		fmt.Println(shared.RenderOK("Validation PASSED"))
 	}
 
 	return nil

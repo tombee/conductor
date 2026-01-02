@@ -231,7 +231,7 @@ func runSecretsSet(cmd *cobra.Command, args []string, dryRun bool) error {
 		}
 	}
 
-	fmt.Printf("Secret stored successfully in %s backend\n", backendUsed)
+	fmt.Println(shared.RenderOK(fmt.Sprintf("Secret stored successfully in %s backend", backendUsed)))
 	return nil
 }
 
@@ -332,7 +332,7 @@ func runSecretsDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to delete secret: %w", err)
 	}
 
-	fmt.Printf("Secret %q deleted successfully\n", key)
+	fmt.Println(shared.RenderOK(fmt.Sprintf("Secret %q deleted successfully", key)))
 	return nil
 }
 

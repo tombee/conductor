@@ -20,6 +20,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tombee/conductor/internal/commands/completion"
+	"github.com/tombee/conductor/internal/commands/shared"
 	"github.com/tombee/conductor/internal/config"
 )
 
@@ -115,7 +116,7 @@ func newRemoveCmd() *cobra.Command {
 				return fmt.Errorf("failed to save config: %w", err)
 			}
 
-			fmt.Printf("\nProvider %q removed successfully\n", providerName)
+			fmt.Printf("\n%s\n", shared.RenderOK(fmt.Sprintf("Provider %q removed successfully", providerName)))
 			return nil
 		},
 	}

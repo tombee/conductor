@@ -208,12 +208,12 @@ Examples:
 				return json.NewEncoder(os.Stdout).Encode(output)
 			}
 
-			fmt.Printf("✓ Updated integration '%s' in workspace '%s'\n", name, workspaceName)
-			fmt.Printf("\nAuth: %s\n", redactAuth(integration.Auth))
+			fmt.Println(shared.RenderOK(fmt.Sprintf("Updated integration '%s' in workspace '%s'", name, workspaceName)))
+			fmt.Printf("\n%s %s\n", shared.Muted.Render("Auth:"), redactAuth(integration.Auth))
 			if integration.BaseURL != "" {
-				fmt.Printf("Base URL: %s\n", integration.BaseURL)
+				fmt.Printf("%s %s\n", shared.Muted.Render("Base URL:"), integration.BaseURL)
 			}
-			fmt.Printf("Timeout: %ds\n", integration.TimeoutSeconds)
+			fmt.Printf("%s %ds\n", shared.Muted.Render("Timeout:"), integration.TimeoutSeconds)
 
 			return nil
 		},

@@ -116,7 +116,7 @@ providers:
 
 	// Create root command with --json flag
 	rootCmd := &cobra.Command{Use: "test"}
-	_, _, jsonPtr, _ := shared.RegisterFlagPointers()
+	_, _, jsonPtr, _, _ := shared.RegisterFlagPointers()
 	rootCmd.PersistentFlags().BoolVar(jsonPtr, "json", false, "JSON output")
 
 	configCmd := NewConfigCommand()

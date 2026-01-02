@@ -80,7 +80,7 @@ Examples:
 				return json.NewEncoder(os.Stdout).Encode(output)
 			}
 
-			fmt.Printf("✓ Removed integration '%s' from workspace '%s'\n", name, workspaceName)
+			fmt.Println(shared.RenderOK(fmt.Sprintf("Removed integration '%s' from workspace '%s'", name, workspaceName)))
 
 			return nil
 		},

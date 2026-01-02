@@ -156,17 +156,19 @@ func runShowPoll(cmd *cobra.Command, args []string) error {
 	fmt.Fprintln(cmd.OutOrStdout())
 	if state != nil {
 		status := output["status"].(string)
-		statusDisplay := status
+		var statusDisplay string
 		switch status {
 		case "healthy":
-			statusDisplay = "✓ healthy"
+			statusDisplay = shared.RenderOK("healthy")
 		case "degraded":
-			statusDisplay = "⚠ degraded"
+			statusDisplay = shared.RenderWarn("degraded")
 		case "paused":
-			statusDisplay = "✗ paused"
+			statusDisplay = shared.RenderError("paused")
+		default:
+			statusDisplay = status
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Status: %s\n", statusDisplay)
+		fmt.Fprintf(cmd.OutOrStdout(), "%s %s\n", shared.Muted.Render("Status:"), statusDisplay)
 		fmt.Fprintln(cmd.OutOrStdout())
 
 		fmt.Fprintln(cmd.OutOrStdout(), "State:")
@@ -186,16 +188,16 @@ func runShowPoll(cmd *cobra.Command, args []string) error {
 		// Show recommendations based on state
 		fmt.Fprintln(cmd.OutOrStdout())
 		if state.ErrorCount >= 10 {
-			fmt.Fprintln(cmd.OutOrStdout(), "⚠ Trigger is PAUSED due to repeated failures.")
-			fmt.Fprintln(cmd.OutOrStdout(), "  Fix the underlying issue and run:")
-			fmt.Fprintf(cmd.OutOrStdout(), "    conductor triggers reset %s\n", triggerName)
+			fmt.Fprintln(cmd.OutOrStdout(), shared.RenderWarn("Trigger is PAUSED due to repeated failures."))
+			fmt.Fprintln(cmd.OutOrStdout(), shared.Muted.Render("  Fix the underlying issue and run:"))
+			fmt.Fprintf(cmd.OutOrStdout(), "    %s\n", shared.StatusInfo.Render(fmt.Sprintf("conductor triggers reset %s", triggerName)))
 		} else if state.ErrorCount > 0 {
-			fmt.Fprintf(cmd.OutOrStdout(), "⚠ Trigger has %d consecutive error(s). Will pause after 10.\n", state.ErrorCount)
+			fmt.Fprintln(cmd.OutOrStdout(), shared.RenderWarn(fmt.Sprintf("Trigger has %d consecutive error(s). Will pause after 10.", state.ErrorCount)))
 			if state.LastError != "" {
-				fmt.Fprintln(cmd.OutOrStdout(), "  Check the error message above and verify integration credentials.")
+				fmt.Fprintln(cmd.OutOrStdout(), shared.Muted.Render("  Check the error message above and verify integration credentials."))
 			}
 		} else {
-			fmt.Fprintln(cmd.OutOrStdout(), "✓ Trigger is operating normally.")
+			fmt.Fprintln(cmd.OutOrStdout(), shared.RenderOK("Trigger is operating normally."))
 		}
 	} else {
 		fmt.Fprintln(cmd.OutOrStdout(), "Status: new (no state yet)")

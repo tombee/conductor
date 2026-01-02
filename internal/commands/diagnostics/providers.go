@@ -345,11 +345,11 @@ Examples:
 				return fmt.Errorf("failed to save config: %w", err)
 			}
 
-			fmt.Printf("\nProvider %q added successfully\n", providerName)
-			fmt.Printf("Config saved to: %s\n", cfgPath)
+			fmt.Printf("\n%s\n", shared.RenderOK(fmt.Sprintf("Provider %q added successfully", providerName)))
+			fmt.Printf("%s %s\n", shared.Muted.Render("Config saved to:"), cfgPath)
 			fmt.Println()
-			fmt.Println("Test the provider with:")
-			fmt.Printf("  conductor providers test %s\n", providerName)
+			fmt.Println(shared.Header.Render("Test the provider with:"))
+			fmt.Printf("  %s\n", shared.StatusInfo.Render(fmt.Sprintf("conductor providers test %s", providerName)))
 			fmt.Println()
 
 			return nil
@@ -431,7 +431,7 @@ func newProvidersRemoveCmd() *cobra.Command {
 				return fmt.Errorf("failed to save config: %w", err)
 			}
 
-			fmt.Printf("\nProvider %q removed successfully\n", providerName)
+			fmt.Printf("\n%s\n", shared.RenderOK(fmt.Sprintf("Provider %q removed successfully", providerName)))
 			return nil
 		},
 	}

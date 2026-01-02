@@ -197,14 +197,14 @@ Examples:
 				return json.NewEncoder(os.Stdout).Encode(output)
 			}
 
-			fmt.Printf("✓ Added integration '%s' to workspace '%s'\n", name, workspaceName)
-			fmt.Printf("\nType:     %s\n", integrationType)
-			fmt.Printf("Auth:     %s\n", redactAuth(authConfig))
+			fmt.Println(shared.RenderOK(fmt.Sprintf("Added integration '%s' to workspace '%s'", name, workspaceName)))
+			fmt.Printf("\n%s %s\n", shared.Muted.Render("Type:"), integrationType)
+			fmt.Printf("%s %s\n", shared.Muted.Render("Auth:"), redactAuth(authConfig))
 			if baseURL != "" {
-				fmt.Printf("Base URL: %s\n", baseURL)
+				fmt.Printf("%s %s\n", shared.Muted.Render("Base URL:"), baseURL)
 			}
-			fmt.Printf("\nTest it with:\n")
-			fmt.Printf("  conductor integrations test %s", name)
+			fmt.Printf("\n%s\n", shared.Header.Render("Test it with:"))
+			fmt.Printf("  %s", shared.StatusInfo.Render(fmt.Sprintf("conductor integrations test %s", name)))
 			if workspaceName != "default" {
 				fmt.Printf(" --workspace %s", workspaceName)
 			}

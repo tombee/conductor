@@ -95,7 +95,7 @@ func TestProvidersCommand(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			// Create root command with flags
 			rootCmd := &cobra.Command{Use: "test"}
-			_, _, jsonPtr, configPtr := shared.RegisterFlagPointers()
+			_, _, jsonPtr, _, configPtr := shared.RegisterFlagPointers()
 			rootCmd.PersistentFlags().BoolVar(jsonPtr, "json", false, "JSON output")
 			rootCmd.PersistentFlags().StringVar(configPtr, "config", "", "Config file path")
 
@@ -153,7 +153,7 @@ func TestProvidersListJSON(t *testing.T) {
 	var stdout bytes.Buffer
 	// Create root command with flags
 	rootCmd := &cobra.Command{Use: "test"}
-	_, _, jsonPtr, configPtr := shared.RegisterFlagPointers()
+	_, _, jsonPtr, _, configPtr := shared.RegisterFlagPointers()
 	rootCmd.PersistentFlags().BoolVar(jsonPtr, "json", false, "JSON output")
 	rootCmd.PersistentFlags().StringVar(configPtr, "config", "", "Config file path")
 
@@ -205,7 +205,7 @@ func TestProvidersListEmpty(t *testing.T) {
 	var stdout bytes.Buffer
 	// Create root command with flags
 	rootCmd := &cobra.Command{Use: "test"}
-	_, _, jsonPtr, configPtr := shared.RegisterFlagPointers()
+	_, _, jsonPtr, _, configPtr := shared.RegisterFlagPointers()
 	rootCmd.PersistentFlags().BoolVar(jsonPtr, "json", false, "JSON output")
 	rootCmd.PersistentFlags().StringVar(configPtr, "config", "", "Config file path")
 
@@ -252,7 +252,7 @@ func TestProvidersRemove(t *testing.T) {
 	var stdout bytes.Buffer
 	// Create root command with flags
 	rootCmd := &cobra.Command{Use: "test"}
-	_, _, jsonPtr, configPtr := shared.RegisterFlagPointers()
+	_, _, jsonPtr, _, configPtr := shared.RegisterFlagPointers()
 	rootCmd.PersistentFlags().BoolVar(jsonPtr, "json", false, "JSON output")
 	rootCmd.PersistentFlags().StringVar(configPtr, "config", "", "Config file path")
 
@@ -376,7 +376,7 @@ func TestProvidersDefaultBehavior(t *testing.T) {
 	var stdout bytes.Buffer
 	// Create root command with flags
 	rootCmd := &cobra.Command{Use: "test"}
-	_, _, jsonPtr, configPtr := shared.RegisterFlagPointers()
+	_, _, jsonPtr, _, configPtr := shared.RegisterFlagPointers()
 	rootCmd.PersistentFlags().BoolVar(jsonPtr, "json", false, "JSON output")
 	rootCmd.PersistentFlags().StringVar(configPtr, "config", "", "Config file path")
 
@@ -411,7 +411,7 @@ func TestProvidersTestMissingProvider(t *testing.T) {
 	var stdout bytes.Buffer
 	// Create root command with flags
 	rootCmd := &cobra.Command{Use: "test"}
-	_, _, jsonPtr, configPtr := shared.RegisterFlagPointers()
+	_, _, jsonPtr, _, configPtr := shared.RegisterFlagPointers()
 	rootCmd.PersistentFlags().BoolVar(jsonPtr, "json", false, "JSON output")
 	rootCmd.PersistentFlags().StringVar(configPtr, "config", "", "Config file path")
 
@@ -447,7 +447,7 @@ func TestProvidersTestRequiresName(t *testing.T) {
 	var stdout bytes.Buffer
 	// Create root command with flags
 	rootCmd := &cobra.Command{Use: "test"}
-	_, _, jsonPtr, configPtr := shared.RegisterFlagPointers()
+	_, _, jsonPtr, _, configPtr := shared.RegisterFlagPointers()
 	rootCmd.PersistentFlags().BoolVar(jsonPtr, "json", false, "JSON output")
 	rootCmd.PersistentFlags().StringVar(configPtr, "config", "", "Config file path")
 
@@ -490,7 +490,7 @@ func TestProvidersIntegration(t *testing.T) {
 	var stdout bytes.Buffer
 	// Create root command with flags
 	rootCmd := &cobra.Command{Use: "test"}
-	_, _, jsonPtr, configPtr := shared.RegisterFlagPointers()
+	_, _, jsonPtr, _, configPtr := shared.RegisterFlagPointers()
 	rootCmd.PersistentFlags().BoolVar(jsonPtr, "json", false, "JSON output")
 	rootCmd.PersistentFlags().StringVar(configPtr, "config", "", "Config file path")
 

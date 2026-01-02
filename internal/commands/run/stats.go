@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/tombee/conductor/internal/commands/shared"
 )
 
 // parseStats parses statistics from an event map
@@ -124,7 +126,7 @@ func displayStepCost(event map[string]any) {
 
 	costStr := formatCost(cost, accuracy)
 
-	fmt.Printf("  [✓] %s: %s (%d tokens)\n", stepName, costStr, int(tokens))
+	fmt.Printf("  %s %s: %s (%d tokens)\n", shared.StatusOK.Render(shared.SymbolOK), stepName, costStr, int(tokens))
 
 	// Show running total if available
 	if runningTotal > 0 {

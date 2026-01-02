@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tombee/conductor/internal/client"
+	"github.com/tombee/conductor/internal/commands/shared"
 	"github.com/tombee/conductor/internal/config"
 	controllerpkg "github.com/tombee/conductor/internal/controller"
 	"github.com/tombee/conductor/internal/lifecycle"
@@ -188,15 +189,8 @@ func runStart(ctx context.Context, opts startOptions) error {
 		if err == nil {
 			// PID file exists, check if process is running
 			if lifecycle.IsProcessRunning(existingPID) && lifecycle.IsConductorProcess(existingPID) {
-				// Process is running, check if healthy
-				healthEndpoint := getHealthEndpoint(cfg)
-				checker := lifecycle.NewHealthChecker(healthEndpoint)
-
-				checkCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-				defer cancel()
-
-				result := checker.Check(checkCtx)
-				if result.Success {
+				// Process is running, check if healthy using client
+				if err := waitForHealthy(cfg, 5*time.Second); err == nil {
 					if err := lifecycleLog.LogAlreadyRunning(existingPID); err != nil {
 						fmt.Fprintf(os.Stderr, "Warning: failed to write lifecycle log: %v\n", err)
 					}
@@ -266,17 +260,17 @@ func runStart(ctx context.Context, opts startOptions) error {
 		pidMgr := lifecycle.NewPIDFileManager(pidFilePath)
 		if err := pidMgr.Create(pid); err != nil {
 			// Controller is running but we couldn't write PID file - warn but don't fail
-			fmt.Fprintf(os.Stderr, "Warning: controller started but failed to write PID file: %v\n", err)
-			fmt.Printf("Controller started successfully (PID %d)\n", pid)
+			fmt.Fprintf(os.Stderr, "%s\n", shared.RenderWarn(fmt.Sprintf("Controller started but failed to write PID file: %v", err)))
+			fmt.Println(shared.RenderOK(fmt.Sprintf("Controller started successfully (PID %d)", pid)))
 			return nil
 		}
 	}
 
 	if err := lifecycleLog.LogStartSuccess(pid, 0, duration); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to write lifecycle log: %v\n", err)
+		fmt.Fprintf(os.Stderr, "%s\n", shared.RenderWarn(fmt.Sprintf("Failed to write lifecycle log: %v", err)))
 	}
 
-	fmt.Printf("Controller started successfully (PID %d)\n", pid)
+	fmt.Println(shared.RenderOK(fmt.Sprintf("Controller started successfully (PID %d)", pid)))
 	return nil
 }
 
@@ -306,21 +300,47 @@ func buildControllerArgs(cfg *config.Config, opts startOptions) []string {
 	return args
 }
 
-// getHealthEndpoint returns the health check endpoint URL based on controller config.
-func getHealthEndpoint(cfg *config.Config) string {
-	// If TCP is configured, use that
-	if cfg.Controller.Listen.TCPAddr != "" {
-		return fmt.Sprintf("http://%s/health", cfg.Controller.Listen.TCPAddr)
-	}
-
-	// Otherwise use Unix socket
+// waitForHealthy polls the controller until it becomes healthy or times out.
+// Uses the internal client which handles Unix socket connections properly.
+func waitForHealthy(cfg *config.Config, timeout time.Duration) error {
+	// Create a client that connects to the socket
 	socketPath := cfg.Controller.Listen.SocketPath
 	if socketPath == "" {
 		homeDir, _ := os.UserHomeDir()
 		socketPath = filepath.Join(homeDir, ".conductor", "conductor.sock")
 	}
 
-	return fmt.Sprintf("http://unix/%s/health", socketPath)
+	transport := client.NewUnixTransport(socketPath)
+	c, err := client.New(client.WithTransport(transport))
+	if err != nil {
+		return fmt.Errorf("failed to create client: %w", err)
+	}
+
+	// Poll with exponential backoff
+	interval := 100 * time.Millisecond
+	maxInterval := time.Second
+	deadline := time.Now().Add(timeout)
+	attempts := 0
+
+	for time.Now().Before(deadline) {
+		attempts++
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		err := c.Ping(ctx)
+		cancel()
+
+		if err == nil {
+			return nil // Healthy!
+		}
+
+		// Wait before retrying
+		time.Sleep(interval)
+		interval = time.Duration(float64(interval) * 1.5)
+		if interval > maxInterval {
+			interval = maxInterval
+		}
+	}
+
+	return fmt.Errorf("health check timeout after %d attempts", attempts)
 }
 
 // getLifecycleLogPath returns the lifecycle log file path.
