@@ -285,6 +285,12 @@ func runWorkflowViaController(workflowPath string, inputArgs []string, inputFile
 		}
 	}
 
+	// Display output to stdout unless quiet (and not already written to file)
+	if !quiet && output != "" && outputFile == "" {
+		fmt.Println()
+		fmt.Println(output)
+	}
+
 	// Display statistics unless suppressed
 	if !noStats && stats != nil && !quiet {
 		displayStats(stats)
@@ -427,17 +433,19 @@ func fetchRunOutput(ctx context.Context, c *client.Client, runID string) (string
 	}
 
 	var output string
-	if outputMap, ok := outputResp["output"].(map[string]any); ok {
-		// Try to get the main output field
-		if outputStr, ok := outputMap["result"].(string); ok {
-			output = outputStr
-		} else if outputStr, ok := outputMap["output"].(string); ok {
-			output = outputStr
-		} else {
-			// Marshal the whole output object
-			outputJSON, _ := json.MarshalIndent(outputMap, "", "  ")
-			output = string(outputJSON)
-		}
+
+	// The output endpoint returns the output directly (e.g., {"response": "..."})
+	// Try common output field names
+	if outputStr, ok := outputResp["response"].(string); ok {
+		output = outputStr
+	} else if outputStr, ok := outputResp["result"].(string); ok {
+		output = outputStr
+	} else if outputStr, ok := outputResp["output"].(string); ok {
+		output = outputStr
+	} else if len(outputResp) > 0 {
+		// Marshal the whole output object if we have data but no recognized fields
+		outputJSON, _ := json.MarshalIndent(outputResp, "", "  ")
+		output = string(outputJSON)
 	}
 
 	// Fetch run details for stats

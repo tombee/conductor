@@ -1,6 +1,11 @@
-# Minimal workflow - just name and steps
+# Minimal workflow - demonstrates required input
 name: summarize
+inputs:
+  - name: text
+    type: string
+    required: true
+    description: The text to summarize
 steps:
   - id: summarize
     type: llm
-    prompt: "Summarize this text: {{.input}}"
+    prompt: "Summarize this text: {{.text}}"
