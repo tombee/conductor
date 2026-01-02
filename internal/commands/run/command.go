@@ -30,6 +30,9 @@ func NewCommand() *cobra.Command {
 		provider                       string
 		model                          string
 		timeout                        string
+		tierFast                       string
+		tierBalanced                   string
+		tierStrategic                  string
 		dryRun                         bool
 		quiet                          bool
 		verbose                        bool
@@ -64,6 +67,14 @@ Provider Resolution Order:
   2. CONDUCTOR_PROVIDER environment variable
   3. default_provider from config
   4. Auto-detection fallback
+
+Tier Overrides:
+  --tier-fast <provider/model>        Override fast tier for this run
+  --tier-balanced <provider/model>    Override balanced tier for this run
+  --tier-strategic <provider/model>   Override strategic tier for this run
+
+  Tier overrides are validated before execution and only apply to the current run.
+  The model must be registered in your configuration.
 
 Execution Modes:
   --background   Run asynchronously, return run ID immediately
@@ -107,7 +118,7 @@ Verbosity levels:
 			}
 
 			// All execution goes through controller
-			return runWorkflowViaController(args[0], inputs, inputFile, outputFile, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun, provider, model, timeout, workspace, profile, bindIntegrations, securityMode, allowHosts, allowPaths, logLevel, step, breakpoints)
+			return runWorkflowViaController(args[0], inputs, inputFile, outputFile, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun, provider, model, timeout, tierFast, tierBalanced, tierStrategic, workspace, profile, bindIntegrations, securityMode, allowHosts, allowPaths, logLevel, step, breakpoints)
 		},
 	}
 
@@ -118,6 +129,9 @@ Verbosity levels:
 	cmd.Flags().StringVar(&provider, "provider", "", "Override default provider")
 	cmd.Flags().StringVar(&model, "model", "", "Override model tier")
 	cmd.Flags().StringVar(&timeout, "timeout", "", "Override step timeout")
+	cmd.Flags().StringVar(&tierFast, "tier-fast", "", "Override fast tier model (e.g., anthropic/claude-3-5-haiku-20241022)")
+	cmd.Flags().StringVar(&tierBalanced, "tier-balanced", "", "Override balanced tier model (e.g., anthropic/claude-sonnet-4-20250514)")
+	cmd.Flags().StringVar(&tierStrategic, "tier-strategic", "", "Override strategic tier model (e.g., anthropic/claude-opus-4-20250514)")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show execution plan without running")
 	cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Suppress all warnings")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show detailed execution logs")

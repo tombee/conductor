@@ -115,10 +115,10 @@ func CreateProvider(cfg *config.Config, providerName string) (llm.Provider, erro
 	switch providerCfg.Type {
 	case "claude-code":
 		var p *claudecode.Provider
-		// Check if any model tiers are configured
-		hasModels := providerCfg.Models.Fast != "" || providerCfg.Models.Balanced != "" || providerCfg.Models.Strategic != ""
+		// Check if any model tiers are configured (deprecated ModelTiers field)
+		hasModels := providerCfg.ModelTiers.Fast != "" || providerCfg.ModelTiers.Balanced != "" || providerCfg.ModelTiers.Strategic != ""
 		if hasModels {
-			p = claudecode.NewWithModels(providerCfg.Models)
+			p = claudecode.NewWithModels(providerCfg.ModelTiers)
 		} else {
 			p = claudecode.New()
 		}

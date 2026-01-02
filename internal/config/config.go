@@ -37,6 +37,9 @@ var (
 
 // Config represents the complete Conductor configuration.
 type Config struct {
+	// Version indicates the config format version (1 = initial public release)
+	Version int `yaml:"version,omitempty" json:"version,omitempty"`
+
 	Server     ServerConfig            `yaml:"server"`
 	Auth       AuthConfig              `yaml:"auth"`
 	Log        LogConfig               `yaml:"log"`
@@ -50,6 +53,11 @@ type Config struct {
 	AgentMappings            AgentMappings `yaml:"agent_mappings,omitempty" json:"agent_mappings,omitempty"`
 	AcknowledgedDefaults     []string      `yaml:"acknowledged_defaults,omitempty" json:"acknowledged_defaults,omitempty"`
 	SuppressUnmappedWarnings bool          `yaml:"suppress_unmapped_warnings,omitempty" json:"suppress_unmapped_warnings,omitempty"`
+
+	// Tiers maps abstract tier names to specific provider/model references.
+	// Format: "provider/model" (e.g., "anthropic/claude-3-5-haiku-20241022")
+	// Supported tiers: fast, balanced, strategic
+	Tiers map[string]string `yaml:"tiers,omitempty" json:"tiers,omitempty"`
 
 	// Workspaces configuration
 	// Workspaces contain profiles for workflow execution configuration
@@ -1186,6 +1194,12 @@ func (c *Config) Validate() error {
 		if _, exists := c.Providers[provider]; !exists {
 			errs = append(errs, fmt.Sprintf("agent_mappings[%q] references unknown provider %q. Available: %v", agent, provider, keysOf(c.Providers)))
 		}
+	}
+
+	// Validate tier mappings
+	tierErrs := c.ValidateTiers()
+	for _, tierErr := range tierErrs {
+		errs = append(errs, tierErr.Error())
 	}
 
 	// Validate public API configuration

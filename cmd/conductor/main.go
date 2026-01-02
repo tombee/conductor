@@ -30,10 +30,10 @@ import (
 	"github.com/tombee/conductor/internal/commands/management"
 	"github.com/tombee/conductor/internal/commands/mcp"
 	"github.com/tombee/conductor/internal/commands/mcpserver"
+	"github.com/tombee/conductor/internal/commands/model"
+	"github.com/tombee/conductor/internal/commands/provider"
 	"github.com/tombee/conductor/internal/commands/run"
 	"github.com/tombee/conductor/internal/commands/secrets"
-	"github.com/tombee/conductor/internal/commands/setup"
-	_ "github.com/tombee/conductor/internal/commands/setup/forms" // Register wizard runner
 	"github.com/tombee/conductor/internal/commands/test"
 	"github.com/tombee/conductor/internal/commands/triggers"
 	"github.com/tombee/conductor/internal/commands/validate"
@@ -122,16 +122,16 @@ func main() {
 	rootCmd.AddCommand(debug.NewDebugCommand())
 
 	// Configuration and security
-	rootCmd.AddCommand(setup.NewCommand())
 	rootCmd.AddCommand(config.NewConfigCommand())
 	rootCmd.AddCommand(integrations.NewCommand())
 	rootCmd.AddCommand(workspacecmd.NewCommand())
 	rootCmd.AddCommand(secrets.NewCommand())
+	rootCmd.AddCommand(provider.NewCommand())
+	rootCmd.AddCommand(model.NewCommand())
 
 	// Diagnostics commands
 	rootCmd.AddCommand(diagnostics.NewHealthCommand())
 	rootCmd.AddCommand(diagnostics.NewPingCommand())
-	rootCmd.AddCommand(diagnostics.NewProvidersCommand())
 	rootCmd.AddCommand(completion.NewCommand())
 
 	// Documentation command

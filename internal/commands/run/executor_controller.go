@@ -33,7 +33,7 @@ import (
 )
 
 // runWorkflowViaController submits a workflow to the controller for execution
-func runWorkflowViaController(workflowPath string, inputArgs []string, inputFile, outputFile string, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun bool, provider, model, timeout, workspace, profile string, bindIntegrations []string, security string, allowHosts, allowPaths []string, logLevel, step string, breakpoints []string) error {
+func runWorkflowViaController(workflowPath string, inputArgs []string, inputFile, outputFile string, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun bool, provider, model, timeout, tierFast, tierBalanced, tierStrategic, workspace, profile string, bindIntegrations []string, security string, allowHosts, allowPaths []string, logLevel, step string, breakpoints []string) error {
 	ctx := context.Background()
 
 	// Apply environment variable defaults for workspace and profile
@@ -152,10 +152,29 @@ func runWorkflowViaController(workflowPath string, inputArgs []string, inputFile
 		inputs = analyzer.ApplyDefaults()
 	}
 
-	// Load config for socket path
+	// Load config for socket path and tier validation
 	cfg, err := loadConfig()
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Load settings to check for provider configuration
+	settingsCfg, settingsErr := config.LoadSettings("")
+	if settingsErr != nil && !os.IsNotExist(settingsErr) {
+		// Only fail on actual load errors, not missing file
+		return fmt.Errorf("failed to load settings: %w", settingsErr)
+	}
+
+	// Check if providers are configured (first-run detection)
+	if settingsCfg != nil && len(settingsCfg.Providers) == 0 {
+		return fmt.Errorf("No providers configured.\n\nRun 'conductor provider add' to set up an LLM provider")
+	}
+
+	// Validate tier overrides if provided
+	if settingsCfg != nil {
+		if err := validateTierOverrides(settingsCfg, tierFast, tierBalanced, tierStrategic); err != nil {
+			return err
+		}
 	}
 
 	// Auto-start is always enabled - controller mode is the only mode
@@ -212,6 +231,17 @@ func runWorkflowViaController(workflowPath string, inputArgs []string, inputFile
 	}
 	if timeout != "" {
 		params.Add("timeout", timeout)
+	}
+
+	// Add tier overrides
+	if tierFast != "" {
+		params.Add("tier_fast", tierFast)
+	}
+	if tierBalanced != "" {
+		params.Add("tier_balanced", tierBalanced)
+	}
+	if tierStrategic != "" {
+		params.Add("tier_strategic", tierStrategic)
 	}
 	if dryRun {
 		params.Add("dry_run", "true")
@@ -477,4 +507,57 @@ func loadConfig() (*config.Config, error) {
 	}
 
 	return config.Load(configPath)
+}
+
+// validateTierOverrides validates that tier override model references exist in the config.
+// This provides fail-fast validation before workflow execution starts.
+func validateTierOverrides(cfg *config.Config, tierFast, tierBalanced, tierStrategic string) error {
+	// Validate fast tier override
+	if tierFast != "" {
+		if err := validateModelReference(cfg, tierFast, "tier-fast"); err != nil {
+			return err
+		}
+	}
+
+	// Validate balanced tier override
+	if tierBalanced != "" {
+		if err := validateModelReference(cfg, tierBalanced, "tier-balanced"); err != nil {
+			return err
+		}
+	}
+
+	// Validate strategic tier override
+	if tierStrategic != "" {
+		if err := validateModelReference(cfg, tierStrategic, "tier-strategic"); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// validateModelReference validates that a provider/model reference exists in the config.
+func validateModelReference(cfg *config.Config, modelRef, flagName string) error {
+	// Parse the provider/model reference
+	provider, model, err := config.ParseModelReference(modelRef)
+	if err != nil {
+		return fmt.Errorf("--%s: invalid model reference %q: %w", flagName, modelRef, err)
+	}
+
+	// Check if provider exists
+	providerCfg, exists := cfg.Providers[provider]
+	if !exists {
+		return fmt.Errorf("--%s: provider %q not found. Run 'conductor model list' to see registered models", flagName, provider)
+	}
+
+	// Check if model exists under provider
+	if providerCfg.Models == nil || len(providerCfg.Models) == 0 {
+		return fmt.Errorf("--%s: provider %q has no models registered", flagName, provider)
+	}
+
+	if _, exists := providerCfg.Models[model]; !exists {
+		return fmt.Errorf("--%s: model %q not found in provider %q. Run 'conductor model list' to see registered models", flagName, model, provider)
+	}
+
+	return nil
 }
