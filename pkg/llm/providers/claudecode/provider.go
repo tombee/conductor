@@ -26,7 +26,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/pkg/llm"
 )
 
@@ -34,7 +33,7 @@ import (
 type Provider struct {
 	cliCommand string // The CLI command to use ("claude" or "claude-code")
 	cliPath    string // Full path to the CLI binary
-	models     config.ModelTierMap
+	models     llm.ModelTierMap
 }
 
 // cliResponse represents the JSON output from Claude CLI with --output-format json
@@ -59,8 +58,29 @@ func New() *Provider {
 	}
 }
 
-// NewWithModels creates a new Claude Code CLI provider with custom model tier mappings
-func NewWithModels(models config.ModelTierMap) *Provider {
+// NewWithCredentials creates a new Claude Code CLI provider from credentials.
+// This is the factory function used by the registry for two-phase initialization.
+// For CLI-based providers, credentials are optional (CLI handles its own auth).
+func NewWithCredentials(creds llm.Credentials) (llm.Provider, error) {
+	p := &Provider{
+		models: defaultModelTiers(),
+	}
+
+	// If CLI credentials provided, use the specified path
+	if cliCreds, ok := creds.(llm.CLIAuthCredentials); ok && cliCreds.CLIPath != "" {
+		p.cliPath = cliCreds.CLIPath
+		p.cliCommand = cliCreds.CLIPath
+	}
+
+	return p, nil
+}
+
+// NewWithModels creates a new Claude Code CLI provider with custom model tier mappings.
+// If models is empty, falls back to default tier mappings.
+func NewWithModels(models llm.ModelTierMap) *Provider {
+	if models.IsEmpty() {
+		models = defaultModelTiers()
+	}
 	return &Provider{
 		models: models,
 	}
@@ -361,8 +381,8 @@ func (p *Provider) buildPrompt(messages []llm.Message, _ []llm.Tool) string {
 }
 
 // defaultModelTiers returns the default model tier mappings for Claude
-func defaultModelTiers() config.ModelTierMap {
-	return config.ModelTierMap{
+func defaultModelTiers() llm.ModelTierMap {
+	return llm.ModelTierMap{
 		Fast:      "claude-3-5-haiku-20241022",
 		Balanced:  "claude-sonnet-4-20250514",
 		Strategic: "claude-opus-4-20250514",

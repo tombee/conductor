@@ -3,6 +3,7 @@ package llm
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 
 	pkgerrors "github.com/tombee/conductor/pkg/errors"
@@ -20,13 +21,27 @@ var (
 
 	// ErrInvalidProvider indicates the provider implementation is invalid.
 	ErrInvalidProvider = errors.New("invalid provider")
+
+	// ErrProviderNotActivated indicates the provider factory is registered but not activated.
+	ErrProviderNotActivated = errors.New("provider not activated")
+
+	// ErrFactoryNotFound indicates no factory is registered for the provider.
+	ErrFactoryNotFound = errors.New("provider factory not found")
 )
 
+// ProviderFactory is a function that creates a new Provider instance.
+// It accepts Credentials for authentication configuration.
+type ProviderFactory func(creds Credentials) (Provider, error)
+
 // Registry manages registered LLM providers.
+// It supports a two-phase initialization pattern:
+// 1. Factory registration (at import time via init())
+// 2. Provider activation (at startup based on config)
 // It is safe for concurrent use.
 type Registry struct {
 	mu              sync.RWMutex
-	providers       map[string]Provider
+	factories       map[string]ProviderFactory // Registered factories (phase 1)
+	providers       map[string]Provider        // Activated providers (phase 2)
 	defaultProvider string
 	failoverOrder   []string
 }
@@ -34,8 +49,88 @@ type Registry struct {
 // NewRegistry creates a new provider registry.
 func NewRegistry() *Registry {
 	return &Registry{
+		factories: make(map[string]ProviderFactory),
 		providers: make(map[string]Provider),
 	}
+}
+
+// RegisterFactory registers a provider factory function.
+// This is called at import time (in init() functions) and does not instantiate the provider.
+// Call Activate() to instantiate providers based on configuration.
+// Registering the same name twice overwrites the previous factory (idempotent).
+func (r *Registry) RegisterFactory(name string, factory ProviderFactory) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.factories[name] = factory
+}
+
+// Activate instantiates a provider from its registered factory.
+// This is called at startup time for providers that are configured.
+// Returns an error if the factory is not registered or provider creation fails.
+func (r *Registry) Activate(name string, creds Credentials) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	factory, exists := r.factories[name]
+	if !exists {
+		return fmt.Errorf("%w: %s", ErrFactoryNotFound, name)
+	}
+
+	// Check if already activated
+	if _, exists := r.providers[name]; exists {
+		// Already activated, no-op
+		return nil
+	}
+
+	provider, err := factory(creds)
+	if err != nil {
+		return fmt.Errorf("failed to activate provider %s: %w", name, err)
+	}
+
+	r.providers[name] = provider
+	return nil
+}
+
+// IsActive returns true if the provider has been activated.
+func (r *Registry) IsActive(name string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	_, exists := r.providers[name]
+	return exists
+}
+
+// ListFactories returns the names of all registered provider factories, sorted alphabetically.
+func (r *Registry) ListFactories() []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	names := make([]string, 0, len(r.factories))
+	for name := range r.factories {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// ListActive returns the names of all activated providers, sorted alphabetically.
+func (r *Registry) ListActive() []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	names := make([]string, 0, len(r.providers))
+	for name := range r.providers {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// HasFactory returns true if a factory is registered for the given provider name.
+func (r *Registry) HasFactory(name string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	_, exists := r.factories[name]
+	return exists
 }
 
 // Register adds a provider to the registry.
@@ -116,7 +211,7 @@ func (r *Registry) SetDefault(name string) error {
 	return nil
 }
 
-// List returns the names of all registered providers.
+// List returns the names of all registered providers, sorted alphabetically.
 func (r *Registry) List() []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -125,6 +220,7 @@ func (r *Registry) List() []string {
 	for name := range r.providers {
 		names = append(names, name)
 	}
+	sort.Strings(names)
 	return names
 }
 
@@ -276,4 +372,35 @@ func GetFailoverOrder() []string {
 // Unregister removes a provider from the global registry.
 func Unregister(name string) error {
 	return globalRegistry.Unregister(name)
+}
+
+// RegisterFactory registers a provider factory in the global registry.
+// This is typically called from init() functions in provider packages.
+func RegisterFactory(name string, factory ProviderFactory) {
+	globalRegistry.RegisterFactory(name, factory)
+}
+
+// Activate instantiates a provider from its factory in the global registry.
+func Activate(name string, creds Credentials) error {
+	return globalRegistry.Activate(name, creds)
+}
+
+// IsActive returns true if the provider is activated in the global registry.
+func IsActive(name string) bool {
+	return globalRegistry.IsActive(name)
+}
+
+// ListFactories returns all registered factory names from the global registry.
+func ListFactories() []string {
+	return globalRegistry.ListFactories()
+}
+
+// ListActive returns all activated provider names from the global registry.
+func ListActive() []string {
+	return globalRegistry.ListActive()
+}
+
+// HasFactory returns true if a factory is registered for the provider in the global registry.
+func HasFactory(name string) bool {
+	return globalRegistry.HasFactory(name)
 }

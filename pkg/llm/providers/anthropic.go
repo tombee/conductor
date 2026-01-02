@@ -760,6 +760,30 @@ func (p *AnthropicProvider) GetModelInfo(modelID string) (*llm.ModelInfo, error)
 	}
 }
 
+// NewAnthropicWithCredentials creates a new Anthropic provider from credentials.
+// This is the factory function used by the registry for two-phase initialization.
+func NewAnthropicWithCredentials(creds llm.Credentials) (llm.Provider, error) {
+	apiCreds, ok := creds.(llm.APIKeyCredentials)
+	if !ok {
+		return nil, &errors.ConfigError{
+			Key:    "anthropic.credentials",
+			Reason: "Anthropic provider requires APIKeyCredentials",
+		}
+	}
+
+	provider, err := NewAnthropicProvider(apiCreds.APIKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// Override base URL if provided
+	if apiCreds.BaseURL != "" {
+		provider.baseURL = apiCreds.BaseURL
+	}
+
+	return provider, nil
+}
+
 // anthropicModels contains metadata for all Claude models.
 var anthropicModels = []llm.ModelInfo{
 	{

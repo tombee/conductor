@@ -115,10 +115,16 @@ func CreateProvider(cfg *config.Config, providerName string) (llm.Provider, erro
 	switch providerCfg.Type {
 	case "claude-code":
 		var p *claudecode.Provider
-		// Check if any model tiers are configured (deprecated ModelTiers field)
+		// Check if any model tiers are configured
 		hasModels := providerCfg.ModelTiers.Fast != "" || providerCfg.ModelTiers.Balanced != "" || providerCfg.ModelTiers.Strategic != ""
 		if hasModels {
-			p = claudecode.NewWithModels(providerCfg.ModelTiers)
+			// Convert config.ModelTierMap to llm.ModelTierMap
+			tierMap := llm.ModelTierMap{
+				Fast:      providerCfg.ModelTiers.Fast,
+				Balanced:  providerCfg.ModelTiers.Balanced,
+				Strategic: providerCfg.ModelTiers.Strategic,
+			}
+			p = claudecode.NewWithModels(tierMap)
 		} else {
 			p = claudecode.New()
 		}

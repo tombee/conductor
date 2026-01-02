@@ -19,7 +19,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/pkg/llm"
 )
 
@@ -274,7 +273,7 @@ func TestProvider_BuildCLIArgs_WithTools(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			args := p.buildCLIArgs(tt.req)
+			args := p.buildCLIArgs(tt.req, false)
 
 			hasMCPConfig := false
 
@@ -299,7 +298,7 @@ func TestProvider_BuildCLIArgs_WithTools(t *testing.T) {
 }
 
 func TestProvider_NewWithModels(t *testing.T) {
-	customModels := config.ModelTierMap{
+	customModels := llm.ModelTierMap{
 		Fast:      "claude-custom-fast",
 		Balanced:  "claude-custom-balanced",
 		Strategic: "claude-custom-strategic",

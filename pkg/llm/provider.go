@@ -295,3 +295,31 @@ type UsageTrackable interface {
 	// Returns nil if no usage data is available.
 	GetLastUsage() *TokenUsage
 }
+
+// ModelTierMap defines the mapping from tier names to model IDs.
+// This is populated from user configuration, not provider defaults.
+type ModelTierMap struct {
+	Fast      string // Model ID for fast tier
+	Balanced  string // Model ID for balanced tier
+	Strategic string // Model ID for strategic tier
+}
+
+// IsEmpty returns true if no tier mappings are configured.
+func (m ModelTierMap) IsEmpty() bool {
+	return m.Fast == "" && m.Balanced == "" && m.Strategic == ""
+}
+
+// Get returns the model ID for the given tier name.
+// Returns empty string if the tier is not configured.
+func (m ModelTierMap) Get(tier string) string {
+	switch tier {
+	case "fast":
+		return m.Fast
+	case "balanced":
+		return m.Balanced
+	case "strategic":
+		return m.Strategic
+	default:
+		return ""
+	}
+}
