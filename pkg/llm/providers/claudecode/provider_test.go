@@ -93,17 +93,17 @@ func TestProvider_ResolveModel(t *testing.T) {
 		{
 			name:     "fast tier",
 			input:    "fast",
-			expected: "claude-3-5-haiku-20241022",
+			expected: "haiku",
 		},
 		{
 			name:     "balanced tier",
 			input:    "balanced",
-			expected: "claude-sonnet-4-20250514",
+			expected: "sonnet",
 		},
 		{
 			name:     "strategic tier",
 			input:    "strategic",
-			expected: "claude-opus-4-20250514",
+			expected: "opus",
 		},
 		{
 			name:     "explicit model ID",

@@ -242,9 +242,9 @@ Examples:
 				return fmt.Errorf("failed to save config: %w", err)
 			}
 
-			fmt.Printf("\n✓ Provider %q added successfully\n", providerName)
+			fmt.Printf("\n%s\n", shared.RenderOK(fmt.Sprintf("Provider %q added successfully", providerName)))
 			if setAsDefault {
-				fmt.Printf("  Set as default provider\n")
+				fmt.Printf("  %s\n", shared.Muted.Render("Set as default provider"))
 			}
 			if len(providerCfg.Models) > 0 {
 				var modelNames []string
@@ -252,16 +252,16 @@ Examples:
 					modelNames = append(modelNames, name)
 				}
 				sort.Strings(modelNames)
-				fmt.Printf("  Models: %s\n", strings.Join(modelNames, ", "))
+				fmt.Printf("  %s %s\n", shared.Muted.Render("Models:"), strings.Join(modelNames, ", "))
 			}
 			if len(cfg.Tiers) > 0 {
-				fmt.Printf("  Tiers: fast→%s, balanced→%s, strategic→%s\n",
-					cfg.Tiers["fast"], cfg.Tiers["balanced"], cfg.Tiers["strategic"])
+				fmt.Printf("  %s fast→%s, balanced→%s, strategic→%s\n",
+					shared.Muted.Render("Tiers:"), cfg.Tiers["fast"], cfg.Tiers["balanced"], cfg.Tiers["strategic"])
 			}
-			fmt.Printf("  Config saved to: %s\n", cfgPath)
+			fmt.Printf("  %s %s\n", shared.Muted.Render("Config saved to:"), cfgPath)
 			fmt.Println()
-			fmt.Println("Next steps:")
-			fmt.Printf("  conductor provider test %s   # Test the provider\n", providerName)
+			fmt.Println(shared.Header.Render("Next steps:"))
+			fmt.Printf("  %s   %s\n", shared.StatusInfo.Render(fmt.Sprintf("conductor provider test %s", providerName)), shared.Muted.Render("# Test the provider"))
 			fmt.Println()
 
 			return nil

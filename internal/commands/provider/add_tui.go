@@ -107,16 +107,21 @@ func runAddInteractive(cmd *cobra.Command, cfg *config.Config, cfgPath string) e
 		providerCfg.Models = make(map[string]config.ModelConfig)
 	}
 
-	// Add default models and tiers from provider (if it provides setup defaults)
+	// Configure models - use provider defaults or prompt for manual entry
 	var setup *llm.SetupConfig
 	if providerType == "claude-code" {
 		p := claudecode.New()
 		// claudecode.Provider implements llm.SetupProvider
 		setup = p.DefaultSetup()
-	}
-	if setup != nil {
-		for _, modelName := range setup.Models {
-			providerCfg.Models[modelName] = config.ModelConfig{}
+		if setup != nil {
+			for _, modelName := range setup.Models {
+				providerCfg.Models[modelName] = config.ModelConfig{}
+			}
+		}
+	} else {
+		// For providers without known defaults, prompt for model configuration
+		if err := configureModelsInteractive(cmd.Context(), providerName, providerType, &providerCfg); err != nil {
+			return err
 		}
 	}
 
@@ -147,9 +152,9 @@ func runAddInteractive(cmd *cobra.Command, cfg *config.Config, cfgPath string) e
 	}
 
 	// Success message
-	fmt.Printf("\n✓ Provider %q added successfully\n", providerName)
+	fmt.Printf("\n%s\n", shared.RenderOK(fmt.Sprintf("Provider %q added successfully", providerName)))
 	if setAsDefault {
-		fmt.Printf("  Set as default provider\n")
+		fmt.Printf("  %s\n", shared.Muted.Render("Set as default provider"))
 	}
 	if len(providerCfg.Models) > 0 {
 		var modelNames []string
@@ -157,21 +162,21 @@ func runAddInteractive(cmd *cobra.Command, cfg *config.Config, cfgPath string) e
 			modelNames = append(modelNames, name)
 		}
 		sort.Strings(modelNames)
-		fmt.Printf("  Models: %s\n", strings.Join(modelNames, ", "))
+		fmt.Printf("  %s %s\n", shared.Muted.Render("Models:"), strings.Join(modelNames, ", "))
 	}
 	if tiersConfigured {
-		fmt.Printf("  Tiers: fast→%s, balanced→%s, strategic→%s\n",
-			cfg.Tiers["fast"], cfg.Tiers["balanced"], cfg.Tiers["strategic"])
+		fmt.Printf("  %s fast→%s, balanced→%s, strategic→%s\n",
+			shared.Muted.Render("Tiers:"), cfg.Tiers["fast"], cfg.Tiers["balanced"], cfg.Tiers["strategic"])
 	}
-	fmt.Printf("  Config saved to: %s\n", cfgPath)
+	fmt.Printf("  %s %s\n", shared.Muted.Render("Config saved to:"), cfgPath)
 	fmt.Println()
 
 	// Next steps depend on what was configured
-	fmt.Println("Next steps:")
-	fmt.Printf("  conductor provider test %s   # Test the provider\n", providerName)
+	fmt.Println(shared.Header.Render("Next steps:"))
+	fmt.Printf("  %s   %s\n", shared.StatusInfo.Render(fmt.Sprintf("conductor provider test %s", providerName)), shared.Muted.Render("# Test the provider"))
 	if !tiersConfigured {
-		fmt.Printf("  conductor model discover %s  # Discover available models\n", providerName)
-		fmt.Println("  conductor model set-tier fast <provider/model>  # Configure tier mappings")
+		fmt.Printf("  %s  %s\n", shared.StatusInfo.Render(fmt.Sprintf("conductor model discover %s", providerName)), shared.Muted.Render("# Discover available models"))
+		fmt.Printf("  %s  %s\n", shared.StatusInfo.Render("conductor model set-tier fast <provider/model>"), shared.Muted.Render("# Configure tier mappings"))
 	}
 	fmt.Println()
 
@@ -180,13 +185,13 @@ func runAddInteractive(cmd *cobra.Command, cfg *config.Config, cfgPath string) e
 
 // configureClaudeCode handles Claude Code provider configuration.
 func configureClaudeCode(ctx context.Context, cfg *config.ProviderConfig) error {
-	fmt.Println("\nDetecting Claude CLI...")
+	fmt.Println("\n" + shared.Muted.Render("Detecting Claude CLI..."))
 
 	p := claudecode.New()
 	found, err := p.Detect()
 	if err != nil || !found {
-		fmt.Fprintf(os.Stderr, "\n⚠ Claude CLI not found in PATH\n")
-		fmt.Fprintf(os.Stderr, "Install from: https://claude.ai/download\n\n")
+		fmt.Fprintf(os.Stderr, "\n%s\n", shared.RenderWarn("Claude CLI not found in PATH"))
+		fmt.Fprintf(os.Stderr, "%s\n\n", shared.StatusInfo.Render("Install from: https://claude.ai/download"))
 
 		// Ask user what to do
 		var action string
@@ -224,12 +229,12 @@ func configureClaudeCode(ctx context.Context, cfg *config.ProviderConfig) error 
 	result := p.HealthCheck(ctx)
 	if result.Healthy() {
 		if result.Version != "" {
-			fmt.Printf("✓ Claude CLI detected (version: %s)\n", result.Version)
+			fmt.Println(shared.RenderOK(fmt.Sprintf("Claude CLI detected %s", shared.Muted.Render("(version: "+result.Version+")"))))
 		} else {
-			fmt.Println("✓ Claude CLI detected and working")
+			fmt.Println(shared.RenderOK("Claude CLI detected and working"))
 		}
 	} else {
-		fmt.Fprintf(os.Stderr, "⚠ %s\n", result.Message)
+		fmt.Fprintf(os.Stderr, "%s\n", shared.RenderWarn(result.Message))
 	}
 
 	return nil
@@ -529,4 +534,105 @@ func configureTiersFromSetup(cfg *config.Config, providerName string, setup *llm
 	}
 
 	return nil
+}
+
+// configureModelsInteractive prompts the user to configure models for providers
+// that don't have known defaults. Allows manual model ID entry.
+func configureModelsInteractive(ctx context.Context, providerName, providerType string, cfg *config.ProviderConfig) error {
+	fmt.Println("\nModel Configuration")
+	fmt.Println("───────────────────")
+
+	// Ask if user wants to configure models now
+	var configureNow bool
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title("Configure models now?").
+				Description("You can add models later with 'conductor model add'").
+				Affirmative("Yes").
+				Negative("Skip for now").
+				Value(&configureNow),
+		),
+	)
+
+	if err := form.Run(); err != nil {
+		if err == huh.ErrUserAborted {
+			os.Exit(130)
+		}
+		return err
+	}
+
+	if !configureNow {
+		fmt.Println("Skipping model configuration.")
+		fmt.Printf("Add models later: conductor model add %s <model-id>\n", providerName)
+		return nil
+	}
+
+	// Get model IDs from user
+	var modelInput string
+	modelForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewText().
+				Title("Model IDs").
+				Description("Enter model IDs (one per line or comma-separated).\nExample: gpt-4o, gpt-4o-mini").
+				Placeholder(getModelPlaceholder(providerType)).
+				Value(&modelInput),
+		),
+	)
+
+	if err := modelForm.Run(); err != nil {
+		if err == huh.ErrUserAborted {
+			os.Exit(130)
+		}
+		return err
+	}
+
+	// Parse model IDs
+	models := parseModelIDs(modelInput)
+	if len(models) == 0 {
+		fmt.Println("No models entered.")
+		return nil
+	}
+
+	// Add models to config
+	for _, model := range models {
+		cfg.Models[model] = config.ModelConfig{}
+	}
+
+	fmt.Printf("Added %d model(s): %s\n", len(models), strings.Join(models, ", "))
+
+	return nil
+}
+
+// getModelPlaceholder returns example model IDs for the provider type.
+func getModelPlaceholder(providerType string) string {
+	switch providerType {
+	case "anthropic":
+		return "claude-sonnet-4-5-20250929, claude-haiku-4-5-20251015"
+	case "openai":
+		return "gpt-5.2, gpt-5-mini"
+	case "ollama":
+		return "llama4-scout, llama3.3, deepseek-r1"
+	default:
+		return "model-id"
+	}
+}
+
+// parseModelIDs parses a string of model IDs separated by commas or newlines.
+func parseModelIDs(input string) []string {
+	var models []string
+
+	// Split by newlines and commas
+	lines := strings.Split(input, "\n")
+	for _, line := range lines {
+		parts := strings.Split(line, ",")
+		for _, part := range parts {
+			model := strings.TrimSpace(part)
+			if model != "" {
+				models = append(models, model)
+			}
+		}
+	}
+
+	return models
 }

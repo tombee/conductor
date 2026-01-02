@@ -123,23 +123,23 @@ Examples:
 					results = append(results, result)
 				} else {
 					// Display detailed progress
-					fmt.Printf("  [%s] Configured\n", checkMark(result.Configured))
-					fmt.Printf("  [%s] Authenticated\n", checkMark(result.Authenticated))
-					fmt.Printf("  [%s] Working\n", checkMark(result.Working))
+					fmt.Printf("  %s Configured\n", renderStatus(result.Configured))
+					fmt.Printf("  %s Authenticated\n", renderStatus(result.Authenticated))
+					fmt.Printf("  %s Working\n", renderStatus(result.Working))
 
 					if latency > 0 {
-						fmt.Printf("\n  Latency: %dms\n", latency)
+						fmt.Printf("\n  %s %dms\n", shared.Muted.Render("Latency:"), latency)
 					}
 
 					if healthResult.Healthy() {
-						fmt.Println("\n  Status: Healthy")
+						fmt.Printf("\n  %s %s\n", shared.Muted.Render("Status:"), shared.StatusOK.Render("Healthy"))
 					} else {
-						fmt.Printf("\n  Status: Failed\n")
+						fmt.Printf("\n  %s %s\n", shared.Muted.Render("Status:"), shared.StatusError.Render("Failed"))
 						if result.Error != "" {
-							fmt.Printf("  Error: %s\n", result.Error)
+							fmt.Printf("  %s %s\n", shared.Muted.Render("Error:"), result.Error)
 						}
 						if healthResult.Message != "" {
-							fmt.Printf("\n%s\n", healthResult.Message)
+							fmt.Printf("\n%s\n", shared.RenderWarn(healthResult.Message))
 						}
 					}
 				}
@@ -160,10 +160,10 @@ Examples:
 	return cmd
 }
 
-// checkMark returns a check mark or X based on boolean value
-func checkMark(ok bool) string {
+// renderStatus returns a colored status indicator
+func renderStatus(ok bool) string {
 	if ok {
-		return "OK"
+		return shared.StatusOK.Render("[OK]")
 	}
-	return "FAILED"
+	return shared.StatusError.Render("[FAILED]")
 }

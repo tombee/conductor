@@ -98,35 +98,35 @@ func (p *Provider) Capabilities() llm.Capabilities {
 		Tools:     true,
 		Models: []llm.ModelInfo{
 			{
-				ID:                    "claude-opus-4-20250514",
-				Name:                  "Claude Opus 4",
+				ID:                    "opus",
+				Name:                  "Claude Opus",
 				Tier:                  llm.ModelTierStrategic,
 				MaxTokens:             200000,
-				MaxOutputTokens:       8192,
+				MaxOutputTokens:       32768,
 				InputPricePerMillion:  15.00,
 				OutputPricePerMillion: 75.00,
 				SupportsTools:         true,
 				SupportsVision:        true,
 			},
 			{
-				ID:                    "claude-sonnet-4-20250514",
-				Name:                  "Claude Sonnet 4",
+				ID:                    "sonnet",
+				Name:                  "Claude Sonnet",
 				Tier:                  llm.ModelTierBalanced,
 				MaxTokens:             200000,
-				MaxOutputTokens:       8192,
+				MaxOutputTokens:       16384,
 				InputPricePerMillion:  3.00,
 				OutputPricePerMillion: 15.00,
 				SupportsTools:         true,
 				SupportsVision:        true,
 			},
 			{
-				ID:                    "claude-3-5-haiku-20241022",
-				Name:                  "Claude 3.5 Haiku",
+				ID:                    "haiku",
+				Name:                  "Claude Haiku",
 				Tier:                  llm.ModelTierFast,
 				MaxTokens:             200000,
 				MaxOutputTokens:       8192,
-				InputPricePerMillion:  0.80,
-				OutputPricePerMillion: 4.00,
+				InputPricePerMillion:  1.00,
+				OutputPricePerMillion: 5.00,
 				SupportsTools:         true,
 				SupportsVision:        true,
 			},
@@ -343,17 +343,17 @@ func (p *Provider) resolveModel(model string) string {
 		if p.models.Fast != "" {
 			return p.models.Fast
 		}
-		return "claude-3-5-haiku-20241022"
+		return "haiku"
 	case "balanced":
 		if p.models.Balanced != "" {
 			return p.models.Balanced
 		}
-		return "claude-sonnet-4-20250514"
+		return "sonnet"
 	case "strategic":
 		if p.models.Strategic != "" {
 			return p.models.Strategic
 		}
-		return "claude-opus-4-20250514"
+		return "opus"
 	default:
 		// Assume it's already a model ID
 		return model
@@ -383,9 +383,9 @@ func (p *Provider) buildPrompt(messages []llm.Message, _ []llm.Tool) string {
 // defaultModelTiers returns the default model tier mappings for Claude
 func defaultModelTiers() llm.ModelTierMap {
 	return llm.ModelTierMap{
-		Fast:      "claude-3-5-haiku-20241022",
-		Balanced:  "claude-sonnet-4-20250514",
-		Strategic: "claude-opus-4-20250514",
+		Fast:      "haiku",
+		Balanced:  "sonnet",
+		Strategic: "opus",
 	}
 }
 
