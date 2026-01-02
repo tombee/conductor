@@ -29,6 +29,7 @@ import (
 	"github.com/tombee/conductor/internal/commands/shared"
 	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/internal/secrets"
+	"github.com/tombee/conductor/pkg/llm"
 	"github.com/tombee/conductor/pkg/llm/providers/claudecode"
 )
 
@@ -106,11 +107,17 @@ func runAddInteractive(cmd *cobra.Command, cfg *config.Config, cfgPath string) e
 		providerCfg.Models = make(map[string]config.ModelConfig)
 	}
 
-	// Add default models for claude-code provider
+	// Add default models and tiers from provider (if it provides setup defaults)
+	var setup *llm.SetupConfig
 	if providerType == "claude-code" {
-		providerCfg.Models["haiku"] = config.ModelConfig{}
-		providerCfg.Models["sonnet"] = config.ModelConfig{}
-		providerCfg.Models["opus"] = config.ModelConfig{}
+		p := claudecode.New()
+		// claudecode.Provider implements llm.SetupProvider
+		setup = p.DefaultSetup()
+	}
+	if setup != nil {
+		for _, modelName := range setup.Models {
+			providerCfg.Models[modelName] = config.ModelConfig{}
+		}
 	}
 
 	// Add provider to config
@@ -123,6 +130,15 @@ func runAddInteractive(cmd *cobra.Command, cfg *config.Config, cfgPath string) e
 	setAsDefault := len(cfg.Providers) == 1 || cfg.DefaultProvider == ""
 	if setAsDefault {
 		cfg.DefaultProvider = providerName
+	}
+
+	// Configure tier mappings from provider defaults
+	tiersConfigured := false
+	if setup != nil && len(setup.TierMappings) > 0 {
+		if err := configureTiersFromSetup(cfg, providerName, setup); err != nil {
+			return err
+		}
+		tiersConfigured = len(cfg.Tiers) > 0
 	}
 
 	// Save configuration
@@ -143,10 +159,20 @@ func runAddInteractive(cmd *cobra.Command, cfg *config.Config, cfgPath string) e
 		sort.Strings(modelNames)
 		fmt.Printf("  Models: %s\n", strings.Join(modelNames, ", "))
 	}
+	if tiersConfigured {
+		fmt.Printf("  Tiers: fast→%s, balanced→%s, strategic→%s\n",
+			cfg.Tiers["fast"], cfg.Tiers["balanced"], cfg.Tiers["strategic"])
+	}
 	fmt.Printf("  Config saved to: %s\n", cfgPath)
 	fmt.Println()
+
+	// Next steps depend on what was configured
 	fmt.Println("Next steps:")
 	fmt.Printf("  conductor provider test %s   # Test the provider\n", providerName)
+	if !tiersConfigured {
+		fmt.Printf("  conductor model discover %s  # Discover available models\n", providerName)
+		fmt.Println("  conductor model set-tier fast <provider/model>  # Configure tier mappings")
+	}
 	fmt.Println()
 
 	return nil
@@ -452,6 +478,55 @@ func runHealthCheck(ctx context.Context, providerType string, cfg *config.Provid
 	// Full health checks would require instantiating the provider
 	// which is done after config is saved
 	_ = ctx // Context available for future health check implementations
+
+	return nil
+}
+
+// configureTiersFromSetup configures tier mappings using provider defaults.
+// If tiers already exist, asks the user if they want to update them.
+func configureTiersFromSetup(cfg *config.Config, providerName string, setup *llm.SetupConfig) error {
+	if setup == nil || len(setup.TierMappings) == 0 {
+		return nil
+	}
+
+	// Build the tier mappings with full provider/model references
+	newTiers := make(map[string]string)
+	for tier, model := range setup.TierMappings {
+		newTiers[tier] = fmt.Sprintf("%s/%s", providerName, model)
+	}
+
+	// Check if tiers already exist
+	if len(cfg.Tiers) > 0 {
+		// Ask user if they want to update
+		var updateTiers bool
+		form := huh.NewForm(
+			huh.NewGroup(
+				huh.NewConfirm().
+					Title("Update tier mappings?").
+					Description(fmt.Sprintf("Tiers are already configured. Update to use %s?", providerName)).
+					Value(&updateTiers),
+			),
+		)
+
+		if err := form.Run(); err != nil {
+			if err == huh.ErrUserAborted {
+				os.Exit(130)
+			}
+			return err
+		}
+
+		if !updateTiers {
+			return nil
+		}
+	}
+
+	// Apply the tier mappings
+	if cfg.Tiers == nil {
+		cfg.Tiers = make(map[string]string)
+	}
+	for tier, ref := range newTiers {
+		cfg.Tiers[tier] = ref
+	}
 
 	return nil
 }

@@ -222,6 +222,16 @@ Examples:
 				cfg.DefaultProvider = providerName
 			}
 
+			// Set up default tier mappings for claude-code (if tiers not already configured)
+			if providerType == "claude-code" && len(cfg.Tiers) == 0 {
+				if cfg.Tiers == nil {
+					cfg.Tiers = make(map[string]string)
+				}
+				cfg.Tiers["fast"] = fmt.Sprintf("%s/haiku", providerName)
+				cfg.Tiers["balanced"] = fmt.Sprintf("%s/sonnet", providerName)
+				cfg.Tiers["strategic"] = fmt.Sprintf("%s/opus", providerName)
+			}
+
 			// Handle dry-run mode
 			if dryRun {
 				return providerAddDryRun(cmd, cfgPath, providerName, providerCfg, setAsDefault)
@@ -243,6 +253,10 @@ Examples:
 				}
 				sort.Strings(modelNames)
 				fmt.Printf("  Models: %s\n", strings.Join(modelNames, ", "))
+			}
+			if len(cfg.Tiers) > 0 {
+				fmt.Printf("  Tiers: fast→%s, balanced→%s, strategic→%s\n",
+					cfg.Tiers["fast"], cfg.Tiers["balanced"], cfg.Tiers["strategic"])
 			}
 			fmt.Printf("  Config saved to: %s\n", cfgPath)
 			fmt.Println()

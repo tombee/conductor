@@ -296,6 +296,26 @@ type UsageTrackable interface {
 	GetLastUsage() *TokenUsage
 }
 
+// SetupProvider is an optional interface that providers can implement to provide
+// default configuration for first-time setup. Providers that have known model sets
+// and tier mappings should implement this to simplify user onboarding.
+type SetupProvider interface {
+	// DefaultSetup returns the recommended models and tier mappings for this provider.
+	// Returns nil if the provider doesn't have default recommendations.
+	DefaultSetup() *SetupConfig
+}
+
+// SetupConfig contains the recommended configuration for a provider.
+type SetupConfig struct {
+	// Models contains the model names available for this provider.
+	// The key is the short name used in configuration (e.g., "haiku").
+	Models []string
+
+	// TierMappings maps tier names to model names.
+	// e.g., {"fast": "haiku", "balanced": "sonnet", "strategic": "opus"}
+	TierMappings map[string]string
+}
+
 // ModelTierMap defines the mapping from tier names to model IDs.
 // This is populated from user configuration, not provider defaults.
 type ModelTierMap struct {

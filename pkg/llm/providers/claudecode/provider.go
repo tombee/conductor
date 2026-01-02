@@ -397,3 +397,19 @@ func (p *Provider) DiscoverModels(ctx context.Context) ([]llm.ModelInfo, error) 
 
 // Ensure Provider implements ModelDiscoverer
 var _ llm.ModelDiscoverer = (*Provider)(nil)
+
+// Ensure Provider implements SetupProvider
+var _ llm.SetupProvider = (*Provider)(nil)
+
+// DefaultSetup returns the recommended configuration for the claude-code provider.
+// This includes the default models and tier mappings.
+func (p *Provider) DefaultSetup() *llm.SetupConfig {
+	return &llm.SetupConfig{
+		Models: []string{"haiku", "sonnet", "opus"},
+		TierMappings: map[string]string{
+			"fast":      "haiku",
+			"balanced":  "sonnet",
+			"strategic": "opus",
+		},
+	}
+}
