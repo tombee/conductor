@@ -37,6 +37,21 @@ type Provider struct {
 	models     config.ModelTierMap
 }
 
+// cliResponse represents the JSON output from Claude CLI with --output-format json
+type cliResponse struct {
+	Type         string  `json:"type"`
+	Subtype      string  `json:"subtype"`
+	IsError      bool    `json:"is_error"`
+	Result       string  `json:"result"`
+	TotalCostUSD float64 `json:"total_cost_usd"`
+	Usage        struct {
+		InputTokens              int `json:"input_tokens"`
+		OutputTokens             int `json:"output_tokens"`
+		CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
+		CacheReadInputTokens     int `json:"cache_read_input_tokens"`
+	} `json:"usage"`
+}
+
 // New creates a new Claude Code CLI provider
 func New() *Provider {
 	return &Provider{
@@ -114,8 +129,8 @@ func (p *Provider) Complete(ctx context.Context, req llm.CompletionRequest) (*ll
 
 // executeSimple executes a simple (non-tool) completion request
 func (p *Provider) executeSimple(ctx context.Context, req llm.CompletionRequest) (*llm.CompletionResponse, error) {
-	// Build the CLI command
-	args := p.buildCLIArgs(req)
+	// Build the CLI command with JSON output for usage stats
+	args := p.buildCLIArgs(req, true)
 
 	cmd := exec.CommandContext(ctx, p.cliCommand, args...)
 	var stdout, stderr bytes.Buffer
@@ -129,14 +144,39 @@ func (p *Provider) executeSimple(ctx context.Context, req llm.CompletionRequest)
 		return nil, fmt.Errorf("claude CLI failed: %w (stderr: %s)", err, stderr.String())
 	}
 
-	// Parse the response
+	// Parse JSON response from Claude CLI
+	var cliResp cliResponse
+	if err := json.Unmarshal(stdout.Bytes(), &cliResp); err != nil {
+		// Fallback to treating output as plain text if JSON parsing fails
+		return &llm.CompletionResponse{
+			Content:      strings.TrimSpace(stdout.String()),
+			FinishReason: llm.FinishReasonStop,
+			Model:        req.Model,
+			Created:      startTime,
+			Usage:        llm.TokenUsage{},
+		}, nil
+	}
+
+	// Check for error response
+	if cliResp.IsError {
+		return nil, fmt.Errorf("claude CLI error: %s", cliResp.Result)
+	}
+
+	// Build response with usage stats
+	usage := llm.TokenUsage{
+		InputTokens:        cliResp.Usage.InputTokens,
+		OutputTokens:       cliResp.Usage.OutputTokens,
+		TotalTokens:        cliResp.Usage.InputTokens + cliResp.Usage.OutputTokens,
+		CacheCreationTokens: cliResp.Usage.CacheCreationInputTokens,
+		CacheReadTokens:     cliResp.Usage.CacheReadInputTokens,
+	}
+
 	response := &llm.CompletionResponse{
-		Content:      strings.TrimSpace(stdout.String()),
+		Content:      cliResp.Result,
 		FinishReason: llm.FinishReasonStop,
 		Model:        req.Model,
 		Created:      startTime,
-		// Note: Claude CLI doesn't provide token usage information
-		Usage: llm.TokenUsage{},
+		Usage:        usage,
 	}
 
 	return response, nil
@@ -151,8 +191,8 @@ func (p *Provider) Stream(ctx context.Context, req llm.CompletionRequest) (<-cha
 		}
 	}
 
-	// Build the CLI command
-	args := p.buildCLIArgs(req)
+	// Build the CLI command (no JSON for streaming - uses plain text)
+	args := p.buildCLIArgs(req, false)
 
 	cmd := exec.CommandContext(ctx, p.cliCommand, args...)
 	stdout, err := cmd.StdoutPipe()
@@ -220,7 +260,7 @@ func (p *Provider) Stream(ctx context.Context, req llm.CompletionRequest) (<-cha
 }
 
 // buildCLIArgs constructs the command-line arguments for the Claude CLI
-func (p *Provider) buildCLIArgs(req llm.CompletionRequest) []string {
+func (p *Provider) buildCLIArgs(req llm.CompletionRequest, useJSON bool) []string {
 	args := []string{}
 
 	// Add model if specified
@@ -235,15 +275,15 @@ func (p *Provider) buildCLIArgs(req llm.CompletionRequest) []string {
 		args = append(args, "--temperature", fmt.Sprintf("%.2f", *req.Temperature))
 	}
 
-	// Add max tokens if specified
-	if req.MaxTokens != nil {
-		args = append(args, "--max-tokens", fmt.Sprintf("%d", *req.MaxTokens))
-	}
-
 	// When tools are specified, configure Conductor MCP server for tool execution
 	if len(req.Tools) > 0 {
 		mcpConfig := p.buildMCPConfig()
 		args = append(args, "--mcp-config", mcpConfig)
+	}
+
+	// Request JSON output for usage stats (sync mode) or stream-json (streaming mode)
+	if useJSON {
+		args = append(args, "--output-format", "json")
 	}
 
 	// Build the prompt from messages
@@ -328,3 +368,12 @@ func defaultModelTiers() config.ModelTierMap {
 		Strategic: "claude-opus-4-20250514",
 	}
 }
+
+// DiscoverModels returns the list of models available through Claude Code.
+// This returns models from the provider's capabilities.
+func (p *Provider) DiscoverModels(ctx context.Context) ([]llm.ModelInfo, error) {
+	return p.Capabilities().Models, nil
+}
+
+// Ensure Provider implements ModelDiscoverer
+var _ llm.ModelDiscoverer = (*Provider)(nil)
