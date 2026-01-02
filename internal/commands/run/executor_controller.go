@@ -495,15 +495,15 @@ func isRemoteWorkflow(path string) bool {
 
 // loadConfig loads the configuration file
 func loadConfig() (*config.Config, error) {
-	// Try XDG config directory first
-	configPath, err := config.ConfigPath()
+	// Try settings path (providers are stored here)
+	configPath, err := config.SettingsPath()
 	if err != nil {
 		return nil, err
 	}
 
-	// Check if config file exists
+	// Config file is optional - return nil if not found
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("no configuration found. Run 'conductor provider add' to set up an LLM provider")
+		return nil, nil
 	}
 
 	return config.Load(configPath)

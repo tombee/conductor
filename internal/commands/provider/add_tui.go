@@ -20,6 +20,7 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -134,10 +135,17 @@ func runAddInteractive(cmd *cobra.Command, cfg *config.Config, cfgPath string) e
 	if setAsDefault {
 		fmt.Printf("  Set as default provider\n")
 	}
+	if len(providerCfg.Models) > 0 {
+		var modelNames []string
+		for name := range providerCfg.Models {
+			modelNames = append(modelNames, name)
+		}
+		sort.Strings(modelNames)
+		fmt.Printf("  Models: %s\n", strings.Join(modelNames, ", "))
+	}
 	fmt.Printf("  Config saved to: %s\n", cfgPath)
 	fmt.Println()
 	fmt.Println("Next steps:")
-	fmt.Printf("  conductor model list            # See available models\n")
 	fmt.Printf("  conductor provider test %s   # Test the provider\n", providerName)
 	fmt.Println()
 
