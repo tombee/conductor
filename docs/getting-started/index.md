@@ -1,10 +1,6 @@
 # Installation
 
-Get Conductor running in under a minute.
-
 ## Install Conductor
-
-Choose your preferred method:
 
 **Homebrew (macOS/Linux)**
 ```bash
@@ -23,56 +19,43 @@ cd conductor
 make install
 ```
 
-**Verify installation:**
+Verify installation:
 ```bash
 conductor --version
 ```
 
-## Configure an LLM Provider
+## Configure LLM Provider
 
-Conductor needs an LLM provider to run AI workflows.
+### Option 1: Claude Code
 
-### Option 1: Claude Code (Recommended)
-
-If you have [Claude Code](https://claude.ai/download) installed, Conductor works automatically with no configuration:
+If [Claude Code](https://claude.ai/download) is installed, Conductor uses it automatically:
 
 ```bash
-# Verify Claude Code is available
 claude --version
 ```
 
-### Option 2: API Keys
-
-Add a provider with your API key:
+### Option 2: API Key
 
 ```bash
 conductor provider add
 ```
 
-This interactive command walks you through provider setup.
-
-## Verify Your Setup
-
-Run the [Hello World](hello-world) example to confirm everything works:
+## Verify Setup
 
 ```bash
-# Create hello.yaml
 cat > hello.yaml << 'EOF'
 name: hello-world
 steps:
   - id: greet
     type: llm
-    prompt: Say hello in a creative way
+    prompt: Say hello
 EOF
 
-# Run it
 conductor run hello.yaml
 ```
 
-If you see output, your setup is complete.
-
 ## Next Steps
 
-- [Hello World](hello-world) - Verify your setup
+- [Hello World](hello-world) - Verify installation
 - [Tutorial](../tutorial/) - Build a complete workflow
-- [Examples](../examples/) - Production-ready workflows
+- [Examples](../examples/) - Production workflows

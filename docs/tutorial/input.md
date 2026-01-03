@@ -1,48 +1,33 @@
-# Part 5: Reading External Data
+# Part 5: File Input
 
-Use file contents in your prompts.
+This section covers reading external files into workflows.
 
-## The Workflow
+## Workflow
 
-Create `examples/tutorial/05-input.yaml`:
+`examples/tutorial/05-input.yaml`:
 
 <!-- include: examples/tutorial/05-input.yaml -->
 
-## The Pantry File
+## Data File
 
-Create `examples/tutorial/pantry.txt`:
+`examples/tutorial/pantry.txt`:
 
 <!-- include: examples/tutorial/pantry.txt -->
 
-## Try It
+## Execution
 
 ```bash
 conductor run examples/tutorial/05-input.yaml
+conductor run examples/tutorial/05-input.yaml -i pantry_file=custom.txt
 ```
 
-The generated meal plan references ingredients from your pantry file.
+## Concepts
 
-Update the pantry and re-run:
-```bash
-echo "- Eggs (dozen)" >> examples/tutorial/pantry.txt
-conductor run examples/tutorial/05-input.yaml
-```
+| Element | Description |
+|---------|-------------|
+| `file.read` | Reads file contents into step response |
+| `{{.steps.id.response}}` | File contents available in templates |
 
-Or use a different file:
-```bash
-conductor run examples/tutorial/05-input.yaml -i pantry_file=my-pantry.txt
-```
+Reference: [File Action](../reference/actions/file/)
 
-## Key Concepts
-
-- **`file.read`** — Reads file contents into `.steps.<id>.response`
-- **Dynamic paths** — Use templates in file paths: `{{.pantry_file}}`
-- **Context injection** — Include file contents in prompts for context-aware generation
-
-See [File Action](../reference/actions/file/) for more file operations.
-
-## What's Next
-
-Deliver the meal plan to Slack or other services.
-
-[Part 6: Delivering Results →](output)
+[Next: HTTP Output →](output)

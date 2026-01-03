@@ -1,14 +1,14 @@
-# Part 1: Your First Workflow
+# Part 1: First Workflow
 
-Create a workflow that takes input, calls an LLM, and returns output.
+This section covers workflow inputs, LLM steps, template variables, and outputs.
 
-## The Workflow
+## Workflow
 
-Create `examples/tutorial/01-first-workflow.yaml`:
+`examples/tutorial/01-first-workflow.yaml`:
 
 <!-- include: examples/tutorial/01-first-workflow.yaml -->
 
-## Try It
+## Execution
 
 ```bash
 conductor run examples/tutorial/01-first-workflow.yaml -i minutes=15
@@ -23,23 +23,15 @@ Running: quick-recipe
 ...
 ```
 
-Try different values:
-```bash
-conductor run examples/tutorial/01-first-workflow.yaml -i minutes=5
-conductor run examples/tutorial/01-first-workflow.yaml -i minutes=45
-```
+## Concepts
 
-## Key Concepts
+| Element | Description |
+|---------|-------------|
+| `inputs` | Parameters passed via `-i name=value` |
+| `steps` | Sequential operations; `type: llm` invokes a model |
+| `{{.name}}` | Template variable referencing input or step output |
+| `outputs` | Values returned by the workflow |
 
-- **Inputs** — Data users provide when running (`-i minutes=15`)
-- **Steps** — Work to perform; `type: llm` calls an AI model
-- **Templates** — `{{.minutes}}` inserts the input value into the prompt
-- **Outputs** — Values the workflow returns; `{{.steps.suggest.response}}` references step output
+Reference: [Workflow Schema](../reference/workflow-schema/)
 
-See [Workflow Schema](../reference/workflow-schema/) for full syntax reference.
-
-## What's Next
-
-Generate breakfast, lunch, and dinner at the same time using parallel execution.
-
-[Part 2: Parallel Execution →](parallel)
+[Next: Parallel Execution →](parallel)

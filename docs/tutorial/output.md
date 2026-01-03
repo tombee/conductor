@@ -1,39 +1,31 @@
-# Part 6: Delivering Results
+# Part 6: HTTP Output
 
-Send your meal plan somewhere useful.
+This section covers delivering workflow results via HTTP.
 
-## The Workflow
+## Workflow
 
-Create `examples/tutorial/06-complete.yaml`:
+`examples/tutorial/06-complete.yaml`:
 
 <!-- include: examples/tutorial/06-complete.yaml -->
 
-## Try It
+## Execution
 
-### Local Only (No Webhook)
 ```bash
+# Local file output only
 conductor run examples/tutorial/06-complete.yaml
-cat meal-plan.md
-```
 
-### With Slack Webhook
-```bash
+# With webhook delivery
 conductor run examples/tutorial/06-complete.yaml \
-  -i webhook_url="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+  -i webhook_url="https://hooks.slack.com/services/..."
 ```
 
-Works with any HTTP webhook: Slack, Make.com, Zapier, n8n, or custom APIs.
+## Concepts
 
-## Key Concepts
+| Element | Description |
+|---------|-------------|
+| `when` | Conditional execution based on expression |
+| `http.request` | HTTP POST/GET to external endpoint |
 
-- **`when`** — Conditional execution: `when: 'webhook_url != ""'`
-- **`http.request`** — Send data to HTTP endpoints
-- **Always save locally** — Keep a backup even when delivering externally
+Reference: [HTTP Action](../reference/actions/http/)
 
-See [HTTP Action](../reference/actions/http/) for more HTTP operations.
-
-## What's Next
-
-Deploy to a server for fully automated weekly meal planning.
-
-[Part 7: Deploy to Production →](deploy)
+[Next: Deployment →](deploy)

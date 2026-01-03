@@ -1,25 +1,20 @@
 # Part 3: Refinement Loops
 
-Iterate until a critic approves the output.
+This section covers iterative step execution with exit conditions.
 
-## The Workflow
+## Workflow
 
-Create `examples/tutorial/03-loops.yaml`:
+`examples/tutorial/03-loops.yaml`:
 
 <!-- include: examples/tutorial/03-loops.yaml -->
 
-## Try It
+## Execution
 
-```bash
-conductor run examples/tutorial/03-loops.yaml
-```
-
-Or for a longer plan:
 ```bash
 conductor run examples/tutorial/03-loops.yaml -i days=7
 ```
 
-Watch the iterations:
+Output:
 ```
 [1/2] draft... OK
 [2/2] refine (iteration 1)...
@@ -29,17 +24,15 @@ Watch the iterations:
   - critique... APPROVED
 ```
 
-## Key Concepts
+## Concepts
 
-- **`type: loop`** — Repeats steps until a condition is met
-- **`until`** — Expression that stops the loop (e.g., `steps.critique.response contains "APPROVED"`)
-- **`max_iterations`** — Safety limit to prevent infinite loops
-- **`when`** — Conditional step execution based on expressions
+| Element | Description |
+|---------|-------------|
+| `type: loop` | Repeats steps until condition is met |
+| `until` | Expression evaluated after each iteration |
+| `max_iterations` | Upper bound on iterations |
+| `when` | Conditional step execution |
 
-See [Flow Control](../building-workflows/flow-control/) for more on loops and conditions.
+Reference: [Flow Control](../building-workflows/flow-control/)
 
-## What's Next
-
-Set up the workflow to run automatically every week.
-
-[Part 4: Scheduled Triggers →](triggers)
+[Next: Scheduled Triggers →](triggers)

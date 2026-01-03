@@ -1,10 +1,10 @@
 # Part 4: Scheduled Triggers
 
-Run workflows automatically on a schedule.
+This section covers cron-based workflow scheduling.
 
-## Adding a Schedule Trigger
+## Configuration
 
-Schedule the meal planner to run every Sunday at 9 AM:
+Add a schedule trigger:
 
 ```bash
 conductor triggers add schedule meal-plan \
@@ -25,41 +25,24 @@ conductor triggers add schedule meal-plan \
 0 9 * * 0
 ```
 
-Common patterns:
-- `0 9 * * 0` — Every Sunday at 9:00 AM
-- `0 9 * * 1-5` — Every weekday at 9:00 AM
-- `0 */6 * * *` — Every 6 hours
-
-## Managing Triggers
+## Management
 
 ```bash
-# List all triggers
-conductor triggers list
-
-# Test trigger immediately
-conductor triggers test meal-plan
-
-# Remove trigger
-conductor triggers remove meal-plan
+conductor triggers list          # List triggers
+conductor triggers test meal-plan    # Execute immediately
+conductor triggers remove meal-plan  # Delete trigger
 ```
 
-## Running the Controller
+## Controller
 
-Triggers require the controller to be running:
+Triggers require the controller process:
 
 ```bash
-# Development (foreground)
-conductor controller start --foreground
-
-# Production (background)
-conductor controller start
-conductor controller status
+conductor controller start --foreground  # Development
+conductor controller start               # Background
+conductor controller status              # Check status
 ```
 
-See [Controller](../building-workflows/controller/) for deployment options.
+Reference: [Controller](../building-workflows/controller/)
 
-## What's Next
-
-Read external files to make the meal planner aware of what's in your pantry.
-
-[Part 5: Reading External Data →](input)
+[Next: File Input →](input)

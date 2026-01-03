@@ -1,10 +1,10 @@
 # Hello World
 
-Verify your Conductor installation works in under 30 seconds.
+Verify Conductor installation.
 
-## Create the Workflow
+## Workflow
 
-Create a file called `hello.yaml`:
+Create `hello.yaml`:
 
 ```conductor
 name: hello-world
@@ -14,45 +14,36 @@ steps:
     prompt: Say hello in a creative way
 ```
 
-## Run It
+## Execution
 
 ```bash
 conductor run hello.yaml
 ```
 
-You should see output like:
-
+Expected output:
 ```
 Running: hello-world
 [1/1] greet... OK
 
-Greetings, fellow traveler of the digital realm! May your code compile
-on the first try and your coffee always be the perfect temperature.
+Greetings, fellow traveler of the digital realm...
 ```
-
-## Success!
-
-If you see AI-generated output, your setup is complete:
-- Conductor is installed correctly
-- Your LLM provider is configured and working
-- You're ready to build real workflows
 
 ## Troubleshooting
 
-**"No provider configured"**
+**No provider configured**
 
-Install [Claude Code](https://claude.ai/download) for zero-config setup, or configure a provider:
+Install [Claude Code](https://claude.ai/download) or configure a provider:
 ```bash
 conductor provider add
 ```
 
-**"Command not found"**
+**Command not found**
 
-Add Go binaries to your PATH:
+Add Go binaries to PATH:
 ```bash
 export PATH=$PATH:$(go env GOPATH)/bin
 ```
 
 ## Next Steps
 
-Continue with the [Tutorial](../tutorial/) to build a complete workflow.
+Continue with the [Tutorial](../tutorial/).
