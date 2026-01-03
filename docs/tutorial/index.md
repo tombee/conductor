@@ -1,22 +1,38 @@
-# Tutorial
+# Tutorial: Meal Planning Workflow
 
-This tutorial covers Conductor's core features through a meal planning workflow example.
+This tutorial builds a meal planning workflow from a simple recipe generator to a fully deployed service.
 
-## Contents
+Each step introduces one new feature while building on what you learned before.
 
-| Part | Topic | Features |
-|------|-------|----------|
-| 1 | [First Workflow](first-workflow) | Inputs, LLM steps, outputs |
-| 2 | [Parallel Execution](parallel) | Concurrent steps |
-| 3 | [Refinement Loops](loops) | Iterative processing |
-| 4 | [Scheduled Triggers](triggers) | Cron-based automation |
-| 5 | [File Input](input) | Reading external data |
-| 6 | [HTTP Output](output) | Webhook delivery |
-| 7 | [Deployment](deploy) | Production setup |
+## Steps
+
+1. [First Recipe](./01-first-recipe.md) - Single LLM step generating a recipe
+2. [Better Recipe](./02-better-recipe.md) - Accept ingredients, output structured data
+3. [Meal Plan](./03-meal-plan.md) - Three recipes generated in parallel
+4. [Pantry Check](./04-pantry-check.md) - Read pantry file, use in prompt
+5. [Weekly Plan](./05-weekly-plan.md) - Loop through days, refine with conditions
+6. [Save to Notion](./06-save-to-notion.md) - Save meal plan to Notion
+7. [Deploy](./07-deploy.md) - Deploy to a remote server with schedule
+
+## What You'll Learn
+
+- Workflows, steps, and prompts
+- Inputs and outputs
+- Parallel execution
+- File actions
+- Loops and conditions
+- Integrations
+- Triggers and deployment
+
+## Time Required
+
+30 minutes to complete all steps.
 
 ## Prerequisites
 
-- Conductor installed (`conductor --version`)
-- LLM provider configured (see [Installation](../getting-started/))
+- Conductor installed (see [Getting Started](../getting-started.md))
+- Text editor
+- For step 6: Notion account (free tier)
+- For step 7: Remote server or exe.dev account
 
-[Begin Tutorial →](first-workflow)
+Let's start with [Step 1: First Recipe](./01-first-recipe.md).

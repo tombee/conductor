@@ -1,0 +1,113 @@
+name: issue-triage
+description: Automatic issue classification and team assignment
+inputs:
+  title:
+    type: string
+    description: Issue title
+  body:
+    type: string
+    description: Issue description
+  author:
+    type: string
+    description: Issue author username
+  repository:
+    type: string
+    description: Repository name
+steps:
+  - id: classifyIssue
+    llm:
+      model: fast
+      prompt: |
+        Analyze this issue and classify it.
+
+        Types: bug, feature, enhancement, documentation, question, refactor, performance, security
+        Priority: critical, high, medium, low
+        Sentiment: frustrated, neutral, positive
+
+        Title: ${inputs.title}
+        Body: ${inputs.body}
+        Author: ${inputs.author}
+        Repository: ${inputs.repository}
+
+        Return JSON:
+        {
+          "type": "...",
+          "priority": "...",
+          "sentiment": "...",
+          "confidence": 0.0-1.0,
+          "reasoning": "..."
+        }
+  - id: extractLabels
+    llm:
+      model: fast
+      prompt: |
+        Extract relevant labels for this issue.
+
+        Available labels:
+        - Platform: frontend, backend, database, api, cli, mobile
+        - Component: auth, ui, workflow, storage, networking, deployment
+        - Status: needs-reproduction, needs-design, ready-to-implement
+        - Expertise: accessibility, performance, security, i18n
+        - Special: breaking-change, good-first-issue, help-wanted
+
+        Classification: ${steps.classifyIssue.output}
+        Title: ${inputs.title}
+        Body: ${inputs.body}
+
+        Return JSON (max 5 labels):
+        {
+          "labels": ["label1", "label2"],
+          "reasoning": "..."
+        }
+  - id: suggestAssignment
+    llm:
+      model: fast
+      prompt: |
+        Suggest which team should handle this issue.
+
+        Teams: platform, frontend, backend, devops, security, support
+
+        Classification: ${steps.classifyIssue.output}
+        Labels: ${steps.extractLabels.output}
+        Title: ${inputs.title}
+
+        Return JSON:
+        {
+          "team": "...",
+          "confidence": 0.0-1.0,
+          "reasoning": "...",
+          "requires_multiple_teams": true|false
+        }
+  - id: generateSummary
+    llm:
+      model: balanced
+      prompt: |
+        Create a triage summary for this issue.
+
+        Classification: ${steps.classifyIssue.output}
+        Labels: ${steps.extractLabels.output}
+        Suggested Team: ${steps.suggestAssignment.output}
+
+        Original Issue:
+        Title: ${inputs.title}
+        Body: ${inputs.body}
+
+        Format as:
+        ## Triage Summary
+
+        **Classification:** [type] - [priority]
+        **Labels:** [labels]
+        **Suggested Team:** [team]
+
+        **Analysis:**
+        [Brief analysis]
+
+        **Recommended Actions:**
+        - [ ] Action 1
+        - [ ] Action 2
+outputs:
+  type: ${steps.classifyIssue.output}
+  priority: ${steps.classifyIssue.output}
+  labels: ${steps.extractLabels.output}
+  team: ${steps.suggestAssignment.output}
+  summary: ${steps.generateSummary.output}

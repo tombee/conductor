@@ -1,0 +1,46 @@
+name: weekly-plan
+inputs:
+  pantryFile:
+    type: string
+    default: "pantry.txt"
+  diet:
+    type: string
+    default: "balanced"
+steps:
+  - id: readPantry
+    file:
+      action: read
+      path: ${inputs.pantryFile}
+  - id: planWeek
+    foreach:
+      items:
+        - Monday
+        - Tuesday
+        - Wednesday
+        - Thursday
+        - Friday
+        - Saturday
+        - Sunday
+      steps:
+        - id: dailyMeals
+          llm:
+            model: claude-3-5-sonnet-20241022
+            prompt: |
+              Available ingredients:
+              ${steps.readPantry.output}
+
+              Generate meals for ${item}.
+              Previous days: ${steps.planWeek.outputs}
+
+              Create breakfast, lunch, and dinner using available ingredients.
+              Ensure variety - don't repeat main proteins from previous days.
+
+              Return JSON:
+              {
+                "day": "${item}",
+                "breakfast": {"name": "...", "ingredients": [...]},
+                "lunch": {"name": "...", "ingredients": [...]},
+                "dinner": {"name": "...", "ingredients": [...]}
+              }
+outputs:
+  weeklyPlan: ${steps.planWeek.outputs}

@@ -1,0 +1,98 @@
+name: code-review
+description: Multi-persona code review for git branch changes
+inputs:
+  baseBranch:
+    type: string
+    default: "main"
+    description: Base branch to compare against
+  personas:
+    type: array
+    default: ["security", "performance", "style"]
+  outputFile:
+    type: string
+    default: "code-review.md"
+steps:
+  - id: getBranch
+    shell:
+      command: git rev-parse --abbrev-ref HEAD
+  - id: getDiff
+    shell:
+      command: |
+        git diff ${inputs.baseBranch}...HEAD --stat
+        echo '---'
+        git diff ${inputs.baseBranch}...HEAD
+  - id: getCommits
+    shell:
+      command: git log ${inputs.baseBranch}..HEAD --oneline
+  - id: securityReview
+    llm:
+      model: strategic
+      prompt: |
+        Review these code changes for security issues.
+        Focus on: input validation, auth issues, injection attacks, sensitive data exposure, cryptography.
+        Rate findings as: CRITICAL, HIGH, MEDIUM, or LOW severity.
+
+        Branch: ${steps.getBranch.output}
+        Commits: ${steps.getCommits.output}
+        Changes: ${steps.getDiff.output}
+
+        Provide: 1) Executive summary 2) Findings with severity 3) Recommendations
+  - id: performanceReview
+    llm:
+      model: balanced
+      prompt: |
+        Review these code changes for performance issues.
+        Focus on: algorithmic complexity, memory allocation, database queries, caching, resource cleanup.
+        Rate findings as: CRITICAL, HIGH, MEDIUM, or LOW impact.
+
+        Branch: ${steps.getBranch.output}
+        Commits: ${steps.getCommits.output}
+        Changes: ${steps.getDiff.output}
+
+        Provide: 1) Executive summary 2) Findings with impact 3) Optimization recommendations
+  - id: styleReview
+    llm:
+      model: fast
+      prompt: |
+        Review these code changes for style and maintainability.
+        Focus on: naming, code organization, documentation, error handling, idiomatic usage.
+        Rate findings as: SUGGESTION, MINOR, or IMPORTANT.
+
+        Branch: ${steps.getBranch.output}
+        Commits: ${steps.getCommits.output}
+        Changes: ${steps.getDiff.output}
+
+        Provide: 1) Executive summary 2) Findings with severity 3) Improvement suggestions
+  - id: generateReport
+    llm:
+      model: balanced
+      prompt: |
+        Generate a comprehensive code review report in Markdown.
+
+        Context:
+        - Branch: ${steps.getBranch.output}
+        - Base: ${inputs.baseBranch}
+        - Commits: ${steps.getCommits.output}
+
+        Reviews:
+        Security: ${steps.securityReview.output}
+        Performance: ${steps.performanceReview.output}
+        Style: ${steps.styleReview.output}
+
+        Create a well-formatted Markdown report with:
+        1. Header with branch info and date
+        2. Overall summary with recommendation (APPROVE, REQUEST_CHANGES, or NEEDS_DISCUSSION)
+        3. Each review section
+        4. Prioritized action items list combining all findings
+        5. Conclusion
+
+        Output ONLY the Markdown content.
+  - id: writeReport
+    file:
+      action: write
+      path: ${inputs.outputFile}
+      content: ${steps.generateReport.output}
+outputs:
+  reportPath: ${inputs.outputFile}
+  branch: ${steps.getBranch.output}
+  summary: ${steps.generateReport.output}

@@ -1,0 +1,23 @@
+name: better-recipe
+inputs:
+  ingredients:
+    type: string
+    description: Comma-separated ingredients to use
+    default: "chicken, rice, broccoli"
+steps:
+  - id: generate
+    llm:
+      model: claude-3-5-sonnet-20241022
+      prompt: |
+        Generate a dinner recipe using these ingredients: ${inputs.ingredients}
+
+        Return JSON with this structure:
+        {
+          "name": "Recipe Name",
+          "ingredients": [{"item": "chicken", "quantity": "1 lb"}],
+          "steps": ["Step 1", "Step 2"],
+          "prepTime": "15 min",
+          "cookTime": "30 min"
+        }
+outputs:
+  recipe: ${steps.generate.output}

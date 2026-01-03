@@ -1,0 +1,11 @@
+name: first-recipe
+steps:
+  - id: generate
+    llm:
+      model: claude-3-5-sonnet-20241022
+      prompt: |
+        Generate a dinner recipe. Include:
+        - Recipe name
+        - Ingredients with quantities
+        - Cooking steps
+        - Prep and cook time
