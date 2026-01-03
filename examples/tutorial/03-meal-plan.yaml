@@ -39,13 +39,16 @@ outputs:
     type: string
     value: "{{.steps.meals.breakfast.response}}"
     description: Breakfast recipe
+    format: markdown
 
   - name: lunch
     type: string
     value: "{{.steps.meals.lunch.response}}"
     description: Lunch recipe
+    format: markdown
 
   - name: dinner
     type: string
     value: "{{.steps.meals.dinner.response}}"
     description: Dinner recipe
+    format: markdown

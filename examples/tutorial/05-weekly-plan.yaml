@@ -57,8 +57,10 @@ outputs:
     type: string
     value: "{{.steps.plan_week.response}}"
     description: Complete weekly meal plan
+    format: markdown
 
   - name: variety_check
     type: string
     value: "{{.steps.check_variety.response}}"
     description: Variety analysis and suggestions
+    format: markdown

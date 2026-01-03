@@ -25,6 +25,8 @@ import (
 
 	"github.com/tombee/conductor/internal/controller/backend"
 	"github.com/tombee/conductor/internal/debug"
+	"github.com/tombee/conductor/internal/format"
+	"github.com/tombee/conductor/pkg/errors"
 	"github.com/tombee/conductor/pkg/workflow"
 )
 
@@ -396,7 +398,22 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 		run.Status = RunStatusCompleted
 		if result != nil {
 			// Try to resolve workflow-defined outputs first
-			if workflowOutputs := resolveWorkflowOutputs(run.definition, result.StepOutputs); workflowOutputs != nil {
+			workflowOutputs, outputErr := resolveWorkflowOutputs(run.definition, result.StepOutputs)
+			if outputErr != nil {
+				// Output validation failed - mark run as failed
+				run.Status = RunStatusFailed
+				run.Error = outputErr.Error()
+
+				// Log full validation error details with run ID for authorized debugging
+				if validationErr, ok := outputErr.(*errors.OutputValidationError); ok {
+					slog.Error("Output validation failed",
+						"run_id", run.ID,
+						"output", validationErr.OutputName,
+						"format", validationErr.Format,
+						"details", validationErr.Details,
+					)
+				}
+			} else if workflowOutputs != nil {
 				run.Output = workflowOutputs
 			} else if result.StepOutput != nil {
 				// Fall back to last step output if no workflow outputs defined
@@ -444,9 +461,10 @@ func errorToString(err error) string {
 // resolveWorkflowOutputs resolves workflow output definitions using step outputs.
 // If the workflow has outputs defined, resolve each output template and return a map.
 // If no outputs are defined, returns nil to indicate fallback to step output.
-func resolveWorkflowOutputs(def *workflow.Definition, stepOutputs map[string]any) map[string]any {
+// Returns an error if output format validation fails.
+func resolveWorkflowOutputs(def *workflow.Definition, stepOutputs map[string]any) (map[string]any, error) {
 	if len(def.Outputs) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	// Build template context with step outputs
@@ -474,8 +492,23 @@ func resolveWorkflowOutputs(def *workflow.Definition, stepOutputs map[string]any
 			outputs[outputDef.Name] = outputDef.Value
 			continue
 		}
+
+		// Validate format if specified
+		if outputDef.Format != "" {
+			if err := format.Validate(outputDef.Format, value); err != nil {
+				// Create OutputValidationError with generic message
+				validationErr := &errors.OutputValidationError{
+					OutputName: outputDef.Name,
+					Format:     outputDef.Format,
+					Message:    err.Error(),
+					Details:    fmt.Sprintf("Output %q with format %q failed validation. Value: %v, Error: %v", outputDef.Name, outputDef.Format, value, err),
+				}
+				return nil, validationErr
+			}
+		}
+
 		outputs[outputDef.Name] = value
 	}
 
-	return outputs
+	return outputs, nil
 }

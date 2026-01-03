@@ -154,3 +154,25 @@ func (e *TimeoutError) Error() string {
 func (e *TimeoutError) Unwrap() error {
 	return e.Cause
 }
+
+// OutputValidationError represents output format validation failures.
+// Use this when a workflow output value doesn't match its specified format.
+type OutputValidationError struct {
+	// OutputName is the name of the output that failed validation
+	OutputName string
+
+	// Format is the expected format (e.g., "json", "number", "markdown")
+	Format string
+
+	// Message is a generic user-facing error message (does not include actual value)
+	Message string
+
+	// Details contains full error details including the actual value (for logging only)
+	Details string
+}
+
+// Error implements the error interface.
+// Returns a generic message to avoid exposing sensitive data.
+func (e *OutputValidationError) Error() string {
+	return fmt.Sprintf("output %q validation failed: %s", e.OutputName, e.Message)
+}

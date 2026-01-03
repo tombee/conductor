@@ -444,6 +444,11 @@
         "description": {
           "type": "string",
           "description": "Human-readable explanation of what this output represents and how it should be used."
+        },
+        "format": {
+          "type": "string",
+          "description": "Output format for validation and CLI display. 'string' (default, no validation), 'number' (validates numeric values), 'markdown' (CLI rendering with formatting), 'json' (validates and pretty-prints JSON), 'code' (plain code), 'code:<language>' (syntax-highlighted code, e.g., 'code:python', 'code:javascript'). Validation failures cause the workflow step to fail.",
+          "examples": ["markdown", "json", "code:python", "code:javascript", "number"]
         }
       }
     },
