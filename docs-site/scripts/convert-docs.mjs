@@ -16,6 +16,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DOCS_SRC = join(__dirname, '../../docs');
 const DOCS_DEST = join(__dirname, '../src/content/docs');
 const EXAMPLES_SRC = join(__dirname, '../../examples');
+const PROJECT_ROOT = join(__dirname, '../..');
 
 // Files/folders to skip
 const SKIP = ['_templates', 'STYLE_GUIDE.md', '.DS_Store'];
@@ -104,6 +105,53 @@ function extractTitle(content) {
 }
 
 /**
+ * Process file includes: <!-- include: path/to/file.yaml -->
+ * Replaces the placeholder with the file contents wrapped in a code block.
+ * The language is inferred from the file extension.
+ */
+function processIncludes(content) {
+  // Match <!-- include: path/to/file.ext --> or <!-- include: path/to/file.ext lang:xxx -->
+  const includeRegex = /<!--\s*include:\s*([^\s>]+)(?:\s+lang:(\w+))?\s*-->/g;
+
+  return content.replace(includeRegex, (match, filePath, explicitLang) => {
+    const fullPath = join(PROJECT_ROOT, filePath);
+
+    if (!existsSync(fullPath)) {
+      console.warn(`⚠ Include not found: ${filePath}`);
+      return `\`\`\`\n// ERROR: File not found: ${filePath}\n\`\`\``;
+    }
+
+    const fileContent = readFileSync(fullPath, 'utf-8').trim();
+
+    // Determine language from extension or explicit lang
+    let lang = explicitLang;
+    if (!lang) {
+      const ext = filePath.split('.').pop();
+      const langMap = {
+        'yaml': 'yaml',
+        'yml': 'yaml',
+        'json': 'json',
+        'js': 'javascript',
+        'ts': 'typescript',
+        'go': 'go',
+        'sh': 'bash',
+        'bash': 'bash',
+        'md': 'markdown',
+        'txt': 'text',
+      };
+      lang = langMap[ext] || ext;
+    }
+
+    // Use 'conductor' language for workflow YAML files (enables syntax highlighting)
+    if ((lang === 'yaml' || lang === 'yml') && filePath.includes('workflow')) {
+      lang = 'conductor';
+    }
+
+    return `\`\`\`${lang}\n${fileContent}\n\`\`\``;
+  });
+}
+
+/**
  * Process an example file with workflow.yaml injection
  */
 function processExampleFile(srcPath, destPath, workflowContent) {
@@ -172,6 +220,9 @@ function processFile(srcPath, destPath) {
 
   // Remove MkDocs button classes (breaks MDX)
   content = content.replace(/\{\s*\.md-button[^}]*\}/g, '');
+
+  // Process file includes before other transformations
+  content = processIncludes(content);
 
   // Fix internal links - convert relative .md links to work with Starlight
   // Note: We leave relative paths as-is since Starlight handles them correctly
