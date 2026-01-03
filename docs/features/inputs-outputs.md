@@ -69,6 +69,59 @@ outputs:
 
 Access outputs when composing workflows or using them programmatically.
 
+### Output Formats
+
+Specify how outputs should be formatted and validated using the `format` field:
+
+```yaml
+outputs:
+  - name: recipe
+    type: string
+    value: "{{.steps.generate.response}}"
+    description: Generated recipe with formatting
+    format: markdown
+
+  - name: config
+    type: string
+    value: "{{.steps.extract.response}}"
+    description: JSON configuration
+    format: json
+
+  - name: count
+    type: string
+    value: "{{.steps.calculate.response}}"
+    description: Numeric count
+    format: number
+
+  - name: script
+    type: string
+    value: "{{.steps.generate_code.response}}"
+    description: Python code with syntax highlighting
+    format: code:python
+```
+
+**Supported formats:**
+
+- `string` - Plain text (default, no validation)
+- `number` - Validates numeric values (integers, floats, scientific notation)
+- `markdown` - Markdown text with CLI rendering and formatting
+- `json` - Validates JSON and pretty-prints with 2-space indentation
+- `code` - Code without syntax highlighting
+- `code:<language>` - Code with syntax highlighting (e.g., `code:python`, `code:javascript`, `code:go`)
+
+**Format validation:**
+
+Output format validation occurs after the output value expression is evaluated. If validation fails, the workflow fails with an `OutputValidationError`. Error messages are generic to avoid exposing sensitive data, but full details are logged with the run ID for authorized debugging.
+
+**CLI display formatting:**
+
+When outputs are displayed via `conductor run` or `conductor runs show`:
+- Formatting is applied only when stdout is an interactive TTY
+- Markdown renders with headers, lists, and emphasis formatting
+- JSON is pretty-printed with 2-space indentation
+- Code is syntax-highlighted when a language is specified
+- Piped output contains no ANSI codes for clean machine processing
+
 ## Variable Syntax
 
 Reference inputs, step outputs, and environment variables:
