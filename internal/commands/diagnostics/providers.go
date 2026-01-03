@@ -109,12 +109,13 @@ func newProvidersListCmd() *cobra.Command {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
+			primaryProvider := cfg.GetPrimaryProvider()
 			statuses := make([]ProviderStatus, 0, len(cfg.Providers))
 			for name, providerCfg := range cfg.Providers {
 				status := ProviderStatus{
 					Name:      name,
 					Type:      providerCfg.Type,
-					IsDefault: name == cfg.DefaultProvider,
+					IsDefault: name == primaryProvider,
 				}
 
 				// Run health check for each provider
@@ -156,10 +157,10 @@ func newProvidersListCmd() *cobra.Command {
 			}
 			w.Flush()
 			fmt.Fprintln(out)
-			if cfg.DefaultProvider != "" {
-				fmt.Fprintf(out, "Default provider: %s\n", cfg.DefaultProvider)
+			if primaryProvider != "" {
+				fmt.Fprintf(out, "Primary provider: %s\n", primaryProvider)
 			} else {
-				fmt.Fprintln(out, "No default provider set")
+				fmt.Fprintln(out, "No providers configured")
 			}
 			fmt.Fprintln(out)
 
@@ -325,19 +326,20 @@ Examples:
 			// Add provider to config
 			cfg.Providers[providerName] = providerCfg
 
-			// If this is the first provider, set as default
-			setAsDefault := len(cfg.Providers) == 1 || cfg.DefaultProvider == ""
-			if setAsDefault {
-				cfg.DefaultProvider = providerName
+			// If this is the first provider, auto-populate tiers
+			isFirst := len(cfg.Providers) == 1
+			if isFirst && len(cfg.Tiers) == 0 {
+				// Auto-populate balanced tier with first model
+				// Note: actual model list is handled by the provider add TUI
 			}
 
 			// Handle dry-run mode
 			if dryRun {
-				return providerAddDryRun(cfgPath, providerName, providerCfg, setAsDefault)
+				return providerAddDryRun(cfgPath, providerName, providerCfg, isFirst)
 			}
 
-			if setAsDefault {
-				fmt.Printf("\nSet %s as default provider\n", providerName)
+			if isFirst {
+				fmt.Printf("\nSet %s as primary provider\n", providerName)
 			}
 
 			// Save configuration
@@ -408,10 +410,16 @@ func newProvidersRemoveCmd() *cobra.Command {
 			// Remove provider
 			delete(cfg.Providers, providerName)
 
-			// If this was the default provider, clear it
-			if cfg.DefaultProvider == providerName {
-				cfg.DefaultProvider = ""
-				fmt.Printf("\nWarning: %q was the default provider. Use 'conductor providers set-default' to set a new default.\n", providerName)
+			// Remove any tiers that reference this provider
+			removedTiers := []string{}
+			for tier, tierRef := range cfg.Tiers {
+				if strings.HasPrefix(tierRef, providerName+"/") {
+					delete(cfg.Tiers, tier)
+					removedTiers = append(removedTiers, tier)
+				}
+			}
+			if len(removedTiers) > 0 {
+				fmt.Printf("\nRemoved tier mappings: %s\n", strings.Join(removedTiers, ", "))
 			}
 
 			// Check for agent mappings that reference this provider
@@ -564,52 +572,15 @@ See also: conductor providers list, conductor doctor, conductor providers add`,
 
 func newProvidersSetDefaultCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "set-default <name>",
-		Short:             "Set the default provider",
-		ValidArgsFunction: completion.CompleteProviderNames,
-		Long: `Set which provider to use by default for workflow execution.
-
-The default provider is used when:
-  - No agent mapping is specified for a step
-  - No CONDUCTOR_PROVIDER environment variable is set
-
-Example:
-  conductor providers set-default claude-code`,
-		Args: cobra.ExactArgs(1),
+		Use:        "set-default <name>",
+		Short:      "Deprecated: use tiers configuration instead",
+		Hidden:     true, // Hide from help since deprecated
+		Deprecated: "Provider selection is now handled via tiers. Use 'conductor model list' to see configured models.",
+		Args:       cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			out := cmd.OutOrStdout()
-			providerName := args[0]
-
-			// Load configuration
-			cfgPath, err := getConfigPathOrDefault()
-			if err != nil {
-				return fmt.Errorf("failed to get config path: %w", err)
-			}
-			cfg, err := config.Load(cfgPath)
-			if err != nil {
-				return fmt.Errorf("failed to load config: %w", err)
-			}
-
-			// Check if provider exists
-			if _, exists := cfg.Providers[providerName]; !exists {
-				return fmt.Errorf("provider %q not found. Available providers: %v", providerName, keysOf(cfg.Providers))
-			}
-
-			// Update default
-			oldDefault := cfg.DefaultProvider
-			cfg.DefaultProvider = providerName
-
-			// Save configuration
-			if err := config.WriteConfig(cfg, cfgPath); err != nil {
-				return fmt.Errorf("failed to save config: %w", err)
-			}
-
-			if oldDefault != "" {
-				fmt.Fprintf(out, "Default provider changed from %q to %q\n", oldDefault, providerName)
-			} else {
-				fmt.Fprintf(out, "Default provider set to %q\n", providerName)
-			}
-
+			fmt.Fprintln(cmd.OutOrStderr(), "This command is deprecated.")
+			fmt.Fprintln(cmd.OutOrStderr(), "Provider selection is now handled via tiers configuration.")
+			fmt.Fprintln(cmd.OutOrStderr(), "Use 'conductor model list' to see configured models and tiers.")
 			return nil
 		},
 	}

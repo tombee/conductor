@@ -131,12 +131,6 @@ func runAddInteractive(cmd *cobra.Command, cfg *config.Config, cfgPath string) e
 	}
 	cfg.Providers[providerName] = providerCfg
 
-	// If this is the first provider, set as default
-	setAsDefault := len(cfg.Providers) == 1 || cfg.DefaultProvider == ""
-	if setAsDefault {
-		cfg.DefaultProvider = providerName
-	}
-
 	// Configure tier mappings from provider defaults
 	tiersConfigured := false
 	if setup != nil && len(setup.TierMappings) > 0 {
@@ -153,9 +147,6 @@ func runAddInteractive(cmd *cobra.Command, cfg *config.Config, cfgPath string) e
 
 	// Success message
 	fmt.Printf("\n%s\n", shared.RenderOK(fmt.Sprintf("Provider %q added successfully", providerName)))
-	if setAsDefault {
-		fmt.Printf("  %s\n", shared.Muted.Render("Set as default provider"))
-	}
 	if len(providerCfg.Models) > 0 {
 		var modelNames []string
 		for name := range providerCfg.Models {

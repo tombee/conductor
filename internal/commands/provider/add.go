@@ -216,11 +216,8 @@ Examples:
 			// Add provider to config
 			cfg.Providers[providerName] = providerCfg
 
-			// If this is the first provider, set as default
-			setAsDefault := len(cfg.Providers) == 1 || cfg.DefaultProvider == ""
-			if setAsDefault {
-				cfg.DefaultProvider = providerName
-			}
+			// If this is the first provider, set up tiers
+			isFirst := len(cfg.Providers) == 1
 
 			// Set up default tier mappings for claude-code (if tiers not already configured)
 			if providerType == "claude-code" && len(cfg.Tiers) == 0 {
@@ -234,7 +231,7 @@ Examples:
 
 			// Handle dry-run mode
 			if dryRun {
-				return providerAddDryRun(cmd, cfgPath, providerName, providerCfg, setAsDefault)
+				return providerAddDryRun(cmd, cfgPath, providerName, providerCfg, isFirst)
 			}
 
 			// Save configuration
@@ -243,9 +240,6 @@ Examples:
 			}
 
 			fmt.Printf("\n%s\n", shared.RenderOK(fmt.Sprintf("Provider %q added successfully", providerName)))
-			if setAsDefault {
-				fmt.Printf("  %s\n", shared.Muted.Render("Set as default provider"))
-			}
 			if len(providerCfg.Models) > 0 {
 				var modelNames []string
 				for name := range providerCfg.Models {

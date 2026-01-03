@@ -18,6 +18,7 @@ package llm
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/pkg/llm"
@@ -150,23 +151,22 @@ func CreateProvider(cfg *config.Config, providerName string) (llm.Provider, erro
 		return nil, fmt.Errorf("unsupported provider type: %s", providerCfg.Type)
 	}
 
-	// Wrap with retry logic based on LLMConfig
-	provider := wrapWithRetry(baseProvider, cfg.LLM)
+	// Wrap with retry logic using default settings
+	provider := wrapWithRetry(baseProvider)
 
 	return provider, nil
 }
 
-// wrapWithRetry wraps a provider with retry logic based on LLM configuration.
-func wrapWithRetry(provider llm.Provider, llmCfg config.LLMConfig) llm.Provider {
-	// Build retry config from LLMConfig
+// wrapWithRetry wraps a provider with retry logic using sensible defaults.
+func wrapWithRetry(provider llm.Provider) llm.Provider {
 	retryConfig := llm.RetryConfig{
-		MaxRetries:      llmCfg.MaxRetries,
-		InitialDelay:    llmCfg.RetryBackoffBase,
-		MaxDelay:        10 * llmCfg.RetryBackoffBase, // 10x base as max
-		Multiplier:      2.0,                          // Exponential backoff
-		Jitter:          0.1,                          // 10% jitter
-		AbsoluteTimeout: 2 * llmCfg.RequestTimeout,    // 2x request timeout as absolute max
-		RetryableErrors: nil,                          // Use default retry logic
+		MaxRetries:      3,
+		InitialDelay:    100 * time.Millisecond,
+		MaxDelay:        time.Second,
+		Multiplier:      2.0,
+		Jitter:          0.1,
+		AbsoluteTimeout: 10 * time.Second,
+		RetryableErrors: nil,
 	}
 
 	return llm.NewRetryableProvider(provider, retryConfig)

@@ -146,40 +146,51 @@ func checkConfig() HealthCheck {
 	}
 }
 
-// checkDefaultProvider checks if a default provider is configured
+// checkDefaultProvider checks if a provider is configured
 func checkDefaultProvider() HealthCheck {
 	cfgPath, _ := config.ConfigPath()
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
 		return HealthCheck{
-			Name:    "Default Provider",
+			Name:    "Provider Configuration",
 			Status:  "fail",
 			Message: "Cannot load config to check provider",
 		}
 	}
 
-	if cfg.DefaultProvider == "" {
+	if len(cfg.Providers) == 0 {
 		return HealthCheck{
-			Name:        "Default Provider",
+			Name:        "Provider Configuration",
 			Status:      "fail",
-			Message:     "No default provider configured",
-			Remediation: "Add 'default_provider' to config or run 'conductor setup'",
+			Message:     "No providers configured",
+			Remediation: "Run 'conductor provider add' to configure a provider",
 		}
 	}
 
-	if len(cfg.Providers) == 0 {
+	providerName := cfg.GetPrimaryProvider()
+	if providerName == "" {
 		return HealthCheck{
-			Name:        "Default Provider",
+			Name:        "Provider Configuration",
 			Status:      "fail",
-			Message:     "No providers configured",
-			Remediation: "Run 'conductor setup' to configure a provider",
+			Message:     "No provider available",
+			Remediation: "Run 'conductor provider add' to configure a provider",
+		}
+	}
+
+	// Check if we have tiers configured
+	tiersConfigured := len(cfg.Tiers) > 0
+	if tiersConfigured {
+		return HealthCheck{
+			Name:    "Provider Configuration",
+			Status:  "pass",
+			Message: fmt.Sprintf("Primary provider: %s (via tiers)", providerName),
 		}
 	}
 
 	return HealthCheck{
-		Name:    "Default Provider",
+		Name:    "Provider Configuration",
 		Status:  "pass",
-		Message: fmt.Sprintf("Default provider: %s", cfg.DefaultProvider),
+		Message: fmt.Sprintf("Primary provider: %s", providerName),
 	}
 }
 
@@ -195,13 +206,23 @@ func checkProviderHealth(ctx context.Context) HealthCheck {
 		}
 	}
 
-	// Get default provider config
-	providerCfg, ok := cfg.Providers[cfg.DefaultProvider]
+	// Get primary provider
+	providerName := cfg.GetPrimaryProvider()
+	if providerName == "" {
+		return HealthCheck{
+			Name:        "Provider Health",
+			Status:      "fail",
+			Message:     "No provider configured",
+			Remediation: "Run 'conductor provider add' to configure a provider",
+		}
+	}
+
+	providerCfg, ok := cfg.Providers[providerName]
 	if !ok {
 		return HealthCheck{
 			Name:        "Provider Health",
 			Status:      "fail",
-			Message:     fmt.Sprintf("Default provider %q not found in configuration", cfg.DefaultProvider),
+			Message:     fmt.Sprintf("Provider %q not found in configuration", providerName),
 			Remediation: "Check your provider configuration",
 		}
 	}
@@ -253,7 +274,7 @@ func checkProviderHealth(ctx context.Context) HealthCheck {
 		}
 	}
 
-	message := fmt.Sprintf("Provider %s is healthy", cfg.DefaultProvider)
+	message := fmt.Sprintf("Provider %s is healthy", providerName)
 	if healthResult.Version != "" {
 		message += fmt.Sprintf(" (version: %s)", healthResult.Version)
 	}

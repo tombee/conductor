@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -40,16 +41,12 @@ type Config struct {
 	// Version indicates the config format version (1 = initial public release)
 	Version int `yaml:"version,omitempty" json:"version,omitempty"`
 
-	Server     ServerConfig            `yaml:"server"`
-	Auth       AuthConfig              `yaml:"auth"`
 	Log        LogConfig               `yaml:"log"`
-	LLM        LLMConfig               `yaml:"llm"`        // Global LLM settings (timeouts, retries, etc.)
 	Controller ControllerConfig        `yaml:"controller"` // Controller service settings
 	Security   security.SecurityConfig `yaml:"security"`   // Security framework settings
 
-	// Multi-provider configuration (new format)
-	DefaultProvider          string        `yaml:"default_provider,omitempty" json:"default_provider,omitempty"`
-	Providers                ProvidersMap  `yaml:"providers,omitempty" json:"providers,omitempty"`
+	// Multi-provider configuration
+	Providers ProvidersMap `yaml:"providers,omitempty" json:"providers,omitempty"`
 	AgentMappings            AgentMappings `yaml:"agent_mappings,omitempty" json:"agent_mappings,omitempty"`
 	AcknowledgedDefaults     []string      `yaml:"acknowledged_defaults,omitempty" json:"acknowledged_defaults,omitempty"`
 	SuppressUnmappedWarnings bool          `yaml:"suppress_unmapped_warnings,omitempty" json:"suppress_unmapped_warnings,omitempty"`
@@ -554,27 +551,6 @@ type Workspace struct {
 	DefaultProfile string `yaml:"default_profile,omitempty" json:"default_profile,omitempty"`
 }
 
-// ServerConfig configures the RPC server behavior.
-type ServerConfig struct {
-	// Port specifies the port to bind to.
-	// Consumed by: internal/controller/run.go:85
-	// Default: 9876
-	Port int `yaml:"port"`
-
-	// ShutdownTimeout is the maximum duration to wait for graceful shutdown.
-	// Consumed by: internal/controller/run.go:86
-	// Default: 5s
-	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
-}
-
-// AuthConfig configures authentication settings.
-// Note: Rate limiting is handled by internal/rpc/auth.go with hardcoded values.
-type AuthConfig struct {
-	// TokenLength is the length of generated auth tokens in bytes.
-	// Consumed by: token generation (validation only - actual token generation uses crypto/rand)
-	// Default: 32
-	TokenLength int `yaml:"token_length"`
-}
 
 // LogConfig configures logging behavior.
 type LogConfig struct {
@@ -594,50 +570,6 @@ type LogConfig struct {
 	AddSource bool `yaml:"add_source"`
 }
 
-// LLMConfig configures LLM provider settings.
-// Note: Connection pooling and trace retention are handled by observability config.
-type LLMConfig struct {
-	// DefaultProvider is the default LLM provider to use.
-	// Consumed by: provider selection logic, multi-provider config
-	// Environment: LLM_DEFAULT_PROVIDER
-	// Default: anthropic
-	DefaultProvider string `yaml:"default_provider"`
-
-	// RequestTimeout is the maximum duration for LLM requests.
-	// Consumed by: LLM provider HTTP clients
-	// Environment: LLM_REQUEST_TIMEOUT
-	// Default: 5s
-	RequestTimeout time.Duration `yaml:"request_timeout"`
-
-	// MaxRetries is the maximum number of retry attempts for failed requests.
-	// Consumed by: LLM provider retry logic
-	// Environment: LLM_MAX_RETRIES
-	// Default: 3
-	MaxRetries int `yaml:"max_retries"`
-
-	// RetryBackoffBase is the base duration for exponential backoff.
-	// Consumed by: LLM provider retry logic
-	// Environment: LLM_RETRY_BACKOFF_BASE
-	// Default: 100ms
-	RetryBackoffBase time.Duration `yaml:"retry_backoff_base"`
-
-	// FailoverProviders is the ordered list of providers to try on failure.
-	// When configured, enables automatic failover with circuit breaker.
-	// Environment: LLM_FAILOVER_PROVIDERS (comma-separated)
-	// Default: empty (failover disabled)
-	FailoverProviders []string `yaml:"failover_providers,omitempty"`
-
-	// CircuitBreakerThreshold is the number of consecutive failures before opening the circuit.
-	// 0 disables circuit breaker.
-	// Environment: LLM_CIRCUIT_BREAKER_THRESHOLD
-	// Default: 5
-	CircuitBreakerThreshold int `yaml:"circuit_breaker_threshold,omitempty"`
-
-	// CircuitBreakerTimeout is how long to keep the circuit open before trying again.
-	// Environment: LLM_CIRCUIT_BREAKER_TIMEOUT
-	// Default: 30s
-	CircuitBreakerTimeout time.Duration `yaml:"circuit_breaker_timeout,omitempty"`
-}
 
 // Default returns a Config with sensible defaults.
 func Default() *Config {
@@ -645,26 +577,10 @@ func Default() *Config {
 	dataDir := defaultDataDir()
 
 	return &Config{
-		Server: ServerConfig{
-			Port:            9876,
-			ShutdownTimeout: 5 * time.Second,
-		},
-		Auth: AuthConfig{
-			TokenLength: 32,
-		},
 		Log: LogConfig{
 			Level:     "info",
 			Format:    "json",
 			AddSource: false,
-		},
-		LLM: LLMConfig{
-			DefaultProvider:         "anthropic",
-			RequestTimeout:          5 * time.Second,
-			MaxRetries:              3,
-			RetryBackoffBase:        100 * time.Millisecond,
-			FailoverProviders:       nil, // Failover disabled by default
-			CircuitBreakerThreshold: 5,   // Default threshold
-			CircuitBreakerTimeout:   30 * time.Second,
 		},
 		Security: security.SecurityConfig{
 			DefaultProfile: security.ProfileStandard,
@@ -824,10 +740,35 @@ func LoadWithSecrets(configPath string) (*Config, []string, error) {
 }
 
 // LoadController loads configuration for controller mode.
-// This is functionally equivalent to Load but provides a clearer API
-// for controller-specific configuration loading.
+// It loads from config.yaml and merges provider settings from settings.yaml.
 func LoadController(configPath string) (*Config, error) {
-	return Load(configPath)
+	cfg, err := Load(configPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Also load provider settings from settings.yaml if available
+	settingsPath, err := SettingsPath()
+	if err == nil {
+		if _, statErr := os.Stat(settingsPath); statErr == nil {
+			// Read and merge settings
+			data, readErr := os.ReadFile(settingsPath)
+			if readErr == nil {
+				var settings Config
+				if yamlErr := yaml.Unmarshal(data, &settings); yamlErr == nil {
+					// Merge provider-related settings if not already set
+					if len(cfg.Providers) == 0 && len(settings.Providers) > 0 {
+						cfg.Providers = settings.Providers
+					}
+					if len(cfg.Tiers) == 0 && len(settings.Tiers) > 0 {
+						cfg.Tiers = settings.Tiers
+					}
+				}
+			}
+		}
+	}
+
+	return cfg, nil
 }
 
 // applyDefaults fills in zero values with sensible defaults.
@@ -836,50 +777,12 @@ func LoadController(configPath string) (*Config, error) {
 func (c *Config) applyDefaults() {
 	defaults := Default()
 
-	// Server defaults
-	if c.Server.Port == 0 {
-		c.Server.Port = defaults.Server.Port
-	}
-	if c.Server.ShutdownTimeout == 0 {
-		c.Server.ShutdownTimeout = defaults.Server.ShutdownTimeout
-	}
-
-	// Auth defaults
-	if c.Auth.TokenLength == 0 {
-		c.Auth.TokenLength = defaults.Auth.TokenLength
-	}
-
 	// Log defaults
 	if c.Log.Level == "" {
 		c.Log.Level = defaults.Log.Level
 	}
 	if c.Log.Format == "" {
 		c.Log.Format = defaults.Log.Format
-	}
-
-	// LLM defaults
-	// Clear LLM.DefaultProvider if it conflicts with configured providers.
-	// The multi-provider system uses the root-level DefaultProvider field.
-	if c.LLM.DefaultProvider != "" && len(c.Providers) > 0 {
-		if _, exists := c.Providers[c.LLM.DefaultProvider]; !exists {
-			// LLM.DefaultProvider conflicts with provider config, clear it
-			c.LLM.DefaultProvider = ""
-		}
-	}
-	if c.LLM.RequestTimeout == 0 {
-		c.LLM.RequestTimeout = defaults.LLM.RequestTimeout
-	}
-	if c.LLM.MaxRetries == 0 {
-		c.LLM.MaxRetries = defaults.LLM.MaxRetries
-	}
-	if c.LLM.RetryBackoffBase == 0 {
-		c.LLM.RetryBackoffBase = defaults.LLM.RetryBackoffBase
-	}
-	if c.LLM.CircuitBreakerThreshold == 0 {
-		c.LLM.CircuitBreakerThreshold = defaults.LLM.CircuitBreakerThreshold
-	}
-	if c.LLM.CircuitBreakerTimeout == 0 {
-		c.LLM.CircuitBreakerTimeout = defaults.LLM.CircuitBreakerTimeout
 	}
 
 	// Security defaults
@@ -987,20 +890,6 @@ func (c *Config) loadFromFile(path string) error {
 
 // loadFromEnv loads configuration from environment variables.
 func (c *Config) loadFromEnv() {
-	// Server configuration
-	if val := os.Getenv("SERVER_SHUTDOWN_TIMEOUT"); val != "" {
-		if duration, err := time.ParseDuration(val); err == nil {
-			c.Server.ShutdownTimeout = duration
-		}
-	}
-
-	// Auth configuration
-	if val := os.Getenv("AUTH_TOKEN_LENGTH"); val != "" {
-		if length, err := strconv.Atoi(val); err == nil {
-			c.Auth.TokenLength = length
-		}
-	}
-
 	// Log configuration
 	if val := os.Getenv("LOG_LEVEL"); val != "" {
 		c.Log.Level = strings.ToLower(val)
@@ -1010,17 +899,6 @@ func (c *Config) loadFromEnv() {
 	}
 	if val := os.Getenv("LOG_SOURCE"); val != "" {
 		c.Log.AddSource = val == "1" || strings.ToLower(val) == "true"
-	}
-
-	// LLM configuration
-	if val := os.Getenv("LLM_DEFAULT_PROVIDER"); val != "" {
-		c.LLM.DefaultProvider = strings.ToLower(val)
-	}
-
-	// Multi-provider configuration
-	// CONDUCTOR_PROVIDER overrides default_provider
-	if val := os.Getenv("CONDUCTOR_PROVIDER"); val != "" {
-		c.DefaultProvider = val
 	}
 
 	// Controller configuration (CLI-related)
@@ -1085,59 +963,11 @@ func (c *Config) loadFromEnv() {
 	if val := os.Getenv("CONDUCTOR_CHECKPOINTS_ENABLED"); val != "" {
 		c.Controller.CheckpointsEnabled = val == "1" || strings.ToLower(val) == "true"
 	}
-
-	// LLM configuration
-	if val := os.Getenv("LLM_REQUEST_TIMEOUT"); val != "" {
-		if duration, err := time.ParseDuration(val); err == nil {
-			c.LLM.RequestTimeout = duration
-		}
-	}
-	if val := os.Getenv("LLM_MAX_RETRIES"); val != "" {
-		if retries, err := strconv.Atoi(val); err == nil {
-			c.LLM.MaxRetries = retries
-		}
-	}
-	if val := os.Getenv("LLM_RETRY_BACKOFF_BASE"); val != "" {
-		if duration, err := time.ParseDuration(val); err == nil {
-			c.LLM.RetryBackoffBase = duration
-		}
-	}
-	if val := os.Getenv("LLM_FAILOVER_PROVIDERS"); val != "" {
-		// Parse comma-separated list of provider names
-		providers := strings.Split(val, ",")
-		for i, p := range providers {
-			providers[i] = strings.TrimSpace(p)
-		}
-		c.LLM.FailoverProviders = providers
-	}
-	if val := os.Getenv("LLM_CIRCUIT_BREAKER_THRESHOLD"); val != "" {
-		if threshold, err := strconv.Atoi(val); err == nil {
-			c.LLM.CircuitBreakerThreshold = threshold
-		}
-	}
-	if val := os.Getenv("LLM_CIRCUIT_BREAKER_TIMEOUT"); val != "" {
-		if duration, err := time.ParseDuration(val); err == nil {
-			c.LLM.CircuitBreakerTimeout = duration
-		}
-	}
 }
 
 // Validate checks that the configuration is valid.
 func (c *Config) Validate() error {
 	var errs []string
-
-	// Validate server configuration
-	if c.Server.Port < 1024 || c.Server.Port > 65535 {
-		errs = append(errs, fmt.Sprintf("server.port must be between 1024 and 65535, got %d", c.Server.Port))
-	}
-	if c.Server.ShutdownTimeout <= 0 {
-		errs = append(errs, fmt.Sprintf("server.shutdown_timeout must be positive, got %v", c.Server.ShutdownTimeout))
-	}
-
-	// Validate auth configuration
-	if c.Auth.TokenLength < 16 {
-		errs = append(errs, fmt.Sprintf("auth.token_length must be at least 16 bytes, got %d", c.Auth.TokenLength))
-	}
 
 	// Validate log configuration
 	validLevels := map[string]bool{"debug": true, "info": true, "warn": true, "warning": true, "error": true}
@@ -1147,38 +977,6 @@ func (c *Config) Validate() error {
 	validFormats := map[string]bool{"json": true, "text": true}
 	if !validFormats[c.Log.Format] {
 		errs = append(errs, fmt.Sprintf("log.format must be one of [json, text], got %q", c.Log.Format))
-	}
-
-	// Validate LLM configuration
-	// llm.default_provider should reference a provider configured in the providers section
-	// or be empty (use root-level default_provider instead)
-	// Skip validation if no providers are configured yet (allows default config to pass)
-	if c.LLM.DefaultProvider != "" && len(c.Providers) > 0 {
-		if _, exists := c.Providers[c.LLM.DefaultProvider]; !exists {
-			// Build list of configured provider names
-			configuredNames := make([]string, 0, len(c.Providers))
-			for name := range c.Providers {
-				configuredNames = append(configuredNames, name)
-			}
-			errs = append(errs, fmt.Sprintf("llm.default_provider %q not found in configured providers %v", c.LLM.DefaultProvider, configuredNames))
-		}
-	}
-	if c.LLM.RequestTimeout <= 0 {
-		errs = append(errs, fmt.Sprintf("llm.request_timeout must be positive, got %v", c.LLM.RequestTimeout))
-	}
-	if c.LLM.MaxRetries < 0 {
-		errs = append(errs, fmt.Sprintf("llm.max_retries must be non-negative, got %d", c.LLM.MaxRetries))
-	}
-	if c.LLM.RetryBackoffBase <= 0 {
-		errs = append(errs, fmt.Sprintf("llm.retry_backoff_base must be positive, got %v", c.LLM.RetryBackoffBase))
-	}
-
-	// Validate multi-provider configuration
-	if c.DefaultProvider != "" {
-		// default_provider must reference a configured provider
-		if _, exists := c.Providers[c.DefaultProvider]; !exists && len(c.Providers) > 0 {
-			errs = append(errs, fmt.Sprintf("default_provider %q not found in providers map. Available: %v", c.DefaultProvider, keysOf(c.Providers)))
-		}
 	}
 
 	// Validate each provider configuration
@@ -1360,4 +1158,31 @@ func (c *ControllerConfig) CheckpointDir() string {
 		return ""
 	}
 	return filepath.Join(c.DataDir, "checkpoints")
+}
+
+// GetPrimaryProvider returns the primary provider name from tiers or first available provider.
+// It checks tiers in priority order: balanced, fast, strategic.
+// If no tiers are configured, returns the first provider name alphabetically for determinism.
+// Returns empty string if no providers are configured.
+func (c *Config) GetPrimaryProvider() string {
+	// Check tiers in priority order
+	for _, tier := range []string{"balanced", "fast", "strategic"} {
+		if tierRef, ok := c.Tiers[tier]; ok {
+			if idx := strings.Index(tierRef, "/"); idx > 0 {
+				return tierRef[:idx]
+			}
+		}
+	}
+
+	// Fallback to first provider alphabetically (deterministic ordering)
+	if len(c.Providers) > 0 {
+		names := make([]string, 0, len(c.Providers))
+		for name := range c.Providers {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		return names[0]
+	}
+
+	return ""
 }

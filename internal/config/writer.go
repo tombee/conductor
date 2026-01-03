@@ -203,10 +203,9 @@ func writeAtomic(path string, data []byte, perm os.FileMode) error {
 }
 
 // WriteConfigMinimal writes a minimal configuration with only essential fields
-func WriteConfigMinimal(defaultProvider string, providers ProvidersMap, path string) error {
+func WriteConfigMinimal(providers ProvidersMap, path string) error {
 	cfg := &Config{
-		DefaultProvider: defaultProvider,
-		Providers:       providers,
+		Providers: providers,
 	}
 	return WriteConfig(cfg, path)
 }
@@ -214,7 +213,7 @@ func WriteConfigMinimal(defaultProvider string, providers ProvidersMap, path str
 // WriteConfigWithSecrets writes a minimal configuration and stores API keys in secrets backend.
 // API keys are stored as $secret:providers/<name>/api_key references.
 // Returns the list of secret keys that were stored.
-func WriteConfigWithSecrets(ctx context.Context, defaultProvider string, providers ProvidersMap, path string, backendName string) ([]string, error) {
+func WriteConfigWithSecrets(ctx context.Context, providers ProvidersMap, path string, backendName string) ([]string, error) {
 	var storedKeys []string
 
 	// Create secrets resolver
@@ -241,8 +240,7 @@ func WriteConfigWithSecrets(ctx context.Context, defaultProvider string, provide
 
 	// Write config with secret references
 	cfg := &Config{
-		DefaultProvider: defaultProvider,
-		Providers:       providers,
+		Providers: providers,
 	}
 
 	if err := WriteConfig(cfg, path); err != nil {

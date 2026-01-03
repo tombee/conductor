@@ -160,15 +160,6 @@ func validateConfig(cfg *config.Config) ValidationResult {
 	// Check for orphaned tier mappings (tier references non-existent provider/model)
 	// This is already handled by ValidateTiers above
 
-	// Validate default provider if set
-	if cfg.DefaultProvider != "" {
-		if _, exists := cfg.Providers[cfg.DefaultProvider]; !exists {
-			errors = append(errors, fmt.Sprintf("default_provider %q references unknown provider", cfg.DefaultProvider))
-		}
-	} else if len(cfg.Providers) > 0 {
-		warnings = append(warnings, "No default_provider set. Consider setting one with 'conductor provider set-default'.")
-	}
-
 	// Determine overall validity
 	valid := len(errors) == 0
 

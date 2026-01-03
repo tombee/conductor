@@ -35,7 +35,7 @@ type HealthResult struct {
 	ConfigExists    bool                      `json:"config_exists"`
 	ConfigValid     bool                      `json:"config_valid"`
 	ConfigError     string                    `json:"config_error,omitempty"`
-	DefaultProvider string                    `json:"default_provider"`
+	PrimaryProvider string                    `json:"primary_provider"`
 	ProviderResults map[string]ProviderHealth `json:"provider_results"`
 	Recommendations []string                  `json:"recommendations"`
 	OverallHealthy  bool                      `json:"overall_healthy"`
@@ -142,20 +142,13 @@ func runHealth(cmd *cobra.Command, args []string) error {
 				"Fix configuration errors or run 'conductor setup --force' to recreate config.")
 		} else {
 			result.ConfigValid = true
-			result.DefaultProvider = cfg.DefaultProvider
-
-			// Check if default provider is set
-			if cfg.DefaultProvider == "" {
-				result.OverallHealthy = false
-				result.Recommendations = append(result.Recommendations,
-					"No default provider configured. Add 'default_provider' to config or run 'conductor setup'.")
-			}
+			result.PrimaryProvider = cfg.GetPrimaryProvider()
 
 			// Step 3: Test all configured providers
 			if len(cfg.Providers) == 0 {
 				result.OverallHealthy = false
 				result.Recommendations = append(result.Recommendations,
-					"No providers configured. Run 'conductor setup' to set up a provider.")
+					"No providers configured. Run 'conductor provider add' to set up a provider.")
 			} else {
 				// Test each provider
 				for name, providerCfg := range cfg.Providers {
@@ -293,10 +286,10 @@ func outputHealthText(result HealthResult) error {
 		fmt.Println("  Status: Found")
 		if result.ConfigValid {
 			fmt.Println("  Valid: Yes")
-			if result.DefaultProvider != "" {
-				fmt.Printf("  Default Provider: %s\n", result.DefaultProvider)
+			if result.PrimaryProvider != "" {
+				fmt.Printf("  Primary Provider: %s\n", result.PrimaryProvider)
 			} else {
-				fmt.Println("  Default Provider: Not set")
+				fmt.Println("  Primary Provider: Not set")
 			}
 		} else {
 			fmt.Println("  Valid: No")

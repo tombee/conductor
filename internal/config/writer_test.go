@@ -29,7 +29,6 @@ func TestWriteConfig(t *testing.T) {
 
 	// Create a minimal config
 	cfg := &Config{
-		DefaultProvider: "test",
 		Providers: ProvidersMap{
 			"test": ProviderConfig{
 				Type: "anthropic",
@@ -66,9 +65,6 @@ func TestWriteConfig(t *testing.T) {
 	if !strings.Contains(content, "# Conductor Configuration") {
 		t.Error("Config file missing header comment")
 	}
-	if !strings.Contains(content, "default_provider: test") {
-		t.Error("Config file missing default_provider")
-	}
 	if !strings.Contains(content, "type: anthropic") {
 		t.Error("Config file missing provider type")
 	}
@@ -81,7 +77,6 @@ func TestWriteConfigBackup(t *testing.T) {
 
 	// Create initial config
 	cfg1 := &Config{
-		DefaultProvider: "old",
 		Providers: ProvidersMap{
 			"old": ProviderConfig{Type: "anthropic"},
 		},
@@ -96,7 +91,6 @@ func TestWriteConfigBackup(t *testing.T) {
 
 	// Write updated config
 	cfg2 := &Config{
-		DefaultProvider: "new",
 		Providers: ProvidersMap{
 			"new": ProviderConfig{Type: "openai-compatible"},
 		},
@@ -123,7 +117,7 @@ func TestWriteConfigBackup(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to read backup file: %v", err)
 			}
-			if !strings.Contains(string(data), "default_provider: old") {
+			if !strings.Contains(string(data), "old:") {
 				t.Error("Backup doesn't contain old config")
 			}
 		}
@@ -138,7 +132,7 @@ func TestWriteConfigBackup(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to read current config: %v", err)
 	}
-	if !strings.Contains(string(data), "default_provider: new") {
+	if !strings.Contains(string(data), "new:") {
 		t.Error("Current config doesn't contain new data")
 	}
 }
@@ -150,15 +144,14 @@ func TestRotateBackups(t *testing.T) {
 
 	// Create initial config
 	cfg := &Config{
-		DefaultProvider: "test",
-		Providers:       ProvidersMap{"test": ProviderConfig{Type: "anthropic"}},
+		Providers: ProvidersMap{"test": ProviderConfig{Type: "anthropic"}},
 	}
 
 	// Write config 6 times to generate backups
 	// First write creates no backup (no existing file)
 	// Subsequent writes create backups
 	for i := 0; i < 6; i++ {
-		cfg.DefaultProvider = "test" + string(rune('0'+i))
+		cfg.Providers = ProvidersMap{"test" + string(rune('0'+i)): ProviderConfig{Type: "anthropic"}}
 		if err := WriteConfig(cfg, configPath); err != nil {
 			t.Fatalf("WriteConfig %d failed: %v", i, err)
 		}
@@ -233,8 +226,7 @@ func TestWriteConfigExpandsHomedir(t *testing.T) {
 
 	// Write to ~/config.yaml
 	cfg := &Config{
-		DefaultProvider: "test",
-		Providers:       ProvidersMap{"test": ProviderConfig{Type: "anthropic"}},
+		Providers: ProvidersMap{"test": ProviderConfig{Type: "anthropic"}},
 	}
 
 	configPath := "~/config.yaml"

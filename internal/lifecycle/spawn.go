@@ -71,12 +71,12 @@ func (s *Spawner) SpawnDetached(binary string, args []string, logPath string) (i
 	cmd.Stderr = logFile
 	cmd.Stdin = nil // Close stdin
 
-	// Configure process attributes for detachment
+	// Configure process attributes for detachment.
+	// Setpgid creates a new process group, preventing signals sent to the
+	// parent's group from reaching the child. This is sufficient for background
+	// operation - Setsid is not used as it can fail on macOS with EPERM.
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-		// Create new process group
 		Setpgid: true,
-		// Create new session (fully detach from terminal)
-		Setsid: true,
 	}
 
 	// Start the process
@@ -138,7 +138,6 @@ func (s *Spawner) SpawnDetachedWithFiles(binary string, args []string, stdoutPat
 	// Configure process attributes for detachment
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true,
-		Setsid:  true,
 	}
 
 	// Start the process

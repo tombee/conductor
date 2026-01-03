@@ -252,7 +252,6 @@ func TestLoadWithSecrets(t *testing.T) {
 	defer os.Remove(tmpfile.Name())
 
 	configContent := `
-default_provider: anthropic
 providers:
   anthropic:
     type: anthropic
@@ -310,7 +309,7 @@ func TestWriteConfigWithSecrets(t *testing.T) {
 	}
 
 	// Write config with secrets
-	storedKeys, err := WriteConfigWithSecrets(ctx, "anthropic", providers, configPath, "")
+	storedKeys, err := WriteConfigWithSecrets(ctx, providers, configPath, "")
 	if err != nil {
 		t.Fatalf("WriteConfigWithSecrets() error = %v", err)
 	}

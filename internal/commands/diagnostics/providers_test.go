@@ -39,7 +39,6 @@ func TestProvidersCommand(t *testing.T) {
 
 	// Create a test config with default values to pass validation
 	cfg := config.Default()
-	cfg.DefaultProvider = "test-provider"
 	cfg.Providers = config.ProvidersMap{
 		"test-provider": {
 			Type: "claude-code",
@@ -76,16 +75,18 @@ func TestProvidersCommand(t *testing.T) {
 			skipOutput: false,
 		},
 		{
-			name:       "set-default",
+			name:       "set-default (deprecated)",
 			args:       []string{"providers", "set-default", "other-provider", "--config", cfgPath},
 			wantErr:    false,
-			wantOutput: "Default provider",
+			wantOutput: "deprecated", // Command is deprecated
 			skipOutput: false,
 		},
 		{
-			name:    "set-default non-existent",
-			args:    []string{"providers", "set-default", "nonexistent", "--config", cfgPath},
-			wantErr: true,
+			name:       "set-default non-existent (deprecated)",
+			args:       []string{"providers", "set-default", "nonexistent", "--config", cfgPath},
+			wantErr:    false, // Deprecated command doesn't fail
+			wantOutput: "deprecated",
+			skipOutput: false,
 		},
 	}
 
@@ -136,13 +137,18 @@ func TestProvidersListJSON(t *testing.T) {
 	tmpDir := t.TempDir()
 	cfgPath := filepath.Join(tmpDir, "config.yaml")
 
-	// Create a test config with default values
+	// Create a test config with tiers pointing to test-provider
 	cfg := config.Default()
-	cfg.DefaultProvider = "test-provider"
 	cfg.Providers = config.ProvidersMap{
 		"test-provider": {
 			Type: "claude-code",
+			Models: map[string]config.ModelConfig{
+				"sonnet": {},
+			},
 		},
+	}
+	cfg.Tiers = map[string]string{
+		"balanced": "test-provider/sonnet",
 	}
 
 	if err := config.WriteConfig(cfg, cfgPath); err != nil {
@@ -184,8 +190,9 @@ func TestProvidersListJSON(t *testing.T) {
 		t.Errorf("Expected type 'claude-code', got %q", statuses[0].Type)
 	}
 
+	// IsDefault should be true since provider is referenced in tiers
 	if !statuses[0].IsDefault {
-		t.Errorf("Expected provider to be default")
+		t.Errorf("Expected provider to be primary (referenced in tiers)")
 	}
 }
 
@@ -228,17 +235,22 @@ func TestProvidersRemove(t *testing.T) {
 	tmpDir := t.TempDir()
 	cfgPath := filepath.Join(tmpDir, "config.yaml")
 
-	// Create a test config with default values
+	// Create a test config with tiers
 	cfg := config.Default()
-	cfg.DefaultProvider = "test-provider"
 	cfg.Providers = config.ProvidersMap{
 		"test-provider": {
 			Type: "claude-code",
+			Models: map[string]config.ModelConfig{
+				"sonnet": {},
+			},
 		},
 		"other-provider": {
 			Type:   "anthropic",
 			APIKey: "test-key",
 		},
+	}
+	cfg.Tiers = map[string]string{
+		"balanced": "test-provider/sonnet",
 	}
 	cfg.AgentMappings = config.AgentMappings{
 		"test-agent": "test-provider",
@@ -274,9 +286,9 @@ func TestProvidersRemove(t *testing.T) {
 		t.Errorf("Provider should have been removed")
 	}
 
-	// Verify default was cleared
-	if updatedCfg.DefaultProvider == "test-provider" {
-		t.Errorf("Default provider should have been cleared")
+	// Verify tier mapping was cleared (test-provider was referenced in balanced tier)
+	if balanced, ok := updatedCfg.Tiers["balanced"]; ok && strings.HasPrefix(balanced, "test-provider/") {
+		t.Errorf("Tier mapping to removed provider should have been cleared")
 	}
 
 	// Verify agent mapping was removed
@@ -364,9 +376,16 @@ func TestProvidersDefaultBehavior(t *testing.T) {
 	cfgPath := filepath.Join(tmpDir, "config.yaml")
 
 	cfg := config.Default()
-	cfg.DefaultProvider = "test"
 	cfg.Providers = config.ProvidersMap{
-		"test": {Type: "claude-code"},
+		"test": {
+			Type: "claude-code",
+			Models: map[string]config.ModelConfig{
+				"sonnet": {},
+			},
+		},
+	}
+	cfg.Tiers = map[string]string{
+		"balanced": "test/sonnet",
 	}
 
 	if err := config.WriteConfig(cfg, cfgPath); err != nil {

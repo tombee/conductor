@@ -59,8 +59,9 @@ func main() {
 	for i, arg := range os.Args[1:] {
 		if arg == "--controller-child" {
 			controllerChild = true
-			// Parse controller flags
-			controllerFlags = parseControllerChildFlags(os.Args[i+1:])
+			// Parse controller flags (i is index in os.Args[1:], so actual index is i+1,
+			// and flags start at i+2)
+			controllerFlags = parseControllerChildFlags(os.Args[i+2:])
 			break
 		}
 	}

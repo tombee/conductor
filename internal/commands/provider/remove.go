@@ -93,12 +93,6 @@ func newRemoveCmd() *cobra.Command {
 				fmt.Printf("\nCleared %d tier mapping(s)\n", len(affectedTiers))
 			}
 
-			// If this was the default provider, clear it
-			if cfg.DefaultProvider == providerName {
-				cfg.DefaultProvider = ""
-				fmt.Printf("\nWarning: %q was the default provider. Use 'conductor provider set-default' to set a new default.\n", providerName)
-			}
-
 			// Check for agent mappings that reference this provider
 			removedMappings := []string{}
 			for agent, provider := range cfg.AgentMappings {

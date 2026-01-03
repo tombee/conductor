@@ -46,7 +46,6 @@ func TestValidateConfig(t *testing.T) {
 					"fast":     "anthropic/claude-3-5-haiku-20241022",
 					"balanced": "anthropic/claude-3-5-haiku-20241022",
 				},
-				DefaultProvider: "anthropic",
 			},
 			wantValid:      true,
 			wantErrorCount: 0,
@@ -67,7 +66,7 @@ func TestValidateConfig(t *testing.T) {
 			},
 			wantValid:      true,
 			wantErrorCount: 0,
-			wantWarnCount:  3, // Missing version + no tiers + no default provider
+			wantWarnCount:  2, // Missing version + no tiers
 		},
 		{
 			name: "config with no providers",
@@ -91,7 +90,7 @@ func TestValidateConfig(t *testing.T) {
 			},
 			wantValid:      false,
 			wantErrorCount: 1,
-			wantWarnCount:  3, // No models + no tiers + no default provider
+			wantWarnCount:  2, // No models + no tiers
 		},
 		{
 			name: "config with orphaned tier mapping",
@@ -105,24 +104,6 @@ func TestValidateConfig(t *testing.T) {
 			wantValid:      false,
 			wantErrorCount: 1, // Orphaned tier
 			wantWarnCount:  3, // No providers + missing balanced + missing strategic
-		},
-		{
-			name: "config with invalid default provider",
-			config: &internalConfig.Config{
-				Version: 1,
-				Providers: internalConfig.ProvidersMap{
-					"anthropic": internalConfig.ProviderConfig{
-						Type: "anthropic",
-						Models: map[string]internalConfig.ModelConfig{
-							"claude-3-5-haiku-20241022": {},
-						},
-					},
-				},
-				DefaultProvider: "missing-provider",
-			},
-			wantValid:      false,
-			wantErrorCount: 1,
-			wantWarnCount:  1, // No tiers
 		},
 		{
 			name: "config with invalid tier name",
@@ -142,7 +123,7 @@ func TestValidateConfig(t *testing.T) {
 			},
 			wantValid:      false,
 			wantErrorCount: 1, // Invalid tier name
-			wantWarnCount:  4, // Missing all standard tiers + no default provider
+			wantWarnCount:  3, // Missing all standard tiers
 		},
 	}
 
@@ -189,7 +170,6 @@ func TestValidateConfig_AllStandardTiers(t *testing.T) {
 			"balanced":  "anthropic/claude-3-5-sonnet-20241022",
 			"strategic": "anthropic/claude-opus-4-20250514",
 		},
-		DefaultProvider: "anthropic",
 	}
 
 	result := validateConfig(config)

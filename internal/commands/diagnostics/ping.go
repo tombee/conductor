@@ -113,9 +113,9 @@ func runPing(cmd *cobra.Command, args []string) error {
 
 	// Determine provider to test
 	if providerName == "" {
-		providerName = cfg.DefaultProvider
+		providerName = cfg.GetPrimaryProvider()
 		if providerName == "" {
-			return fmt.Errorf("no default provider configured. Use --provider to specify one")
+			return fmt.Errorf("no provider configured. Use --provider to specify one or run 'conductor provider add'")
 		}
 	}
 

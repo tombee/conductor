@@ -19,24 +19,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestDefault(t *testing.T) {
 	cfg := Default()
-
-	// Server defaults
-	if cfg.Server.Port != 9876 {
-		t.Errorf("expected port 9876, got %d", cfg.Server.Port)
-	}
-	if cfg.Server.ShutdownTimeout != 5*time.Second {
-		t.Errorf("expected shutdown timeout 5s, got %v", cfg.Server.ShutdownTimeout)
-	}
-
-	// Auth defaults
-	if cfg.Auth.TokenLength != 32 {
-		t.Errorf("expected token length 32, got %d", cfg.Auth.TokenLength)
-	}
 
 	// Log defaults
 	if cfg.Log.Level != "info" {
@@ -56,20 +42,6 @@ func TestDefault(t *testing.T) {
 	if !cfg.Controller.ControllerAuth.AllowUnixSocket {
 		t.Errorf("expected controller auth allow_unix_socket true by default, got false")
 	}
-
-	// LLM defaults
-	if cfg.LLM.DefaultProvider != "anthropic" {
-		t.Errorf("expected default provider 'anthropic', got %q", cfg.LLM.DefaultProvider)
-	}
-	if cfg.LLM.RequestTimeout != 5*time.Second {
-		t.Errorf("expected request timeout 5s, got %v", cfg.LLM.RequestTimeout)
-	}
-	if cfg.LLM.MaxRetries != 3 {
-		t.Errorf("expected max retries 3, got %d", cfg.LLM.MaxRetries)
-	}
-	if cfg.LLM.RetryBackoffBase != 100*time.Millisecond {
-		t.Errorf("expected retry backoff base 100ms, got %v", cfg.LLM.RetryBackoffBase)
-	}
 }
 
 func TestValidate(t *testing.T) {
@@ -83,38 +55,6 @@ func TestValidate(t *testing.T) {
 			name:    "valid default config",
 			modify:  func(c *Config) {},
 			wantErr: false,
-		},
-		{
-			name: "invalid port too low",
-			modify: func(c *Config) {
-				c.Server.Port = 1023
-			},
-			wantErr: true,
-			errText: "server.port must be between 1024 and 65535",
-		},
-		{
-			name: "invalid port too high",
-			modify: func(c *Config) {
-				c.Server.Port = 65536
-			},
-			wantErr: true,
-			errText: "server.port must be between 1024 and 65535",
-		},
-		{
-			name: "invalid shutdown timeout",
-			modify: func(c *Config) {
-				c.Server.ShutdownTimeout = 0
-			},
-			wantErr: true,
-			errText: "shutdown_timeout must be positive",
-		},
-		{
-			name: "invalid token length",
-			modify: func(c *Config) {
-				c.Auth.TokenLength = 15
-			},
-			wantErr: true,
-			errText: "token_length must be at least 16 bytes",
 		},
 		{
 			name: "invalid log level",
@@ -131,42 +71,6 @@ func TestValidate(t *testing.T) {
 			},
 			wantErr: true,
 			errText: "log.format must be one of [json, text]",
-		},
-		{
-			name: "invalid llm provider",
-			modify: func(c *Config) {
-				// Add a provider so validation runs against configured providers
-				c.Providers = ProvidersMap{
-					"my-provider": ProviderConfig{Type: "claude-code"},
-				}
-				c.LLM.DefaultProvider = "nonexistent-provider"
-			},
-			wantErr: true,
-			errText: "llm.default_provider \"nonexistent-provider\" not found in configured providers",
-		},
-		{
-			name: "invalid llm request timeout",
-			modify: func(c *Config) {
-				c.LLM.RequestTimeout = 0
-			},
-			wantErr: true,
-			errText: "llm.request_timeout must be positive",
-		},
-		{
-			name: "invalid llm max retries",
-			modify: func(c *Config) {
-				c.LLM.MaxRetries = -1
-			},
-			wantErr: true,
-			errText: "llm.max_retries must be non-negative",
-		},
-		{
-			name: "invalid llm retry backoff base",
-			modify: func(c *Config) {
-				c.LLM.RetryBackoffBase = -1
-			},
-			wantErr: true,
-			errText: "llm.retry_backoff_base must be positive",
 		},
 		{
 			name: "invalid trace_days when observability enabled",
@@ -233,17 +137,10 @@ func TestLoadFromEnv(t *testing.T) {
 	clearConfigEnv()
 
 	// Set test environment variables
-	// Note: LLM_DEFAULT_PROVIDER is not set here because it requires
-	// a matching provider to be configured in the providers section
 	envVars := map[string]string{
-		"SERVER_SHUTDOWN_TIMEOUT": "10s",
-		"AUTH_TOKEN_LENGTH":       "64",
-		"LOG_LEVEL":               "debug",
-		"LOG_FORMAT":              "text",
-		"LOG_SOURCE":              "1",
-		"LLM_REQUEST_TIMEOUT":     "10s",
-		"LLM_MAX_RETRIES":         "5",
-		"LLM_RETRY_BACKOFF_BASE":  "200ms",
+		"LOG_LEVEL":  "debug",
+		"LOG_FORMAT": "text",
+		"LOG_SOURCE": "1",
 	}
 
 	for k, v := range envVars {
@@ -253,20 +150,6 @@ func TestLoadFromEnv(t *testing.T) {
 	cfg, err := Load("")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Verify server config
-	// Port should use default (no env var for port)
-	if cfg.Server.Port != 9876 {
-		t.Errorf("expected default port 9876, got %d", cfg.Server.Port)
-	}
-	if cfg.Server.ShutdownTimeout != 10*time.Second {
-		t.Errorf("expected shutdown timeout 10s, got %v", cfg.Server.ShutdownTimeout)
-	}
-
-	// Verify auth config
-	if cfg.Auth.TokenLength != 64 {
-		t.Errorf("expected token length 64, got %d", cfg.Auth.TokenLength)
 	}
 
 	// Verify log config
@@ -279,18 +162,6 @@ func TestLoadFromEnv(t *testing.T) {
 	if !cfg.Log.AddSource {
 		t.Errorf("expected log add_source true, got false")
 	}
-
-	// Verify LLM config
-	// Note: DefaultProvider is not tested because it requires matching provider config
-	if cfg.LLM.RequestTimeout != 10*time.Second {
-		t.Errorf("expected request timeout 10s, got %v", cfg.LLM.RequestTimeout)
-	}
-	if cfg.LLM.MaxRetries != 5 {
-		t.Errorf("expected max retries 5, got %d", cfg.LLM.MaxRetries)
-	}
-	if cfg.LLM.RetryBackoffBase != 200*time.Millisecond {
-		t.Errorf("expected retry backoff base 200ms, got %v", cfg.LLM.RetryBackoffBase)
-	}
 }
 
 func TestLoadFromFile(t *testing.T) {
@@ -299,23 +170,23 @@ func TestLoadFromFile(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	yamlContent := `
-server:
-  port: 8080
-  shutdown_timeout: 15s
-
-auth:
-  token_length: 48
-
 log:
   level: warn
   format: text
   add_source: true
 
-llm:
-  default_provider: ollama
-  request_timeout: 8s
-  max_retries: 4
-  retry_backoff_base: 150ms
+providers:
+  claude:
+    type: claude-code
+    models:
+      haiku: {}
+      sonnet: {}
+      opus: {}
+
+tiers:
+  fast: claude/haiku
+  balanced: claude/sonnet
+  strategic: claude/opus
 `
 
 	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
@@ -333,17 +204,19 @@ llm:
 	}
 
 	// Verify loaded values
-	if cfg.Server.Port != 8080 {
-		t.Errorf("expected port 8080, got %d", cfg.Server.Port)
-	}
-	if cfg.Auth.TokenLength != 48 {
-		t.Errorf("expected token length 48, got %d", cfg.Auth.TokenLength)
-	}
 	if cfg.Log.Level != "warn" {
 		t.Errorf("expected log level 'warn', got %q", cfg.Log.Level)
 	}
-	if cfg.LLM.DefaultProvider != "ollama" {
-		t.Errorf("expected default provider 'ollama', got %q", cfg.LLM.DefaultProvider)
+
+	// Verify provider and tiers
+	if len(cfg.Providers) != 1 {
+		t.Errorf("expected 1 provider, got %d", len(cfg.Providers))
+	}
+	if cfg.Providers["claude"].Type != "claude-code" {
+		t.Errorf("expected provider type 'claude-code', got %q", cfg.Providers["claude"].Type)
+	}
+	if cfg.Tiers["balanced"] != "claude/sonnet" {
+		t.Errorf("expected balanced tier 'claude/sonnet', got %q", cfg.Tiers["balanced"])
 	}
 }
 
@@ -353,8 +226,6 @@ func TestLoadFromFileWithEnvOverride(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
 	yamlContent := `
-server:
-  port: 8080
 log:
   level: info
 `
@@ -379,10 +250,6 @@ log:
 	// Verify env overrides file
 	if cfg.Log.Level != "debug" {
 		t.Errorf("expected log level 'debug' from env, got %q", cfg.Log.Level)
-	}
-	// Port should use file value (no env var override for port)
-	if cfg.Server.Port != 8080 {
-		t.Errorf("expected port 8080 from file, got %d", cfg.Server.Port)
 	}
 }
 
@@ -413,8 +280,8 @@ func TestLoadValidationFailure(t *testing.T) {
 
 	// Config with invalid values
 	yamlContent := `
-server:
-  port: 100  # Too low
+log:
+  level: invalid_level
 `
 
 	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
@@ -456,11 +323,7 @@ func restoreEnv(env map[string]string) {
 
 func clearConfigEnv() {
 	envVars := []string{
-		"SERVER_SHUTDOWN_TIMEOUT",
-		"AUTH_TOKEN_LENGTH",
 		"LOG_LEVEL", "LOG_FORMAT", "LOG_SOURCE",
-		"LLM_DEFAULT_PROVIDER", "LLM_REQUEST_TIMEOUT", "LLM_MAX_RETRIES",
-		"LLM_RETRY_BACKOFF_BASE",
 	}
 	for _, v := range envVars {
 		os.Unsetenv(v)
@@ -485,7 +348,7 @@ func TestMinimalConfigRoundTrip(t *testing.T) {
 		},
 	}
 
-	if err := WriteConfigMinimal("claude", providers, configPath); err != nil {
+	if err := WriteConfigMinimal(providers, configPath); err != nil {
 		t.Fatalf("failed to write minimal config: %v", err)
 	}
 
@@ -496,28 +359,115 @@ func TestMinimalConfigRoundTrip(t *testing.T) {
 	}
 
 	// Verify defaults were applied
-	if cfg.Server.Port != 9876 {
-		t.Errorf("expected port 9876, got %d", cfg.Server.Port)
-	}
-	if cfg.Auth.TokenLength != 32 {
-		t.Errorf("expected token length 32, got %d", cfg.Auth.TokenLength)
-	}
 	if cfg.Log.Level != "info" {
 		t.Errorf("expected log level 'info', got %q", cfg.Log.Level)
 	}
-	if cfg.LLM.RequestTimeout != 5*time.Second {
-		t.Errorf("expected request timeout 5s, got %v", cfg.LLM.RequestTimeout)
-	}
 
 	// Verify provider settings were preserved
-	if cfg.DefaultProvider != "claude" {
-		t.Errorf("expected default provider 'claude', got %q", cfg.DefaultProvider)
-	}
 	if len(cfg.Providers) != 1 {
 		t.Errorf("expected 1 provider, got %d", len(cfg.Providers))
 	}
 	if cfg.Providers["claude"].Type != "claude-code" {
 		t.Errorf("expected provider type 'claude-code', got %q", cfg.Providers["claude"].Type)
+	}
+}
+
+// TestGetPrimaryProvider tests the GetPrimaryProvider method.
+func TestGetPrimaryProvider(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   *Config
+		expected string
+	}{
+		{
+			name:     "empty config returns empty string",
+			config:   &Config{},
+			expected: "",
+		},
+		{
+			name: "single provider no tiers returns provider",
+			config: &Config{
+				Providers: ProvidersMap{
+					"anthropic": ProviderConfig{Type: "anthropic"},
+				},
+			},
+			expected: "anthropic",
+		},
+		{
+			name: "multiple providers no tiers returns alphabetically first",
+			config: &Config{
+				Providers: ProvidersMap{
+					"zebra":    ProviderConfig{Type: "openai"},
+					"anthropic": ProviderConfig{Type: "anthropic"},
+					"claude":   ProviderConfig{Type: "claude-code"},
+				},
+			},
+			expected: "anthropic",
+		},
+		{
+			name: "balanced tier takes precedence",
+			config: &Config{
+				Providers: ProvidersMap{
+					"anthropic": ProviderConfig{Type: "anthropic"},
+					"openai":    ProviderConfig{Type: "openai"},
+				},
+				Tiers: map[string]string{
+					"balanced": "openai/gpt-4",
+				},
+			},
+			expected: "openai",
+		},
+		{
+			name: "fast tier used if no balanced",
+			config: &Config{
+				Providers: ProvidersMap{
+					"anthropic": ProviderConfig{Type: "anthropic"},
+					"openai":    ProviderConfig{Type: "openai"},
+				},
+				Tiers: map[string]string{
+					"fast": "openai/gpt-3.5",
+				},
+			},
+			expected: "openai",
+		},
+		{
+			name: "strategic tier used if no balanced or fast",
+			config: &Config{
+				Providers: ProvidersMap{
+					"anthropic": ProviderConfig{Type: "anthropic"},
+					"openai":    ProviderConfig{Type: "openai"},
+				},
+				Tiers: map[string]string{
+					"strategic": "anthropic/claude-opus",
+				},
+			},
+			expected: "anthropic",
+		},
+		{
+			name: "balanced takes precedence over fast and strategic",
+			config: &Config{
+				Providers: ProvidersMap{
+					"anthropic": ProviderConfig{Type: "anthropic"},
+					"openai":    ProviderConfig{Type: "openai"},
+					"google":    ProviderConfig{Type: "google"},
+				},
+				Tiers: map[string]string{
+					"fast":      "openai/gpt-3.5",
+					"balanced":  "google/gemini",
+					"strategic": "anthropic/claude-opus",
+				},
+			},
+			expected: "google",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.config.GetPrimaryProvider()
+			if result != tt.expected {
+				t.Errorf("GetPrimaryProvider() = %q, want %q", result, tt.expected)
+			}
+		})
 	}
 }
 
