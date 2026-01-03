@@ -40,22 +40,21 @@ func NewStopCommand() *cobra.Command {
 		Short: "Stop the conductor controller",
 		Long: `Stop the conductor controller gracefully.
 
-By default, sends SIGTERM and waits for graceful shutdown.
-Use --force to send SIGKILL if graceful shutdown times out.
+By default, sends SIGTERM and waits for graceful shutdown. If the timeout
+is exceeded, sends SIGKILL to prevent orphaned processes.
+
+Use --force to skip graceful shutdown and send SIGKILL immediately.
 
 The stop command is idempotent: if the controller is not running,
 it exits successfully after cleaning up stale PID files.`,
-		Example: `  # Stop controller gracefully
+		Example: `  # Stop controller gracefully (SIGKILL if timeout exceeded)
   conductor controller stop
 
-  # Stop with custom timeout
+  # Stop with custom timeout before force kill
   conductor controller stop --timeout 60s
 
-  # Force kill if shutdown times out
-  conductor controller stop --force
-
-  # Force kill with custom timeout
-  conductor controller stop --timeout 30s --force`,
+  # Skip graceful shutdown, kill immediately
+  conductor controller stop --force`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runStop(cmd.Context(), stopOptions{
 				timeout: timeout,
@@ -64,8 +63,8 @@ it exits successfully after cleaning up stale PID files.`,
 		},
 	}
 
-	cmd.Flags().DurationVar(&timeout, "timeout", 30*time.Second, "Shutdown timeout")
-	cmd.Flags().BoolVar(&force, "force", false, "Force kill if timeout exceeded")
+	cmd.Flags().DurationVar(&timeout, "timeout", 30*time.Second, "Graceful shutdown timeout before SIGKILL")
+	cmd.Flags().BoolVar(&force, "force", false, "Skip graceful shutdown, send SIGKILL immediately")
 
 	return cmd
 }

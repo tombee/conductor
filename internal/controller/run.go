@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/internal/log"
@@ -123,7 +124,18 @@ func Run(opts RunOptions) error {
 	case sig := <-sigCh:
 		fmt.Printf("\nReceived signal %v, shutting down...\n", sig)
 		cancel()
-		if err := d.Shutdown(context.Background()); err != nil {
+
+		// Use shutdown timeout from config to prevent blocking indefinitely.
+		// Default is 30 seconds, which allows time for graceful shutdown while
+		// ensuring the process exits if something hangs.
+		shutdownTimeout := cfg.Controller.ShutdownTimeout
+		if shutdownTimeout == 0 {
+			shutdownTimeout = 30 * time.Second
+		}
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer shutdownCancel()
+
+		if err := d.Shutdown(shutdownCtx); err != nil {
 			logger.Error("Error during shutdown", slog.Any("error", err))
 			return fmt.Errorf("shutdown error: %w", err)
 		}

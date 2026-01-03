@@ -91,14 +91,26 @@ func WaitForExit(pid int, timeout time.Duration) error {
 }
 
 // GracefulShutdown sends SIGTERM to a process and waits for it to exit.
-// If force is true and the timeout is exceeded, sends SIGKILL.
+// If the timeout is exceeded, sends SIGKILL to prevent orphaned processes.
+// The force parameter, if true, skips the graceful shutdown and sends SIGKILL immediately.
 func GracefulShutdown(pid int, timeout time.Duration, force bool) error {
 	// Verify process is running
 	if !IsProcessRunning(pid) {
 		return ErrProcessNotRunning
 	}
 
-	// Send SIGTERM
+	// If force is true, skip graceful shutdown and send SIGKILL immediately
+	if force {
+		if err := SendSignal(pid, syscall.SIGKILL); err != nil {
+			return fmt.Errorf("failed to send SIGKILL: %w", err)
+		}
+		if err := WaitForExit(pid, 5*time.Second); err != nil {
+			return fmt.Errorf("process did not die after SIGKILL: %w", err)
+		}
+		return nil
+	}
+
+	// Send SIGTERM for graceful shutdown
 	if err := SendSignal(pid, syscall.SIGTERM); err != nil {
 		return fmt.Errorf("failed to send SIGTERM: %w", err)
 	}
@@ -109,13 +121,10 @@ func GracefulShutdown(pid int, timeout time.Duration, force bool) error {
 		return nil // Process exited gracefully
 	}
 
-	if !force {
-		return err // Timeout but force not requested
-	}
-
-	// Force kill with SIGKILL
+	// Timeout exceeded - always force kill to prevent orphaned processes
+	fmt.Printf("Graceful shutdown timed out, sending SIGKILL...\n")
 	if err := SendSignal(pid, syscall.SIGKILL); err != nil {
-		return fmt.Errorf("failed to send SIGKILL: %w", err)
+		return fmt.Errorf("failed to send SIGKILL after timeout: %w", err)
 	}
 
 	// Wait a short time for SIGKILL to take effect
