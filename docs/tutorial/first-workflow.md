@@ -36,7 +36,7 @@ conductor run examples/tutorial/01-first-workflow.yaml -i minutes=45
 - **Templates** — `{{.minutes}}` inserts the input value into the prompt
 - **Outputs** — Values the workflow returns; `{{.steps.suggest.response}}` references step output
 
-See [Workflow Schema](/reference/workflow-schema/) for full syntax reference.
+See [Workflow Schema](../reference/workflow-schema/) for full syntax reference.
 
 ## What's Next
 

@@ -28,7 +28,7 @@ By the end of this tutorial, you'll have a workflow that:
 
 Before starting:
 1. **Conductor installed** - Run `conductor --version` to verify
-2. **LLM provider configured** - Complete the [Hello World](/conductor/getting-started/hello-world) test
+2. **LLM provider configured** - Complete the [Hello World](../getting-started/hello-world) test
 3. **About 90 minutes** - Each part takes 10-15 minutes
 
 ## The Pattern

@@ -27,7 +27,7 @@ Watch the output—all three meal suggestions complete around the same time inst
 - **Nested references** — `{{.steps.meals.breakfast.response}}` accesses parallel step output
 - **Model tiers** — Use `fast` for simple parallel work, `balanced` for synthesis
 
-See [Flow Control](/building-workflows/flow-control/) for more on parallel execution.
+See [Flow Control](../building-workflows/flow-control/) for more on parallel execution.
 
 ## What's Next
 

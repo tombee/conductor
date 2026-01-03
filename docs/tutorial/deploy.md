@@ -72,7 +72,7 @@ conductor history
 sudo journalctl -u conductor -f
 ```
 
-See [Deployment](/production/deployment/) for Docker, Kubernetes, and other options.
+See [Deployment](../production/deployment/) for Docker, Kubernetes, and other options.
 
 ## Tutorial Complete!
 
@@ -83,4 +83,4 @@ You've built an automated meal planning system that:
 - Delivers to Slack
 - Runs weekly on schedule
 
-**Next:** Explore [Examples](/examples/) and [Patterns](/building-workflows/patterns/).
+**Next:** Explore [Examples](../examples/) and [Patterns](../building-workflows/patterns/).

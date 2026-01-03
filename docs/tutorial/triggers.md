@@ -56,7 +56,7 @@ conductor controller start
 conductor controller status
 ```
 
-See [Controller](/building-workflows/controller/) for deployment options.
+See [Controller](../building-workflows/controller/) for deployment options.
 
 ## What's Next
 

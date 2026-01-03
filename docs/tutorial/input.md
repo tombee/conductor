@@ -39,7 +39,7 @@ conductor run examples/tutorial/05-input.yaml -i pantry_file=my-pantry.txt
 - **Dynamic paths** — Use templates in file paths: `{{.pantry_file}}`
 - **Context injection** — Include file contents in prompts for context-aware generation
 
-See [File Action](/reference/actions/file/) for more file operations.
+See [File Action](../reference/actions/file/) for more file operations.
 
 ## What's Next
 

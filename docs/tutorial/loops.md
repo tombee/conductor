@@ -36,7 +36,7 @@ Watch the iterations:
 - **`max_iterations`** — Safety limit to prevent infinite loops
 - **`when`** — Conditional step execution based on expressions
 
-See [Flow Control](/building-workflows/flow-control/) for more on loops and conditions.
+See [Flow Control](../building-workflows/flow-control/) for more on loops and conditions.
 
 ## What's Next
 

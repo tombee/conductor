@@ -53,7 +53,7 @@ This interactive command walks you through provider setup.
 
 ## Verify Your Setup
 
-Run the [Hello World](/conductor/getting-started/hello-world) example to confirm everything works:
+Run the [Hello World](hello-world) example to confirm everything works:
 
 ```bash
 # Create hello.yaml
@@ -73,6 +73,6 @@ If you see AI-generated output, you're ready to go!
 
 ## Next Steps
 
-- [Hello World](/conductor/getting-started/hello-world) - Verify your setup (30 seconds)
-- [Tutorial](/conductor/tutorial) - Learn Conductor by building a real workflow (90 minutes)
-- [Examples](/conductor/examples) - Copy-paste ready workflows
+- [Hello World](hello-world) - Verify your setup (30 seconds)
+- [Tutorial](../tutorial/) - Learn Conductor by building a real workflow (90 minutes)
+- [Examples](../examples/) - Copy-paste ready workflows

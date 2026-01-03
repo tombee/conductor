@@ -30,7 +30,7 @@ Works with any HTTP webhook: Slack, Make.com, Zapier, n8n, or custom APIs.
 - **`http.request`** — Send data to HTTP endpoints
 - **Always save locally** — Keep a backup even when delivering externally
 
-See [HTTP Action](/reference/actions/http/) for more HTTP operations.
+See [HTTP Action](../reference/actions/http/) for more HTTP operations.
 
 ## What's Next
 
