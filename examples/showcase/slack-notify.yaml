@@ -1,0 +1,73 @@
+name: slack-notify
+description: AI-powered Slack notifications with intelligent summaries
+inputs:
+  eventType:
+    type: string
+    description: Type of event (build, deployment, alert, issue)
+  status:
+    type: string
+    description: Event status (success, failed, warning, critical)
+  details:
+    type: string
+    description: Event details or log content
+  channel:
+    type: string
+    description: Slack channel (e.g., "#engineering")
+  mentionUsers:
+    type: string
+    description: Users to mention (comma-separated, e.g., "@john,@jane")
+steps:
+  - id: generateSummary
+    llm:
+      model: fast
+      prompt: |
+        Create a concise summary (2-3 sentences) for this ${inputs.eventType} event.
+
+        Status: ${inputs.status}
+        Details: ${inputs.details}
+
+        Capture:
+        - What happened
+        - Impact or significance
+        - Next steps (if any)
+
+        Keep it clear, technical, and actionable.
+  - id: formatMessage
+    llm:
+      model: fast
+      prompt: |
+        Format this event for Slack using mrkdwn syntax.
+
+        Use:
+        - *bold* for emphasis
+        - `code` for technical terms
+        - > blockquote for important notes
+        - Emoji for status (✅ success, ❌ failed, ⚠️ warning, 🚨 critical)
+
+        Event Type: ${inputs.eventType}
+        Status: ${inputs.status}
+        Summary: ${steps.generateSummary.output}
+        Mention: ${inputs.mentionUsers}
+
+        Structure:
+        [emoji] **[Event Type]: [Status]**
+
+        [Summary]
+
+        [Additional details if needed]
+
+        Return ONLY the formatted message text.
+  - id: postToSlack
+    http:
+      method: POST
+      url: https://slack.com/api/chat.postMessage
+      headers:
+        Authorization: "Bearer ${SLACK_BOT_TOKEN}"
+        Content-Type: application/json
+      body:
+        channel: ${inputs.channel}
+        text: ${steps.formatMessage.output}
+outputs:
+  summary: ${steps.generateSummary.output}
+  message: ${steps.formatMessage.output}
+  slackResponse: ${steps.postToSlack.output}

@@ -84,3 +84,75 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           CONDUCTOR_TEST_INTEGRATION: "true"
+
+  # Documentation validation
+  docs-validate:
+    name: Validate Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build conductor for validation
+        run: make build
+
+      - name: Validate example YAML files
+        run: |
+          # Check if validate command exists
+          if ./bin/conductor validate --help > /dev/null 2>&1; then
+            echo "Validating tutorial examples..."
+            for file in examples/tutorial/*.yaml; do
+              echo "Validating $file"
+              ./bin/conductor validate --strict "$file" || exit 1
+            done
+
+            echo "Validating showcase examples..."
+            for file in examples/showcase/*.yaml; do
+              echo "Validating $file"
+              ./bin/conductor validate --strict "$file" || exit 1
+            done
+          else
+            echo "Warning: conductor validate command not available, skipping YAML validation"
+            echo "This validation will be enabled once the validate command is implemented"
+          fi
+
+      - name: Check markdown links
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: 'yes'
+          config-file: '.github/workflows/markdown-link-check-config.json'
+          folder-path: 'docs/'
+
+      - name: Validate word counts
+        run: |
+          echo "Checking word counts for tutorial pages (max 500 words)..."
+          for file in docs/tutorial/[0-9]*.md; do
+            words=$(wc -w < "$file" | tr -d ' ')
+            echo "$file: $words words"
+            if [ "$words" -gt 500 ]; then
+              echo "ERROR: $file exceeds 500 words ($words)"
+              exit 1
+            fi
+          done
+
+          echo "Checking word counts for feature pages (max 800 words)..."
+          for file in docs/features/*.md; do
+            words=$(wc -w < "$file" | tr -d ' ')
+            echo "$file: $words words"
+            if [ "$words" -gt 800 ]; then
+              echo "ERROR: $file exceeds 800 words ($words)"
+              exit 1
+            fi
+          done
+
+          echo "Checking getting-started.md (max 600 words)..."
+          words=$(wc -w < docs/getting-started.md | tr -d ' ')
+          echo "docs/getting-started.md: $words words"
+          if [ "$words" -gt 600 ]; then
+            echo "ERROR: getting-started.md exceeds 600 words ($words)"
+            exit 1
+          fi

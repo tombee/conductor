@@ -1,0 +1,30 @@
+name: meal-plan
+inputs:
+  diet:
+    type: string
+    description: Dietary preference
+    default: "vegetarian"
+steps:
+  - id: breakfast
+    llm:
+      model: claude-3-5-sonnet-20241022
+      prompt: |
+        Generate a ${inputs.diet} breakfast recipe.
+        Return JSON: {"name": "...", "ingredients": [...], "steps": [...]}
+  - id: lunch
+    llm:
+      model: claude-3-5-sonnet-20241022
+      prompt: |
+        Generate a ${inputs.diet} lunch recipe.
+        Return JSON: {"name": "...", "ingredients": [...], "steps": [...]}
+  - id: dinner
+    llm:
+      model: claude-3-5-sonnet-20241022
+      prompt: |
+        Generate a ${inputs.diet} dinner recipe.
+        Return JSON: {"name": "...", "ingredients": [...], "steps": [...]}
+outputs:
+  mealPlan:
+    breakfast: ${steps.breakfast.output}
+    lunch: ${steps.lunch.output}
+    dinner: ${steps.dinner.output}
