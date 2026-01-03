@@ -10,7 +10,7 @@ steps:
 
   - id: analyze
     type: llm
-    prompt: "Analyze this file content:\n{{.steps.file_read_1.response}}"
+    prompt: "Briefly describe what this file contains in 2-3 sentences:\n{{.steps.file_read_1.response}}"
 outputs:
   - name: analysis
     type: string
