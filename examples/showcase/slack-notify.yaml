@@ -1,73 +1,101 @@
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
 name: slack-notify
 description: AI-powered Slack notifications with intelligent summaries
+
 inputs:
-  eventType:
+  - name: event_type
     type: string
+    required: true
     description: Type of event (build, deployment, alert, issue)
-  status:
+
+  - name: status
     type: string
+    required: true
     description: Event status (success, failed, warning, critical)
-  details:
+
+  - name: details
     type: string
+    required: true
     description: Event details or log content
-  channel:
+
+  - name: channel
     type: string
+    required: true
     description: Slack channel (e.g., "#engineering")
-  mentionUsers:
+
+  - name: mention_users
     type: string
+    default: ""
     description: Users to mention (comma-separated, e.g., "@john,@jane")
+
 steps:
-  - id: generateSummary
-    llm:
-      model: fast
-      prompt: |
-        Create a concise summary (2-3 sentences) for this ${inputs.eventType} event.
+  - id: generate_summary
+    name: Generate Summary
+    type: llm
+    model: fast
+    prompt: |
+      Create a concise summary (2-3 sentences) for this {{.inputs.event_type}} event.
 
-        Status: ${inputs.status}
-        Details: ${inputs.details}
+      Status: {{.inputs.status}}
+      Details: {{.inputs.details}}
 
-        Capture:
-        - What happened
-        - Impact or significance
-        - Next steps (if any)
+      Capture:
+      - What happened
+      - Impact or significance
+      - Next steps (if any)
 
-        Keep it clear, technical, and actionable.
-  - id: formatMessage
-    llm:
-      model: fast
-      prompt: |
-        Format this event for Slack using mrkdwn syntax.
+      Keep it clear, technical, and actionable.
 
-        Use:
-        - *bold* for emphasis
-        - `code` for technical terms
-        - > blockquote for important notes
-        - Emoji for status (✅ success, ❌ failed, ⚠️ warning, 🚨 critical)
+  - id: format_message
+    name: Format Message
+    type: llm
+    model: fast
+    prompt: |
+      Format this event for Slack using mrkdwn syntax.
 
-        Event Type: ${inputs.eventType}
-        Status: ${inputs.status}
-        Summary: ${steps.generateSummary.output}
-        Mention: ${inputs.mentionUsers}
+      Use:
+      - *bold* for emphasis
+      - `code` for technical terms
+      - > blockquote for important notes
+      - Emoji for status (✅ success, ❌ failed, ⚠️ warning, 🚨 critical)
 
-        Structure:
-        [emoji] **[Event Type]: [Status]**
+      Event Type: {{.inputs.event_type}}
+      Status: {{.inputs.status}}
+      Summary: {{.steps.generate_summary.response}}
+      Mention: {{.inputs.mention_users}}
 
-        [Summary]
+      Structure:
+      [emoji] **[Event Type]: [Status]**
 
-        [Additional details if needed]
+      [Summary]
 
-        Return ONLY the formatted message text.
-  - id: postToSlack
-    http:
-      method: POST
+      [Additional details if needed]
+
+      Return ONLY the formatted message text.
+
+  - id: post_to_slack
+    name: Post to Slack
+    http.post:
       url: https://slack.com/api/chat.postMessage
       headers:
-        Authorization: "Bearer ${SLACK_BOT_TOKEN}"
+        Authorization: "Bearer {{env.SLACK_BOT_TOKEN}}"
         Content-Type: application/json
       body:
-        channel: ${inputs.channel}
-        text: ${steps.formatMessage.output}
+        channel: "{{.inputs.channel}}"
+        text: "{{.steps.format_message.response}}"
+
 outputs:
-  summary: ${steps.generateSummary.output}
-  message: ${steps.formatMessage.output}
-  slackResponse: ${steps.postToSlack.output}
+  - name: summary
+    type: string
+    value: "{{.steps.generate_summary.response}}"
+    description: Generated event summary
+
+  - name: message
+    type: string
+    value: "{{.steps.format_message.response}}"
+    description: Formatted Slack message
+
+  - name: slack_response
+    type: string
+    value: "{{.steps.post_to_slack.response}}"
+    description: Slack API response

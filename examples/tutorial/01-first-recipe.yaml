@@ -1,11 +1,15 @@
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
 name: first-recipe
+description: Generate a dinner recipe using an LLM
+
 steps:
   - id: generate
-    llm:
-      model: claude-3-5-sonnet-20241022
-      prompt: |
-        Generate a dinner recipe. Include:
-        - Recipe name
-        - Ingredients with quantities
-        - Cooking steps
-        - Prep and cook time
+    name: Generate Recipe
+    type: llm
+    model: balanced
+    prompt: |
+      Generate a dinner recipe. Include:
+      - Recipe name
+      - Ingredients with quantities
+      - Cooking steps
+      - Prep and cook time

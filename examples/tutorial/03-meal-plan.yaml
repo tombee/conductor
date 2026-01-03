@@ -1,30 +1,55 @@
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
 name: meal-plan
+description: Generate three meals in parallel
+
 inputs:
-  diet:
+  - name: diet
     type: string
-    description: Dietary preference
     default: "vegetarian"
+    description: Dietary preference (e.g., vegetarian, vegan, keto)
+
 steps:
-  - id: breakfast
-    llm:
-      model: claude-3-5-sonnet-20241022
-      prompt: |
-        Generate a ${inputs.diet} breakfast recipe.
-        Return JSON: {"name": "...", "ingredients": [...], "steps": [...]}
-  - id: lunch
-    llm:
-      model: claude-3-5-sonnet-20241022
-      prompt: |
-        Generate a ${inputs.diet} lunch recipe.
-        Return JSON: {"name": "...", "ingredients": [...], "steps": [...]}
-  - id: dinner
-    llm:
-      model: claude-3-5-sonnet-20241022
-      prompt: |
-        Generate a ${inputs.diet} dinner recipe.
-        Return JSON: {"name": "...", "ingredients": [...], "steps": [...]}
+  - id: meals
+    name: Generate Meals
+    type: parallel
+    max_concurrency: 3
+    steps:
+      - id: breakfast
+        name: Generate Breakfast
+        type: llm
+        model: balanced
+        prompt: |
+          Generate a {{.inputs.diet}} breakfast recipe.
+          Include the recipe name, ingredients with quantities, and cooking steps.
+
+      - id: lunch
+        name: Generate Lunch
+        type: llm
+        model: balanced
+        prompt: |
+          Generate a {{.inputs.diet}} lunch recipe.
+          Include the recipe name, ingredients with quantities, and cooking steps.
+
+      - id: dinner
+        name: Generate Dinner
+        type: llm
+        model: balanced
+        prompt: |
+          Generate a {{.inputs.diet}} dinner recipe.
+          Include the recipe name, ingredients with quantities, and cooking steps.
+
 outputs:
-  mealPlan:
-    breakfast: ${steps.breakfast.output}
-    lunch: ${steps.lunch.output}
-    dinner: ${steps.dinner.output}
+  - name: breakfast
+    type: string
+    value: "{{.steps.meals.breakfast.response}}"
+    description: Breakfast recipe
+
+  - name: lunch
+    type: string
+    value: "{{.steps.meals.lunch.response}}"
+    description: Lunch recipe
+
+  - name: dinner
+    type: string
+    value: "{{.steps.meals.dinner.response}}"
+    description: Dinner recipe

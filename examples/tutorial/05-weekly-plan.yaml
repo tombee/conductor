@@ -1,46 +1,65 @@
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
 name: weekly-plan
+description: Generate a weekly meal plan with variety checking
+
 inputs:
-  pantryFile:
+  - name: pantry_file
     type: string
     default: "pantry.txt"
-  diet:
+    description: Path to pantry inventory file
+
+  - name: diet
     type: string
     default: "balanced"
+    description: Dietary preference
+
 steps:
-  - id: readPantry
-    file:
-      action: read
-      path: ${inputs.pantryFile}
-  - id: planWeek
-    foreach:
-      items:
-        - Monday
-        - Tuesday
-        - Wednesday
-        - Thursday
-        - Friday
-        - Saturday
-        - Sunday
-      steps:
-        - id: dailyMeals
-          llm:
-            model: claude-3-5-sonnet-20241022
-            prompt: |
-              Available ingredients:
-              ${steps.readPantry.output}
+  - id: read_pantry
+    name: Read Pantry Inventory
+    file.read: "{{.inputs.pantry_file}}"
 
-              Generate meals for ${item}.
-              Previous days: ${steps.planWeek.outputs}
+  - id: plan_week
+    name: Generate Weekly Plan
+    type: llm
+    model: strategic
+    prompt: |
+      Available ingredients:
+      {{.steps.read_pantry.content}}
 
-              Create breakfast, lunch, and dinner using available ingredients.
-              Ensure variety - don't repeat main proteins from previous days.
+      Generate a {{.inputs.diet}} meal plan for the entire week (Monday through Sunday).
+      For each day, create breakfast, lunch, and dinner recipes.
 
-              Return JSON:
-              {
-                "day": "${item}",
-                "breakfast": {"name": "...", "ingredients": [...]},
-                "lunch": {"name": "...", "ingredients": [...]},
-                "dinner": {"name": "...", "ingredients": [...]}
-              }
+      Requirements:
+      - Use only the available ingredients
+      - Ensure variety - don't repeat main proteins on consecutive days
+      - Include prep times for each meal
+
+      Format each day clearly with the day name as a header.
+
+  - id: check_variety
+    name: Check Variety
+    type: llm
+    model: balanced
+    condition:
+      expression: "true"
+    prompt: |
+      Review this meal plan for variety:
+      {{.steps.plan_week.response}}
+
+      Check that:
+      1. No main protein is repeated on consecutive days
+      2. Breakfast items have variety
+      3. Different cuisines are represented
+
+      If there are issues, suggest specific swaps.
+
 outputs:
-  weeklyPlan: ${steps.planWeek.outputs}
+  - name: weekly_plan
+    type: string
+    value: "{{.steps.plan_week.response}}"
+    description: Complete weekly meal plan
+
+  - name: variety_check
+    type: string
+    value: "{{.steps.check_variety.response}}"
+    description: Variety analysis and suggestions

@@ -1,46 +1,73 @@
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
 name: pantry-check
+description: Generate meals using available pantry ingredients
+
 inputs:
-  pantryFile:
+  - name: pantry_file
     type: string
-    description: Path to pantry inventory
     default: "pantry.txt"
-  diet:
+    description: Path to pantry inventory file
+
+  - name: diet
     type: string
     default: "any"
+    description: Dietary preference
+
 steps:
-  - id: readPantry
-    file:
-      action: read
-      path: ${inputs.pantryFile}
-  - id: breakfast
-    llm:
-      model: claude-3-5-sonnet-20241022
-      prompt: |
-        Available ingredients:
-        ${steps.readPantry.output}
+  - id: read_pantry
+    name: Read Pantry Inventory
+    file.read: "{{.inputs.pantry_file}}"
 
-        Generate a ${inputs.diet} breakfast using only these ingredients.
-        Return JSON: {"name": "...", "ingredients": [...], "steps": [...]}
-  - id: lunch
-    llm:
-      model: claude-3-5-sonnet-20241022
-      prompt: |
-        Available ingredients:
-        ${steps.readPantry.output}
+  - id: meals
+    name: Generate Meals
+    type: parallel
+    max_concurrency: 3
+    steps:
+      - id: breakfast
+        name: Generate Breakfast
+        type: llm
+        model: balanced
+        prompt: |
+          Available ingredients:
+          {{.steps.read_pantry.content}}
 
-        Generate a ${inputs.diet} lunch using only these ingredients.
-        Return JSON: {"name": "...", "ingredients": [...], "steps": [...]}
-  - id: dinner
-    llm:
-      model: claude-3-5-sonnet-20241022
-      prompt: |
-        Available ingredients:
-        ${steps.readPantry.output}
+          Generate a {{.inputs.diet}} breakfast using only these ingredients.
+          Include the recipe name, ingredients with quantities, and cooking steps.
 
-        Generate a ${inputs.diet} dinner using only these ingredients.
-        Return JSON: {"name": "...", "ingredients": [...], "steps": [...]}
+      - id: lunch
+        name: Generate Lunch
+        type: llm
+        model: balanced
+        prompt: |
+          Available ingredients:
+          {{.steps.read_pantry.content}}
+
+          Generate a {{.inputs.diet}} lunch using only these ingredients.
+          Include the recipe name, ingredients with quantities, and cooking steps.
+
+      - id: dinner
+        name: Generate Dinner
+        type: llm
+        model: balanced
+        prompt: |
+          Available ingredients:
+          {{.steps.read_pantry.content}}
+
+          Generate a {{.inputs.diet}} dinner using only these ingredients.
+          Include the recipe name, ingredients with quantities, and cooking steps.
+
 outputs:
-  mealPlan:
-    breakfast: ${steps.breakfast.output}
-    lunch: ${steps.lunch.output}
-    dinner: ${steps.dinner.output}
+  - name: breakfast
+    type: string
+    value: "{{.steps.meals.breakfast.response}}"
+    description: Breakfast recipe
+
+  - name: lunch
+    type: string
+    value: "{{.steps.meals.lunch.response}}"
+    description: Lunch recipe
+
+  - name: dinner
+    type: string
+    value: "{{.steps.meals.dinner.response}}"
+    description: Dinner recipe

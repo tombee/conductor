@@ -1,10 +1,10 @@
 # Step 3: Meal Plan
 
-Generate three recipes in parallel for a complete meal plan.
+Generate multiple recipes at once using parallel execution.
 
 ## Goal
 
-Create breakfast, lunch, and dinner recipes simultaneously using parallel execution.
+Generate breakfast, lunch, and dinner recipes simultaneously.
 
 ## The Workflow
 
@@ -13,50 +13,63 @@ Update `recipe.yaml`:
 ```yaml
 name: meal-plan
 inputs:
-  diet:
+  - name: diet
     type: string
-    description: Dietary preference
     default: "vegetarian"
+
 steps:
-  - id: breakfast
-    llm:
-      model: claude-3-5-sonnet-20241022
-      prompt: |
-        Generate a ${inputs.diet} breakfast recipe.
-        Return JSON: {"name": "...", "ingredients": [...], "steps": [...]}
-  - id: lunch
-    llm:
-      model: claude-3-5-sonnet-20241022
-      prompt: |
-        Generate a ${inputs.diet} lunch recipe.
-        Return JSON: {"name": "...", "ingredients": [...], "steps": [...]}
-  - id: dinner
-    llm:
-      model: claude-3-5-sonnet-20241022
-      prompt: |
-        Generate a ${inputs.diet} dinner recipe.
-        Return JSON: {"name": "...", "ingredients": [...], "steps": [...]}
+  - id: meals
+    type: parallel
+    max_concurrency: 3
+    steps:
+      - id: breakfast
+        type: llm
+        model: balanced
+        prompt: |
+          Generate a {{.inputs.diet}} breakfast recipe.
+          Include the recipe name, ingredients with quantities, and cooking steps.
+
+      - id: lunch
+        type: llm
+        model: balanced
+        prompt: |
+          Generate a {{.inputs.diet}} lunch recipe.
+          Include the recipe name, ingredients with quantities, and cooking steps.
+
+      - id: dinner
+        type: llm
+        model: balanced
+        prompt: |
+          Generate a {{.inputs.diet}} dinner recipe.
+          Include the recipe name, ingredients with quantities, and cooking steps.
+
 outputs:
-  mealPlan:
-    breakfast: ${steps.breakfast.output}
-    lunch: ${steps.lunch.output}
-    dinner: ${steps.dinner.output}
+  - name: breakfast
+    type: string
+    value: "{{.steps.meals.breakfast.response}}"
+  - name: lunch
+    type: string
+    value: "{{.steps.meals.lunch.response}}"
+  - name: dinner
+    type: string
+    value: "{{.steps.meals.dinner.response}}"
 ```
 
 ## Run It
 
 ```bash
-conductor run recipe.yaml -i diet="Mediterranean"
+conductor run recipe.yaml
+conductor run recipe.yaml -i diet="keto"
 ```
 
-All three recipes generate simultaneously, completing in roughly the same time as one.
+All three recipes generate at the same time.
 
 ## What You Learned
 
-- **[Parallel execution](../features/parallel.md)** - Steps without dependencies run concurrently
-- **Multiple outputs** - Structure complex output data
-- **Step independence** - Steps that don't reference each other run in parallel
+- **[Parallel](../features/parallel.md)** - Use `type: parallel` with nested `steps`
+- **max_concurrency** - Limit concurrent executions
+- **Nested outputs** - Reference parallel step outputs with `{{.steps.parent.child.response}}`
 
 ## Next
 
-[Step 4: Pantry Check](./04-pantry-check.md) - Read available ingredients from a file.
+[Step 4: Pantry Check](./04-pantry-check.md) - Read ingredients from a file.

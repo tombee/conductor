@@ -1,10 +1,10 @@
 # Step 2: Better Recipe
 
-Accept specific ingredients as input and output structured data.
+Accept specific ingredients as input and return structured output.
 
 ## Goal
 
-Accept ingredients as input and output structured JSON instead of plain text.
+Accept ingredients as input and capture the recipe as a workflow output.
 
 ## The Workflow
 
@@ -13,27 +13,27 @@ Update `recipe.yaml`:
 ```yaml
 name: better-recipe
 inputs:
-  ingredients:
+  - name: ingredients
     type: string
-    description: Comma-separated ingredients to use
     default: "chicken, rice, broccoli"
+
 steps:
   - id: generate
-    llm:
-      model: claude-3-5-sonnet-20241022
-      prompt: |
-        Generate a dinner recipe using these ingredients: ${inputs.ingredients}
+    type: llm
+    model: balanced
+    prompt: |
+      Generate a dinner recipe using these ingredients: {{.inputs.ingredients}}
 
-        Return JSON with this structure:
-        {
-          "name": "Recipe Name",
-          "ingredients": [{"item": "chicken", "quantity": "1 lb"}],
-          "steps": ["Step 1", "Step 2"],
-          "prepTime": "15 min",
-          "cookTime": "30 min"
-        }
+      Include:
+      - Recipe name
+      - Full ingredient list with quantities
+      - Step-by-step cooking instructions
+      - Prep and cook time
+
 outputs:
-  recipe: ${steps.generate.output}
+  - name: recipe
+    type: string
+    value: "{{.steps.generate.response}}"
 ```
 
 ## Run It
@@ -48,10 +48,10 @@ conductor run recipe.yaml -i ingredients="salmon, asparagus, lemon"
 
 ## What You Learned
 
-- **[Inputs](../features/inputs-outputs.md)** - Accept parameters when running workflows
+- **[Inputs](../features/inputs-outputs.md)** - Accept parameters with `-i name=value`
 - **[Outputs](../features/inputs-outputs.md)** - Return structured data from workflows
-- **Variable syntax** - Use `${inputs.name}` to reference inputs
-- **Step references** - Use `${steps.id.output}` to reference step outputs
+- **Template syntax** - Use `{{.inputs.name}}` to reference inputs
+- **Step references** - Use `{{.steps.id.response}}` for step outputs
 
 ## Next
 

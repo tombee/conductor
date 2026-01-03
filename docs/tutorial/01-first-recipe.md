@@ -14,14 +14,14 @@ Create `recipe.yaml`:
 name: first-recipe
 steps:
   - id: generate
-    llm:
-      model: claude-3-5-sonnet-20241022
-      prompt: |
-        Generate a dinner recipe. Include:
-        - Recipe name
-        - Ingredients with quantities
-        - Cooking steps
-        - Prep and cook time
+    type: llm
+    model: balanced
+    prompt: |
+      Generate a dinner recipe. Include:
+      - Recipe name
+      - Ingredients with quantities
+      - Cooking steps
+      - Prep and cook time
 ```
 
 ## Run It
@@ -35,11 +35,9 @@ You'll see a complete recipe with ingredients and instructions.
 ## What You Learned
 
 - **Workflows** - YAML files with a name and steps
-- **LLM steps** - Call an LLM with a prompt
-- **Prompts** - Instructions for the LLM
-
-The LLM step runs your prompt through Claude and returns the generated text.
+- **LLM steps** - Use `type: llm` with a `model` and `prompt`
+- **Model tiers** - `fast`, `balanced`, or `strategic` (not specific model names)
 
 ## Next
 
-[Step 2: Better Recipe](./02-better-recipe.md) - Add inputs and outputs to parameterize the workflow.
+[Step 2: Better Recipe](./02-better-recipe.md) - Add inputs and outputs.

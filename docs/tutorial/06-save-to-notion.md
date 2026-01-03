@@ -1,17 +1,21 @@
 # Step 6: Save to Notion
 
-Store your weekly meal plan in a Notion database.
+Save your meal plan to a Notion database.
 
 ## Goal
 
-Save the generated meal plan to Notion for easy access and sharing.
+Generate a meal plan and save it to Notion using the HTTP action.
 
-## Prerequisites
+## Setup
 
-1. Create a [Notion integration](https://www.notion.so/my-integrations)
-2. Create a database in Notion with properties: Day (title), Breakfast (text), Lunch (text), Dinner (text)
+1. Create a Notion integration at https://www.notion.so/my-integrations
+2. Create a database with Name and Content properties
 3. Share the database with your integration
-4. Set `NOTION_TOKEN` environment variable with your integration token
+4. Set your token as an environment variable:
+
+```bash
+export NOTION_TOKEN="your-integration-token"
+```
 
 ## The Workflow
 
@@ -20,100 +24,72 @@ Update `recipe.yaml`:
 ```yaml
 name: save-to-notion
 inputs:
-  pantryFile:
+  - name: pantry_file
     type: string
     default: "pantry.txt"
-  notionDatabaseId:
+  - name: notion_database_id
     type: string
-    description: Notion database ID
+    required: true
+
 steps:
-  - id: readPantry
-    file:
-      action: read
-      path: ${inputs.pantryFile}
-  - id: planWeek
-    foreach:
-      items:
-        - Monday
-        - Tuesday
-        - Wednesday
-        - Thursday
-        - Friday
-        - Saturday
-        - Sunday
-      steps:
-        - id: dailyMeals
-          llm:
-            model: claude-3-5-sonnet-20241022
-            prompt: |
-              Available ingredients:
-              ${steps.readPantry.output}
+  - id: read_pantry
+    file.read: "{{.inputs.pantry_file}}"
 
-              Generate meals for ${item}.
-              Previous days: ${steps.planWeek.outputs}
+  - id: plan_week
+    type: llm
+    model: strategic
+    prompt: |
+      Available ingredients:
+      {{.steps.read_pantry.content}}
 
-              Return JSON:
-              {
-                "day": "${item}",
-                "breakfast": {"name": "...", "ingredients": [...]},
-                "lunch": {"name": "...", "ingredients": [...]},
-                "dinner": {"name": "...", "ingredients": [...]}
-              }
-  - id: saveToNotion
-    foreach:
-      items: ${steps.planWeek.outputs}
-      steps:
-        - id: createPage
-          http:
-            method: POST
-            url: https://api.notion.com/v1/pages
-            headers:
-              Authorization: "Bearer ${NOTION_TOKEN}"
-              Notion-Version: "2022-06-28"
-              Content-Type: application/json
-            body:
-              parent:
-                database_id: ${inputs.notionDatabaseId}
-              properties:
-                Day:
-                  title:
-                    - text:
-                        content: ${item.day}
-                Breakfast:
-                  rich_text:
-                    - text:
-                        content: ${item.breakfast.name}
-                Lunch:
-                  rich_text:
-                    - text:
-                        content: ${item.lunch.name}
-                Dinner:
-                  rich_text:
-                    - text:
-                        content: ${item.dinner.name}
+      Generate a balanced meal plan for Monday through Sunday.
+      For each day, create breakfast, lunch, and dinner.
+
+      Return JSON:
+      {
+        "monday": {"breakfast": "...", "lunch": "...", "dinner": "..."},
+        "tuesday": {"breakfast": "...", "lunch": "...", "dinner": "..."},
+        ...
+      }
+
+  - id: save_plan
+    http.post:
+      url: https://api.notion.com/v1/pages
+      headers:
+        Authorization: "Bearer {{env.NOTION_TOKEN}}"
+        Notion-Version: "2022-06-28"
+        Content-Type: application/json
+      body:
+        parent:
+          database_id: "{{.inputs.notion_database_id}}"
+        properties:
+          Name:
+            title:
+              - text:
+                  content: "Weekly Meal Plan"
+          Content:
+            rich_text:
+              - text:
+                  content: "{{.steps.plan_week.response}}"
+
 outputs:
-  weeklyPlan: ${steps.planWeek.outputs}
+  - name: weekly_plan
+    type: string
+    value: "{{.steps.plan_week.response}}"
 ```
 
 ## Run It
 
 ```bash
-export NOTION_TOKEN="your-integration-token"
-conductor run recipe.yaml -i notionDatabaseId="abc123..."
+conductor run recipe.yaml -i notion_database_id="your-database-id"
 ```
-
-Your meal plan appears in Notion.
 
 ## What You Learned
 
+- **[HTTP actions](../features/actions.md)** - Use `http.post:` for API calls
+- **Environment variables** - Access secrets with `{{env.VAR_NAME}}`
 - **[Integrations](../features/integrations.md)** - Connect to external services
-- **[HTTP actions](../features/actions.md)** - Make API requests
-- **Environment variables** - Securely reference credentials with `${VAR_NAME}`
-- **Nested loops** - Iterate over loop outputs
-
-## Security Note
-
-Never hardcode API tokens in workflows. Always use environment variables or a secrets manager.
+- **JSON output** - Ask the LLM to return structured data when needed for APIs
 
 ## Next
 

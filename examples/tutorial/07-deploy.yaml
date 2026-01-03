@@ -1,79 +1,70 @@
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
+# Note: Triggers are configured via CLI, not inline in workflow files.
+# Run: conductor triggers add --workflow weekly-meal-planner --cron "0 18 * * 0"
 name: weekly-meal-planner
+description: Weekly meal planner designed for remote deployment
+
 inputs:
-  pantryFile:
+  - name: pantry_file
     type: string
     default: "pantry.txt"
-  notionDatabaseId:
+    description: Path to pantry inventory file
+
+  - name: notion_database_id
     type: string
-    description: Notion database ID
-triggers:
-  - cron:
-      schedule: "0 18 * * 0"
-      timezone: America/Los_Angeles
+    required: true
+    description: Notion database ID for meal plans
+
 steps:
-  - id: readPantry
-    file:
-      action: read
-      path: ${inputs.pantryFile}
-  - id: planWeek
-    foreach:
-      items:
-        - Monday
-        - Tuesday
-        - Wednesday
-        - Thursday
-        - Friday
-        - Saturday
-        - Sunday
-      steps:
-        - id: dailyMeals
-          llm:
-            model: claude-3-5-sonnet-20241022
-            prompt: |
-              Available ingredients:
-              ${steps.readPantry.output}
+  - id: read_pantry
+    name: Read Pantry Inventory
+    file.read: "{{.inputs.pantry_file}}"
 
-              Generate meals for ${item}.
-              Previous days: ${steps.planWeek.outputs}
+  - id: plan_week
+    name: Generate Weekly Plan
+    type: llm
+    model: strategic
+    prompt: |
+      Available ingredients:
+      {{.steps.read_pantry.content}}
 
-              Return JSON:
-              {
-                "day": "${item}",
-                "breakfast": {"name": "...", "ingredients": [...]},
-                "lunch": {"name": "...", "ingredients": [...]},
-                "dinner": {"name": "...", "ingredients": [...]}
-              }
-  - id: saveToNotion
-    foreach:
-      items: ${steps.planWeek.outputs}
-      steps:
-        - id: createPage
-          http:
-            method: POST
-            url: https://api.notion.com/v1/pages
-            headers:
-              Authorization: "Bearer ${NOTION_TOKEN}"
-              Notion-Version: "2022-06-28"
-              Content-Type: application/json
-            body:
-              parent:
-                database_id: ${inputs.notionDatabaseId}
-              properties:
-                Day:
-                  title:
-                    - text:
-                        content: ${item.day}
-                Breakfast:
-                  rich_text:
-                    - text:
-                        content: ${item.breakfast.name}
-                Lunch:
-                  rich_text:
-                    - text:
-                        content: ${item.lunch.name}
-                Dinner:
-                  rich_text:
-                    - text:
-                        content: ${item.dinner.name}
+      Generate a balanced meal plan for Monday through Sunday.
+      For each day, create breakfast, lunch, and dinner.
+
+      Return JSON:
+      {
+        "monday": {"breakfast": "...", "lunch": "...", "dinner": "..."},
+        "tuesday": {"breakfast": "...", "lunch": "...", "dinner": "..."},
+        "wednesday": {"breakfast": "...", "lunch": "...", "dinner": "..."},
+        "thursday": {"breakfast": "...", "lunch": "...", "dinner": "..."},
+        "friday": {"breakfast": "...", "lunch": "...", "dinner": "..."},
+        "saturday": {"breakfast": "...", "lunch": "...", "dinner": "..."},
+        "sunday": {"breakfast": "...", "lunch": "...", "dinner": "..."}
+      }
+
+  - id: save_plan
+    name: Save to Notion
+    http.post:
+      url: https://api.notion.com/v1/pages
+      headers:
+        Authorization: "Bearer {{env.NOTION_TOKEN}}"
+        Notion-Version: "2022-06-28"
+        Content-Type: application/json
+      body:
+        parent:
+          database_id: "{{.inputs.notion_database_id}}"
+        properties:
+          Name:
+            title:
+              - text:
+                  content: "Weekly Meal Plan"
+          Content:
+            rich_text:
+              - text:
+                  content: "{{.steps.plan_week.response}}"
+
 outputs:
-  weeklyPlan: ${steps.planWeek.outputs}
+  - name: weekly_plan
+    type: string
+    value: "{{.steps.plan_week.response}}"
+    description: Complete weekly meal plan

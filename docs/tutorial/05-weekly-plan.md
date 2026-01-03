@@ -1,10 +1,10 @@
 # Step 5: Weekly Plan
 
-Generate a full week of meal plans using loops and conditions.
+Generate a full week of meals with a variety check.
 
 ## Goal
 
-Create 7 days of meal plans by iterating through weekdays, with variety checks to avoid repetition.
+Create a weekly meal plan and validate it for variety.
 
 ## The Workflow
 
@@ -13,50 +13,57 @@ Update `recipe.yaml`:
 ```yaml
 name: weekly-plan
 inputs:
-  pantryFile:
+  - name: pantry_file
     type: string
     default: "pantry.txt"
-  diet:
+  - name: diet
     type: string
     default: "balanced"
+
 steps:
-  - id: readPantry
-    file:
-      action: read
-      path: ${inputs.pantryFile}
-  - id: planWeek
-    foreach:
-      items:
-        - Monday
-        - Tuesday
-        - Wednesday
-        - Thursday
-        - Friday
-        - Saturday
-        - Sunday
-      steps:
-        - id: dailyMeals
-          llm:
-            model: claude-3-5-sonnet-20241022
-            prompt: |
-              Available ingredients:
-              ${steps.readPantry.output}
+  - id: read_pantry
+    file.read: "{{.inputs.pantry_file}}"
 
-              Generate meals for ${item}.
-              Previous days: ${steps.planWeek.outputs}
+  - id: plan_week
+    type: llm
+    model: strategic
+    prompt: |
+      Available ingredients:
+      {{.steps.read_pantry.content}}
 
-              Create breakfast, lunch, and dinner using available ingredients.
-              Ensure variety - don't repeat main proteins from previous days.
+      Generate a {{.inputs.diet}} meal plan for the entire week (Monday through Sunday).
+      For each day, create breakfast, lunch, and dinner recipes.
 
-              Return JSON:
-              {
-                "day": "${item}",
-                "breakfast": {"name": "...", "ingredients": [...]},
-                "lunch": {"name": "...", "ingredients": [...]},
-                "dinner": {"name": "...", "ingredients": [...]}
-              }
+      Requirements:
+      - Use only the available ingredients
+      - Ensure variety - don't repeat main proteins on consecutive days
+      - Include prep times for each meal
+
+      Format each day clearly with the day name as a header.
+
+  - id: check_variety
+    type: llm
+    model: balanced
+    condition:
+      expression: "true"
+    prompt: |
+      Review this meal plan for variety:
+      {{.steps.plan_week.response}}
+
+      Check that:
+      1. No main protein is repeated on consecutive days
+      2. Breakfast items have variety
+      3. Different cuisines are represented
+
+      If there are issues, suggest specific swaps.
+
 outputs:
-  weeklyPlan: ${steps.planWeek.outputs}
+  - name: weekly_plan
+    type: string
+    value: "{{.steps.plan_week.response}}"
+  - name: variety_check
+    type: string
+    value: "{{.steps.check_variety.response}}"
 ```
 
 ## Run It
@@ -65,14 +72,12 @@ outputs:
 conductor run recipe.yaml
 ```
 
-You'll get 7 days of varied meal plans.
-
 ## What You Learned
 
-- **[Loops](../features/loops.md)** - Iterate with `foreach` over a list
-- **[Conditions](../features/conditions.md)** - LLM considers previous iterations for variety
-- **Loop context** - Access `${item}` for current iteration and `${steps.id.outputs}` for previous results
+- **[Model tiers](../features/model-tiers.md)** - Use `strategic` for complex reasoning
+- **[Conditions](../features/conditions.md)** - Use `condition.expression` to control step execution
+- **Multi-step workflows** - Chain LLM steps to review and refine output
 
 ## Next
 
-[Step 6: Save to Notion](./06-save-to-notion.md) - Store your meal plan in Notion.
+[Step 6: Save to Notion](./06-save-to-notion.md) - Save your meal plan to Notion.
