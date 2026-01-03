@@ -1,0 +1,159 @@
+name: meal-to-notion
+description: Generate a meal plan and publish it to a Notion page
+
+inputs:
+  - name: notion_parent_id
+    type: string
+    required: true
+    description: Notion parent page ID (get from page URL)
+  - name: dietary_goals
+    type: string
+    description: "e.g., 'high protein, ~1800 cal/day' or 'vegetarian'"
+  - name: preferences
+    type: string
+    description: "e.g., 'Mediterranean style, no seafood, quick meals'"
+  - name: servings
+    type: number
+    default: 2
+
+steps:
+  # Step 1: Generate meal plans in parallel
+  - id: plan_meals
+    type: parallel
+    timeout: 120
+    steps:
+      - id: breakfasts
+        type: llm
+        timeout: 60
+        prompt: |
+          Plan 3 breakfasts for {{.servings}} people.
+          {{if .dietary_goals}}Dietary goals: {{.dietary_goals}}{{end}}
+          {{if .preferences}}Preferences: {{.preferences}}{{end}}
+
+          For each day, give:
+          - Meal name
+          - Ingredients with quantities
+          - Brief instructions
+
+      - id: lunches
+        type: llm
+        timeout: 60
+        prompt: |
+          Plan 3 lunches for {{.servings}} people.
+          {{if .dietary_goals}}Dietary goals: {{.dietary_goals}}{{end}}
+          {{if .preferences}}Preferences: {{.preferences}}{{end}}
+
+          For each day, give:
+          - Meal name
+          - Ingredients with quantities
+          - Brief instructions
+
+      - id: dinners
+        type: llm
+        timeout: 60
+        prompt: |
+          Plan 3 dinners for {{.servings}} people.
+          {{if .dietary_goals}}Dietary goals: {{.dietary_goals}}{{end}}
+          {{if .preferences}}Preferences: {{.preferences}}{{end}}
+
+          For each day, give:
+          - Meal name
+          - Ingredients with quantities
+          - Brief instructions
+
+  # Step 2: Consolidate into structured data
+  - id: consolidate
+    type: llm
+    timeout: 60
+    prompt: |
+      Combine these meal plans into a 3-day meal plan:
+
+      BREAKFASTS:
+      {{.steps.plan_meals.breakfasts.response}}
+
+      LUNCHES:
+      {{.steps.plan_meals.lunches.response}}
+
+      DINNERS:
+      {{.steps.plan_meals.dinners.response}}
+
+      Format as:
+      ## Day 1
+      - Breakfast: [meal name]
+      - Lunch: [meal name]
+      - Dinner: [meal name]
+
+      And so on for Day 2 and Day 3. Keep it concise.
+
+  # Step 3: Create or update Notion page
+  - id: create_page
+    type: integration
+    integration: notion
+    operation: upsert_page
+    inputs:
+      parent_id: "{{.notion_parent_id}}"
+      title: "Weekly Meal Plan - {{now.Format \"2006-01-02\"}}"
+
+  # Step 4: Add meal plan content as blocks
+  - id: add_intro
+    type: integration
+    integration: notion
+    operation: append_blocks
+    inputs:
+      page_id: "{{.steps.create_page.id}}"
+      blocks:
+        - type: paragraph
+          text: "Generated on {{now.Format \"Monday, January 2, 2006\"}}"
+        - type: paragraph
+          text: "Servings: {{.servings}} | {{if .dietary_goals}}Goals: {{.dietary_goals}}{{end}}"
+        - type: divider
+
+  # Step 5: Parse and add meal plan
+  - id: add_meals
+    type: integration
+    integration: notion
+    operation: append_blocks
+    inputs:
+      page_id: "{{.steps.create_page.id}}"
+      blocks:
+        - type: heading_1
+          text: "3-Day Meal Plan"
+        - type: paragraph
+          text: "{{.steps.consolidate.response}}"
+
+  # Step 6: Add shopping list section
+  - id: shopping_list
+    type: llm
+    timeout: 60
+    prompt: |
+      Based on this meal plan, create a categorized shopping list:
+
+      {{.steps.consolidate.response}}
+
+      Group items by: Produce, Protein, Dairy, Pantry Staples, Other.
+      Include quantities for {{.servings}} servings.
+      Format as a simple bulleted list.
+
+  - id: add_shopping
+    type: integration
+    integration: notion
+    operation: append_blocks
+    inputs:
+      page_id: "{{.steps.create_page.id}}"
+      blocks:
+        - type: divider
+        - type: heading_2
+          text: "Shopping List"
+        - type: paragraph
+          text: "{{.steps.shopping_list.response}}"
+        - type: divider
+        - type: paragraph
+          text: "Happy cooking! 👨‍🍳"
+
+outputs:
+  - name: notion_url
+    type: string
+    value: "{{.steps.create_page.url}}"
+  - name: meal_plan
+    type: string
+    value: "{{.steps.consolidate.response}}"
