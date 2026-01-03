@@ -11,6 +11,7 @@ import (
 	"github.com/tombee/conductor/internal/integration/jenkins"
 	"github.com/tombee/conductor/internal/integration/jira"
 	"github.com/tombee/conductor/internal/integration/loki"
+	"github.com/tombee/conductor/internal/integration/notion"
 	"github.com/tombee/conductor/internal/integration/pagerduty"
 	"github.com/tombee/conductor/internal/integration/slack"
 	"github.com/tombee/conductor/internal/integration/splunk"
@@ -27,6 +28,7 @@ var BuiltinRegistry = map[string]func(config *api.ProviderConfig) (operation.Pro
 	"jira":          jira.NewJiraIntegration,
 	"discord":       discord.NewDiscordIntegration,
 	"jenkins":       jenkins.NewJenkinsIntegration,
+	"notion":        notion.NewNotionIntegration,
 	"pagerduty":     pagerduty.NewPagerDutyIntegration,
 	"cloudwatch":    cloudwatch.NewCloudWatchIntegration,
 	"datadog":       datadog.NewDatadogIntegration,
