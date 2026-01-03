@@ -399,6 +399,13 @@ func streamRunLogs(ctx context.Context, c *client.Client, runID string, quiet, v
 						}
 						// Fetch final output and stats
 						output, s := fetchRunOutput(ctx, c, runID)
+						// Merge accumulated stats (tokens/costs) with fetched stats (duration)
+						if stats != nil {
+							if s != nil && stats.DurationMs == 0 {
+								stats.DurationMs = s.DurationMs
+							}
+							return output, stats, nil
+						}
 						return output, s, nil
 					}
 				}
