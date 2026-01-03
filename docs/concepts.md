@@ -8,11 +8,10 @@ A workflow is a YAML file that defines a sequence of steps. Each workflow has a 
 name: my-workflow
 steps:
   - id: step1
-    llm:
-      prompt: Generate a recipe
+    type: llm
+    prompt: Generate a recipe
   - id: step2
-    shell:
-      command: echo "Done"
+    shell.run: echo "Done"
 ```
 
 ## Steps
@@ -20,28 +19,28 @@ steps:
 Steps are the building blocks of workflows. Each step has:
 
 - **id** - Unique identifier for the step
-- **type** - What the step does (llm, shell, http, file, etc.)
-- **inputs** - Data the step receives
-- **outputs** - Data the step produces
+- **type** - What the step does (llm, parallel, condition)
+- **action** - For non-LLM steps, the action to perform (file.read, shell.run, http.post, etc.)
 
 ## Inputs and Outputs
 
-Workflows can accept inputs and produce outputs:
+Workflows can accept inputs and produce outputs. Inputs without a default are required.
 
 ```yaml
 name: greet
 inputs:
-  name:
+  - name: person
     type: string
 steps:
   - id: greet
-    llm:
-      prompt: "Say hello to ${inputs.name}"
+    type: llm
+    prompt: "Say hello to {{.inputs.person}}"
 outputs:
-  greeting: ${steps.greet.output}
+  - name: greeting
+    value: "{{.steps.greet.response}}"
 ```
 
-Reference step outputs using `${steps.<step-id>.output}` syntax.
+Reference inputs with `{{.inputs.name}}` and step outputs with `{{.steps.id.response}}`.
 
 ## Actions
 
@@ -70,6 +69,7 @@ Triggers define how workflows are invoked:
 
 - **cron** - Run on a schedule
 - **webhook** - Trigger via HTTP POST
+- **file** - Watch for file system changes
 - **poll** - Check for changes periodically
 
 ## Controller

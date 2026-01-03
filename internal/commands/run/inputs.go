@@ -96,9 +96,10 @@ func showWorkflowInputs(def *workflow.Definition) {
 	fmt.Println("Workflow Inputs:")
 	fmt.Println()
 	for _, input := range def.Inputs {
-		required := "optional"
-		if input.Required {
-			required = "required"
+		// Inputs without a default are required
+		required := "required"
+		if input.Default != nil {
+			required = "optional"
 		}
 
 		fmt.Printf("  %s (%s, %s)\n", input.Name, input.Type, required)

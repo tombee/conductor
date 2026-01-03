@@ -21,7 +21,7 @@ steps:
   - id: plan_week
     name: Generate Weekly Plan
     type: llm
-    model: strategic
+    model: fast
     prompt: |
       Available ingredients:
       {{.steps.read_pantry.content}}

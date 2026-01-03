@@ -793,18 +793,16 @@ func validateInputs(inputs map[string]any, inputDefs []workflow.InputDefinition)
 		defMap[def.Name] = def
 	}
 
-	// Check for required inputs
+	// Check for required inputs (inputs without a default are required)
 	for _, def := range inputDefs {
 		// Skip if has default value
 		if def.Default != nil {
 			continue
 		}
 
-		// Check if required input is missing
-		if def.Required {
-			if _, ok := inputs[def.Name]; !ok {
-				return fmt.Errorf("required input %q is missing", def.Name)
-			}
+		// No default means required - check if missing
+		if _, ok := inputs[def.Name]; !ok {
+			return fmt.Errorf("required input %q is missing", def.Name)
 		}
 	}
 

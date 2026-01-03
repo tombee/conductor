@@ -9,31 +9,28 @@ inputs:
     description: Dietary preference (e.g., vegetarian, vegan, keto)
 
 steps:
+  # Using 'fast' model to minimize token usage during tutorials
   - id: meals
-    name: Generate Meals
     type: parallel
     max_concurrency: 3
     steps:
       - id: breakfast
-        name: Generate Breakfast
         type: llm
-        model: balanced
+        model: fast
         prompt: |
           Generate a {{.inputs.diet}} breakfast recipe.
           Include the recipe name, ingredients with quantities, and cooking steps.
 
       - id: lunch
-        name: Generate Lunch
         type: llm
-        model: balanced
+        model: fast
         prompt: |
           Generate a {{.inputs.diet}} lunch recipe.
           Include the recipe name, ingredients with quantities, and cooking steps.
 
       - id: dinner
-        name: Generate Dinner
         type: llm
-        model: balanced
+        model: fast
         prompt: |
           Generate a {{.inputs.diet}} dinner recipe.
           Include the recipe name, ingredients with quantities, and cooking steps.

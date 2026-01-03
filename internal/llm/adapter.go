@@ -86,6 +86,10 @@ func (a *ProviderAdapter) Complete(ctx context.Context, prompt string, options m
 		Model:   resp.Model,
 	}
 
+	// DEBUG: Log usage data
+	fmt.Printf("DEBUG adapter: resp.Usage.TotalTokens=%d, InputTokens=%d, OutputTokens=%d\n",
+		resp.Usage.TotalTokens, resp.Usage.InputTokens, resp.Usage.OutputTokens)
+
 	// Copy usage data if available
 	if resp.Usage.TotalTokens > 0 {
 		result.Usage = &llm.TokenUsage{
@@ -95,6 +99,9 @@ func (a *ProviderAdapter) Complete(ctx context.Context, prompt string, options m
 			CacheCreationTokens: resp.Usage.CacheCreationTokens,
 			CacheReadTokens:     resp.Usage.CacheReadTokens,
 		}
+		fmt.Printf("DEBUG adapter: Set result.Usage\n")
+	} else {
+		fmt.Printf("DEBUG adapter: TotalTokens is 0, NOT setting result.Usage\n")
 	}
 
 	return result, nil

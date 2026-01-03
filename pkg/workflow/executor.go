@@ -754,24 +754,21 @@ func (e *Executor) buildSubworkflowContext(subDef *Definition, inputs map[string
 	context := make(map[string]interface{})
 
 	// Process each declared input
+	// Inputs without a default value are required
 	for _, inputDef := range subDef.Inputs {
 		value, exists := inputs[inputDef.Name]
 
-		// Check if input is required and missing
 		if !exists {
-			if inputDef.Required {
+			// Use default value if provided
+			if inputDef.Default != nil {
+				value = inputDef.Default
+			} else {
+				// No default means required
 				return nil, &errors.ValidationError{
 					Field:      inputDef.Name,
 					Message:    fmt.Sprintf("required input %q not provided to sub-workflow", inputDef.Name),
 					Suggestion: "provide the required input in the workflow step",
 				}
-			}
-			// Use default value if provided
-			if inputDef.Default != nil {
-				value = inputDef.Default
-			} else {
-				// Skip this input (not required, no default)
-				continue
 			}
 		}
 

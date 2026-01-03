@@ -37,13 +37,11 @@ type MissingInput struct {
 	Name        string
 	Type        string
 	Description string
-	Required    bool
-	Default     interface{}
 	Enum        []string
 }
 
-// FindMissingInputs identifies required inputs that haven't been provided.
-// It applies defaults and skips optional inputs with defaults.
+// FindMissingInputs identifies inputs that haven't been provided and have no default.
+// Inputs without a default value are required.
 func (ia *InputAnalyzer) FindMissingInputs() []MissingInput {
 	missing := make([]MissingInput, 0)
 
@@ -53,22 +51,18 @@ func (ia *InputAnalyzer) FindMissingInputs() []MissingInput {
 			continue
 		}
 
-		// If not required and has a default, skip it (will be applied later)
-		if !input.Required && input.Default != nil {
+		// If has a default, skip it (will be applied later)
+		if input.Default != nil {
 			continue
 		}
 
-		// If required or no default, add to missing list
-		if input.Required {
-			missing = append(missing, MissingInput{
-				Name:        input.Name,
-				Type:        input.Type,
-				Description: input.Description,
-				Required:    input.Required,
-				Default:     input.Default,
-				Enum:        input.Enum,
-			})
-		}
+		// No default means required
+		missing = append(missing, MissingInput{
+			Name:        input.Name,
+			Type:        input.Type,
+			Description: input.Description,
+			Enum:        input.Enum,
+		})
 	}
 
 	return missing

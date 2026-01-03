@@ -42,9 +42,10 @@ func TestNewInputAnalyzer(t *testing.T) {
 }
 
 func TestInputAnalyzer_FindMissingInputs_AllProvided(t *testing.T) {
+	// Inputs without defaults are required
 	inputs := []workflow.InputDefinition{
-		{Name: "name", Type: "string", Required: true},
-		{Name: "age", Type: "number", Required: true},
+		{Name: "name", Type: "string"},
+		{Name: "age", Type: "number"},
 	}
 	provided := map[string]interface{}{
 		"name": "alice",
@@ -60,18 +61,18 @@ func TestInputAnalyzer_FindMissingInputs_AllProvided(t *testing.T) {
 }
 
 func TestInputAnalyzer_FindMissingInputs_RequiredMissing(t *testing.T) {
+	// Inputs without defaults are required
 	inputs := []workflow.InputDefinition{
-		{Name: "name", Type: "string", Required: true, Description: "User name"},
-		{Name: "age", Type: "number", Required: true, Description: "User age"},
-		{Name: "email", Type: "string", Required: false},
+		{Name: "name", Type: "string", Description: "User name"},
+		{Name: "age", Type: "number", Description: "User age"},
+		{Name: "email", Type: "string", Default: "test@example.com"}, // optional (has default)
 	}
-	provided := map[string]interface{}{
-		"email": "test@example.com",
-	}
+	provided := map[string]interface{}{}
 
 	ia := NewInputAnalyzer(inputs, provided)
 	missing := ia.FindMissingInputs()
 
+	// name and age are missing (no defaults), email has default so not missing
 	if len(missing) != 2 {
 		t.Fatalf("FindMissingInputs() returned %d items, want 2", len(missing))
 	}
@@ -86,9 +87,6 @@ func TestInputAnalyzer_FindMissingInputs_RequiredMissing(t *testing.T) {
 	if missing[0].Description != "User name" {
 		t.Errorf("missing[0].Description = %q, want 'User name'", missing[0].Description)
 	}
-	if !missing[0].Required {
-		t.Error("missing[0].Required should be true")
-	}
 
 	// Check second missing input
 	if missing[1].Name != "age" {
@@ -100,18 +98,17 @@ func TestInputAnalyzer_FindMissingInputs_RequiredMissing(t *testing.T) {
 }
 
 func TestInputAnalyzer_FindMissingInputs_OptionalWithDefault(t *testing.T) {
+	// Inputs with defaults are optional
 	inputs := []workflow.InputDefinition{
 		{
-			Name:     "port",
-			Type:     "number",
-			Required: false,
-			Default:  8080,
+			Name:    "port",
+			Type:    "number",
+			Default: 8080,
 		},
 		{
-			Name:     "host",
-			Type:     "string",
-			Required: false,
-			Default:  "localhost",
+			Name:    "host",
+			Type:    "string",
+			Default: "localhost",
 		},
 	}
 	provided := map[string]interface{}{}
@@ -119,38 +116,18 @@ func TestInputAnalyzer_FindMissingInputs_OptionalWithDefault(t *testing.T) {
 	ia := NewInputAnalyzer(inputs, provided)
 	missing := ia.FindMissingInputs()
 
-	// Optional inputs with defaults should not be in missing list
+	// Inputs with defaults should not be in missing list
 	if len(missing) != 0 {
-		t.Errorf("FindMissingInputs() returned %d items, want 0 (optional with defaults)", len(missing))
-	}
-}
-
-func TestInputAnalyzer_FindMissingInputs_OptionalNoDefault(t *testing.T) {
-	inputs := []workflow.InputDefinition{
-		{
-			Name:     "optional",
-			Type:     "string",
-			Required: false,
-			Default:  nil,
-		},
-	}
-	provided := map[string]interface{}{}
-
-	ia := NewInputAnalyzer(inputs, provided)
-	missing := ia.FindMissingInputs()
-
-	// Optional inputs without defaults should not trigger prompts
-	if len(missing) != 0 {
-		t.Errorf("FindMissingInputs() returned %d items, want 0 (optional without default)", len(missing))
+		t.Errorf("FindMissingInputs() returned %d items, want 0 (inputs with defaults)", len(missing))
 	}
 }
 
 func TestInputAnalyzer_FindMissingInputs_WithEnum(t *testing.T) {
+	// Input without default is required
 	inputs := []workflow.InputDefinition{
 		{
 			Name:        "env",
 			Type:        "string",
-			Required:    true,
 			Description: "Environment",
 			Enum:        []string{"dev", "staging", "prod"},
 		},
@@ -178,7 +155,7 @@ func TestInputAnalyzer_FindMissingInputs_WithEnum(t *testing.T) {
 
 func TestInputAnalyzer_ApplyDefaults_NoDefaults(t *testing.T) {
 	inputs := []workflow.InputDefinition{
-		{Name: "name", Type: "string", Required: true},
+		{Name: "name", Type: "string"},
 	}
 	provided := map[string]interface{}{
 		"name": "alice",
@@ -198,9 +175,9 @@ func TestInputAnalyzer_ApplyDefaults_NoDefaults(t *testing.T) {
 
 func TestInputAnalyzer_ApplyDefaults_WithDefaults(t *testing.T) {
 	inputs := []workflow.InputDefinition{
-		{Name: "name", Type: "string", Required: true},
-		{Name: "port", Type: "number", Required: false, Default: 8080},
-		{Name: "host", Type: "string", Required: false, Default: "localhost"},
+		{Name: "name", Type: "string"},
+		{Name: "port", Type: "number", Default: 8080},
+		{Name: "host", Type: "string", Default: "localhost"},
 	}
 	provided := map[string]interface{}{
 		"name": "alice",
@@ -228,7 +205,7 @@ func TestInputAnalyzer_ApplyDefaults_WithDefaults(t *testing.T) {
 
 func TestInputAnalyzer_ApplyDefaults_ProvidedOverridesDefault(t *testing.T) {
 	inputs := []workflow.InputDefinition{
-		{Name: "port", Type: "number", Required: false, Default: 8080},
+		{Name: "port", Type: "number", Default: 8080},
 	}
 	provided := map[string]interface{}{
 		"port": 9000,
@@ -272,7 +249,7 @@ func TestInputAnalyzer_ApplyDefaults_EmptyProvided(t *testing.T) {
 
 func TestInputAnalyzer_ApplyDefaults_NilDefault(t *testing.T) {
 	inputs := []workflow.InputDefinition{
-		{Name: "optional", Type: "string", Default: nil},
+		{Name: "required", Type: "string", Default: nil},
 	}
 	provided := map[string]interface{}{}
 
@@ -280,19 +257,19 @@ func TestInputAnalyzer_ApplyDefaults_NilDefault(t *testing.T) {
 	result := ia.ApplyDefaults()
 
 	// nil defaults should not be added
-	if _, exists := result["optional"]; exists {
+	if _, exists := result["required"]; exists {
 		t.Error("ApplyDefaults() should not add nil defaults")
 	}
 }
 
 func TestInputAnalyzer_ComplexScenario(t *testing.T) {
+	// Inputs without defaults are required
 	inputs := []workflow.InputDefinition{
-		{Name: "required_no_default", Type: "string", Required: true},
-		{Name: "required_with_default", Type: "string", Required: true, Default: "default"},
-		{Name: "optional_no_default", Type: "string", Required: false},
-		{Name: "optional_with_default", Type: "number", Required: false, Default: 100},
-		{Name: "provided_required", Type: "string", Required: true},
-		{Name: "provided_optional", Type: "boolean", Required: false},
+		{Name: "required_no_default", Type: "string"},
+		{Name: "optional_with_default", Type: "string", Default: "default"},
+		{Name: "another_optional", Type: "number", Default: 100},
+		{Name: "provided_required", Type: "string"},
+		{Name: "provided_optional", Type: "boolean", Default: false},
 	}
 	provided := map[string]interface{}{
 		"provided_required": "value",
@@ -302,27 +279,10 @@ func TestInputAnalyzer_ComplexScenario(t *testing.T) {
 	ia := NewInputAnalyzer(inputs, provided)
 
 	// Test FindMissingInputs
+	// Should only find: required_no_default (no default, not provided)
 	missing := ia.FindMissingInputs()
-	// Should only find: required_no_default, required_with_default (required even with default)
-	// Wait, looking at the code: if required, it's added even with default
-	// Actually, re-reading the code: if !required && default != nil, skip
-	// if required, add to missing (even with default)
-	// So: required_no_default and required_with_default should be in missing
 
-	// Actually, let me re-read the logic:
-	// - if provided, skip
-	// - if !required && default != nil, skip
-	// - if required, add to missing
-
-	// So for our test:
-	// required_no_default: not provided, required -> missing
-	// required_with_default: not provided, required -> missing
-	// optional_no_default: not provided, not required, no default -> not missing (skip only if !required && default != nil)
-	// Actually the code says: if !input.Required && input.Default != nil { continue }
-	// Then: if input.Required { missing = append... }
-	// So optional inputs are never added to missing, only required ones
-
-	expectedMissingCount := 2 // required_no_default, required_with_default
+	expectedMissingCount := 1 // only required_no_default
 	if len(missing) != expectedMissingCount {
 		t.Errorf("FindMissingInputs() returned %d items, want %d", len(missing), expectedMissingCount)
 		for _, m := range missing {
@@ -330,9 +290,13 @@ func TestInputAnalyzer_ComplexScenario(t *testing.T) {
 		}
 	}
 
+	if len(missing) > 0 && missing[0].Name != "required_no_default" {
+		t.Errorf("missing[0].Name = %q, want 'required_no_default'", missing[0].Name)
+	}
+
 	// Test ApplyDefaults
 	result := ia.ApplyDefaults()
-	// Should have: provided_required, provided_optional, required_with_default, optional_with_default
+	// Should have: provided_required, provided_optional, optional_with_default, another_optional
 	expectedCount := 4
 	if len(result) != expectedCount {
 		t.Errorf("ApplyDefaults() returned %d items, want %d", len(result), expectedCount)
@@ -349,12 +313,12 @@ func TestInputAnalyzer_ComplexScenario(t *testing.T) {
 		t.Errorf("result[provided_optional] = %v, want true", result["provided_optional"])
 	}
 
-	if result["required_with_default"] != "default" {
-		t.Errorf("result[required_with_default] = %v, want 'default'", result["required_with_default"])
+	if result["optional_with_default"] != "default" {
+		t.Errorf("result[optional_with_default] = %v, want 'default'", result["optional_with_default"])
 	}
 
-	if result["optional_with_default"] != 100 {
-		t.Errorf("result[optional_with_default] = %v, want 100", result["optional_with_default"])
+	if result["another_optional"] != 100 {
+		t.Errorf("result[another_optional] = %v, want 100", result["another_optional"])
 	}
 }
 
@@ -363,8 +327,6 @@ func TestMissingInput(t *testing.T) {
 		Name:        "test",
 		Type:        "string",
 		Description: "test input",
-		Required:    true,
-		Default:     "default",
 		Enum:        []string{"a", "b"},
 	}
 
@@ -378,14 +340,6 @@ func TestMissingInput(t *testing.T) {
 
 	if mi.Description != "test input" {
 		t.Errorf("Description = %q, want 'test input'", mi.Description)
-	}
-
-	if !mi.Required {
-		t.Error("Required should be true")
-	}
-
-	if mi.Default != "default" {
-		t.Errorf("Default = %v, want 'default'", mi.Default)
 	}
 
 	if len(mi.Enum) != 2 {

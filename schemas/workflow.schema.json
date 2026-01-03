@@ -98,13 +98,8 @@
           "enum": ["string", "number", "boolean", "object", "array"],
           "description": "Input data type. Determines validation and type coercion behavior."
         },
-        "required": {
-          "type": "boolean",
-          "description": "Whether this input must be provided when triggering the workflow. If false, the default value is used when input is missing.",
-          "default": false
-        },
         "default": {
-          "description": "Fallback value when input is not provided. Type must match the 'type' field. Only used when required is false."
+          "description": "Fallback value when input is not provided. Inputs without a default are required. Type must match the 'type' field."
         },
         "description": {
           "type": "string",

@@ -99,38 +99,19 @@ func (ic *InputCollector) CollectInput(ctx context.Context, config PromptConfig)
 		var value interface{}
 		var err error
 
+		// Missing inputs have no defaults, so we pass empty/zero defaults
 		switch config.Type {
 		case InputTypeString:
-			defStr := ""
-			if config.Default != nil {
-				defStr = fmt.Sprintf("%v", config.Default)
-			}
-			value, err = ic.prompter.PromptString(ctx, config.Name, config.Description, defStr)
+			value, err = ic.prompter.PromptString(ctx, config.Name, config.Description, "")
 
 		case InputTypeNumber:
-			defNum := 0.0
-			if config.Default != nil {
-				if num, ok := config.Default.(float64); ok {
-					defNum = num
-				}
-			}
-			value, err = ic.prompter.PromptNumber(ctx, config.Name, config.Description, defNum)
+			value, err = ic.prompter.PromptNumber(ctx, config.Name, config.Description, 0.0)
 
 		case InputTypeBoolean:
-			defBool := false
-			if config.Default != nil {
-				if b, ok := config.Default.(bool); ok {
-					defBool = b
-				}
-			}
-			value, err = ic.prompter.PromptBool(ctx, config.Name, config.Description, defBool)
+			value, err = ic.prompter.PromptBool(ctx, config.Name, config.Description, false)
 
 		case InputTypeEnum:
-			defStr := ""
-			if config.Default != nil {
-				defStr = fmt.Sprintf("%v", config.Default)
-			}
-			value, err = ic.prompter.PromptEnum(ctx, config.Name, config.Description, config.Options, defStr)
+			value, err = ic.prompter.PromptEnum(ctx, config.Name, config.Description, config.Options, "")
 
 		case InputTypeArray:
 			value, err = ic.prompter.PromptArray(ctx, config.Name, config.Description)

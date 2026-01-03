@@ -9,17 +9,18 @@ Instead of hardcoding model names, use tiers that describe capability needs:
 ```yaml
 steps:
   - id: classify
-    llm:
-      model: fast
-      prompt: "Classify this as bug, feature, or question"
+    type: llm
+    model: fast
+    prompt: Classify this as bug, feature, or question
+
   - id: review
-    llm:
-      model: balanced
-      prompt: "Review this code for issues"
+    type: llm
+    prompt: Review this code for issues
+
   - id: architect
-    llm:
-      model: strategic
-      prompt: "Design a scalable architecture"
+    type: llm
+    model: strategic
+    prompt: Design a scalable architecture
 ```
 
 ## The Three Tiers
@@ -89,7 +90,7 @@ Is the task simple pattern matching?
     └── No → balanced
 ```
 
-**Tip:** Start with `balanced`. Downgrade to `fast` if results are good, upgrade to `strategic` if needed.
+**Tip:** Start with `balanced` (the default). Downgrade to `fast` if results are good, upgrade to `strategic` if needed.
 
 ## Multi-Tier Workflows
 
@@ -98,28 +99,11 @@ Use different tiers for different steps:
 ```yaml
 steps:
   - id: review
-    llm:
-      model: balanced
-      prompt: "Review this code for issues"
+    type: llm
+    prompt: Review this code for issues
+
   - id: format
-    llm:
-      model: fast
-      prompt: "Format this review as markdown: ${steps.review.output}"
+    type: llm
+    model: fast
+    prompt: "Format this review as markdown: {{.steps.review.response}}"
 ```
-
-## Specific Models
-
-Override tiers when needed:
-
-```yaml
-steps:
-  - id: custom
-    llm:
-      model: claude-3-5-sonnet-20241022
-      prompt: "..."
-```
-
-Use specific models for:
-- Testing specific model behavior
-- Requirements mandate a particular model
-- Fine-tuned models

@@ -173,15 +173,14 @@ func executeWorkflow(ctx context.Context, def *workflow.Definition, inputs map[s
 	}
 }
 
-// validateInputs checks that required inputs are provided
+// validateInputs checks that required inputs are provided.
+// Inputs without a default value are required.
 func validateInputs(def *workflow.Definition, inputs map[string]interface{}) error {
 	for _, inputDef := range def.Inputs {
-		if inputDef.Required {
-			if _, ok := inputs[inputDef.Name]; !ok {
-				// Check if there's a default value
-				if inputDef.Default == nil {
-					return fmt.Errorf("required input %q is missing", inputDef.Name)
-				}
+		if _, ok := inputs[inputDef.Name]; !ok {
+			// No default means required
+			if inputDef.Default == nil {
+				return fmt.Errorf("required input %q is missing", inputDef.Name)
 			}
 		}
 	}

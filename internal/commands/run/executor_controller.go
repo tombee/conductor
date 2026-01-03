@@ -134,8 +134,6 @@ func runWorkflowViaController(workflowPath string, inputArgs []string, inputFile
 					Name:        m.Name,
 					Description: m.Description,
 					Type:        inputType,
-					Required:    m.Required,
-					Default:     m.Default,
 					Options:     m.Enum,
 				}
 			}

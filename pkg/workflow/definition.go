@@ -401,6 +401,7 @@ func parseDuration(s string) (int, error) {
 }
 
 // InputDefinition describes a workflow input parameter.
+// Inputs without a default value are required.
 type InputDefinition struct {
 	// Name is the input parameter identifier
 	Name string `yaml:"name" json:"name"`
@@ -408,10 +409,8 @@ type InputDefinition struct {
 	// Type specifies the data type (string, number, boolean, object, array, enum)
 	Type string `yaml:"type" json:"type"`
 
-	// Required indicates if this input must be provided
-	Required bool `yaml:"required" json:"required"`
-
-	// Default provides a fallback value if input is not provided
+	// Default provides a fallback value if input is not provided.
+	// Inputs without a default are required.
 	Default interface{} `yaml:"default,omitempty" json:"default,omitempty"`
 
 	// Description explains what this input is for

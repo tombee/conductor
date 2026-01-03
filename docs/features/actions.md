@@ -9,20 +9,27 @@ Call an LLM with a prompt:
 ```yaml
 steps:
   - id: generate
-    llm:
-      model: claude-3-5-sonnet-20241022
-      prompt: "Generate a haiku about coding"
-      temperature: 0.7
-      max_tokens: 1000
+    type: llm
+    prompt: Generate a haiku about coding
 ```
 
-### Available Models
+### Model Tiers
 
-- `claude-3-5-sonnet-20241022` - Fast, high quality (recommended)
-- `claude-3-opus-20240229` - Most capable
-- `claude-3-haiku-20240307` - Fastest, cost-effective
+Use model tiers to select capability level without specifying provider-specific model names:
 
-See [Model Tiers](./model-tiers.md) for selection guidance.
+- `fast` - Quick responses, lower cost
+- `balanced` - Good balance of speed and quality (default)
+- `strategic` - Maximum capability for complex tasks
+
+```yaml
+steps:
+  - id: analyze
+    type: llm
+    model: strategic
+    prompt: Analyze this complex codebase...
+```
+
+See [Model Tiers](./model-tiers.md) for more details.
 
 ## Shell
 
@@ -31,23 +38,19 @@ Execute shell commands:
 ```yaml
 steps:
   - id: build
-    shell:
-      command: |
-        npm install
-        npm run build
-      workingDir: /path/to/project
+    shell.run: npm install && npm run build
 ```
 
-### Environment Variables
+With options:
 
 ```yaml
 steps:
-  - id: deploy
-    shell:
-      command: ./deploy.sh
+  - id: build
+    shell.run:
+      command: npm run build
+      working_dir: ./frontend
       env:
-        ENVIRONMENT: production
-        API_KEY: ${API_KEY}
+        NODE_ENV: production
 ```
 
 ## File
@@ -56,23 +59,23 @@ Read and write files:
 
 ```yaml
 steps:
-  - id: read
-    file:
-      action: read
-      path: data.json
-  - id: write
-    file:
-      action: write
+  - id: read_config
+    file.read: config.json
+
+  - id: save_output
+    file.write:
       path: output.txt
-      content: ${steps.process.output}
+      content: "{{.steps.process.response}}"
 ```
 
 ### File Operations
 
-- `read` - Read file contents
-- `write` - Write content to file
-- `append` - Append to existing file
-- `delete` - Remove file
+- `file.read` - Read file contents
+- `file.write` - Write content to file
+- `file.append` - Append to existing file
+- `file.delete` - Remove file
+- `file.exists` - Check if file exists
+- `file.list` - List directory contents
 
 ## HTTP
 
@@ -81,11 +84,10 @@ Make HTTP requests:
 ```yaml
 steps:
   - id: api_call
-    http:
-      method: POST
+    http.post:
       url: https://api.example.com/endpoint
       headers:
-        Authorization: "Bearer ${API_TOKEN}"
+        Authorization: "Bearer {{env.API_TOKEN}}"
         Content-Type: application/json
       body:
         key: value
@@ -93,23 +95,22 @@ steps:
 
 ### HTTP Methods
 
-- `GET` - Retrieve data
-- `POST` - Create resources
-- `PUT` - Update resources
-- `PATCH` - Partial update
-- `DELETE` - Remove resources
+- `http.get` - Retrieve data
+- `http.post` - Create resources
+- `http.put` - Update resources
+- `http.patch` - Partial update
+- `http.delete` - Remove resources
 
 ### Response Handling
 
 ```yaml
 steps:
   - id: fetch
-    http:
-      method: GET
-      url: https://api.example.com/data
+    http.get: https://api.example.com/data
+
   - id: process
-    llm:
-      prompt: "Analyze: ${steps.fetch.output}"
+    type: llm
+    prompt: "Analyze this data: {{.steps.fetch.body}}"
 ```
 
 ## Transform
@@ -118,23 +119,21 @@ Transform data between formats:
 
 ```yaml
 steps:
-  - id: to_json
-    transform:
-      operation: yaml_to_json
-      input: ${steps.read.output}
+  - id: parse
+    transform.json_parse: "{{.steps.read.content}}"
+
   - id: extract
-    transform:
-      operation: jq
+    transform.jq:
+      input: "{{.steps.parse.result}}"
       query: ".items[] | select(.active == true)"
-      input: ${steps.to_json.output}
 ```
 
 ### Transform Operations
 
-- `yaml_to_json` - Convert YAML to JSON
-- `json_to_yaml` - Convert JSON to YAML
-- `jq` - Query JSON with jq syntax
-- `template` - Apply Go templates
+- `transform.json_parse` - Parse JSON string
+- `transform.json_stringify` - Convert to JSON string
+- `transform.yaml_parse` - Parse YAML string
+- `transform.jq` - Query with jq syntax
 
 ## Utility
 
@@ -143,19 +142,15 @@ Utility operations:
 ```yaml
 steps:
   - id: wait
-    utility:
-      operation: sleep
-      duration: 5s
-  - id: random
-    utility:
-      operation: random
-      min: 1
-      max: 100
+    utility.sleep: 5s
+
+  - id: random_id
+    utility.uuid: {}
 ```
 
 ### Utility Operations
 
-- `sleep` - Wait for duration
-- `random` - Generate random number
-- `uuid` - Generate UUID
-- `timestamp` - Get current timestamp
+- `utility.sleep` - Wait for duration
+- `utility.random_int` - Generate random integer
+- `utility.uuid` - Generate UUID
+- `utility.timestamp` - Get current timestamp

@@ -95,7 +95,6 @@ func TestInputCollector_CollectInput_String(t *testing.T) {
 		Name:        "username",
 		Description: "Enter username",
 		Type:        InputTypeString,
-		Required:    true,
 	}
 
 	value, err := ic.CollectInput(context.Background(), config)
@@ -121,7 +120,6 @@ func TestInputCollector_CollectInput_Number(t *testing.T) {
 		Name:        "age",
 		Description: "Enter age",
 		Type:        InputTypeNumber,
-		Required:    true,
 	}
 
 	value, err := ic.CollectInput(context.Background(), config)
@@ -147,7 +145,6 @@ func TestInputCollector_CollectInput_Boolean(t *testing.T) {
 		Name:        "enabled",
 		Description: "Enable feature?",
 		Type:        InputTypeBoolean,
-		Required:    true,
 	}
 
 	value, err := ic.CollectInput(context.Background(), config)
@@ -173,7 +170,6 @@ func TestInputCollector_CollectInput_Enum(t *testing.T) {
 		Name:        "fruit",
 		Description: "Choose a fruit",
 		Type:        InputTypeEnum,
-		Required:    true,
 		Options:     []string{"apple", "banana", "cherry"},
 	}
 
@@ -200,7 +196,6 @@ func TestInputCollector_CollectInput_Array(t *testing.T) {
 		Name:        "tags",
 		Description: "Enter tags",
 		Type:        InputTypeArray,
-		Required:    true,
 	}
 
 	value, err := ic.CollectInput(context.Background(), config)
@@ -226,7 +221,6 @@ func TestInputCollector_CollectInput_Object(t *testing.T) {
 		Name:        "metadata",
 		Description: "Enter metadata",
 		Type:        InputTypeObject,
-		Required:    true,
 	}
 
 	value, err := ic.CollectInput(context.Background(), config)
@@ -244,34 +238,6 @@ func TestInputCollector_CollectInput_Object(t *testing.T) {
 	}
 }
 
-func TestInputCollector_CollectInput_WithDefault(t *testing.T) {
-	// MockPrompter returns default when no responses
-	mp := NewMockPrompter(true)
-	ic := NewInputCollector(mp)
-
-	config := PromptConfig{
-		Name:        "port",
-		Description: "Enter port",
-		Type:        InputTypeNumber,
-		Required:    false,
-		Default:     8080.0,
-	}
-
-	value, err := ic.CollectInput(context.Background(), config)
-	if err != nil {
-		t.Fatalf("CollectInput() error = %v", err)
-	}
-
-	num, ok := value.(float64)
-	if !ok {
-		t.Fatalf("CollectInput() returned type %T, want float64", value)
-	}
-
-	if num != 8080.0 {
-		t.Errorf("CollectInput() = %v, want 8080.0", num)
-	}
-}
-
 func TestInputCollector_CollectInput_UnsupportedType(t *testing.T) {
 	mp := NewMockPrompter(true)
 	ic := NewInputCollector(mp)
@@ -280,7 +246,6 @@ func TestInputCollector_CollectInput_UnsupportedType(t *testing.T) {
 		Name:        "test",
 		Description: "test",
 		Type:        InputType("invalid"),
-		Required:    true,
 	}
 
 	_, err := ic.CollectInput(context.Background(), config)
@@ -302,19 +267,16 @@ func TestInputCollector_CollectInputs(t *testing.T) {
 			Name:        "name",
 			Description: "Enter name",
 			Type:        InputTypeString,
-			Required:    true,
 		},
 		{
 			Name:        "age",
 			Description: "Enter age",
 			Type:        InputTypeNumber,
-			Required:    true,
 		},
 		{
 			Name:        "active",
 			Description: "Is active?",
 			Type:        InputTypeBoolean,
-			Required:    true,
 		},
 	}
 
@@ -411,8 +373,6 @@ func TestPromptConfig(t *testing.T) {
 		Name:        "test",
 		Description: "test input",
 		Type:        InputTypeString,
-		Required:    true,
-		Default:     "default value",
 		Options:     []string{"a", "b"},
 	}
 
@@ -422,14 +382,6 @@ func TestPromptConfig(t *testing.T) {
 
 	if config.Type != InputTypeString {
 		t.Errorf("Type = %v, want InputTypeString", config.Type)
-	}
-
-	if !config.Required {
-		t.Error("Required should be true")
-	}
-
-	if config.Default != "default value" {
-		t.Errorf("Default = %v, want 'default value'", config.Default)
 	}
 
 	if len(config.Options) != 2 {

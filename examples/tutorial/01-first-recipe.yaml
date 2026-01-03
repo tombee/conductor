@@ -3,10 +3,11 @@ name: first-recipe
 description: Generate a dinner recipe using an LLM
 
 steps:
+  # Using 'fast' model tier to minimize token usage during tutorials
+  # For production workflows, consider 'balanced' or 'strategic'
   - id: generate
-    name: Generate Recipe
     type: llm
-    model: balanced
+    model: fast
     prompt: |
       Generate a dinner recipe. Include:
       - Recipe name

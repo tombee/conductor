@@ -38,12 +38,11 @@ const (
 )
 
 // PromptConfig holds configuration for a single prompt.
+// Only used for missing inputs (which are always required with no default).
 type PromptConfig struct {
 	Name        string
 	Description string
 	Type        InputType
-	Required    bool
-	Default     interface{}
 	Options     []string // For enum types
 }
 

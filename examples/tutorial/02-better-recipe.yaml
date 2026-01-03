@@ -5,14 +5,13 @@ description: Generate a recipe with specific ingredients
 inputs:
   - name: ingredients
     type: string
-    required: true
     description: Comma-separated ingredients to use
 
 steps:
+  # Using 'fast' model to minimize token usage during tutorials
   - id: generate
-    name: Generate Recipe
     type: llm
-    model: balanced
+    model: fast
     prompt: |
       Generate a dinner recipe using these ingredients: {{.inputs.ingredients}}
 
