@@ -30,7 +30,6 @@ Running: quick-recipe
 | `inputs` | Parameters passed via `-i name=value` |
 | `steps` | Sequential operations; `type: llm` invokes a model |
 | `{{.name}}` | Template variable referencing input or step output |
-| `outputs` | Values returned by the workflow |
 
 Reference: [Workflow Schema](../reference/workflow-schema/)
 

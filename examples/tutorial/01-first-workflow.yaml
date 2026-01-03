@@ -20,8 +20,3 @@ steps:
       - Simple step-by-step instructions
 
       Keep it practical and achievable for a home cook.
-
-outputs:
-  - name: recipe
-    type: string
-    value: "{{.steps.suggest.response}}"
