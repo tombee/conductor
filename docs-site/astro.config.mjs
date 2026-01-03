@@ -35,8 +35,21 @@ export default defineConfig({
         {
           label: 'Getting Started',
           items: [
-            { label: 'Overview', slug: 'getting-started' },
-            { label: 'First Workflow', slug: 'getting-started/first-workflow' },
+            { label: 'Installation', slug: 'getting-started' },
+            { label: 'Hello World', slug: 'getting-started/hello-world' },
+          ],
+        },
+        {
+          label: 'Tutorial',
+          items: [
+            { label: 'Overview', slug: 'tutorial' },
+            { label: '1. Your First Workflow', slug: 'tutorial/first-workflow' },
+            { label: '2. Parallel Execution', slug: 'tutorial/parallel' },
+            { label: '3. Refinement Loops', slug: 'tutorial/loops' },
+            { label: '4. Scheduled Triggers', slug: 'tutorial/triggers' },
+            { label: '5. Reading External Data', slug: 'tutorial/input' },
+            { label: '6. Delivering Results', slug: 'tutorial/output' },
+            { label: '7. Deploy to Production', slug: 'tutorial/deploy' },
           ],
         },
         {
