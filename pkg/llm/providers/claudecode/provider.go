@@ -167,9 +167,6 @@ func (p *Provider) executeSimple(ctx context.Context, req llm.CompletionRequest)
 	// Parse JSON response from Claude CLI
 	var cliResp cliResponse
 	if err := json.Unmarshal(stdout.Bytes(), &cliResp); err != nil {
-		// DEBUG: Log the parsing failure
-		fmt.Printf("DEBUG claudecode: JSON parse failed: %v\n", err)
-		fmt.Printf("DEBUG claudecode: Raw stdout (first 500 chars): %s\n", string(stdout.Bytes()[:min(len(stdout.Bytes()), 500)]))
 		// Fallback to treating output as plain text if JSON parsing fails
 		return &llm.CompletionResponse{
 			Content:      strings.TrimSpace(stdout.String()),
@@ -179,11 +176,6 @@ func (p *Provider) executeSimple(ctx context.Context, req llm.CompletionRequest)
 			Usage:        llm.TokenUsage{},
 		}, nil
 	}
-
-	// DEBUG: Log parsed usage
-	fmt.Printf("DEBUG claudecode: JSON parsed successfully, usage: in=%d out=%d total=%d\n",
-		cliResp.Usage.InputTokens, cliResp.Usage.OutputTokens,
-		cliResp.Usage.InputTokens+cliResp.Usage.OutputTokens)
 
 	// Check for error response
 	if cliResp.IsError {

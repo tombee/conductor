@@ -297,16 +297,10 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 				if result.TokenUsage != nil {
 					tokensIn = result.TokenUsage.InputTokens
 					tokensOut = result.TokenUsage.OutputTokens
-					fmt.Printf("DEBUG OnStepEnd: result.TokenUsage set, in=%d out=%d\n", tokensIn, tokensOut)
-				} else {
-					fmt.Printf("DEBUG OnStepEnd: result.TokenUsage is nil\n")
 				}
-			} else {
-				fmt.Printf("DEBUG OnStepEnd: result is nil\n")
 			}
 
 			// Send step_complete event for CLI progress display
-			fmt.Printf("DEBUG OnStepEnd: calling addStepComplete with tokensIn=%d, tokensOut=%d\n", tokensIn, tokensOut)
 			r.addStepComplete(run, stepID, stepName, status, output, durationMs, costUSD, tokensIn, tokensOut, errMsg)
 
 			// Save step result to backend if available

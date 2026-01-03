@@ -23,7 +23,7 @@ steps:
     model: fast
     prompt: |
       Available ingredients:
-      {{.steps.read_pantry.response}}
+      {{.steps.read_pantry.content}}
 
       Generate a balanced meal plan for Monday through Sunday.
       For each day, create breakfast, lunch, and dinner.

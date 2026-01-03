@@ -361,13 +361,8 @@ func (e *Executor) Execute(ctx context.Context, step *StepDefinition, workflowCo
 	if result.Output != nil {
 		if usage, ok := result.Output["_usage"].(*llm.TokenUsage); ok {
 			result.TokenUsage = usage
-			fmt.Printf("DEBUG executor Execute: extracted _usage, TotalTokens=%d\n", usage.TotalTokens)
 			// Remove internal metadata from output
 			delete(result.Output, "_usage")
-		} else if _, exists := result.Output["_usage"]; exists {
-			fmt.Printf("DEBUG executor Execute: _usage exists but type assertion failed, type=%T\n", result.Output["_usage"])
-		} else {
-			fmt.Printf("DEBUG executor Execute: no _usage in output\n")
 		}
 	}
 
@@ -540,8 +535,23 @@ func (e *Executor) executeIntegration(ctx context.Context, step *StepDefinition,
 
 	// Map operation result to step output format
 	// The response is the primary output, but we also include metadata for debugging
+	response := result.GetResponse()
 	output := map[string]interface{}{
-		"response": result.GetResponse(),
+		"response": response,
+	}
+
+	// Flatten response for ergonomic access:
+	// - If response is a map (e.g., shell: {stdout, stderr, exit_code}), expose keys directly
+	// - If response is a string (e.g., file.read), also expose as "content" for intuitive access
+	switch resp := response.(type) {
+	case map[string]interface{}:
+		// Flatten map keys to top level: .steps.shell_step.stdout works
+		for k, v := range resp {
+			output[k] = v
+		}
+	case string:
+		// Add content alias for string responses: .steps.file_read.content works
+		output["content"] = resp
 	}
 
 	// Include metadata if present
@@ -924,9 +934,6 @@ func (e *Executor) executeLLM(ctx context.Context, step *StepDefinition, inputs 
 	// Include usage data if available
 	if result.Usage != nil {
 		output["_usage"] = result.Usage
-		fmt.Printf("DEBUG executor executeLLMStep: set output[_usage] with TotalTokens=%d\n", result.Usage.TotalTokens)
-	} else {
-		fmt.Printf("DEBUG executor executeLLMStep: result.Usage is nil\n")
 	}
 
 	return output, nil

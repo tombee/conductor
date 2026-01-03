@@ -176,17 +176,6 @@ func (a *ExecutorAdapter) ExecuteWorkflow(ctx context.Context, def *workflow.Def
 		// Execute the step
 		stepResult, err := a.executor.Execute(stepCtx, &stepToExecute, workflowContext)
 
-		// DEBUG: Log stepResult.TokenUsage
-		if stepResult != nil {
-			if stepResult.TokenUsage != nil {
-				fmt.Printf("DEBUG adapter ExecuteWorkflow: stepResult.TokenUsage set, TotalTokens=%d\n", stepResult.TokenUsage.TotalTokens)
-			} else {
-				fmt.Printf("DEBUG adapter ExecuteWorkflow: stepResult.TokenUsage is nil\n")
-			}
-		} else {
-			fmt.Printf("DEBUG adapter ExecuteWorkflow: stepResult is nil\n")
-		}
-
 		// Notify step end
 		if opts.OnStepEnd != nil {
 			opts.OnStepEnd(step.ID, stepResult, err)
