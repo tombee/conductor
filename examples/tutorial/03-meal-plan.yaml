@@ -5,8 +5,7 @@ description: Generate three meals in parallel
 inputs:
   - name: diet
     type: string
-    default: "vegetarian"
-    description: Dietary preference (e.g., vegetarian, vegan, keto)
+    description: Dietary preference (e.g., high-protein, vegan, keto)
 
 steps:
   # Using 'fast' model to minimize token usage during tutorials

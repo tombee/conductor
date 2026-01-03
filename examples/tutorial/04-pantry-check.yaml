@@ -10,7 +10,6 @@ inputs:
 
   - name: diet
     type: string
-    default: "any"
     description: Dietary preference
 
 steps:

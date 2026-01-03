@@ -10,7 +10,6 @@ inputs:
 
   - name: notion_database_id
     type: string
-    required: true
     description: Notion database ID for meal plans
 
 steps:

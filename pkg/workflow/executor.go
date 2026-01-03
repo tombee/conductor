@@ -361,8 +361,13 @@ func (e *Executor) Execute(ctx context.Context, step *StepDefinition, workflowCo
 	if result.Output != nil {
 		if usage, ok := result.Output["_usage"].(*llm.TokenUsage); ok {
 			result.TokenUsage = usage
+			fmt.Printf("DEBUG executor Execute: extracted _usage, TotalTokens=%d\n", usage.TotalTokens)
 			// Remove internal metadata from output
 			delete(result.Output, "_usage")
+		} else if _, exists := result.Output["_usage"]; exists {
+			fmt.Printf("DEBUG executor Execute: _usage exists but type assertion failed, type=%T\n", result.Output["_usage"])
+		} else {
+			fmt.Printf("DEBUG executor Execute: no _usage in output\n")
 		}
 	}
 
@@ -919,6 +924,9 @@ func (e *Executor) executeLLM(ctx context.Context, step *StepDefinition, inputs 
 	// Include usage data if available
 	if result.Usage != nil {
 		output["_usage"] = result.Usage
+		fmt.Printf("DEBUG executor executeLLMStep: set output[_usage] with TotalTokens=%d\n", result.Usage.TotalTokens)
+	} else {
+		fmt.Printf("DEBUG executor executeLLMStep: result.Usage is nil\n")
 	}
 
 	return output, nil
