@@ -28,7 +28,7 @@ steps:
         model: fast
         prompt: |
           Available ingredients:
-          {{.steps.read_pantry.content}}
+          {{.steps.read_pantry.response}}
 
           Generate a {{.inputs.diet}} breakfast using only these ingredients.
           Include the recipe name, ingredients with quantities, and cooking steps.
@@ -39,7 +39,7 @@ steps:
         model: fast
         prompt: |
           Available ingredients:
-          {{.steps.read_pantry.content}}
+          {{.steps.read_pantry.response}}
 
           Generate a {{.inputs.diet}} lunch using only these ingredients.
           Include the recipe name, ingredients with quantities, and cooking steps.
@@ -50,7 +50,7 @@ steps:
         model: fast
         prompt: |
           Available ingredients:
-          {{.steps.read_pantry.content}}
+          {{.steps.read_pantry.response}}
 
           Generate a {{.inputs.diet}} dinner using only these ingredients.
           Include the recipe name, ingredients with quantities, and cooking steps.

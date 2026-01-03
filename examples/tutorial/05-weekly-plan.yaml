@@ -23,7 +23,7 @@ steps:
     model: fast
     prompt: |
       Available ingredients:
-      {{.steps.read_pantry.content}}
+      {{.steps.read_pantry.response}}
 
       Generate a {{.inputs.diet}} meal plan for the entire week (Monday through Sunday).
       For each day, create breakfast, lunch, and dinner recipes.
