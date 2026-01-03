@@ -5,7 +5,7 @@ description: Generate a recipe with specific ingredients
 inputs:
   - name: ingredients
     type: string
-    default: "chicken, rice, broccoli"
+    required: true
     description: Comma-separated ingredients to use
 
 steps:

@@ -15,7 +15,7 @@ name: better-recipe
 inputs:
   - name: ingredients
     type: string
-    default: "chicken, rice, broccoli"
+    required: true
 
 steps:
   - id: generate
@@ -39,10 +39,10 @@ outputs:
 ## Run It
 
 ```bash
-# Use default ingredients
+# You'll be prompted for ingredients
 conductor run recipe.yaml
 
-# Specify custom ingredients
+# Or provide them directly
 conductor run recipe.yaml -i ingredients="salmon, asparagus, lemon"
 ```
 
