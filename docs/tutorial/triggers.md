@@ -104,6 +104,9 @@ Note that the workflow file itself hasn't changed from Part 3. We didn't add any
 For reference, save this as `examples/tutorial/04-triggers.yaml` (identical to 03-loops.yaml):
 
 ```conductor
+# This is the same workflow as 03-loops.yaml
+# Triggers are configured separately via: conductor triggers add schedule
+
 name: refined-meal-plan
 description: Generate and refine a meal plan until quality standards are met
 
@@ -131,18 +134,15 @@ steps:
   - id: refine
     type: loop
     max_iterations: 3
+    until: 'steps.critique.response contains "APPROVED"'
     steps:
       - id: critique
         type: llm
         model: balanced
         prompt: |
-          Review this meal plan:
+          Review this meal plan (iteration {{.loop.iteration}}):
 
-          {{if eq .loop.iteration 0}}
           {{.steps.draft.response}}
-          {{else}}
-          {{.steps.refine.improve.response}}
-          {{end}}
 
           Evaluate against these criteria:
           1. Nutritional balance
@@ -161,29 +161,16 @@ steps:
           Improve this meal plan based on the feedback:
 
           CURRENT PLAN:
-          {{if eq .loop.iteration 0}}
           {{.steps.draft.response}}
-          {{else}}
-          {{.steps.refine.improve.response}}
-          {{end}}
 
           FEEDBACK:
-          {{.steps.refine.critique.response}}
+          {{.steps.critique.response}}
 
           Create an improved version.
 
-    until: 'steps.critique.response contains "APPROVED"'
-
-  - id: save
-    file.write:
-      path: meal-plan.md
-      content: |
-        # {{.inputs.days}}-Day Meal Plan
-
-        {{.steps.refine.improve.response}}
-
 outputs:
   - name: meal_plan
+    type: string
     value: "{{.steps.refine.improve.response}}"
 ```
 

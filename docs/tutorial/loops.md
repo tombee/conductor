@@ -42,18 +42,15 @@ steps:
   - id: refine
     type: loop
     max_iterations: 3
+    until: 'steps.critique.response contains "APPROVED"'
     steps:
       - id: critique
         type: llm
         model: balanced
         prompt: |
-          Review this meal plan:
+          Review this meal plan (iteration {{.loop.iteration}}):
 
-          {{if eq .loop.iteration 0}}
           {{.steps.draft.response}}
-          {{else}}
-          {{.steps.refine.improve.response}}
-          {{end}}
 
           Evaluate against these criteria:
           1. Nutritional balance (proteins, vegetables, variety)
@@ -73,39 +70,19 @@ steps:
           Improve this meal plan based on the feedback:
 
           CURRENT PLAN:
-          {{if eq .loop.iteration 0}}
           {{.steps.draft.response}}
-          {{else}}
-          {{.steps.refine.improve.response}}
-          {{end}}
 
           FEEDBACK:
-          {{.steps.refine.critique.response}}
+          {{.steps.critique.response}}
 
           Create an improved version addressing all feedback points.
 
-    until: 'steps.critique.response contains "APPROVED"'
-
-  # Save final result
-  - id: save
-    file.write:
-      path: meal-plan.md
-      content: |
-        # {{.days}}-Day Meal Plan
-
-        {{if contains .steps.refine.critique.response "APPROVED"}}
-        {{.steps.refine.improve.response}}
-        {{else}}
-        {{.steps.draft.response}}
-        {{end}}
-
-        ---
-        *Refined through {{.loop.iteration}} iterations*
-
 outputs:
   - name: meal_plan
+    type: string
     value: "{{.steps.refine.improve.response}}"
   - name: iterations
+    type: string
     value: "{{.loop.iteration}}"
 ```
 
@@ -134,13 +111,8 @@ The `improve` step only runs if the critique didn't approve. This prevents unnec
 ### Accessing Loop State
 ```yaml
 {{.loop.iteration}}  # Current iteration (0-indexed)
-{{if eq .loop.iteration 0}}
-  {{.steps.draft.response}}  # First iteration uses draft
-{{else}}
-  {{.steps.refine.improve.response}}  # Later iterations use improved version
-{{end}}
 ```
-Use `.loop.iteration` to know which iteration you're on and reference the right content.
+Use `.loop.iteration` to know which iteration you're on. This is useful for logging or conditional logic.
 
 ## Try It
 
@@ -157,23 +129,17 @@ conductor run examples/tutorial/03-loops.yaml -i days=7
 
 Watch the iterations:
 ```
-[1/3] draft... OK
-[2/3] refine (iteration 1)...
+[1/2] draft... OK
+[2/2] refine (iteration 1)...
   - critique... OK
   - improve... OK
-[2/3] refine (iteration 2)...
+[2/2] refine (iteration 2)...
   - critique... APPROVED
-[3/3] save... OK
 ```
 
 ## Understanding the Output
 
-Check the final plan:
-```bash
-cat meal-plan.md
-```
-
-The plan should be better than the initial draft, with:
+The output shows the refined meal plan. It should be better than the initial draft, with:
 - Better nutritional balance
 - More efficient ingredient use
 - Improved variety

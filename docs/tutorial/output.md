@@ -97,17 +97,14 @@ steps:
   - id: refine
     type: loop
     max_iterations: 2
+    until: 'steps.critique.response contains "APPROVED"'
     steps:
       - id: critique
         type: llm
         model: fast
         prompt: |
           Quick review of this meal plan:
-          {{if eq .loop.iteration 0}}
           {{.steps.format.response}}
-          {{else}}
-          {{.steps.refine.improve.response}}
-          {{end}}
 
           Is it practical and well-organized? Reply APPROVED if yes.
 
@@ -116,16 +113,10 @@ steps:
         model: balanced
         when: 'not (steps.critique.response contains "APPROVED")'
         prompt: |
-          Improve: {{.steps.refine.critique.response}}
+          Improve: {{.steps.critique.response}}
 
           Current plan:
-          {{if eq .loop.iteration 0}}
           {{.steps.format.response}}
-          {{else}}
-          {{.steps.refine.improve.response}}
-          {{end}}
-
-    until: 'steps.critique.response contains "APPROVED"'
 
   # Always save locally
   - id: save_local
@@ -133,7 +124,6 @@ steps:
       path: meal-plan.md
       content: |
         # Weekly Meal Plan
-        Generated: {{now}}
 
         {{.steps.refine.improve.response}}
 
@@ -145,27 +135,12 @@ steps:
       url: "{{.webhook_url}}"
       headers:
         Content-Type: application/json
-      body: |
-        {
-          "text": "Weekly Meal Plan Ready!",
-          "blocks": [
-            {
-              "type": "section",
-              "text": {
-                "type": "mrkdwn",
-                "text": "{{.steps.refine.improve.response | replace "\n" "\\n" | replace "\"" "\\\""}}"
-              }
-            }
-          ]
-        }
+      body: '{"text": "Weekly Meal Plan Ready!"}'
 
 outputs:
   - name: meal_plan
     type: string
     value: "{{.steps.refine.improve.response}}"
-  - name: delivered
-    type: boolean
-    value: "{{ne .webhook_url \"\"}}"
 ```
 
 ## How It Works
@@ -184,11 +159,10 @@ The `when` condition makes delivery optional—it uses expression syntax, not te
 ```yaml
 http.request:
   method: POST
-  url: "{{.inputs.webhook_url}}"
+  url: "{{.webhook_url}}"
   headers:
     Content-Type: application/json
-  body: |
-    {"text": "..."}
+  body: '{"text": "..."}'
 ```
 The `http.request` action sends data to any HTTP endpoint—webhooks, APIs, notification services.
 
@@ -228,17 +202,17 @@ For email, you could modify the delivery step:
 
 ```yaml
 - id: deliver
-  when: "{{ne .inputs.email \"\"}}"
+  when: 'email != ""'
   shell.run:
     command:
       - mail
       - -s
       - "Weekly Meal Plan"
-      - "{{.inputs.email}}"
+      - "{{.email}}"
     stdin: "{{.steps.refine.improve.response}}"
 ```
 
-(Requires `mail` command configured on your system)
+(Requires `mail` command configured on your system and an `email` input defined)
 
 ## Pattern Spotlight: Multi-Channel Delivery
 

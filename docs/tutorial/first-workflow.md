@@ -81,7 +81,7 @@ Each step needs:
 
 ```yaml
 prompt: |
-  Suggest one quick recipe that can be made in {{.inputs.minutes}} minutes...
+  Suggest one quick recipe that can be made in {{.minutes}} minutes...
 ```
 
 Templates use `{{.path.to.data}}` syntax:

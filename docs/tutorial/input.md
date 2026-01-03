@@ -55,6 +55,7 @@ steps:
   - id: refine
     type: loop
     max_iterations: 2
+    until: 'steps.critique.response contains "APPROVED"'
     steps:
       - id: critique
         type: llm
@@ -66,11 +67,7 @@ steps:
           {{.steps.read_pantry.response}}
 
           MEAL PLAN:
-          {{if eq .loop.iteration 0}}
           {{.steps.plan.response}}
-          {{else}}
-          {{.steps.refine.improve.response}}
-          {{end}}
 
           Check:
           1. Are pantry ingredients well-utilized?
@@ -90,31 +87,15 @@ steps:
           PANTRY: {{.steps.read_pantry.response}}
 
           CURRENT PLAN:
-          {{if eq .loop.iteration 0}}
           {{.steps.plan.response}}
-          {{else}}
-          {{.steps.refine.improve.response}}
-          {{end}}
 
-          FEEDBACK: {{.steps.refine.critique.response}}
+          FEEDBACK: {{.steps.critique.response}}
 
           Create an improved version that better uses pantry ingredients.
 
-    until: 'steps.critique.response contains "APPROVED"'
-
-  # Save results
-  - id: save
-    file.write:
-      path: meal-plan.md
-      content: |
-        # {{.inputs.days}}-Day Meal Plan
-
-        ## Based on Your Pantry
-
-        {{.steps.refine.improve.response}}
-
 outputs:
   - name: meal_plan
+    type: string
     value: "{{.steps.refine.improve.response}}"
 ```
 

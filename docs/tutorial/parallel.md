@@ -66,13 +66,9 @@ steps:
       Create a nicely formatted daily meal plan with these three meals.
       Add a brief shopping list at the end.
 
-  - id: save
-    file.write:
-      path: daily-meals.md
-      content: "{{.steps.combine.response}}"
-
 outputs:
   - name: meal_plan
+    type: string
     value: "{{.steps.combine.response}}"
 ```
 
