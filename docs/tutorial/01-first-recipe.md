@@ -42,4 +42,4 @@ The LLM step runs your prompt through Claude and returns the generated text.
 
 ## Next
 
-[Step 2: Better Recipe](./02-better-recipe.md) - Add inputs and outputs to make this workflow more flexible.
+[Step 2: Better Recipe](./02-better-recipe.md) - Add inputs and outputs to parameterize the workflow.

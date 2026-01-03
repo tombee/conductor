@@ -1,6 +1,6 @@
 # Conductor
 
-Conductor is a workflow automation engine that combines LLMs, APIs, and local actions into YAML workflows.
+Conductor combines LLMs, APIs, and local actions into YAML workflows.
 
 ## What Can I Build?
 

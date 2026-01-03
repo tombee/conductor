@@ -4,7 +4,7 @@ Accept specific ingredients as input and output structured data.
 
 ## Goal
 
-Make the recipe generator flexible by accepting ingredients and outputting structured JSON instead of plain text.
+Accept ingredients as input and output structured JSON instead of plain text.
 
 ## The Workflow
 
