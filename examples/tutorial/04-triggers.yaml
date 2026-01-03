@@ -68,7 +68,3 @@ steps:
 
           Create an improved version.
 
-outputs:
-  - name: meal_plan
-    type: string
-    value: "{{.steps.refine.improve.response}}"

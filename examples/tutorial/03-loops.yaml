@@ -62,10 +62,3 @@ steps:
 
           Create an improved version addressing all feedback points.
 
-outputs:
-  - name: meal_plan
-    type: string
-    value: "{{.steps.refine.improve.response}}"
-  - name: iterations
-    type: string
-    value: "{{.loop.iteration}}"

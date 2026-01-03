@@ -108,7 +108,3 @@ steps:
         Content-Type: application/json
       body: '{"text": "Weekly Meal Plan Ready!"}'
 
-outputs:
-  - name: meal_plan
-    type: string
-    value: "{{.steps.refine.improve.response}}"
