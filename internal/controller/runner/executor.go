@@ -212,7 +212,20 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 			run.mu.Lock()
 			run.Progress.CurrentStep = stepID
 			run.Progress.Completed = stepIndex
+			run.Progress.Total = total
 			run.mu.Unlock()
+
+			// Get step name for display (use Name if set, otherwise use ID)
+			stepName := stepID
+			if stepIndex < len(run.definition.Steps) {
+				step := run.definition.Steps[stepIndex]
+				if step.Name != "" {
+					stepName = step.Name
+				}
+			}
+
+			// Send step_start event for CLI progress display
+			r.addStepStart(run, stepID, stepName, stepIndex, total)
 
 			// Notify debug adapter if active
 			if debugAdapter != nil {
@@ -240,20 +253,58 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 				}
 			}
 
+			// Get step name and compute status for events
+			stepName := stepID
+			stepIndex := -1
+			for i, step := range run.definition.Steps {
+				if step.ID == stepID {
+					stepIndex = i
+					if step.Name != "" {
+						stepName = step.Name
+					}
+					break
+				}
+			}
+
+			// Determine step status
+			status := "success"
+			errMsg := ""
+			if err != nil {
+				status = "error"
+				errMsg = err.Error()
+			} else if result != nil {
+				if result.Status == workflow.StepStatusSkipped {
+					status = "skipped"
+				} else if result.Status == workflow.StepStatusFailed {
+					status = "failed"
+					if result.Error != "" {
+						errMsg = result.Error
+					}
+				}
+			}
+
+			// Calculate tokens, duration, and output
+			var durationMs int64
+			var costUSD float64
+			var tokens int
+			var output map[string]any
+			if result != nil {
+				durationMs = result.Duration.Milliseconds()
+				costUSD = result.CostUSD
+				output = result.Output
+				if result.TokenUsage != nil {
+					tokens = result.TokenUsage.InputTokens + result.TokenUsage.OutputTokens
+				}
+			}
+
+			// Send step_complete event for CLI progress display
+			r.addStepComplete(run, stepID, stepName, status, output, durationMs, costUSD, tokens, errMsg)
+
 			// Save step result to backend if available
 			if result != nil {
 				if be := r.getBackend(); be != nil {
 					// Check if backend supports step result storage
 					if stepStore, ok := be.(backend.StepResultStore); ok {
-						// Find step index in workflow definition
-						stepIndex := -1
-						for i, step := range run.definition.Steps {
-							if step.ID == stepID {
-								stepIndex = i
-								break
-							}
-						}
-
 						backendResult := &backend.StepResult{
 							RunID:     run.ID,
 							StepID:    stepID,
@@ -280,14 +331,6 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 			r.mu.RUnlock()
 
 			if metricsCollector != nil && result != nil {
-				status := "success"
-				if err != nil {
-					status = "error"
-				} else if result.Status == workflow.StepStatusSkipped {
-					status = "skipped"
-				} else if result.Status == workflow.StepStatusFailed {
-					status = "failed"
-				}
 				metricsCollector.RecordStepComplete(run.ctx, run.WorkflowID, stepID, status, result.Duration)
 			}
 		},
@@ -332,15 +375,26 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 			run.Error = "cancelled by user"
 		} else if err == context.DeadlineExceeded {
 			run.Status = RunStatusFailed
-			run.Error = "step timed out"
+			currentStep := run.Progress.CurrentStep
+			if currentStep != "" {
+				run.Error = fmt.Sprintf("step '%s' timed out", currentStep)
+			} else {
+				run.Error = "step timed out"
+			}
 		} else {
 			run.Status = RunStatusFailed
 			run.Error = err.Error()
 		}
 	} else {
 		run.Status = RunStatusCompleted
-		if result != nil && result.StepOutput != nil {
-			run.Output = stepOutputToMap(*result.StepOutput)
+		if result != nil {
+			// Try to resolve workflow-defined outputs first
+			if workflowOutputs := resolveWorkflowOutputs(run.definition, result.StepOutputs); workflowOutputs != nil {
+				run.Output = workflowOutputs
+			} else if result.StepOutput != nil {
+				// Fall back to last step output if no workflow outputs defined
+				run.Output = stepOutputToMap(*result.StepOutput)
+			}
 		}
 	}
 
@@ -368,7 +422,8 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 		_ = r.lifecycle.CleanupCheckpoint(context.Background(), run.ID)
 	}
 
-	r.addLog(run, "info", fmt.Sprintf("Workflow %s: %s", run.Status, run.Workflow), "")
+	// Send status event for CLI to display final state
+	r.addStatus(run, status, run.Error)
 }
 
 // errorToString converts an error to a string, returning empty string if nil.
@@ -377,4 +432,43 @@ func errorToString(err error) string {
 		return ""
 	}
 	return err.Error()
+}
+
+// resolveWorkflowOutputs resolves workflow output definitions using step outputs.
+// If the workflow has outputs defined, resolve each output template and return a map.
+// If no outputs are defined, returns nil to indicate fallback to step output.
+func resolveWorkflowOutputs(def *workflow.Definition, stepOutputs map[string]any) map[string]any {
+	if len(def.Outputs) == 0 {
+		return nil
+	}
+
+	// Build template context with step outputs
+	ctx := workflow.NewTemplateContext()
+	for stepID, output := range stepOutputs {
+		// SetStepOutput expects map[string]interface{}
+		if outputMap, ok := output.(map[string]interface{}); ok {
+			ctx.SetStepOutput(stepID, outputMap)
+		} else if outputMap, ok := output.(map[string]any); ok {
+			// Convert map[string]any to map[string]interface{}
+			converted := make(map[string]interface{}, len(outputMap))
+			for k, v := range outputMap {
+				converted[k] = v
+			}
+			ctx.SetStepOutput(stepID, converted)
+		}
+	}
+
+	outputs := make(map[string]any)
+	for _, outputDef := range def.Outputs {
+		// Resolve the output value template
+		value, err := workflow.ResolveTemplate(outputDef.Value, ctx)
+		if err != nil {
+			// On error, use the raw template as value
+			outputs[outputDef.Name] = outputDef.Value
+			continue
+		}
+		outputs[outputDef.Name] = value
+	}
+
+	return outputs
 }

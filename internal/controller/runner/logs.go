@@ -71,6 +71,7 @@ func NewLogAggregator() *LogAggregator {
 func (l *LogAggregator) AddLog(run *Run, level, message, stepID string) {
 	entry := LogEntry{
 		Timestamp:     time.Now(),
+		Type:          "log",
 		Level:         level,
 		Message:       message,
 		StepID:        stepID,
@@ -89,6 +90,65 @@ func (l *LogAggregator) AddLog(run *Run, level, message, stepID string) {
 // AddLogEntry adds a pre-constructed log entry to a run and notifies subscribers.
 // Thread-safe: acquires run.mu for log slice modification.
 func (l *LogAggregator) AddLogEntry(run *Run, entry LogEntry) {
+	run.mu.Lock()
+	run.Logs = append(run.Logs, entry)
+	run.mu.Unlock()
+
+	l.notifySubscribers(run.ID, entry)
+}
+
+// AddStepStart sends a step_start event to notify that a step has begun.
+func (l *LogAggregator) AddStepStart(run *Run, stepID, stepName string, stepIndex, totalSteps int) {
+	entry := LogEntry{
+		Timestamp:     time.Now(),
+		Type:          "step_start",
+		StepID:        stepID,
+		StepName:      stepName,
+		StepIndex:     stepIndex,
+		TotalSteps:    totalSteps,
+		CorrelationID: run.CorrelationID,
+	}
+
+	run.mu.Lock()
+	run.Logs = append(run.Logs, entry)
+	run.mu.Unlock()
+
+	l.notifySubscribers(run.ID, entry)
+}
+
+// AddStepComplete sends a step_complete event with execution results.
+func (l *LogAggregator) AddStepComplete(run *Run, stepID, stepName, status string, output map[string]any, durationMs int64, costUSD float64, tokens int, errMsg string) {
+	entry := LogEntry{
+		Timestamp:     time.Now(),
+		Type:          "step_complete",
+		StepID:        stepID,
+		StepName:      stepName,
+		Status:        status,
+		Output:        output,
+		DurationMs:    durationMs,
+		CostUSD:       costUSD,
+		Tokens:        tokens,
+		Error:         errMsg,
+		CorrelationID: run.CorrelationID,
+	}
+
+	run.mu.Lock()
+	run.Logs = append(run.Logs, entry)
+	run.mu.Unlock()
+
+	l.notifySubscribers(run.ID, entry)
+}
+
+// AddStatus sends a status event when the run status changes.
+func (l *LogAggregator) AddStatus(run *Run, status, errMsg string) {
+	entry := LogEntry{
+		Timestamp:     time.Now(),
+		Type:          "status",
+		Status:        status,
+		Error:         errMsg,
+		CorrelationID: run.CorrelationID,
+	}
+
 	run.mu.Lock()
 	run.Logs = append(run.Logs, entry)
 	run.mu.Unlock()

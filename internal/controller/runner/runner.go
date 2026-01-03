@@ -137,11 +137,21 @@ type Progress struct {
 
 // LogEntry represents a log message from a run.
 type LogEntry struct {
-	Timestamp     time.Time `json:"timestamp"`
-	Level         string    `json:"level"`
-	Message       string    `json:"message"`
-	StepID        string    `json:"step_id,omitempty"`
-	CorrelationID string    `json:"correlation_id,omitempty"` // Correlation ID for distributed tracing
+	Timestamp     time.Time      `json:"timestamp"`
+	Type          string         `json:"type,omitempty"`             // Event type: log, step_start, step_complete, status
+	Level         string         `json:"level,omitempty"`            // Log level for type=log entries
+	Message       string         `json:"message,omitempty"`          // Log message or status message
+	StepID        string         `json:"step_id,omitempty"`          // Step identifier
+	StepName      string         `json:"step_name,omitempty"`        // Human-readable step name
+	StepIndex     int            `json:"step_index,omitempty"`       // 0-based step index
+	TotalSteps    int            `json:"total_steps,omitempty"`      // Total number of steps
+	Status        string         `json:"status,omitempty"`           // For status events: running, completed, failed
+	Output        map[string]any `json:"output,omitempty"`           // Step output for step_complete events
+	CostUSD       float64        `json:"cost_usd,omitempty"`         // Cost for step_complete events
+	Tokens        int            `json:"tokens,omitempty"`           // Total tokens for step_complete events
+	DurationMs    int64          `json:"duration_ms,omitempty"`      // Step duration in milliseconds
+	CorrelationID string         `json:"correlation_id,omitempty"`   // Correlation ID for distributed tracing
+	Error         string         `json:"error,omitempty"`            // Error message if failed
 }
 
 // Config contains runner configuration.
@@ -584,6 +594,21 @@ func (r *Runner) Stop(ctx context.Context) error {
 // addLog is a helper that adds a log entry via the LogAggregator.
 func (r *Runner) addLog(run *Run, level, message, stepID string) {
 	r.logs.AddLog(run, level, message, stepID)
+}
+
+// addStepStart sends a step_start event via the LogAggregator.
+func (r *Runner) addStepStart(run *Run, stepID, stepName string, stepIndex, totalSteps int) {
+	r.logs.AddStepStart(run, stepID, stepName, stepIndex, totalSteps)
+}
+
+// addStepComplete sends a step_complete event via the LogAggregator.
+func (r *Runner) addStepComplete(run *Run, stepID, stepName, status string, output map[string]any, durationMs int64, costUSD float64, tokens int, errMsg string) {
+	r.logs.AddStepComplete(run, stepID, stepName, status, output, durationMs, costUSD, tokens, errMsg)
+}
+
+// addStatus sends a status event via the LogAggregator.
+func (r *Runner) addStatus(run *Run, status, errMsg string) {
+	r.logs.AddStatus(run, status, errMsg)
 }
 
 // Internal accessors for executor.go
