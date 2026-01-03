@@ -26,3 +26,4 @@ outputs:
     type: string
     value: "{{.steps.generate.response}}"
     description: The generated recipe
+    format: markdown

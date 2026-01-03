@@ -683,6 +683,10 @@ type OutputDefinition struct {
 
 	// Description explains what this output represents
 	Description string `yaml:"description,omitempty" json:"description,omitempty"`
+
+	// Format specifies how the output should be formatted and validated.
+	// Supported formats: string (default), number, markdown, json, code, code:<language>
+	Format string `yaml:"format,omitempty" json:"format,omitempty"`
 }
 
 // AgentDefinition describes an agent with provider preferences and capability requirements.
@@ -1944,6 +1948,43 @@ func (o *OutputDefinition) Validate() error {
 
 	if o.Value == "" {
 		return fmt.Errorf("output value expression is required")
+	}
+
+	// Validate format if specified
+	if o.Format != "" {
+		if err := o.validateFormat(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// validateFormat checks if the format value is valid.
+func (o *OutputDefinition) validateFormat() error {
+	format := strings.ToLower(o.Format)
+
+	// Check for code with language (e.g., "code:python")
+	if strings.HasPrefix(format, "code:") {
+		// Language is valid as long as it's not empty after the colon
+		lang := strings.TrimPrefix(format, "code:")
+		if lang == "" {
+			return fmt.Errorf("invalid format: code language cannot be empty (use 'code' for no highlighting or 'code:<language>')")
+		}
+		return nil
+	}
+
+	// Check for basic formats
+	validFormats := map[string]bool{
+		"string":   true,
+		"number":   true,
+		"markdown": true,
+		"json":     true,
+		"code":     true,
+	}
+
+	if !validFormats[format] {
+		return fmt.Errorf("invalid format: %s (must be one of: string, number, markdown, json, code, code:<language>)", o.Format)
 	}
 
 	return nil
