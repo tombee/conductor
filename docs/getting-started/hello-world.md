@@ -25,7 +25,7 @@ Expected output:
 Running: hello-world
 [1/1] greet... OK
 
-Greetings, fellow traveler of the digital realm...
+Hello! I hope you're having a great day.
 ```
 
 ## Troubleshooting
