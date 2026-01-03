@@ -165,7 +165,7 @@ func wrapWithRetry(provider llm.Provider) llm.Provider {
 		MaxDelay:        time.Second,
 		Multiplier:      2.0,
 		Jitter:          0.1,
-		AbsoluteTimeout: 10 * time.Second,
+		AbsoluteTimeout: 5 * time.Minute, // LLM calls can take 30s+ for complex prompts
 		RetryableErrors: nil,
 	}
 
