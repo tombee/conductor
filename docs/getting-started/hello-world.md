@@ -55,4 +55,4 @@ export PATH=$PATH:$(go env GOPATH)/bin
 
 ## Next Steps
 
-Ready to build something real? Start the [Tutorial](../tutorial/) to create a complete workflow from scratch.
+Continue with the [Tutorial](../tutorial/) to build a complete workflow.

@@ -69,10 +69,10 @@ EOF
 conductor run hello.yaml
 ```
 
-If you see AI-generated output, you're ready to go!
+If you see output, your setup is complete.
 
 ## Next Steps
 
-- [Hello World](hello-world) - Verify your setup (30 seconds)
-- [Tutorial](../tutorial/) - Learn Conductor by building a real workflow (90 minutes)
-- [Examples](../examples/) - Copy-paste ready workflows
+- [Hello World](hello-world) - Verify your setup
+- [Tutorial](../tutorial/) - Build a complete workflow
+- [Examples](../examples/) - Production-ready workflows
