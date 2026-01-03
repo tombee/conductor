@@ -475,17 +475,36 @@ func fetchRunOutput(ctx context.Context, c *client.Client, runID string) (string
 	var output string
 
 	// The output endpoint returns the output directly (e.g., {"response": "..."})
-	// Try common output field names
+	// Try common output field names first
 	if outputStr, ok := outputResp["response"].(string); ok {
 		output = outputStr
 	} else if outputStr, ok := outputResp["result"].(string); ok {
 		output = outputStr
 	} else if outputStr, ok := outputResp["output"].(string); ok {
 		output = outputStr
-	} else if len(outputResp) > 0 {
-		// Marshal the whole output object if we have data but no recognized fields
-		outputJSON, _ := json.MarshalIndent(outputResp, "", "  ")
-		output = string(outputJSON)
+	} else if len(outputResp) == 1 {
+		// Single output field - extract the value directly for clean display
+		for _, v := range outputResp {
+			if s, ok := v.(string); ok {
+				output = s
+			} else {
+				// Non-string single value - format as JSON
+				outputJSON, _ := json.MarshalIndent(v, "", "  ")
+				output = string(outputJSON)
+			}
+		}
+	} else if len(outputResp) > 1 {
+		// Multiple outputs - format each on its own line
+		var parts []string
+		for k, v := range outputResp {
+			if s, ok := v.(string); ok {
+				parts = append(parts, fmt.Sprintf("## %s\n\n%s", k, s))
+			} else {
+				vJSON, _ := json.MarshalIndent(v, "", "  ")
+				parts = append(parts, fmt.Sprintf("## %s\n\n%s", k, string(vJSON)))
+			}
+		}
+		output = strings.Join(parts, "\n\n")
 	}
 
 	// Fetch run details for stats

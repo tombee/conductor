@@ -567,6 +567,31 @@ const (
 	StepTypeWorkflow StepType = "workflow"
 )
 
+// Default step timeouts in seconds.
+// These are applied when a step does not specify an explicit timeout.
+const (
+	// DefaultLLMStepTimeout is the default timeout for LLM steps (2 minutes).
+	// LLM calls involve network latency and model inference, which can take
+	// 10-30+ seconds depending on prompt complexity and model tier.
+	DefaultLLMStepTimeout = 120
+
+	// DefaultActionStepTimeout is the default timeout for action and other steps (1 minute).
+	// This covers HTTP calls, shell commands, file operations, etc.
+	DefaultActionStepTimeout = 60
+)
+
+// Default retry configuration values.
+const (
+	// DefaultRetryMaxAttempts is the default number of retry attempts.
+	DefaultRetryMaxAttempts = 2
+
+	// DefaultRetryBackoffBase is the base backoff duration in seconds.
+	DefaultRetryBackoffBase = 1
+
+	// DefaultRetryBackoffMultiplier is the exponential backoff multiplier.
+	DefaultRetryBackoffMultiplier = 2.0
+)
+
 // ModelTier represents the model capability tier for LLM steps.
 // This abstraction allows workflow authors to select models based on task
 // requirements without coupling to specific provider model names.
@@ -1299,17 +1324,28 @@ func (d *Definition) ApplyDefaults() error {
 	for i := range d.Steps {
 		step := &d.Steps[i]
 
-		// Default timeout: 30 seconds
+		// Default timeout based on step type:
+		// - Loop/parallel steps: no default timeout (max_iterations provides safety limit)
+		// - LLM steps: DefaultLLMStepTimeout (LLM calls can take 30+ seconds each)
+		// - Other steps: DefaultActionStepTimeout
 		if step.Timeout == 0 {
-			step.Timeout = 30
+			switch step.Type {
+			case StepTypeLoop, StepTypeParallel:
+				// No default timeout for loop/parallel - they have max_iterations
+				// and will inherit the workflow-level timeout
+			case StepTypeLLM:
+				step.Timeout = DefaultLLMStepTimeout
+			default:
+				step.Timeout = DefaultActionStepTimeout
+			}
 		}
 
-		// Default retry configuration: max_attempts=2, backoff_base=1, backoff_multiplier=2.0
+		// Default retry configuration
 		if step.Retry == nil {
 			step.Retry = &RetryDefinition{
-				MaxAttempts:       2,
-				BackoffBase:       1,
-				BackoffMultiplier: 2.0,
+				MaxAttempts:       DefaultRetryMaxAttempts,
+				BackoffBase:       DefaultRetryBackoffBase,
+				BackoffMultiplier: DefaultRetryBackoffMultiplier,
 			}
 		}
 
@@ -1326,8 +1362,48 @@ func (d *Definition) ApplyDefaults() error {
 				return fmt.Errorf("step %s: %w", step.ID, err)
 			}
 		}
+
+		// Recursively apply defaults to nested steps (loop, parallel)
+		for j := range step.Steps {
+			nested := &step.Steps[j]
+			applyStepDefaults(nested)
+		}
 	}
 	return nil
+}
+
+// applyStepDefaults applies default values to a single step.
+func applyStepDefaults(step *StepDefinition) {
+	// Default timeout based on step type
+	if step.Timeout == 0 {
+		switch step.Type {
+		case StepTypeLoop, StepTypeParallel:
+			// No default timeout for loop/parallel
+		case StepTypeLLM:
+			step.Timeout = DefaultLLMStepTimeout
+		default:
+			step.Timeout = DefaultActionStepTimeout
+		}
+	}
+
+	// Default retry configuration
+	if step.Retry == nil {
+		step.Retry = &RetryDefinition{
+			MaxAttempts:       DefaultRetryMaxAttempts,
+			BackoffBase:       DefaultRetryBackoffBase,
+			BackoffMultiplier: DefaultRetryBackoffMultiplier,
+		}
+	}
+
+	// Default model tier for LLM steps
+	if step.Type == StepTypeLLM && step.Model == "" {
+		step.Model = string(ModelTierBalanced)
+	}
+
+	// Recursively apply to nested steps
+	for i := range step.Steps {
+		applyStepDefaults(&step.Steps[i])
+	}
 }
 
 // autoGenerateStepIDs generates IDs for steps that don't have explicit IDs.
