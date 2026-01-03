@@ -69,6 +69,7 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	noCache := r.URL.Query().Get("no_cache") == "true"
 	workspace := r.URL.Query().Get("workspace")
 	profile := r.URL.Query().Get("profile")
+	workflowDir := r.URL.Query().Get("workflow_dir")
 
 	// Parse runtime override parameters
 	provider := r.URL.Query().Get("provider")
@@ -107,6 +108,7 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 			"no_cache":         true,
 			"workspace":        true,
 			"profile":          true,
+			"workflow_dir":     true,
 			"provider":         true,
 			"model":            true,
 			"timeout":          true,
@@ -138,6 +140,7 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 			RemoteRef:        remoteRef,
 			NoCache:          noCache,
 			Inputs:           inputs,
+			WorkflowDir:      workflowDir,
 			Workspace:        workspace,
 			Profile:          profile,
 			Provider:         provider,
@@ -248,6 +251,7 @@ func (h *RunsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	run, err := h.runner.Submit(r.Context(), runner.SubmitRequest{
 		WorkflowYAML:     workflowYAML,
 		Inputs:           req.Inputs,
+		WorkflowDir:      workflowDir,
 		Workspace:        submitWorkspace,
 		Profile:          submitProfile,
 		Provider:         provider,

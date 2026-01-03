@@ -85,6 +85,9 @@ type Run struct {
 	LogLevel         string   `json:"log_level,omitempty"`         // Log level override
 	DebugBreakpoints []string `json:"debug_breakpoints,omitempty"` // Step IDs where execution should pause
 
+	// Workflow source
+	WorkflowDir string `json:"workflow_dir,omitempty"` // Directory containing the workflow file (for relative path resolution)
+
 	// Internal
 	mu         sync.RWMutex // Protects mutable fields (Status, Progress, Output, Error, etc.)
 	ctx        context.Context
@@ -171,6 +174,9 @@ type RunOverrides struct {
 type SubmitRequest struct {
 	WorkflowYAML []byte
 	Inputs       map[string]any
+	// WorkflowDir is the directory containing the workflow file.
+	// Used for resolving relative paths in file.read, shell.run, etc.
+	WorkflowDir string
 	// RemoteRef is an optional remote reference (e.g., github:user/repo)
 	// If provided, WorkflowYAML should be empty (controller will fetch it)
 	RemoteRef string
@@ -383,6 +389,11 @@ func (r *Runner) Submit(ctx context.Context, req SubmitRequest) (*RunSnapshot, e
 	run, err := r.state.CreateRun(ctx, def, req.Inputs, sourceURL, workspace, profile, resolvedBindings, overrides)
 	if err != nil {
 		return nil, err
+	}
+
+	// Set workflow directory for action path resolution (file.read, shell.run, etc.)
+	if req.WorkflowDir != "" {
+		run.WorkflowDir = req.WorkflowDir
 	}
 
 	// Increment queue depth for metrics

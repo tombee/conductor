@@ -29,6 +29,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/tombee/conductor/internal/config"
+
+	// Import operation package to trigger init() which registers action factories
+	// This enables file.read, shell.run, and other builtin actions
+	_ "github.com/tombee/conductor/internal/operation"
 	"github.com/tombee/conductor/internal/controller/api"
 	"github.com/tombee/conductor/internal/controller/auth"
 	"github.com/tombee/conductor/internal/controller/backend"
@@ -181,13 +185,32 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 	}
 
 	// Create LLM provider for workflow execution
-	// Use the default provider from config
-	if cfg.DefaultProvider != "" {
-		llmProvider, err := internalllm.CreateProvider(cfg, cfg.DefaultProvider)
+	// Use the "balanced" tier to determine the default provider
+	var providerName string
+	if balancedTier, ok := cfg.Tiers["balanced"]; ok {
+		// Tier format is "provider/model", extract provider name
+		if idx := strings.Index(balancedTier, "/"); idx > 0 {
+			providerName = balancedTier[:idx]
+		}
+	}
+	// Fall back to checking other tiers if balanced isn't set
+	if providerName == "" {
+		for _, tier := range []string{"fast", "strategic"} {
+			if tierRef, ok := cfg.Tiers[tier]; ok {
+				if idx := strings.Index(tierRef, "/"); idx > 0 {
+					providerName = tierRef[:idx]
+					break
+				}
+			}
+		}
+	}
+
+	if providerName != "" {
+		llmProvider, err := internalllm.CreateProvider(cfg, providerName)
 		if err != nil {
 			logger.Warn("failed to create LLM provider for workflow execution",
 				internallog.Error(err),
-				slog.String("provider", cfg.DefaultProvider))
+				slog.String("provider", providerName))
 			logger.Warn("workflows requiring LLM steps may fail without a configured provider")
 		} else {
 			// Create the workflow executor adapter
@@ -198,11 +221,11 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 			r.SetAdapter(executionAdapter)
 
 			logger.Info("workflow execution adapter initialized",
-				slog.String("provider", cfg.DefaultProvider))
+				slog.String("provider", providerName))
 		}
 	} else {
-		logger.Warn("no default LLM provider configured",
-			slog.String("hint", "set default_provider in config to enable LLM workflow steps"))
+		logger.Warn("no LLM provider configured",
+			slog.String("hint", "run 'conductor provider add' to configure a provider"))
 	}
 
 	// Create scheduler if enabled

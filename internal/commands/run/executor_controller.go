@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -47,6 +48,7 @@ func runWorkflowViaController(workflowPath string, inputArgs []string, inputFile
 
 	var data []byte
 	var isRemote bool
+	var workflowDir string
 
 	// Check if this is a remote reference
 	if isRemoteWorkflow(workflowPath) {
@@ -63,6 +65,9 @@ func runWorkflowViaController(workflowPath string, inputArgs []string, inputFile
 		if err != nil {
 			return shared.NewInvalidWorkflowError("failed to resolve workflow path", err)
 		}
+
+		// Extract workflow directory for action path resolution (file.read, shell.run, etc.)
+		workflowDir = filepath.Dir(resolvedPath)
 
 		// Read workflow file
 		data, err = os.ReadFile(resolvedPath)
@@ -207,6 +212,11 @@ func runWorkflowViaController(workflowPath string, inputArgs []string, inputFile
 		if noCache {
 			params.Add("no_cache", "true")
 		}
+	}
+
+	// Add workflow directory for action path resolution (file.read, shell.run, etc.)
+	if workflowDir != "" {
+		params.Add("workflow_dir", workflowDir)
 	}
 
 	// Add workspace and profile parameters

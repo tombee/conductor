@@ -38,6 +38,10 @@ type ExecutionOptions struct {
 	// RunID is the unique identifier for this run (for logging and tracking)
 	RunID string
 
+	// WorkflowDir is the directory containing the workflow file.
+	// Used for resolving relative paths in file.read, shell.run, etc.
+	WorkflowDir string
+
 	// OnStepStart is called when a step begins execution.
 	// stepID is the step identifier, stepIndex is 0-based, total is the total step count.
 	OnStepStart func(stepID string, stepIndex int, total int)
@@ -96,6 +100,14 @@ func NewExecutorAdapter(executor *workflow.Executor) *ExecutorAdapter {
 // ExecuteWorkflow implements ExecutionAdapter by executing each step in sequence.
 func (a *ExecutorAdapter) ExecuteWorkflow(ctx context.Context, def *workflow.Definition, inputs map[string]any, opts ExecutionOptions) (*ExecutionResult, error) {
 	startTime := time.Now()
+
+	// Configure workflow directory for action path resolution
+	// This enables file.read, shell.run, etc. to resolve relative paths
+	if opts.WorkflowDir != "" {
+		a.mu.Lock()
+		a.executor.WithWorkflowDir(opts.WorkflowDir)
+		a.mu.Unlock()
+	}
 
 	// Build workflow context (same pattern as CLI in internal/cli/run.go)
 	templateCtx := workflow.NewTemplateContext()

@@ -206,7 +206,8 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 	}
 
 	opts := ExecutionOptions{
-		RunID: run.ID,
+		RunID:       run.ID,
+		WorkflowDir: run.WorkflowDir,
 		OnStepStart: func(stepID string, stepIndex int, total int) {
 			run.mu.Lock()
 			run.Progress.CurrentStep = stepID
