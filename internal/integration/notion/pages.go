@@ -238,6 +238,7 @@ func (c *NotionIntegration) upsertPage(ctx context.Context, inputs map[string]in
 	}
 
 	parentID, _ := inputs["parent_id"].(string)
+	title, _ := inputs["title"].(string)
 
 	// Validate parent ID format
 	if !isValidNotionID(parentID) {
@@ -248,17 +249,116 @@ func (c *NotionIntegration) upsertPage(ctx context.Context, inputs map[string]in
 		}
 	}
 
-	// Search for existing page with matching title under parent
-	// For MVP, we'll attempt to create and handle conflicts
-	// A more robust implementation would query child pages first
-	result, err := c.createPage(ctx, inputs)
+	// Search for existing pages with matching title under parent
+	// Use Notion's search API to find pages with this title
+	searchURL, err := c.BuildURL("/search", nil)
 	if err != nil {
-		// If creation fails due to existing page, we could query and update
-		// For now, return the error
 		return nil, err
 	}
 
-	return result, nil
+	searchReq := map[string]interface{}{
+		"query": title,
+		"filter": map[string]interface{}{
+			"value":    "page",
+			"property": "object",
+		},
+	}
+
+	searchBody, err := marshalRequest(searchReq)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.ExecuteRequest(ctx, "POST", searchURL, c.defaultHeaders(), searchBody)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := ParseError(resp); err != nil {
+		return nil, err
+	}
+
+	// Parse search results
+	var searchResults struct {
+		Results []Page `json:"results"`
+	}
+	if err := c.ParseJSONResponse(resp, &searchResults); err != nil {
+		return nil, err
+	}
+
+	// Filter results to exact title match within parent scope
+	var matchingPages []Page
+	for _, page := range searchResults.Results {
+		// Check if page has matching title (exact, case-sensitive)
+		if pageTitle := extractPageTitle(page.Properties); pageTitle == title {
+			// Check if parent matches
+			if page.Parent.PageID == parentID || page.Parent.DatabaseID == parentID {
+				matchingPages = append(matchingPages, page)
+			}
+		}
+	}
+
+	switch len(matchingPages) {
+	case 0:
+		// No match found - create new page
+		return c.createPage(ctx, inputs)
+
+	case 1:
+		// Exactly one match - update existing page
+		updateInputs := map[string]interface{}{
+			"page_id": matchingPages[0].ID,
+		}
+		// Copy properties if provided
+		if props, ok := inputs["properties"]; ok {
+			updateInputs["properties"] = props
+		}
+		if icon, ok := inputs["icon"]; ok {
+			updateInputs["icon"] = icon
+		}
+		if cover, ok := inputs["cover"]; ok {
+			updateInputs["cover"] = cover
+		}
+		return c.updatePage(ctx, updateInputs)
+
+	default:
+		// Multiple matches - return error directing user to use explicit page_id
+		return nil, &NotionError{
+			ErrorCode: "validation_error",
+			Message:   fmt.Sprintf("multiple pages found with title %q under parent. Use explicit page_id instead of upsert_page", title),
+			Category:  ErrorCategoryValidation,
+		}
+	}
+}
+
+// extractPageTitle extracts the title from page properties.
+func extractPageTitle(properties map[string]interface{}) string {
+	titleProp, ok := properties["title"]
+	if !ok {
+		return ""
+	}
+
+	titleMap, ok := titleProp.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+
+	titleArray, ok := titleMap["title"].([]interface{})
+	if !ok || len(titleArray) == 0 {
+		return ""
+	}
+
+	firstTitle, ok := titleArray[0].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+
+	textMap, ok := firstTitle["text"].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+
+	content, _ := textMap["content"].(string)
+	return content
 }
 
 // isValidNotionID validates a Notion ID format (32 characters, alphanumeric).
@@ -271,7 +371,7 @@ func isValidNotionID(id string) bool {
 	}
 
 	for _, c := range id {
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
 			return false
 		}
 	}

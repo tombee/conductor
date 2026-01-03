@@ -88,8 +88,7 @@ steps:
   # Step 3: Create or update Notion page
   - id: create_page
     type: integration
-    integration: notion
-    operation: upsert_page
+    integration: notion.upsert_page
     inputs:
       parent_id: "{{.notion_parent_id}}"
       title: "Weekly Meal Plan - {{now.Format \"2006-01-02\"}}"
@@ -97,8 +96,7 @@ steps:
   # Step 4: Add meal plan content as blocks
   - id: add_intro
     type: integration
-    integration: notion
-    operation: append_blocks
+    integration: notion.append_blocks
     inputs:
       page_id: "{{.steps.create_page.id}}"
       blocks:
@@ -111,8 +109,7 @@ steps:
   # Step 5: Parse and add meal plan
   - id: add_meals
     type: integration
-    integration: notion
-    operation: append_blocks
+    integration: notion.append_blocks
     inputs:
       page_id: "{{.steps.create_page.id}}"
       blocks:
@@ -136,8 +133,7 @@ steps:
 
   - id: add_shopping
     type: integration
-    integration: notion
-    operation: append_blocks
+    integration: notion.append_blocks
     inputs:
       page_id: "{{.steps.create_page.id}}"
       blocks:
