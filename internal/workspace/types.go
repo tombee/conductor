@@ -177,6 +177,7 @@ func DefaultBaseURL(integrationType string) string {
 		"slack":     "https://slack.com/api",
 		"jira":      "", // Requires custom instance URL
 		"discord":   "https://discord.com/api/v10",
+		"notion":    "https://api.notion.com/v1",
 		"pagerduty": "https://api.pagerduty.com",
 	}
 	return defaults[integrationType]
