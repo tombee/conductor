@@ -55,4 +55,4 @@ export PATH=$PATH:$(go env GOPATH)/bin
 
 ## Next Steps
 
-Ready to learn Conductor properly? Start the [Tutorial](../tutorial/) to build a complete, production-ready workflow from scratch.
+Ready to build something real? Start the [Tutorial](../tutorial/) to create a complete workflow from scratch.
