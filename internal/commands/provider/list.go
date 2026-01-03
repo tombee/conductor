@@ -62,9 +62,10 @@ func newListCmd() *cobra.Command {
 					fmt.Fprintln(out, `{"providers":[]}`)
 					return nil
 				}
-				fmt.Fprintln(out, "No providers configured.")
+				fmt.Fprintln(out, shared.RenderWarn("No providers configured."))
 				fmt.Fprintln(out)
-				fmt.Fprintln(out, "Run 'conductor provider add' to set up an LLM provider.")
+				fmt.Fprintf(out, "Run %s to set up an LLM provider.\n",
+					shared.Bold.Render("conductor provider add"))
 				return nil
 			}
 
@@ -99,15 +100,26 @@ func newListCmd() *cobra.Command {
 				return enc.Encode(result)
 			}
 
-			// Table output
+			// Table output with colors
+			fmt.Println(shared.Header.Render("Configured Providers"))
+			fmt.Println()
 			w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "NAME\tTYPE\tSTATUS")
+			fmt.Fprintf(w, "%s\t%s\t%s\n",
+				shared.Bold.Render("NAME"),
+				shared.Bold.Render("TYPE"),
+				shared.Bold.Render("STATUS"))
 			for _, s := range statuses {
-				statusDisplay := s.Status
-				if s.Status == "ERROR" && s.Message != "" {
-					statusDisplay = fmt.Sprintf("ERROR: %s", s.Message)
+				var statusDisplay string
+				if s.Status == "OK" {
+					statusDisplay = shared.StatusOK.Render(shared.SymbolOK + " OK")
+				} else {
+					msg := s.Message
+					if msg == "" {
+						msg = "ERROR"
+					}
+					statusDisplay = shared.StatusError.Render(shared.SymbolError + " " + msg)
 				}
-				fmt.Fprintf(w, "%s\t%s\t%s\n", s.Name, s.Type, statusDisplay)
+				fmt.Fprintf(w, "%s\t%s\t%s\n", s.Name, shared.Muted.Render(s.Type), statusDisplay)
 			}
 			w.Flush()
 

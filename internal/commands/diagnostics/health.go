@@ -274,54 +274,61 @@ func outputHealthJSON(result HealthResult) error {
 
 // outputHealthText outputs results in human-readable format
 func outputHealthText(result HealthResult) error {
-	fmt.Println("Conductor Health Check")
-	fmt.Println(strings.Repeat("=", 50))
+	fmt.Println(shared.Header.Render("Health Check"))
 	fmt.Println()
 
 	// Config status
-	fmt.Println("Configuration:")
-	fmt.Printf("  Path: %s\n", result.ConfigPath)
+	fmt.Println(shared.Bold.Render("Configuration:"))
+	fmt.Printf("  %s %s\n", shared.Muted.Render("Path:"), result.ConfigPath)
 
 	if result.ConfigExists {
-		fmt.Println("  Status: Found")
+		fmt.Printf("  %s %s\n", shared.Muted.Render("Status:"), shared.StatusOK.Render("Found"))
 		if result.ConfigValid {
-			fmt.Println("  Valid: Yes")
+			fmt.Printf("  %s %s\n", shared.Muted.Render("Valid:"), shared.StatusOK.Render("Yes"))
 			if result.PrimaryProvider != "" {
-				fmt.Printf("  Primary Provider: %s\n", result.PrimaryProvider)
+				fmt.Printf("  %s %s\n", shared.Muted.Render("Primary Provider:"), result.PrimaryProvider)
 			} else {
-				fmt.Println("  Primary Provider: Not set")
+				fmt.Printf("  %s %s\n", shared.Muted.Render("Primary Provider:"), shared.StatusWarn.Render("Not set"))
 			}
 		} else {
-			fmt.Println("  Valid: No")
+			fmt.Printf("  %s %s\n", shared.Muted.Render("Valid:"), shared.StatusError.Render("No"))
 			if result.ConfigError != "" {
-				fmt.Printf("  Error: %s\n", result.ConfigError)
+				fmt.Printf("  %s %s\n", shared.Muted.Render("Error:"), shared.StatusError.Render(result.ConfigError))
 			}
 		}
 	} else {
-		fmt.Println("  Status: Not found")
+		fmt.Printf("  %s %s\n", shared.Muted.Render("Status:"), shared.StatusWarn.Render("Not found"))
 	}
 	fmt.Println()
 
 	// Provider health
 	if len(result.ProviderResults) > 0 {
-		fmt.Println("Provider Health:")
+		fmt.Println(shared.Bold.Render("Provider Health:"))
 		for name, health := range result.ProviderResults {
-			status := "OK"
+			statusStyle := shared.StatusOK
+			statusSymbol := shared.SymbolOK
+			statusText := "OK"
 			if !health.Healthy {
-				status = "FAILED"
+				statusStyle = shared.StatusError
+				statusSymbol = shared.SymbolError
+				statusText = "FAILED"
 			}
 
-			fmt.Printf("  %s (%s): [%s]\n", name, health.Type, status)
-			fmt.Printf("    Installed: %s\n", checkMark(health.Installed))
-			fmt.Printf("    Authenticated: %s\n", checkMark(health.Authenticated))
-			fmt.Printf("    Working: %s\n", checkMark(health.Working))
+			fmt.Printf("  %s %s %s %s\n",
+				statusStyle.Render(statusSymbol),
+				shared.Bold.Render(name),
+				shared.Muted.Render("("+health.Type+")"),
+				statusStyle.Render("["+statusText+"]"))
+			fmt.Printf("    %s %s\n", shared.Muted.Render("Installed:"), renderCheckMark(health.Installed))
+			fmt.Printf("    %s %s\n", shared.Muted.Render("Authenticated:"), renderCheckMark(health.Authenticated))
+			fmt.Printf("    %s %s\n", shared.Muted.Render("Working:"), renderCheckMark(health.Working))
 
 			if health.Version != "" {
-				fmt.Printf("    Version: %s\n", health.Version)
+				fmt.Printf("    %s %s\n", shared.Muted.Render("Version:"), health.Version)
 			}
 
 			if health.Error != "" {
-				fmt.Printf("    Error: %s\n", health.Error)
+				fmt.Printf("    %s %s\n", shared.Muted.Render("Error:"), shared.StatusError.Render(health.Error))
 			}
 
 			if !health.Healthy && health.Message != "" {
@@ -329,7 +336,7 @@ func outputHealthText(result HealthResult) error {
 				lines := strings.Split(health.Message, "\n")
 				for _, line := range lines {
 					if line != "" {
-						fmt.Printf("    %s\n", line)
+						fmt.Printf("    %s\n", shared.Muted.Render(line))
 					}
 				}
 			}
@@ -339,19 +346,27 @@ func outputHealthText(result HealthResult) error {
 
 	// Recommendations
 	if len(result.Recommendations) > 0 {
-		fmt.Println("Recommendations:")
+		fmt.Println(shared.Bold.Render("Recommendations:"))
 		for _, rec := range result.Recommendations {
-			fmt.Printf("  - %s\n", rec)
+			fmt.Printf("  %s %s\n", shared.StatusInfo.Render(shared.SymbolInfo), rec)
 		}
 		fmt.Println()
 	}
 
 	// Overall status
 	if result.OverallHealthy {
-		fmt.Println("Overall Status: Healthy")
+		fmt.Println(shared.RenderOK("Overall Status: Healthy"))
 		return nil
 	} else {
-		fmt.Println("Overall Status: Issues Found")
+		fmt.Println(shared.RenderError("Overall Status: Issues Found"))
 		return fmt.Errorf("health check found issues")
 	}
+}
+
+// renderCheckMark returns a styled check mark or X
+func renderCheckMark(ok bool) string {
+	if ok {
+		return shared.StatusOK.Render(shared.SymbolOK)
+	}
+	return shared.StatusError.Render(shared.SymbolError)
 }

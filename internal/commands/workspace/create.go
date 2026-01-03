@@ -81,11 +81,15 @@ Examples:
 				return json.NewEncoder(os.Stdout).Encode(output)
 			}
 
-			fmt.Printf("Created workspace '%s'\n", workspaceName)
+			fmt.Printf("%s Created workspace %s\n",
+				shared.StatusOK.Render(shared.SymbolOK),
+				shared.Bold.Render(workspaceName))
 			if description != "" {
-				fmt.Printf("Description: %s\n", description)
+				fmt.Printf("  %s %s\n", shared.Muted.Render("Description:"), description)
 			}
-			fmt.Printf("\nSwitch to this workspace: conductor workspace use %s\n", workspaceName)
+			fmt.Printf("\n%s Switch to this workspace: %s\n",
+				shared.StatusInfo.Render(shared.SymbolInfo),
+				shared.Bold.Render(fmt.Sprintf("conductor workspace use %s", workspaceName)))
 
 			return nil
 		},

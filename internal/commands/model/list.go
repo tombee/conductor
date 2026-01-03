@@ -107,12 +107,16 @@ Use --tiers to show which models are mapped to tiers.`,
 					return nil
 				}
 				if filterProvider != "" {
-					fmt.Fprintf(out, "No models registered for provider %q.\n", filterProvider)
-					fmt.Fprintf(out, "\nRun 'conductor model discover %s' to find available models.\n", filterProvider)
+					fmt.Fprintf(out, "%s No models registered for provider %s.\n",
+						shared.Muted.Render(shared.SymbolInfo),
+						shared.Bold.Render(filterProvider))
+					fmt.Fprintf(out, "\nRun %s to find available models.\n",
+						shared.Bold.Render(fmt.Sprintf("conductor model discover %s", filterProvider)))
 				} else {
-					fmt.Fprintln(out, "No models registered.")
+					fmt.Fprintln(out, shared.Muted.Render("No models registered."))
 					fmt.Fprintln(out)
-					fmt.Fprintln(out, "Run 'conductor model add <provider/model>' to register a model.")
+					fmt.Fprintf(out, "Run %s to register a model.\n",
+						shared.Bold.Render("conductor model add <provider/model>"))
 				}
 				return nil
 			}
@@ -125,29 +129,38 @@ Use --tiers to show which models are mapped to tiers.`,
 				return enc.Encode(result)
 			}
 
-			// Table output
+			// Table output with colors
+			fmt.Fprintln(out, shared.Header.Render("Registered Models"))
+			fmt.Fprintln(out)
 			w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 			if showTiers {
-				fmt.Fprintln(w, "MODEL\tPROVIDER\tCONTEXT\tTIER")
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+					shared.Bold.Render("MODEL"),
+					shared.Bold.Render("PROVIDER"),
+					shared.Bold.Render("CONTEXT"),
+					shared.Bold.Render("TIER"))
 				for _, m := range models {
-					context := "-"
+					context := shared.Muted.Render("-")
 					if m.ContextWindow > 0 {
 						context = fmt.Sprintf("%d", m.ContextWindow)
 					}
-					tier := "-"
+					tier := shared.Muted.Render("-")
 					if m.Tier != "" {
-						tier = m.Tier
+						tier = shared.StatusInfo.Render(m.Tier)
 					}
-					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", m.ID, m.Provider, context, tier)
+					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", m.ID, shared.Muted.Render(m.Provider), context, tier)
 				}
 			} else {
-				fmt.Fprintln(w, "MODEL\tPROVIDER\tCONTEXT")
+				fmt.Fprintf(w, "%s\t%s\t%s\n",
+					shared.Bold.Render("MODEL"),
+					shared.Bold.Render("PROVIDER"),
+					shared.Bold.Render("CONTEXT"))
 				for _, m := range models {
-					context := "-"
+					context := shared.Muted.Render("-")
 					if m.ContextWindow > 0 {
 						context = fmt.Sprintf("%d", m.ContextWindow)
 					}
-					fmt.Fprintf(w, "%s\t%s\t%s\n", m.ID, m.Provider, context)
+					fmt.Fprintf(w, "%s\t%s\t%s\n", m.ID, shared.Muted.Render(m.Provider), context)
 				}
 			}
 			w.Flush()

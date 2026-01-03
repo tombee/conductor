@@ -144,22 +144,41 @@ func runControllerStatus(cmd *cobra.Command, args []string) error {
 		return json.NewEncoder(os.Stdout).Encode(output)
 	}
 
-	fmt.Println("Conductor Controller Status")
-	fmt.Println("===========================")
+	fmt.Println(shared.Header.Render("Controller Status"))
 	fmt.Println()
-	fmt.Printf("Status:     %s\n", health.Status)
-	fmt.Printf("Version:    %s\n", version.Version)
-	fmt.Printf("Commit:     %s\n", version.Commit)
-	fmt.Printf("Build Date: %s\n", version.BuildDate)
-	fmt.Printf("Go Version: %s\n", version.GoVersion)
-	fmt.Printf("Platform:   %s/%s\n", version.OS, version.Arch)
-	fmt.Printf("Uptime:     %s\n", health.Uptime)
+
+	// Status with color based on health
+	statusStyle := shared.StatusOK
+	if health.Status != "healthy" {
+		statusStyle = shared.StatusError
+	}
+	fmt.Printf("%s %s\n", shared.Muted.Render("Status:"), statusStyle.Render(health.Status))
+
+	// Version info
+	if version.Version != "" {
+		fmt.Printf("%s %s\n", shared.Muted.Render("Version:"), shared.Bold.Render(version.Version))
+	}
+	if version.Commit != "" {
+		fmt.Printf("%s %s\n", shared.Muted.Render("Commit:"), version.Commit)
+	}
+	if version.BuildDate != "" {
+		fmt.Printf("%s %s\n", shared.Muted.Render("Build Date:"), version.BuildDate)
+	}
+	fmt.Printf("%s %s\n", shared.Muted.Render("Go Version:"), version.GoVersion)
+	fmt.Printf("%s %s/%s\n", shared.Muted.Render("Platform:"), version.OS, version.Arch)
+	fmt.Printf("%s %s\n", shared.Muted.Render("Uptime:"), health.Uptime)
 
 	if len(health.Checks) > 0 {
 		fmt.Println()
-		fmt.Println("Health Checks:")
+		fmt.Println(shared.Bold.Render("Health Checks:"))
 		for name, status := range health.Checks {
-			fmt.Printf("  %s: %s\n", name, status)
+			checkStyle := shared.StatusOK
+			symbol := shared.SymbolOK
+			if status != "ok" && status != "healthy" && status != "none" && status != "disabled" {
+				checkStyle = shared.StatusWarn
+				symbol = shared.SymbolWarn
+			}
+			fmt.Printf("  %s %s %s\n", checkStyle.Render(symbol), name+":", shared.Muted.Render(status))
 		}
 	}
 
@@ -179,7 +198,7 @@ func runControllerPing(cmd *cobra.Command, args []string) error {
 	if err := c.Ping(ctx); err != nil {
 		if client.IsControllerNotRunning(err) {
 			if !shared.GetQuiet() {
-				fmt.Println("Controller is not running")
+				fmt.Println(shared.RenderError("Controller is not running"))
 			}
 			os.Exit(1)
 		}
@@ -196,7 +215,9 @@ func runControllerPing(cmd *cobra.Command, args []string) error {
 	}
 
 	if !shared.GetQuiet() {
-		fmt.Printf("Controller is running (latency: %v)\n", latency.Round(time.Millisecond))
+		fmt.Printf("%s %s\n",
+			shared.RenderOK("Controller is running"),
+			shared.Muted.Render(fmt.Sprintf("(latency: %v)", latency.Round(time.Millisecond))))
 	}
 
 	return nil

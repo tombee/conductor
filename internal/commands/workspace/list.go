@@ -80,28 +80,39 @@ Examples:
 			}
 
 			if len(workspaces) == 0 {
-				fmt.Println("No workspaces found")
+				fmt.Println(shared.Muted.Render("No workspaces found"))
 				return nil
 			}
 
-			fmt.Printf("Workspaces (current: %s):\n\n", currentWorkspace)
-			fmt.Println("  NAME            DESCRIPTION                        INTEGRATIONS")
-			fmt.Println("  --------------- ---------------------------------- ------------")
+			fmt.Printf("%s %s\n\n",
+				shared.Header.Render("Workspaces"),
+				shared.Muted.Render(fmt.Sprintf("(current: %s)", currentWorkspace)))
+			fmt.Printf("  %s %s %s\n",
+				shared.Bold.Render(fmt.Sprintf("%-15s", "NAME")),
+				shared.Bold.Render(fmt.Sprintf("%-34s", "DESCRIPTION")),
+				shared.Bold.Render("INTEGRATIONS"))
 
 			for _, ws := range workspaces {
 				integrations, _ := storage.ListIntegrations(ctx, ws.Name)
-				marker := " "
+				var marker string
+				var nameDisplay string
 				if ws.Name == currentWorkspace {
-					marker = "*"
+					marker = shared.StatusOK.Render("*")
+					nameDisplay = shared.Bold.Render(truncate(ws.Name, 15))
+				} else {
+					marker = " "
+					nameDisplay = truncate(ws.Name, 15)
 				}
 				description := ws.Description
 				if description == "" {
-					description = "-"
+					description = shared.Muted.Render("-")
+				} else {
+					description = truncate(description, 34)
 				}
 				fmt.Printf("%s %-15s %-34s %d\n",
 					marker,
-					truncate(ws.Name, 15),
-					truncate(description, 34),
+					nameDisplay,
+					description,
 					len(integrations))
 			}
 

@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -86,27 +85,47 @@ func runMCPList(showAll bool) error {
 	}
 
 	if len(resp.Servers) == 0 {
-		fmt.Println("No MCP servers registered.")
-		fmt.Println("\nTo add a server:")
-		fmt.Println("  conductor mcp add <name> --command <cmd>")
+		fmt.Println(shared.Muted.Render("No MCP servers registered."))
+		fmt.Println()
+		fmt.Printf("%s To add a server:\n", shared.StatusInfo.Render(shared.SymbolInfo))
+		fmt.Printf("  %s\n", shared.Bold.Render("conductor mcp add <name> --command <cmd>"))
 		return nil
 	}
 
+	fmt.Println(shared.Header.Render("MCP Servers"))
+	fmt.Println()
 	// Print table header
-	fmt.Printf("%-20s %-12s %-12s %-8s %s\n", "NAME", "STATUS", "UPTIME", "TOOLS", "ERRORS")
-	fmt.Println(strings.Repeat("-", 70))
+	fmt.Printf("%s %s %s %s %s\n",
+		shared.Bold.Render(fmt.Sprintf("%-20s", "NAME")),
+		shared.Bold.Render(fmt.Sprintf("%-12s", "STATUS")),
+		shared.Bold.Render(fmt.Sprintf("%-12s", "UPTIME")),
+		shared.Bold.Render(fmt.Sprintf("%-8s", "TOOLS")),
+		shared.Bold.Render("ERRORS"))
 
 	for _, s := range resp.Servers {
 		uptime := formatDuration(time.Duration(s.UptimeSeconds) * time.Second)
 		errInfo := ""
 		if s.FailureCount > 0 {
-			errInfo = fmt.Sprintf("%d failures", s.FailureCount)
+			errInfo = shared.StatusError.Render(fmt.Sprintf("%d failures", s.FailureCount))
 		}
 
-		fmt.Printf("%-20s %-12s %-12s %-8d %s\n",
+		// Color-code status
+		var statusStyled string
+		switch s.Status {
+		case "running":
+			statusStyled = shared.StatusOK.Render(fmt.Sprintf("%-12s", s.Status))
+		case "stopped", "disabled":
+			statusStyled = shared.Muted.Render(fmt.Sprintf("%-12s", s.Status))
+		case "error", "failed":
+			statusStyled = shared.StatusError.Render(fmt.Sprintf("%-12s", s.Status))
+		default:
+			statusStyled = fmt.Sprintf("%-12s", s.Status)
+		}
+
+		fmt.Printf("%-20s %s %-12s %-8d %s\n",
 			truncate(s.Name, 20),
-			s.Status,
-			uptime,
+			statusStyled,
+			shared.Muted.Render(uptime),
 			s.ToolCount,
 			errInfo,
 		)

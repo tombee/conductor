@@ -62,9 +62,15 @@ func runVersion(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	cmd.Printf("conductor version %s\n", info.Version)
-	cmd.Printf("  commit:     %s\n", info.Commit)
-	cmd.Printf("  build date: %s\n", info.BuildDate)
+	cmd.Printf("%s %s\n",
+		shared.Bold.Render("conductor"),
+		shared.StatusInfo.Render(info.Version))
+	if info.Commit != "" {
+		cmd.Printf("  %s %s\n", shared.Muted.Render("commit:"), info.Commit)
+	}
+	if info.BuildDate != "" {
+		cmd.Printf("  %s %s\n", shared.Muted.Render("build date:"), info.BuildDate)
+	}
 
 	return nil
 }

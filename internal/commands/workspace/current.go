@@ -69,15 +69,15 @@ Examples:
 				return json.NewEncoder(os.Stdout).Encode(output)
 			}
 
-			fmt.Printf("Current workspace: %s\n", ws.Name)
+			fmt.Printf("%s %s\n", shared.Muted.Render("Current workspace:"), shared.Bold.Render(ws.Name))
 			if ws.Description != "" {
-				fmt.Printf("Description: %s\n", ws.Description)
+				fmt.Printf("%s %s\n", shared.Muted.Render("Description:"), ws.Description)
 			}
 
 			// Show integration count
 			integrations, err := storage.ListIntegrations(ctx, ws.Name)
 			if err == nil {
-				fmt.Printf("Integrations: %d\n", len(integrations))
+				fmt.Printf("%s %d\n", shared.Muted.Render("Integrations:"), len(integrations))
 			}
 
 			return nil

@@ -82,22 +82,32 @@ Examples:
 				return json.NewEncoder(os.Stdout).Encode(output)
 			}
 
-			fmt.Printf("Integration: %s\n\n", integration.Name)
-			fmt.Printf("Workspace:  %s\n", integration.WorkspaceName)
-			fmt.Printf("Type:       %s\n", integration.Type)
+			fmt.Println(shared.Header.Render("Integration: " + integration.Name))
+			fmt.Println()
+			fmt.Printf("%s %s\n", shared.Muted.Render("Workspace:"), integration.WorkspaceName)
+			fmt.Printf("%s %s\n", shared.Muted.Render("Type:"), integration.Type)
 			if integration.BaseURL != "" {
-				fmt.Printf("Base URL:   %s\n", integration.BaseURL)
+				fmt.Printf("%s %s\n", shared.Muted.Render("Base URL:"), integration.BaseURL)
 			}
-			fmt.Printf("Auth:       %s\n", redactAuth(integration.Auth))
+			authStatus := redactAuth(integration.Auth)
+			var authStyled string
+			if authStatus == "(none)" {
+				authStyled = shared.Muted.Render(authStatus)
+			} else {
+				authStyled = shared.StatusOK.Render(authStatus)
+			}
+			fmt.Printf("%s %s\n", shared.Muted.Render("Auth:"), authStyled)
 			if len(integration.Headers) > 0 {
-				fmt.Printf("Headers:\n")
+				fmt.Println()
+				fmt.Println(shared.Bold.Render("Headers:"))
 				for k, v := range integration.Headers {
-					fmt.Printf("  %s: %s\n", k, v)
+					fmt.Printf("  %s: %s\n", shared.Muted.Render(k), v)
 				}
 			}
-			fmt.Printf("Timeout:    %ds\n", integration.TimeoutSeconds)
-			fmt.Printf("\nCreated:    %s\n", integration.CreatedAt.Format(time.RFC3339))
-			fmt.Printf("Updated:    %s\n", integration.UpdatedAt.Format(time.RFC3339))
+			fmt.Printf("%s %ds\n", shared.Muted.Render("Timeout:"), integration.TimeoutSeconds)
+			fmt.Println()
+			fmt.Printf("%s %s\n", shared.Muted.Render("Created:"), integration.CreatedAt.Format(time.RFC3339))
+			fmt.Printf("%s %s\n", shared.Muted.Render("Updated:"), integration.UpdatedAt.Format(time.RFC3339))
 
 			return nil
 		},

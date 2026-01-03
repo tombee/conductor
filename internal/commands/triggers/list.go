@@ -111,81 +111,104 @@ func runList(cmd *cobra.Command, args []string) error {
 		return enc.Encode(output)
 	}
 
-	// Print in tabular format
+	// Print in tabular format with colors
+	out := cmd.OutOrStdout()
+
 	if showWebhooks {
-		fmt.Fprintln(cmd.OutOrStdout(), "Webhooks:")
+		fmt.Fprintln(out, shared.Bold.Render("Webhooks:"))
 		if len(webhooks) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "  (none)")
+			fmt.Fprintln(out, shared.Muted.Render("  (none)"))
 		} else {
 			for _, wh := range webhooks {
-				events := "(all)"
+				events := shared.Muted.Render("(all)")
 				if len(wh.Events) > 0 {
 					events = strings.Join(wh.Events, ", ")
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "  %s -> %s [%s] events=%s\n",
-					wh.Path, wh.Workflow, wh.Source, events)
+				fmt.Fprintf(out, "  %s %s -> %s %s events=%s\n",
+					shared.StatusOK.Render(shared.SymbolOK),
+					shared.Bold.Render(wh.Path),
+					wh.Workflow,
+					shared.Muted.Render("["+wh.Source+"]"),
+					events)
 			}
 		}
-		fmt.Fprintln(cmd.OutOrStdout())
+		fmt.Fprintln(out)
 	}
 
 	if showSchedules {
-		fmt.Fprintln(cmd.OutOrStdout(), "Schedules:")
+		fmt.Fprintln(out, shared.Bold.Render("Schedules:"))
 		if len(schedules) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "  (none)")
+			fmt.Fprintln(out, shared.Muted.Render("  (none)"))
 		} else {
 			for _, sch := range schedules {
 				tz := sch.Timezone
 				if tz == "" {
 					tz = "UTC"
 				}
-				status := "enabled"
-				if !sch.Enabled {
-					status = "disabled"
+				var statusStyled string
+				if sch.Enabled {
+					statusStyled = shared.StatusOK.Render("enabled")
+				} else {
+					statusStyled = shared.Muted.Render("disabled")
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "  %s: %s (%s) -> %s [%s]\n",
-					sch.Name, sch.Cron, tz, sch.Workflow, status)
+				fmt.Fprintf(out, "  %s %s: %s %s -> %s [%s]\n",
+					shared.StatusOK.Render(shared.SymbolOK),
+					shared.Bold.Render(sch.Name),
+					sch.Cron,
+					shared.Muted.Render("("+tz+")"),
+					sch.Workflow,
+					statusStyled)
 			}
 		}
-		fmt.Fprintln(cmd.OutOrStdout())
+		fmt.Fprintln(out)
 	}
 
 	if showAPITriggers {
-		fmt.Fprintln(cmd.OutOrStdout(), "API Triggers:")
+		fmt.Fprintln(out, shared.Bold.Render("API Triggers:"))
 		if len(apiTriggers) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "  (none)")
+			fmt.Fprintln(out, shared.Muted.Render("  (none)"))
 		} else {
 			for _, trigger := range apiTriggers {
 				desc := trigger.Description
 				if desc == "" {
-					desc = "(no description)"
+					desc = shared.Muted.Render("(no description)")
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "  %s -> %s: %s\n",
-					trigger.Name, trigger.Workflow, desc)
+				fmt.Fprintf(out, "  %s %s -> %s: %s\n",
+					shared.StatusOK.Render(shared.SymbolOK),
+					shared.Bold.Render(trigger.Name),
+					trigger.Workflow,
+					desc)
 			}
 		}
 	}
 
-	fmt.Fprintln(cmd.OutOrStdout())
-	fmt.Fprintln(cmd.OutOrStdout(), "File Watchers:")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, shared.Bold.Render("File Watchers:"))
 	if len(fileWatchers) == 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "  (none)")
+		fmt.Fprintln(out, shared.Muted.Render("  (none)"))
 	} else {
 		for _, fw := range fileWatchers {
-			events := "(all)"
+			events := shared.Muted.Render("(all)")
 			if len(fw.Events) > 0 {
 				events = strings.Join(fw.Events, ", ")
 			}
-			status := "enabled"
-			if !fw.Enabled {
-				status = "disabled"
+			var statusStyled string
+			if fw.Enabled {
+				statusStyled = shared.StatusOK.Render("enabled")
+			} else {
+				statusStyled = shared.Muted.Render("disabled")
 			}
 			path := fw.Path
 			if len(fw.IncludePatterns) > 0 {
-				path = fmt.Sprintf("%s [include: %s]", path, strings.Join(fw.IncludePatterns, ", "))
+				path = fmt.Sprintf("%s %s", path, shared.Muted.Render("[include: "+strings.Join(fw.IncludePatterns, ", ")+"]"))
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "  %s: %s -> %s events=%s [%s]\n",
-				fw.Name, path, fw.Workflow, events, status)
+			fmt.Fprintf(out, "  %s %s: %s -> %s events=%s [%s]\n",
+				shared.StatusOK.Render(shared.SymbolOK),
+				shared.Bold.Render(fw.Name),
+				path,
+				fw.Workflow,
+				events,
+				statusStyled)
 		}
 	}
 

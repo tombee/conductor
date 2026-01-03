@@ -88,9 +88,13 @@ Examples:
 				return json.NewEncoder(os.Stdout).Encode(output)
 			}
 
-			fmt.Printf("Deleted workspace '%s'\n", workspaceName)
+			fmt.Printf("%s Deleted workspace %s\n",
+				shared.StatusOK.Render(shared.SymbolOK),
+				shared.Bold.Render(workspaceName))
 			if workspaceName == currentWorkspace {
-				fmt.Println("Switched to 'default' workspace")
+				fmt.Printf("%s Switched to %s workspace\n",
+					shared.StatusInfo.Render(shared.SymbolInfo),
+					shared.Bold.Render("default"))
 			}
 
 			return nil

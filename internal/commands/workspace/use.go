@@ -81,7 +81,9 @@ Examples:
 				return json.NewEncoder(os.Stdout).Encode(output)
 			}
 
-			fmt.Printf("Switched to workspace '%s'\n", workspaceName)
+			fmt.Printf("%s Switched to workspace %s\n",
+				shared.StatusOK.Render(shared.SymbolOK),
+				shared.Bold.Render(workspaceName))
 
 			return nil
 		},

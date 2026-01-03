@@ -80,24 +80,41 @@ Examples:
 			}
 
 			if len(integrations) == 0 {
-				fmt.Printf("No integrations configured in workspace '%s'\n", workspaceName)
-				fmt.Println("\nAdd one with: conductor integrations add <type>")
+				fmt.Printf("%s No integrations configured in workspace %s\n",
+					shared.Muted.Render(shared.SymbolInfo),
+					shared.Bold.Render(workspaceName))
+				fmt.Println()
+				fmt.Printf("Add one with: %s\n", shared.Bold.Render("conductor integrations add <type>"))
 				return nil
 			}
 
-			fmt.Printf("Integrations in workspace '%s':\n\n", workspaceName)
-			fmt.Println("NAME            TYPE            BASE URL                               AUTH")
-			fmt.Println("--------------- --------------- -------------------------------------- --------------------")
+			fmt.Printf("%s %s\n\n",
+				shared.Header.Render("Integrations"),
+				shared.Muted.Render("(workspace: "+workspaceName+")"))
+			fmt.Printf("%s %s %s %s\n",
+				shared.Bold.Render(fmt.Sprintf("%-15s", "NAME")),
+				shared.Bold.Render(fmt.Sprintf("%-15s", "TYPE")),
+				shared.Bold.Render(fmt.Sprintf("%-38s", "BASE URL")),
+				shared.Bold.Render("AUTH"))
 			for _, integration := range integrations {
 				baseURL := integration.BaseURL
 				if baseURL == "" {
-					baseURL = "-"
+					baseURL = shared.Muted.Render("-")
+				} else {
+					baseURL = truncate(baseURL, 38)
 				}
-				fmt.Printf("%-15s %-15s %-38s %s\n",
-					truncate(integration.Name, 15),
-					truncate(integration.Type, 15),
-					truncate(baseURL, 38),
-					truncate(redactAuth(integration.Auth), 20))
+				authStatus := redactAuth(integration.Auth)
+				var authStyled string
+				if authStatus == "(none)" {
+					authStyled = shared.Muted.Render(authStatus)
+				} else {
+					authStyled = shared.StatusOK.Render(authStatus)
+				}
+				fmt.Printf("%-15s %s %-38s %s\n",
+					shared.Bold.Render(truncate(integration.Name, 15)),
+					shared.Muted.Render(fmt.Sprintf("%-15s", truncate(integration.Type, 15))),
+					baseURL,
+					authStyled)
 			}
 
 			return nil

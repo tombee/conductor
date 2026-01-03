@@ -85,37 +85,63 @@ func runMCPStatus(name string) error {
 		return fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	fmt.Printf("Name:     %s\n", resp.Name)
-	fmt.Printf("Status:   %s\n", resp.Status)
-	fmt.Printf("Uptime:   %s\n", formatDuration(time.Duration(resp.UptimeSeconds)*time.Second))
-	fmt.Printf("Tools:    %d\n", resp.ToolCount)
+	fmt.Println(shared.Header.Render("MCP Server: " + resp.Name))
+	fmt.Println()
+
+	// Status with color
+	var statusStyled string
+	switch resp.Status {
+	case "running":
+		statusStyled = shared.StatusOK.Render(resp.Status)
+	case "stopped", "disabled":
+		statusStyled = shared.Muted.Render(resp.Status)
+	case "error", "failed":
+		statusStyled = shared.StatusError.Render(resp.Status)
+	default:
+		statusStyled = resp.Status
+	}
+
+	fmt.Printf("%s %s\n", shared.Muted.Render("Status:"), statusStyled)
+	fmt.Printf("%s %s\n", shared.Muted.Render("Uptime:"), formatDuration(time.Duration(resp.UptimeSeconds)*time.Second))
+	fmt.Printf("%s %d\n", shared.Muted.Render("Tools:"), resp.ToolCount)
 
 	if resp.Config != nil {
-		fmt.Println("\nConfiguration:")
-		fmt.Printf("  Command:  %s\n", resp.Config.Command)
+		fmt.Println()
+		fmt.Println(shared.Bold.Render("Configuration:"))
+		fmt.Printf("  %s %s\n", shared.Muted.Render("Command:"), resp.Config.Command)
 		if len(resp.Config.Args) > 0 {
-			fmt.Printf("  Args:     %s\n", strings.Join(resp.Config.Args, " "))
+			fmt.Printf("  %s %s\n", shared.Muted.Render("Args:"), strings.Join(resp.Config.Args, " "))
 		}
 		if len(resp.Config.Env) > 0 {
-			fmt.Printf("  Env:      %s\n", strings.Join(resp.Config.Env, ", "))
+			fmt.Printf("  %s %s\n", shared.Muted.Render("Env:"), strings.Join(resp.Config.Env, ", "))
 		}
-		fmt.Printf("  Timeout:  %ds\n", resp.Config.Timeout)
+		fmt.Printf("  %s %ds\n", shared.Muted.Render("Timeout:"), resp.Config.Timeout)
 	}
 
 	if resp.Capabilities != nil {
-		fmt.Println("\nCapabilities:")
-		fmt.Printf("  Tools:     %v\n", resp.Capabilities.Tools)
-		fmt.Printf("  Resources: %v\n", resp.Capabilities.Resources)
-		fmt.Printf("  Prompts:   %v\n", resp.Capabilities.Prompts)
+		fmt.Println()
+		fmt.Println(shared.Bold.Render("Capabilities:"))
+		fmt.Printf("  %s %s\n", shared.Muted.Render("Tools:"), formatBool(resp.Capabilities.Tools))
+		fmt.Printf("  %s %s\n", shared.Muted.Render("Resources:"), formatBool(resp.Capabilities.Resources))
+		fmt.Printf("  %s %s\n", shared.Muted.Render("Prompts:"), formatBool(resp.Capabilities.Prompts))
 	}
 
 	if resp.FailureCount > 0 {
-		fmt.Println("\nFailure History:")
-		fmt.Printf("  Count:      %d\n", resp.FailureCount)
+		fmt.Println()
+		fmt.Println(shared.Bold.Render("Failure History:"))
+		fmt.Printf("  %s %s\n", shared.Muted.Render("Count:"), shared.StatusError.Render(fmt.Sprintf("%d", resp.FailureCount)))
 		if resp.LastError != "" {
-			fmt.Printf("  Last Error: %s\n", resp.LastError)
+			fmt.Printf("  %s %s\n", shared.Muted.Render("Last Error:"), shared.StatusError.Render(resp.LastError))
 		}
 	}
 
 	return nil
+}
+
+// formatBool returns a styled boolean display
+func formatBool(b bool) string {
+	if b {
+		return shared.StatusOK.Render(shared.SymbolOK)
+	}
+	return shared.Muted.Render(shared.SymbolError)
 }

@@ -210,12 +210,17 @@ func historyList(status, workflow string) error {
 	}
 
 	if len(runs) == 0 {
-		fmt.Println("No executions found")
+		fmt.Println(shared.Muted.Render("No executions found"))
 		return nil
 	}
 
-	fmt.Println("ID       STATUS      WORKFLOW             STARTED")
-	fmt.Println("-------- ----------- -------------------- -------------------")
+	fmt.Println(shared.Header.Render("Execution History"))
+	fmt.Println()
+	fmt.Printf("%s %s %s %s\n",
+		shared.Bold.Render(fmt.Sprintf("%-8s", "ID")),
+		shared.Bold.Render(fmt.Sprintf("%-11s", "STATUS")),
+		shared.Bold.Render(fmt.Sprintf("%-20s", "WORKFLOW")),
+		shared.Bold.Render("STARTED"))
 	for _, r := range runs {
 		run := r.(map[string]any)
 		id := run["id"].(string)
@@ -227,10 +232,30 @@ func historyList(status, workflow string) error {
 				startedAt = t.Local().Format("2006-01-02 15:04:05")
 			}
 		}
-		fmt.Printf("%-8s %-11s %-20s %s\n", id, status, truncate(workflow, 20), startedAt)
+		// Color-code status
+		statusStyled := formatRunStatus(status)
+		fmt.Printf("%-8s %s %-20s %s\n", id, statusStyled, truncate(workflow, 20), shared.Muted.Render(startedAt))
 	}
 
 	return nil
+}
+
+// formatRunStatus returns a styled status string
+func formatRunStatus(status string) string {
+	switch status {
+	case "completed":
+		return shared.StatusOK.Render(fmt.Sprintf("%-11s", status))
+	case "failed":
+		return shared.StatusError.Render(fmt.Sprintf("%-11s", status))
+	case "running":
+		return shared.StatusInfo.Render(fmt.Sprintf("%-11s", status))
+	case "pending":
+		return shared.StatusWarn.Render(fmt.Sprintf("%-11s", status))
+	case "cancelled":
+		return shared.Muted.Render(fmt.Sprintf("%-11s", status))
+	default:
+		return fmt.Sprintf("%-11s", status)
+	}
 }
 
 func historyShow(id string, showFailureDetails bool) error {
@@ -251,46 +276,50 @@ func historyShow(id string, showFailureDetails bool) error {
 		return json.NewEncoder(os.Stdout).Encode(resp)
 	}
 
-	fmt.Printf("Run ID:     %s\n", resp["id"])
-	fmt.Printf("Workflow:   %s\n", resp["workflow"])
-	fmt.Printf("Status:     %s\n", resp["status"])
+	fmt.Println(shared.Header.Render("Execution Details"))
+	fmt.Println()
+	fmt.Printf("%s %s\n", shared.Muted.Render("Run ID:"), resp["id"])
+	fmt.Printf("%s %s\n", shared.Muted.Render("Workflow:"), shared.Bold.Render(fmt.Sprint(resp["workflow"])))
+	status, _ := resp["status"].(string)
+	fmt.Printf("%s %s\n", shared.Muted.Render("Status:"), formatRunStatus(status))
 	if cid, ok := resp["correlation_id"].(string); ok && cid != "" {
-		fmt.Printf("Correlation ID: %s\n", cid)
+		fmt.Printf("%s %s\n", shared.Muted.Render("Correlation ID:"), cid)
 	}
 
 	if s, ok := resp["created_at"].(string); ok {
-		fmt.Printf("Created:    %s\n", s)
+		fmt.Printf("%s %s\n", shared.Muted.Render("Created:"), s)
 	}
 	if s, ok := resp["started_at"].(string); ok && s != "" {
-		fmt.Printf("Started:    %s\n", s)
+		fmt.Printf("%s %s\n", shared.Muted.Render("Started:"), s)
 	}
 	if s, ok := resp["completed_at"].(string); ok && s != "" {
-		fmt.Printf("Completed:  %s\n", s)
+		fmt.Printf("%s %s\n", shared.Muted.Render("Completed:"), s)
 	}
 	if e, ok := resp["error"].(string); ok && e != "" {
-		fmt.Printf("Error:      %s\n", e)
+		fmt.Printf("%s %s\n", shared.Muted.Render("Error:"), shared.StatusError.Render(e))
 	}
 
 	if progress, ok := resp["progress"].(map[string]any); ok {
 		completed := int(progress["completed"].(float64))
 		total := int(progress["total"].(float64))
 		current := progress["current_step"]
-		fmt.Printf("Progress:   %d/%d", completed, total)
+		progressStr := fmt.Sprintf("%d/%d", completed, total)
 		if current != nil && current != "" {
-			fmt.Printf(" (current: %s)", current)
+			progressStr += fmt.Sprintf(" %s", shared.Muted.Render(fmt.Sprintf("(current: %s)", current)))
 		}
-		fmt.Println()
+		fmt.Printf("%s %s\n", shared.Muted.Render("Progress:"), progressStr)
 	}
 
 	// If --failed flag is set and the run failed, show failure details
 	if showFailureDetails {
-		status, _ := resp["status"].(string)
-		if status == "failed" {
-			fmt.Println("\n--- Failure Details ---")
+		runStatus, _ := resp["status"].(string)
+		if runStatus == "failed" {
+			fmt.Println()
+			fmt.Println(shared.Bold.Render("Failure Details"))
 
 			// Show error message
 			if errorMsg, ok := resp["error"].(string); ok && errorMsg != "" {
-				fmt.Printf("Error Message: %s\n", errorMsg)
+				fmt.Printf("  %s %s\n", shared.Muted.Render("Error Message:"), shared.StatusError.Render(errorMsg))
 			}
 
 			// Show the step that failed (from progress.current_step)
@@ -298,27 +327,30 @@ func historyShow(id string, showFailureDetails bool) error {
 			if progress, ok := resp["progress"].(map[string]any); ok {
 				if current, ok := progress["current_step"].(string); ok && current != "" {
 					failedStep = current
-					fmt.Printf("Failed At:     %s\n", failedStep)
+					fmt.Printf("  %s %s\n", shared.Muted.Render("Failed At:"), failedStep)
 				}
 			}
 
 			// Suggest replay command
-			fmt.Println("\n--- Suggested Replay Command ---")
+			fmt.Println()
+			fmt.Println(shared.Bold.Render("Suggested Replay Command"))
 			if failedStep != "" {
-				fmt.Printf("conductor run replay %s --from %s\n", id, failedStep)
+				fmt.Printf("  %s\n", shared.StatusInfo.Render(fmt.Sprintf("conductor run replay %s --from %s", id, failedStep)))
 			} else {
-				fmt.Printf("conductor run replay %s\n", id)
+				fmt.Printf("  %s\n", shared.StatusInfo.Render(fmt.Sprintf("conductor run replay %s", id)))
 			}
 
 			// Show cost estimation command
-			fmt.Println("\nTo estimate replay cost:")
+			fmt.Println()
+			fmt.Println(shared.Muted.Render("To estimate replay cost:"))
 			if failedStep != "" {
-				fmt.Printf("conductor run replay %s --from %s --estimate\n", id, failedStep)
+				fmt.Printf("  conductor run replay %s --from %s --estimate\n", id, failedStep)
 			} else {
-				fmt.Printf("conductor run replay %s --estimate\n", id)
+				fmt.Printf("  conductor run replay %s --estimate\n", id)
 			}
 		} else {
-			fmt.Printf("\nNote: Execution status is '%s', not 'failed'. Use --failed only with failed executions.\n", status)
+			fmt.Printf("\n%s Execution status is '%s', not 'failed'. Use --failed only with failed executions.\n",
+				shared.StatusInfo.Render(shared.SymbolInfo), runStatus)
 		}
 	}
 
@@ -420,25 +452,53 @@ func streamLogs(c *client.Client, id string) error {
 }
 
 func printLogEntry(log map[string]any) {
-	timestamp := log["timestamp"].(string)
-	level := log["level"].(string)
-	message := log["message"].(string)
-	stepID := ""
-	if s, ok := log["step_id"].(string); ok {
-		stepID = s
-	}
+	timestamp, _ := log["timestamp"].(string)
+	entryType, _ := log["type"].(string)
+	level, _ := log["level"].(string)
+	message, _ := log["message"].(string)
+	stepID, _ := log["step_id"].(string)
+	status, _ := log["status"].(string)
 
 	// Parse and format timestamp
 	if t, err := time.Parse(time.RFC3339Nano, timestamp); err == nil {
 		timestamp = t.Local().Format("15:04:05")
 	}
 
-	// Color based on level
-	levelStr := strings.ToUpper(level)
-	if stepID != "" {
-		fmt.Printf("%s [%s] [%s] %s\n", timestamp, levelStr, stepID, message)
-	} else {
-		fmt.Printf("%s [%s] %s\n", timestamp, levelStr, message)
+	// Format based on entry type
+	switch entryType {
+	case "step_start":
+		fmt.Printf("%s [STEP] Starting: %s\n", timestamp, stepID)
+	case "step_complete":
+		durationMs, _ := log["duration_ms"].(float64)
+		if status == "success" {
+			fmt.Printf("%s [STEP] Completed: %s (%.1fs)\n", timestamp, stepID, durationMs/1000)
+		} else {
+			errMsg, _ := log["error"].(string)
+			fmt.Printf("%s [STEP] %s: %s - %s\n", timestamp, strings.ToUpper(status), stepID, errMsg)
+		}
+		// Show output if present (essential for debugging data flow)
+		if output, ok := log["output"].(map[string]any); ok && len(output) > 0 {
+			if response, ok := output["response"].(string); ok {
+				// Truncate long responses for display
+				if len(response) > 200 {
+					response = response[:200] + "..."
+				}
+				fmt.Printf("         → %s\n", response)
+			}
+		}
+	case "status":
+		fmt.Printf("%s [STATUS] %s\n", timestamp, status)
+	default:
+		// Regular log entry
+		levelStr := strings.ToUpper(level)
+		if levelStr == "" {
+			levelStr = "INFO"
+		}
+		if stepID != "" {
+			fmt.Printf("%s [%s] [%s] %s\n", timestamp, levelStr, stepID, message)
+		} else {
+			fmt.Printf("%s [%s] %s\n", timestamp, levelStr, message)
+		}
 	}
 }
 
@@ -455,7 +515,7 @@ func historyCancel(id string) error {
 		return fmt.Errorf("failed to cancel execution: %w", err)
 	}
 
-	fmt.Printf("Execution %s cancelled\n", id)
+	fmt.Printf("%s Execution %s cancelled\n", shared.StatusOK.Render(shared.SymbolOK), id)
 	return nil
 }
 

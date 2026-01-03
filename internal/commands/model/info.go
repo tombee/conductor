@@ -112,31 +112,32 @@ Examples:
 			}
 
 			// Human-readable output
-			fmt.Fprintf(out, "Model Name:       %s\n", modelRef)
-			fmt.Fprintf(out, "Provider:         %s\n", provider)
+			fmt.Fprintln(out, shared.Header.Render("Model: "+modelRef))
+			fmt.Fprintln(out)
+			fmt.Fprintf(out, "%s %s\n", shared.Muted.Render("Provider:"), provider)
 
 			if info.ContextWindow != nil {
-				fmt.Fprintf(out, "Context Window:   %d tokens\n", *info.ContextWindow)
+				fmt.Fprintf(out, "%s %d tokens\n", shared.Muted.Render("Context Window:"), *info.ContextWindow)
 			} else {
-				fmt.Fprintf(out, "Context Window:   N/A\n")
+				fmt.Fprintf(out, "%s %s\n", shared.Muted.Render("Context Window:"), shared.Muted.Render("N/A"))
 			}
 
 			if info.InputPrice != nil {
-				fmt.Fprintf(out, "Input Price:      $%.2f per million tokens\n", *info.InputPrice)
+				fmt.Fprintf(out, "%s $%.2f per million tokens\n", shared.Muted.Render("Input Price:"), *info.InputPrice)
 			} else {
-				fmt.Fprintf(out, "Input Price:      N/A\n")
+				fmt.Fprintf(out, "%s %s\n", shared.Muted.Render("Input Price:"), shared.Muted.Render("N/A"))
 			}
 
 			if info.OutputPrice != nil {
-				fmt.Fprintf(out, "Output Price:     $%.2f per million tokens\n", *info.OutputPrice)
+				fmt.Fprintf(out, "%s $%.2f per million tokens\n", shared.Muted.Render("Output Price:"), *info.OutputPrice)
 			} else {
-				fmt.Fprintf(out, "Output Price:     N/A\n")
+				fmt.Fprintf(out, "%s %s\n", shared.Muted.Render("Output Price:"), shared.Muted.Render("N/A"))
 			}
 
 			if len(tiers) > 0 {
-				fmt.Fprintf(out, "Mapped Tiers:     %v\n", tiers)
+				fmt.Fprintf(out, "%s %s\n", shared.Muted.Render("Mapped Tiers:"), shared.StatusInfo.Render(fmt.Sprintf("%v", tiers)))
 			} else {
-				fmt.Fprintf(out, "Mapped Tiers:     None\n")
+				fmt.Fprintf(out, "%s %s\n", shared.Muted.Render("Mapped Tiers:"), shared.Muted.Render("None"))
 			}
 
 			return nil
