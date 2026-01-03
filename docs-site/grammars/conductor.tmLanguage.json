@@ -48,7 +48,7 @@
     },
     "top-level-keywords": {
       "comment": "Top-level workflow keywords (FR1)",
-      "match": "^\\\\s*(agents|description|functions|inputs|integrations|listen|mcp_servers|name|outputs|steps|version)\\\\s*:",
+      "match": "^\\\\s*(agents|description|functions|inputs|integrations|mcp_servers|name|outputs|steps|version)\\\\s*:",
       "captures": {
         "1": {
           "name": "keyword.control.conductor"
@@ -57,7 +57,7 @@
     },
     "step-keywords": {
       "comment": "Step configuration keywords (FR2)",
-      "match": "^\\\\s+(action|agent|condition|foreach|functions|id|inputs|integration|max_concurrency|model|name|on_error|operation|output_options|output_schema|output_type|prompt|retry|steps|system|timeout|type)\\\\s*:",
+      "match": "^\\\\s+(action|agent|condition|foreach|functions|id|inputs|integration|max_concurrency|max_iterations|model|name|on_error|operation|output_options|output_schema|output_type|prompt|retry|steps|system|timeout|type|until)\\\\s*:",
       "captures": {
         "1": {
           "name": "keyword.other.conductor"
@@ -69,7 +69,7 @@
       "patterns": [
         {
           "comment": "Listen/trigger configuration (FR6)",
-          "match": "^\\\\s+(api|args|capabilities|command|cron|enabled|env|events|input_mapping|inputs|name|path|prefers|schedule|secret|source|timeout|timezone|webhook)\\\\s*:",
+          "match": "^\\\\s+(args|capabilities|command|env|name|prefers|timeout)\\\\s*:",
           "captures": {
             "1": {
               "name": "keyword.other.conductor"
@@ -184,7 +184,7 @@
       "patterns": [
         {
           "comment": "Step types",
-          "match": ":\\\\s*(condition|integration|llm|parallel)\\\\b",
+          "match": ":\\\\s*(condition|integration|llm|loop|parallel)\\\\b",
           "captures": {
             "1": {
               "name": "constant.language.conductor"
