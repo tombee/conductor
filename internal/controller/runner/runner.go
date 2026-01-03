@@ -148,7 +148,8 @@ type LogEntry struct {
 	Status        string         `json:"status,omitempty"`           // For status events: running, completed, failed
 	Output        map[string]any `json:"output,omitempty"`           // Step output for step_complete events
 	CostUSD       float64        `json:"cost_usd,omitempty"`         // Cost for step_complete events
-	Tokens        int            `json:"tokens,omitempty"`           // Total tokens for step_complete events
+	TokensIn      int            `json:"tokens_in,omitempty"`        // Input tokens for step_complete events
+	TokensOut     int            `json:"tokens_out,omitempty"`       // Output tokens for step_complete events
 	DurationMs    int64          `json:"duration_ms,omitempty"`      // Step duration in milliseconds
 	CorrelationID string         `json:"correlation_id,omitempty"`   // Correlation ID for distributed tracing
 	Error         string         `json:"error,omitempty"`            // Error message if failed
@@ -602,8 +603,8 @@ func (r *Runner) addStepStart(run *Run, stepID, stepName string, stepIndex, tota
 }
 
 // addStepComplete sends a step_complete event via the LogAggregator.
-func (r *Runner) addStepComplete(run *Run, stepID, stepName, status string, output map[string]any, durationMs int64, costUSD float64, tokens int, errMsg string) {
-	r.logs.AddStepComplete(run, stepID, stepName, status, output, durationMs, costUSD, tokens, errMsg)
+func (r *Runner) addStepComplete(run *Run, stepID, stepName, status string, output map[string]any, durationMs int64, costUSD float64, tokensIn, tokensOut int, errMsg string) {
+	r.logs.AddStepComplete(run, stepID, stepName, status, output, durationMs, costUSD, tokensIn, tokensOut, errMsg)
 }
 
 // addStatus sends a status event via the LogAggregator.

@@ -31,9 +31,10 @@ type RunStats struct {
 
 // StepCost tracks cost for a single step
 type StepCost struct {
-	CostUSD  float64
-	Tokens   int
-	Accuracy string
+	CostUSD   float64
+	TokensIn  int
+	TokensOut int
+	Accuracy  string
 }
 
 // ExecutionPlan represents a resolved execution plan

@@ -107,7 +107,7 @@ func displayStats(stats *RunStats) {
 		fmt.Println("\nPer-step costs:")
 		for stepName, stepCost := range stats.StepCosts {
 			stepCostStr := formatStepCost(stepCost)
-			fmt.Printf("  %s: %s (%d tokens)\n", stepName, stepCostStr, stepCost.Tokens)
+			fmt.Printf("  %s: %s (%d in / %d out)\n", stepName, stepCostStr, stepCost.TokensIn, stepCost.TokensOut)
 		}
 	}
 }
@@ -120,13 +120,14 @@ func displayStepCost(event map[string]any) {
 	}
 
 	cost, _ := event["cost_usd"].(float64)
-	tokens, _ := event["tokens"].(float64)
+	tokensIn, _ := event["tokens_in"].(float64)
+	tokensOut, _ := event["tokens_out"].(float64)
 	accuracy, _ := event["accuracy"].(string)
 	runningTotal, _ := event["running_total"].(float64)
 
 	costStr := formatCost(cost, accuracy)
 
-	fmt.Printf("  %s %s: %s (%d tokens)\n", shared.StatusOK.Render(shared.SymbolOK), stepName, costStr, int(tokens))
+	fmt.Printf("  %s %s: %s (%d in / %d out)\n", shared.StatusOK.Render(shared.SymbolOK), stepName, costStr, int(tokensIn), int(tokensOut))
 
 	// Show running total if available
 	if runningTotal > 0 {
@@ -143,7 +144,8 @@ func updateStatsWithStep(stats *RunStats, event map[string]any) {
 	}
 
 	cost, _ := event["cost_usd"].(float64)
-	tokens, _ := event["tokens"].(float64)
+	tokensIn, _ := event["tokens_in"].(float64)
+	tokensOut, _ := event["tokens_out"].(float64)
 	accuracy, _ := event["accuracy"].(string)
 
 	// Update step costs
@@ -152,14 +154,16 @@ func updateStatsWithStep(stats *RunStats, event map[string]any) {
 	}
 
 	stats.StepCosts[stepName] = StepCost{
-		CostUSD:  cost,
-		Tokens:   int(tokens),
-		Accuracy: accuracy,
+		CostUSD:   cost,
+		TokensIn:  int(tokensIn),
+		TokensOut: int(tokensOut),
+		Accuracy:  accuracy,
 	}
 
 	// Update totals
 	stats.CostUSD += cost
-	stats.TokensIn += int(tokens) // Simplified - would need to separate in/out
+	stats.TokensIn += int(tokensIn)
+	stats.TokensOut += int(tokensOut)
 
 	// Update overall accuracy (use most conservative)
 	if accuracy == "unavailable" || stats.Accuracy == "unavailable" {
