@@ -109,16 +109,26 @@ func displayStats(stats *RunStats) {
 		fmt.Println(strings.Join(parts, " | "))
 	}
 
-	// Show per-step breakdown if available
+	// Show per-step breakdown if available (only LLM steps with tokens)
 	if len(stats.StepCosts) > 0 {
-		fmt.Println("\nPer-step costs:")
+		var llmSteps []string
 		for stepName, stepCost := range stats.StepCosts {
+			// Skip non-LLM steps (no tokens, no cost)
+			if stepCost.TokensIn == 0 && stepCost.TokensOut == 0 && stepCost.CostUSD == 0 {
+				continue
+			}
 			stepCostStr := formatStepCost(stepCost)
 			tokenInfo := fmt.Sprintf("%d in / %d out", stepCost.TokensIn, stepCost.TokensOut)
 			if stepCost.CacheCreation > 0 || stepCost.CacheRead > 0 {
 				tokenInfo += fmt.Sprintf(", cache: %d/%d", stepCost.CacheCreation, stepCost.CacheRead)
 			}
-			fmt.Printf("  %s: %s (%s)\n", stepName, stepCostStr, tokenInfo)
+			llmSteps = append(llmSteps, fmt.Sprintf("  %s: %s (%s)", stepName, stepCostStr, tokenInfo))
+		}
+		if len(llmSteps) > 0 {
+			fmt.Println("\nPer-step costs:")
+			for _, line := range llmSteps {
+				fmt.Println(line)
+			}
 		}
 	}
 }
@@ -137,6 +147,12 @@ func displayStepCost(event map[string]any) {
 	cacheRead, _ := event["cache_read"].(float64)
 	accuracy, _ := event["accuracy"].(string)
 	runningTotal, _ := event["running_total"].(float64)
+
+	// For non-LLM steps (no tokens), just show the checkmark and step name
+	if int(tokensIn) == 0 && int(tokensOut) == 0 && cost == 0 {
+		fmt.Printf("  %s %s\n", shared.StatusOK.Render(shared.SymbolOK), stepName)
+		return
+	}
 
 	costStr := formatCost(cost, accuracy)
 
