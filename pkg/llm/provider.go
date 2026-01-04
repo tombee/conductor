@@ -141,6 +141,9 @@ type CompletionResponse struct {
 	// Usage contains token consumption information.
 	Usage TokenUsage
 
+	// Cost is the cost of this completion in USD (if reported by provider).
+	Cost float64
+
 	// Model is the actual model ID that handled this request.
 	Model string
 

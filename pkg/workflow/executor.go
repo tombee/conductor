@@ -155,6 +155,9 @@ type CompletionResult struct {
 	// Nil if the provider doesn't support usage tracking.
 	Usage *llm.TokenUsage
 
+	// Cost is the cost of this completion in USD (if reported by provider).
+	Cost float64
+
 	// Model is the actual model ID that handled the request.
 	Model string
 }
@@ -363,6 +366,15 @@ func (e *Executor) Execute(ctx context.Context, step *StepDefinition, workflowCo
 			result.TokenUsage = usage
 			// Remove internal metadata from output
 			delete(result.Output, "_usage")
+		}
+	}
+
+	// Extract _cost from output for LLM steps
+	if result.Output != nil {
+		if cost, ok := result.Output["_cost"].(float64); ok {
+			result.CostUSD = cost
+			// Remove internal metadata from output
+			delete(result.Output, "_cost")
 		}
 	}
 
@@ -936,6 +948,11 @@ func (e *Executor) executeLLM(ctx context.Context, step *StepDefinition, inputs 
 		output["_usage"] = result.Usage
 	}
 
+	// Include cost if reported by provider
+	if result.Cost > 0 {
+		output["_cost"] = result.Cost
+	}
+
 	return output, nil
 }
 
@@ -947,8 +964,9 @@ func (e *Executor) executeLLMWithSchema(ctx context.Context, basePrompt string, 
 
 	var lastResponse string
 	var lastErr error
-	// Aggregate usage across all attempts (including failed validation attempts)
+	// Aggregate usage and cost across all attempts (including failed validation attempts)
 	var aggregatedUsage llm.TokenUsage
+	var aggregatedCost float64
 
 	for attempt := 0; attempt < maxAttempts; attempt++ {
 		// T4.2: Inject schema requirements into prompt
@@ -972,7 +990,7 @@ func (e *Executor) executeLLMWithSchema(ctx context.Context, basePrompt string, 
 
 		lastResponse = result.Content
 
-		// Aggregate usage from this attempt
+		// Aggregate usage and cost from this attempt
 		if result.Usage != nil {
 			aggregatedUsage.InputTokens += result.Usage.InputTokens
 			aggregatedUsage.OutputTokens += result.Usage.OutputTokens
@@ -980,6 +998,7 @@ func (e *Executor) executeLLMWithSchema(ctx context.Context, basePrompt string, 
 			aggregatedUsage.CacheCreationTokens += result.Usage.CacheCreationTokens
 			aggregatedUsage.CacheReadTokens += result.Usage.CacheReadTokens
 		}
+		aggregatedCost += result.Cost
 
 		// Log response at trace level
 		if e.logger != nil && e.logger.Enabled(nil, -8) {
@@ -1013,6 +1032,11 @@ func (e *Executor) executeLLMWithSchema(ctx context.Context, basePrompt string, 
 		// Include aggregated usage if we had any
 		if aggregatedUsage.TotalTokens > 0 {
 			output["_usage"] = &aggregatedUsage
+		}
+
+		// Include aggregated cost if we had any
+		if aggregatedCost > 0 {
+			output["_cost"] = aggregatedCost
 		}
 
 		return output, nil
@@ -1238,10 +1262,11 @@ func (e *Executor) executeParallel(ctx context.Context, step *StepDefinition, in
 		}(nested)
 	}
 
-	// Collect results and aggregate token usage from nested steps
+	// Collect results and aggregate token usage and cost from nested steps
 	output := make(map[string]interface{})
 	var errors []error
 	aggregatedUsage := &llm.TokenUsage{}
+	var aggregatedCost float64
 	hasUsage := false
 
 	for i := 0; i < len(step.Steps); i++ {
@@ -1256,20 +1281,28 @@ func (e *Executor) executeParallel(ctx context.Context, step *StepDefinition, in
 			output[r.id] = r.result.Output
 		}
 
-		// Aggregate token usage from nested step
-		if r.result != nil && r.result.TokenUsage != nil {
-			hasUsage = true
-			aggregatedUsage.InputTokens += r.result.TokenUsage.InputTokens
-			aggregatedUsage.OutputTokens += r.result.TokenUsage.OutputTokens
-			aggregatedUsage.TotalTokens += r.result.TokenUsage.TotalTokens
-			aggregatedUsage.CacheCreationTokens += r.result.TokenUsage.CacheCreationTokens
-			aggregatedUsage.CacheReadTokens += r.result.TokenUsage.CacheReadTokens
+		// Aggregate token usage and cost from nested step
+		if r.result != nil {
+			if r.result.TokenUsage != nil {
+				hasUsage = true
+				aggregatedUsage.InputTokens += r.result.TokenUsage.InputTokens
+				aggregatedUsage.OutputTokens += r.result.TokenUsage.OutputTokens
+				aggregatedUsage.TotalTokens += r.result.TokenUsage.TotalTokens
+				aggregatedUsage.CacheCreationTokens += r.result.TokenUsage.CacheCreationTokens
+				aggregatedUsage.CacheReadTokens += r.result.TokenUsage.CacheReadTokens
+			}
+			aggregatedCost += r.result.CostUSD
 		}
 	}
 
 	// Include aggregated usage in output so Execute() can extract it
 	if hasUsage {
 		output["_usage"] = aggregatedUsage
+	}
+
+	// Include aggregated cost in output so Execute() can extract it
+	if aggregatedCost > 0 {
+		output["_cost"] = aggregatedCost
 	}
 
 	e.logger.Debug("parallel execution complete",
@@ -1361,6 +1394,7 @@ func (e *Executor) executeForeach(ctx context.Context, step *StepDefinition, inp
 		index      int
 		result     interface{}
 		tokenUsage *llm.TokenUsage
+		cost       float64
 		err        error
 	}
 
@@ -1456,6 +1490,7 @@ func (e *Executor) executeForeach(ctx context.Context, step *StepDefinition, inp
 			iterOutput := make(map[string]interface{})
 			var iterErr error
 			iterUsage := &llm.TokenUsage{}
+			var iterCost float64
 			hasIterUsage := false
 
 			for _, nested := range step.Steps {
@@ -1482,7 +1517,7 @@ func (e *Executor) executeForeach(ctx context.Context, step *StepDefinition, inp
 							"status":   result.Status,
 						}
 					}
-					// Aggregate token usage from nested step
+					// Aggregate token usage and cost from nested step
 					if result.TokenUsage != nil {
 						hasIterUsage = true
 						iterUsage.InputTokens += result.TokenUsage.InputTokens
@@ -1491,6 +1526,7 @@ func (e *Executor) executeForeach(ctx context.Context, step *StepDefinition, inp
 						iterUsage.CacheCreationTokens += result.TokenUsage.CacheCreationTokens
 						iterUsage.CacheReadTokens += result.TokenUsage.CacheReadTokens
 					}
+					iterCost += result.CostUSD
 				}
 			}
 
@@ -1510,6 +1546,7 @@ func (e *Executor) executeForeach(ctx context.Context, step *StepDefinition, inp
 				index:      index,
 				result:     iterOutput,
 				tokenUsage: usagePtr,
+				cost:       iterCost,
 				err:        iterErr,
 			}
 		}(idx, item)
@@ -1528,10 +1565,11 @@ func (e *Executor) executeForeach(ctx context.Context, step *StepDefinition, inp
 		sortedResults[r.index] = r
 	}
 
-	// Build output array, collect errors, and aggregate token usage
+	// Build output array, collect errors, and aggregate token usage and cost
 	outputArray := make([]interface{}, total)
 	var errors []error
 	aggregatedUsage := &llm.TokenUsage{}
+	var aggregatedCost float64
 	hasUsage := false
 
 	for i, r := range sortedResults {
@@ -1540,7 +1578,7 @@ func (e *Executor) executeForeach(ctx context.Context, step *StepDefinition, inp
 		}
 		outputArray[i] = r.result
 
-		// Aggregate token usage from iteration
+		// Aggregate token usage and cost from iteration
 		if r.tokenUsage != nil {
 			hasUsage = true
 			aggregatedUsage.InputTokens += r.tokenUsage.InputTokens
@@ -1549,6 +1587,7 @@ func (e *Executor) executeForeach(ctx context.Context, step *StepDefinition, inp
 			aggregatedUsage.CacheCreationTokens += r.tokenUsage.CacheCreationTokens
 			aggregatedUsage.CacheReadTokens += r.tokenUsage.CacheReadTokens
 		}
+		aggregatedCost += r.cost
 	}
 
 	e.logger.Debug("foreach execution complete",
@@ -1567,9 +1606,12 @@ func (e *Executor) executeForeach(ctx context.Context, step *StepDefinition, inp
 		"results": outputArray,
 	}
 
-	// Include aggregated usage in output so Execute() can extract it
+	// Include aggregated usage and cost in output so Execute() can extract them
 	if hasUsage {
 		output["_usage"] = aggregatedUsage
+	}
+	if aggregatedCost > 0 {
+		output["_cost"] = aggregatedCost
 	}
 
 	return output, nil

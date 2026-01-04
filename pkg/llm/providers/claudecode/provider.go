@@ -197,6 +197,7 @@ func (p *Provider) executeSimple(ctx context.Context, req llm.CompletionRequest)
 		Model:        req.Model,
 		Created:      startTime,
 		Usage:        usage,
+		Cost:         cliResp.TotalCostUSD,
 	}
 
 	return response, nil

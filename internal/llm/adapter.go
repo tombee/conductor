@@ -80,10 +80,11 @@ func (a *ProviderAdapter) Complete(ctx context.Context, prompt string, options m
 		return nil, fmt.Errorf("LLM completion failed: %w", err)
 	}
 
-	// Build the result with token usage
+	// Build the result with token usage and cost
 	result := &workflow.CompletionResult{
 		Content: resp.Content,
 		Model:   resp.Model,
+		Cost:    resp.Cost,
 	}
 
 	// Copy usage data if available
