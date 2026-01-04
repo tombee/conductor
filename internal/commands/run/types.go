@@ -20,21 +20,25 @@ import (
 
 // RunStats contains execution statistics
 type RunStats struct {
-	CostUSD      float64
-	TokensIn     int
-	TokensOut    int
-	DurationMs   int64
-	StepCosts    map[string]StepCost
-	RunningTotal float64
-	Accuracy     string
+	CostUSD       float64
+	TokensIn      int
+	TokensOut     int
+	CacheCreation int
+	CacheRead     int
+	DurationMs    int64
+	StepCosts     map[string]StepCost
+	RunningTotal  float64
+	Accuracy      string
 }
 
 // StepCost tracks cost for a single step
 type StepCost struct {
-	CostUSD   float64
-	TokensIn  int
-	TokensOut int
-	Accuracy  string
+	CostUSD       float64
+	TokensIn      int
+	TokensOut     int
+	CacheCreation int
+	CacheRead     int
+	Accuracy      string
 }
 
 // ExecutionPlan represents a resolved execution plan

@@ -288,7 +288,7 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 			// Calculate tokens, duration, and output
 			var durationMs int64
 			var costUSD float64
-			var tokensIn, tokensOut int
+			var tokensIn, tokensOut, cacheCreation, cacheRead int
 			var output map[string]any
 			if result != nil {
 				durationMs = result.Duration.Milliseconds()
@@ -297,11 +297,13 @@ func (r *Runner) executeWithAdapter(run *Run, adapter ExecutionAdapter) {
 				if result.TokenUsage != nil {
 					tokensIn = result.TokenUsage.InputTokens
 					tokensOut = result.TokenUsage.OutputTokens
+					cacheCreation = result.TokenUsage.CacheCreationTokens
+					cacheRead = result.TokenUsage.CacheReadTokens
 				}
 			}
 
 			// Send step_complete event for CLI progress display
-			r.addStepComplete(run, stepID, stepName, status, output, durationMs, costUSD, tokensIn, tokensOut, errMsg)
+			r.addStepComplete(run, stepID, stepName, status, output, durationMs, costUSD, tokensIn, tokensOut, cacheCreation, cacheRead, errMsg)
 
 			// Save step result to backend if available
 			if result != nil {

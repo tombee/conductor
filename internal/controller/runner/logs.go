@@ -117,7 +117,7 @@ func (l *LogAggregator) AddStepStart(run *Run, stepID, stepName string, stepInde
 }
 
 // AddStepComplete sends a step_complete event with execution results.
-func (l *LogAggregator) AddStepComplete(run *Run, stepID, stepName, status string, output map[string]any, durationMs int64, costUSD float64, tokensIn, tokensOut int, errMsg string) {
+func (l *LogAggregator) AddStepComplete(run *Run, stepID, stepName, status string, output map[string]any, durationMs int64, costUSD float64, tokensIn, tokensOut, cacheCreation, cacheRead int, errMsg string) {
 	entry := LogEntry{
 		Timestamp:     time.Now(),
 		Type:          "step_complete",
@@ -129,6 +129,8 @@ func (l *LogAggregator) AddStepComplete(run *Run, stepID, stepName, status strin
 		CostUSD:       costUSD,
 		TokensIn:      tokensIn,
 		TokensOut:     tokensOut,
+		CacheCreation: cacheCreation,
+		CacheRead:     cacheRead,
 		Error:         errMsg,
 		CorrelationID: run.CorrelationID,
 	}

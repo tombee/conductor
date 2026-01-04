@@ -35,6 +35,12 @@ func parseStats(event map[string]any) *RunStats {
 	if tokensOut, ok := event["tokens_out"].(float64); ok {
 		stats.TokensOut = int(tokensOut)
 	}
+	if cacheCreation, ok := event["cache_creation"].(float64); ok {
+		stats.CacheCreation = int(cacheCreation)
+	}
+	if cacheRead, ok := event["cache_read"].(float64); ok {
+		stats.CacheRead = int(cacheRead)
+	}
 	if duration, ok := event["duration_ms"].(float64); ok {
 		stats.DurationMs = int64(duration)
 	}
@@ -83,15 +89,16 @@ func displayStats(stats *RunStats) {
 	var parts []string
 
 	if stats.CostUSD > 0 {
-		prefix := ""
-		if stats.Accuracy == "estimated" {
-			prefix = "~"
-		}
-		parts = append(parts, fmt.Sprintf("Cost: %s$%.4f", prefix, stats.CostUSD))
+		costStr := formatCost(stats.CostUSD, stats.Accuracy)
+		parts = append(parts, fmt.Sprintf("Cost: %s", costStr))
 	}
 
 	if stats.TokensIn > 0 || stats.TokensOut > 0 {
-		parts = append(parts, fmt.Sprintf("Tokens: %d in / %d out", stats.TokensIn, stats.TokensOut))
+		tokenStr := fmt.Sprintf("Tokens: %d in / %d out", stats.TokensIn, stats.TokensOut)
+		if stats.CacheCreation > 0 || stats.CacheRead > 0 {
+			tokenStr += fmt.Sprintf(" (cache: %d write / %d read)", stats.CacheCreation, stats.CacheRead)
+		}
+		parts = append(parts, tokenStr)
 	}
 
 	if stats.DurationMs > 0 {
@@ -107,7 +114,11 @@ func displayStats(stats *RunStats) {
 		fmt.Println("\nPer-step costs:")
 		for stepName, stepCost := range stats.StepCosts {
 			stepCostStr := formatStepCost(stepCost)
-			fmt.Printf("  %s: %s (%d in / %d out)\n", stepName, stepCostStr, stepCost.TokensIn, stepCost.TokensOut)
+			tokenInfo := fmt.Sprintf("%d in / %d out", stepCost.TokensIn, stepCost.TokensOut)
+			if stepCost.CacheCreation > 0 || stepCost.CacheRead > 0 {
+				tokenInfo += fmt.Sprintf(", cache: %d/%d", stepCost.CacheCreation, stepCost.CacheRead)
+			}
+			fmt.Printf("  %s: %s (%s)\n", stepName, stepCostStr, tokenInfo)
 		}
 	}
 }
@@ -122,12 +133,19 @@ func displayStepCost(event map[string]any) {
 	cost, _ := event["cost_usd"].(float64)
 	tokensIn, _ := event["tokens_in"].(float64)
 	tokensOut, _ := event["tokens_out"].(float64)
+	cacheCreation, _ := event["cache_creation"].(float64)
+	cacheRead, _ := event["cache_read"].(float64)
 	accuracy, _ := event["accuracy"].(string)
 	runningTotal, _ := event["running_total"].(float64)
 
 	costStr := formatCost(cost, accuracy)
 
-	fmt.Printf("  %s %s: %s (%d in / %d out)\n", shared.StatusOK.Render(shared.SymbolOK), stepName, costStr, int(tokensIn), int(tokensOut))
+	tokenInfo := fmt.Sprintf("%d in / %d out", int(tokensIn), int(tokensOut))
+	if int(cacheCreation) > 0 || int(cacheRead) > 0 {
+		tokenInfo += fmt.Sprintf(", cache: %d/%d", int(cacheCreation), int(cacheRead))
+	}
+
+	fmt.Printf("  %s %s: %s (%s)\n", shared.StatusOK.Render(shared.SymbolOK), stepName, costStr, tokenInfo)
 
 	// Show running total if available
 	if runningTotal > 0 {
@@ -146,6 +164,8 @@ func updateStatsWithStep(stats *RunStats, event map[string]any) {
 	cost, _ := event["cost_usd"].(float64)
 	tokensIn, _ := event["tokens_in"].(float64)
 	tokensOut, _ := event["tokens_out"].(float64)
+	cacheCreation, _ := event["cache_creation"].(float64)
+	cacheRead, _ := event["cache_read"].(float64)
 	accuracy, _ := event["accuracy"].(string)
 
 	// Update step costs
@@ -154,16 +174,20 @@ func updateStatsWithStep(stats *RunStats, event map[string]any) {
 	}
 
 	stats.StepCosts[stepName] = StepCost{
-		CostUSD:   cost,
-		TokensIn:  int(tokensIn),
-		TokensOut: int(tokensOut),
-		Accuracy:  accuracy,
+		CostUSD:       cost,
+		TokensIn:      int(tokensIn),
+		TokensOut:     int(tokensOut),
+		CacheCreation: int(cacheCreation),
+		CacheRead:     int(cacheRead),
+		Accuracy:      accuracy,
 	}
 
 	// Update totals
 	stats.CostUSD += cost
 	stats.TokensIn += int(tokensIn)
 	stats.TokensOut += int(tokensOut)
+	stats.CacheCreation += int(cacheCreation)
+	stats.CacheRead += int(cacheRead)
 
 	// Update overall accuracy (use most conservative)
 	if accuracy == "unavailable" || stats.Accuracy == "unavailable" {
@@ -188,6 +212,10 @@ func formatCost(cost float64, accuracy string) string {
 		prefix = "~"
 	}
 
+	// Use 2 decimal places for amounts >= $0.01, otherwise show more precision
+	if cost >= 0.01 {
+		return fmt.Sprintf("%s$%.2f", prefix, cost)
+	}
 	return fmt.Sprintf("%s$%.4f", prefix, cost)
 }
 
