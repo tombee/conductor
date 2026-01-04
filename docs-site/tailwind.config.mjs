@@ -5,12 +5,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Brand colors matching custom.css
+        // Brand colors - yellow/amber accent matching custom.css
         accent: {
-          DEFAULT: '#2563eb',
-          light: '#3b82f6',
-          high: '#60a5fa',
-          low: '#1e3a5f',
+          DEFAULT: '#d97706',  // amber-600
+          light: '#f59e0b',    // amber-500
+          high: '#fbbf24',     // amber-400
+          low: '#92400e',      // amber-800
         },
         // Background colors
         background: {

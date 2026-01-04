@@ -300,11 +300,11 @@ steps:
     <!-- Hero Section -->
     <section class="pt-32 pb-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       <!-- Gradient background -->
-      <div class="absolute inset-0 bg-gradient-to-b from-blue-50/50 to-transparent dark:from-blue-950/20 dark:to-transparent pointer-events-none"></div>
+      <div class="absolute inset-0 bg-gradient-to-b from-amber-50/50 to-transparent dark:from-amber-950/20 dark:to-transparent pointer-events-none"></div>
       <div class="max-w-4xl mx-auto text-center relative">
         <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 dark:text-white mb-6 animate-fade-in">
           Portable AI workflows in<br class="hidden sm:block" />
-          <span class="text-blue-600 dark:text-blue-400">simple YAML</span>
+          <span class="text-amber-600 dark:text-amber-400">simple YAML</span>
         </h1>
         <p class="text-xl text-slate-600 dark:text-slate-300 mb-8 max-w-2xl mx-auto">
           Orchestrate LLM agents with built-in observability, cost tracking, and security.
@@ -312,7 +312,7 @@ steps:
         <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <a
             href={`${baseUrl}getting-started/`}
-            class="inline-flex items-center px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors min-w-[160px] justify-center"
+            class="inline-flex items-center px-6 py-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium transition-colors min-w-[160px] justify-center"
           >
             Get Started
           </a>
@@ -347,7 +347,7 @@ steps:
               data-example-index={index}
               class={`px-4 py-2 text-sm font-medium rounded-lg mx-1 transition-colors ${
                 index === 0
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-amber-600 text-white'
                   : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
               }`}
             >
@@ -400,9 +400,9 @@ steps:
         </h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature) => (
-            <div class="p-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 transition-all duration-300 hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600">
-              <div class="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mb-4">
-                <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <div class="p-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 transition-all duration-300 hover:shadow-lg hover:border-amber-300 dark:hover:border-amber-600">
+              <div class="w-12 h-12 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center mb-4">
+                <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={feature.iconPath} />
                 </svg>
               </div>
@@ -427,9 +427,9 @@ steps:
           {useCases.map((useCase) => (
             <a
               href={useCase.link}
-              class="group p-6 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 transition-colors"
+              class="group p-6 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-600 transition-colors"
             >
-              <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+              <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-2 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
                 {useCase.title}
               </h3>
               <p class="text-slate-600 dark:text-slate-300">{useCase.description}</p>
@@ -453,7 +453,7 @@ steps:
             { step: '4', title: 'Iterate', desc: 'Refine prompts and add more steps' },
           ].map((item) => (
             <div class="text-center">
-              <div class="w-12 h-12 rounded-full bg-blue-600 text-white font-bold text-xl flex items-center justify-center mx-auto mb-4">
+              <div class="w-12 h-12 rounded-full bg-amber-600 text-white font-bold text-xl flex items-center justify-center mx-auto mb-4">
                 {item.step}
               </div>
               <h3 class="font-semibold text-slate-900 dark:text-white mb-2">{item.title}</h3>
@@ -465,20 +465,20 @@ steps:
     </section>
 
     <!-- CTA Section -->
-    <section class="py-20 px-4 sm:px-6 lg:px-8 bg-blue-600 dark:bg-blue-700">
+    <section class="py-20 px-4 sm:px-6 lg:px-8 bg-amber-600 dark:bg-amber-700">
       <div class="max-w-4xl mx-auto text-center">
         <h2 class="text-3xl font-bold text-white mb-4">
           Ready to get started?
         </h2>
-        <p class="text-blue-100 mb-8">
+        <p class="text-amber-100 mb-8">
           Install Conductor and run your first workflow in minutes.
         </p>
         <div class="bg-slate-900 rounded-lg p-4 max-w-md mx-auto mb-8">
-          <code class="text-green-400 text-sm">go install github.com/tombee/conductor@latest</code>
+          <code class="text-amber-300 text-sm">go install github.com/tombee/conductor@latest</code>
         </div>
         <a
           href={`${baseUrl}getting-started/`}
-          class="inline-flex items-center px-8 py-4 rounded-lg bg-white hover:bg-slate-100 text-blue-600 font-semibold transition-colors"
+          class="inline-flex items-center px-8 py-4 rounded-lg bg-white hover:bg-slate-100 text-amber-700 font-semibold transition-colors"
         >
           Read the Docs
         </a>
@@ -598,7 +598,7 @@ steps:
         tabs.forEach((t, i) => {
           const isSelected = i === index;
           t.setAttribute('aria-selected', isSelected.toString());
-          t.classList.toggle('bg-blue-600', isSelected);
+          t.classList.toggle('bg-amber-600', isSelected);
           t.classList.toggle('text-white', isSelected);
           t.classList.toggle('bg-slate-200', !isSelected);
           t.classList.toggle('dark:bg-slate-700', !isSelected);
