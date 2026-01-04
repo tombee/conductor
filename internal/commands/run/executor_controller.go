@@ -497,58 +497,39 @@ func fetchRunOutput(ctx context.Context, c *client.Client, runID string) (string
 	}
 
 	if outputResp != nil {
-		// Check if any outputs have markdown format
-		hasMarkdown := false
-		for name := range outputResp {
-			if formats[name] == "markdown" {
-				hasMarkdown = true
-				break
-			}
-		}
-
-		// Try common output field names first
-		if outputStr, ok := outputResp["response"].(string); ok {
-			output = outputStr
-			if formats["response"] == "markdown" {
-				output, _ = renderMarkdown(output)
-			}
-		} else if outputStr, ok := outputResp["result"].(string); ok {
-			output = outputStr
-			if formats["result"] == "markdown" {
-				output, _ = renderMarkdown(output)
-			}
-		} else if outputStr, ok := outputResp["output"].(string); ok {
-			output = outputStr
-			if formats["output"] == "markdown" {
-				output, _ = renderMarkdown(output)
-			}
-		} else if len(outputResp) == 1 {
-			// Single output field - extract the value directly for clean display
-			for k, v := range outputResp {
+		if len(outputResp) == 1 {
+			// Single output - display value directly
+			for name, v := range outputResp {
 				if s, ok := v.(string); ok {
 					output = s
-					if formats[k] == "markdown" {
+					if formats[name] == "markdown" {
 						output, _ = renderMarkdown(output)
 					}
 				} else {
-					// Non-string single value - format as JSON
 					outputJSON, _ := json.MarshalIndent(v, "", "  ")
 					output = string(outputJSON)
 				}
 			}
-		} else if len(outputResp) > 1 {
-			// Multiple outputs - build full markdown document first, then render
+		} else {
+			// Multiple outputs - build document with headers
+			hasMarkdown := false
+			for name := range outputResp {
+				if formats[name] == "markdown" {
+					hasMarkdown = true
+					break
+				}
+			}
+
 			var parts []string
-			for k, v := range outputResp {
+			for name, v := range outputResp {
 				if s, ok := v.(string); ok {
-					parts = append(parts, fmt.Sprintf("## %s\n\n%s", k, s))
+					parts = append(parts, fmt.Sprintf("## %s\n\n%s", name, s))
 				} else {
 					vJSON, _ := json.MarshalIndent(v, "", "  ")
-					parts = append(parts, fmt.Sprintf("## %s\n\n%s", k, string(vJSON)))
+					parts = append(parts, fmt.Sprintf("## %s\n\n%s", name, string(vJSON)))
 				}
 			}
 			output = strings.Join(parts, "\n\n")
-			// Render entire output as markdown if any output has markdown format
 			if hasMarkdown {
 				output, _ = renderMarkdown(output)
 			}
