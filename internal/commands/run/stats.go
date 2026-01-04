@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/tombee/conductor/internal/commands/shared"
 )
 
 // parseStats parses statistics from an event map
@@ -130,43 +128,6 @@ func displayStats(stats *RunStats) {
 				fmt.Println(line)
 			}
 		}
-	}
-}
-
-// displayStepCost displays cost information for a completed step in real-time
-func displayStepCost(event map[string]any) {
-	stepName, _ := event["step_name"].(string)
-	if stepName == "" {
-		return
-	}
-
-	cost, _ := event["cost_usd"].(float64)
-	tokensIn, _ := event["tokens_in"].(float64)
-	tokensOut, _ := event["tokens_out"].(float64)
-	cacheCreation, _ := event["cache_creation"].(float64)
-	cacheRead, _ := event["cache_read"].(float64)
-	accuracy, _ := event["accuracy"].(string)
-	runningTotal, _ := event["running_total"].(float64)
-
-	// For non-LLM steps (no tokens), just show the checkmark and step name
-	if int(tokensIn) == 0 && int(tokensOut) == 0 && cost == 0 {
-		fmt.Printf("  %s %s\n", shared.StatusOK.Render(shared.SymbolOK), stepName)
-		return
-	}
-
-	costStr := formatCost(cost, accuracy)
-
-	tokenInfo := fmt.Sprintf("%d in / %d out", int(tokensIn), int(tokensOut))
-	if int(cacheCreation) > 0 || int(cacheRead) > 0 {
-		tokenInfo += fmt.Sprintf(", cache: %d/%d", int(cacheCreation), int(cacheRead))
-	}
-
-	fmt.Printf("  %s %s: %s (%s)\n", shared.StatusOK.Render(shared.SymbolOK), stepName, costStr, tokenInfo)
-
-	// Show running total if available
-	if runningTotal > 0 {
-		totalStr := formatCost(runningTotal, accuracy)
-		fmt.Printf("      Running total: %s\n", totalStr)
 	}
 }
 

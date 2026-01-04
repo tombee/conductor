@@ -35,7 +35,7 @@ import (
 )
 
 // runWorkflowViaController submits a workflow to the controller for execution
-func runWorkflowViaController(workflowPath string, inputArgs []string, inputFile, outputFile string, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun bool, provider, model, timeout, tierFast, tierBalanced, tierStrategic, workspace, profile string, bindIntegrations []string, security string, allowHosts, allowPaths []string, logLevel, step string, breakpoints []string) error {
+func runWorkflowViaController(workflowPath string, inputArgs []string, inputFile, outputFile string, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun, noProgress bool, provider, model, timeout, tierFast, tierBalanced, tierStrategic, workspace, profile string, bindIntegrations []string, security string, allowHosts, allowPaths []string, logLevel, step string, breakpoints []string) error {
 	ctx := context.Background()
 
 	// Apply environment variable defaults for workspace and profile
@@ -304,12 +304,18 @@ func runWorkflowViaController(workflowPath string, inputArgs []string, inputFile
 		return nil
 	}
 
-	// Stream logs and wait for completion
-	if !quiet {
-		fmt.Printf("Running workflow... (run ID: %s)\n", runID)
+	// Get workflow name for progress display
+	workflowName := ""
+	if def != nil {
+		workflowName = def.Name
+	}
+	if workflowName == "" {
+		// Use filename as fallback
+		workflowName = filepath.Base(workflowPath)
+		workflowName = strings.TrimSuffix(workflowName, filepath.Ext(workflowName))
 	}
 
-	output, stats, err := streamRunLogs(ctx, c, runID, quiet, verbose)
+	output, stats, err := streamRunLogs(ctx, c, runID, workflowName, quiet, verbose, noProgress)
 	if err != nil {
 		return err
 	}
@@ -339,9 +345,15 @@ func runWorkflowViaController(workflowPath string, inputArgs []string, inputFile
 }
 
 // streamRunLogs streams logs from a run until completion and returns output and stats
-func streamRunLogs(ctx context.Context, c *client.Client, runID string, quiet, verbose bool) (string, *RunStats, error) {
+func streamRunLogs(ctx context.Context, c *client.Client, runID, workflowName string, quiet, verbose, noProgress bool) (string, *RunStats, error) {
 	var outputText string
 	var stats *RunStats
+
+	// Create progress display
+	progress := shared.NewProgressDisplay(noProgress, verbose)
+	if !quiet {
+		progress.Start(workflowName, runID)
+	}
 
 	// Stream logs via SSE
 	resp, err := c.GetStream(ctx, fmt.Sprintf("/v1/runs/%s/logs", runID), "text/event-stream")
@@ -371,26 +383,45 @@ func streamRunLogs(ctx context.Context, c *client.Client, runID string, quiet, v
 			case "log":
 				if !quiet {
 					if message, ok := event["message"].(string); ok {
-						fmt.Println(message)
+						progress.LogMessage(message)
 					}
 				}
-			case "step_complete":
-				// Display per-step cost information
+			case "step_start":
 				if !quiet {
-					displayStepCost(event)
+					stepID, _ := event["step_id"].(string)
+					stepName, _ := event["step_name"].(string)
+					stepIndex, _ := event["step_index"].(float64)
+					totalSteps, _ := event["total_steps"].(float64)
+					progress.StepStarted(stepID, stepName, int(stepIndex), int(totalSteps))
 				}
-				// Update running stats
+			case "step_complete":
+				// Update running stats first
 				if stats == nil {
 					stats = &RunStats{
 						StepCosts: make(map[string]StepCost),
 					}
 				}
 				updateStatsWithStep(stats, event)
+
+				// Display step completion via progress display
+				if !quiet {
+					stepID, _ := event["step_id"].(string)
+					stepName, _ := event["step_name"].(string)
+					status, _ := event["status"].(string)
+					cost, _ := event["cost_usd"].(float64)
+					accuracy, _ := event["accuracy"].(string)
+					durationMs, _ := event["duration_ms"].(float64)
+					tokensIn, _ := event["tokens_in"].(float64)
+					tokensOut, _ := event["tokens_out"].(float64)
+					cacheCreation, _ := event["cache_creation"].(float64)
+					cacheRead, _ := event["cache_read"].(float64)
+					progress.StepCompleted(stepID, stepName, status, cost, accuracy, int64(durationMs), int(tokensIn), int(tokensOut), int(cacheCreation), int(cacheRead))
+				}
 			case "status":
 				if status, ok := event["status"].(string); ok {
 					if status == "completed" || status == "failed" || status == "cancelled" {
 						if !quiet {
-							fmt.Printf("\nWorkflow %s\n", status)
+							progress.Finish(status)
 						}
 						if status == "failed" {
 							if errMsg, ok := event["error"].(string); ok {
@@ -414,10 +445,6 @@ func streamRunLogs(ctx context.Context, c *client.Client, runID string, quiet, v
 				if outputData, ok := event["output"]; ok {
 					if outputStr, ok := outputData.(string); ok {
 						outputText = outputStr
-					}
-					if !quiet && verbose {
-						outputJSON, _ := json.MarshalIndent(outputData, "", "  ")
-						fmt.Printf("Output: %s\n", outputJSON)
 					}
 				}
 			case "stats":
@@ -499,18 +526,9 @@ func fetchRunOutput(ctx context.Context, c *client.Client, runID string) (string
 	if outputResp != nil {
 		var parts []string
 		for name, v := range outputResp {
-			var content string
-			if s, ok := v.(string); ok {
-				content = s
-				if formats[name] == "markdown" {
-					content, _ = renderMarkdown(content)
-				}
-			} else {
-				contentJSON, _ := json.MarshalIndent(v, "", "  ")
-				content = string(contentJSON)
-			}
-			// Add header for each output
-			header := fmt.Sprintf("━━━ %s ━━━", name)
+			content := formatOutput(v, formats[name])
+			// Add styled header for each output
+			header := shared.Header.Render(fmt.Sprintf("━━━ %s ━━━", name))
 			parts = append(parts, header+"\n\n"+content)
 		}
 		output = strings.Join(parts, "\n\n")
@@ -518,6 +536,63 @@ func fetchRunOutput(ctx context.Context, c *client.Client, runID string) (string
 
 	stats := parseStatsFromRun(runResp)
 	return output, formats, stats
+}
+
+// formatOutput formats output value based on the declared format type
+func formatOutput(value any, format string) string {
+	// Convert value to string representation
+	var content string
+	switch v := value.(type) {
+	case string:
+		content = v
+	case float64:
+		// Handle numbers - check if it's a whole number
+		if v == float64(int64(v)) {
+			content = fmt.Sprintf("%.0f", v)
+		} else {
+			content = fmt.Sprintf("%g", v)
+		}
+	case int, int64:
+		content = fmt.Sprintf("%d", v)
+	case bool:
+		content = fmt.Sprintf("%t", v)
+	case map[string]any, []any:
+		// For complex types, format as JSON
+		jsonBytes, err := json.MarshalIndent(v, "", "  ")
+		if err != nil {
+			content = fmt.Sprintf("%v", v)
+		} else {
+			content = string(jsonBytes)
+		}
+	default:
+		content = fmt.Sprintf("%v", v)
+	}
+
+	// Apply format-specific rendering
+	switch format {
+	case "markdown":
+		rendered, err := renderMarkdown(content)
+		if err != nil {
+			return content
+		}
+		return strings.TrimSpace(rendered)
+	case "json":
+		// If already valid JSON, pretty-print it
+		var parsed any
+		if err := json.Unmarshal([]byte(content), &parsed); err == nil {
+			prettyJSON, err := json.MarshalIndent(parsed, "", "  ")
+			if err == nil {
+				return string(prettyJSON)
+			}
+		}
+		return content
+	case "number":
+		// Already handled in value conversion above
+		return content
+	default:
+		// string or unspecified - return as-is
+		return content
+	}
 }
 
 // renderMarkdown renders markdown content for terminal display

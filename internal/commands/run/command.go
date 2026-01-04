@@ -51,6 +51,7 @@ func NewCommand() *cobra.Command {
 		logLevel                       string
 		step                           string
 		breakpoints                    []string
+		noProgress                     bool
 	)
 
 	cmd := &cobra.Command{
@@ -101,7 +102,10 @@ Remote Workflows:
 Verbosity levels:
   --verbose  Show full provider/model info for each step
   (default)  Show minimal progress updates
-  --quiet    Suppress non-error output`,
+  --quiet    Suppress non-error output
+
+Progress Display:
+  --no-progress  Disable interactive progress (use static output)`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// --json implies --no-interactive
@@ -118,7 +122,7 @@ Verbosity levels:
 			}
 
 			// All execution goes through controller
-			return runWorkflowViaController(args[0], inputs, inputFile, outputFile, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun, provider, model, timeout, tierFast, tierBalanced, tierStrategic, workspace, profile, bindIntegrations, securityMode, allowHosts, allowPaths, logLevel, step, breakpoints)
+			return runWorkflowViaController(args[0], inputs, inputFile, outputFile, noStats, background, mcpDev, noCache, quiet, verbose, noInteractive, helpInputs, dryRun, noProgress, provider, model, timeout, tierFast, tierBalanced, tierStrategic, workspace, profile, bindIntegrations, securityMode, allowHosts, allowPaths, logLevel, step, breakpoints)
 		},
 	}
 
@@ -150,6 +154,7 @@ Verbosity levels:
 	cmd.Flags().StringVar(&logLevel, "log-level", "", "Set log level (trace, debug, info, warn, error)")
 	cmd.Flags().StringVar(&step, "step", "", "Pause execution at the specified step ID (debug mode)")
 	cmd.Flags().StringSliceVar(&breakpoints, "breakpoint", nil, "Pause execution at these step IDs (debug mode)")
+	cmd.Flags().BoolVar(&noProgress, "no-progress", false, "Disable interactive progress display")
 
 	// Register flag completions
 	cmd.RegisterFlagCompletionFunc("provider", completion.CompleteProviderNames)
