@@ -497,43 +497,21 @@ func fetchRunOutput(ctx context.Context, c *client.Client, runID string) (string
 	}
 
 	if outputResp != nil {
-		if len(outputResp) == 1 {
-			// Single output - display value directly
-			for name, v := range outputResp {
-				if s, ok := v.(string); ok {
-					output = s
-					if formats[name] == "markdown" {
-						output, _ = renderMarkdown(output)
-					}
-				} else {
-					outputJSON, _ := json.MarshalIndent(v, "", "  ")
-					output = string(outputJSON)
-				}
-			}
-		} else {
-			// Multiple outputs - build document with headers
-			hasMarkdown := false
-			for name := range outputResp {
+		var parts []string
+		for name, v := range outputResp {
+			var part string
+			if s, ok := v.(string); ok {
+				part = s
 				if formats[name] == "markdown" {
-					hasMarkdown = true
-					break
+					part, _ = renderMarkdown(part)
 				}
+			} else {
+				partJSON, _ := json.MarshalIndent(v, "", "  ")
+				part = string(partJSON)
 			}
-
-			var parts []string
-			for name, v := range outputResp {
-				if s, ok := v.(string); ok {
-					parts = append(parts, fmt.Sprintf("## %s\n\n%s", name, s))
-				} else {
-					vJSON, _ := json.MarshalIndent(v, "", "  ")
-					parts = append(parts, fmt.Sprintf("## %s\n\n%s", name, string(vJSON)))
-				}
-			}
-			output = strings.Join(parts, "\n\n")
-			if hasMarkdown {
-				output, _ = renderMarkdown(output)
-			}
+			parts = append(parts, part)
 		}
+		output = strings.Join(parts, "\n\n---\n\n")
 	}
 
 	stats := parseStatsFromRun(runResp)
