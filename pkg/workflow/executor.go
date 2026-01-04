@@ -1238,9 +1238,12 @@ func (e *Executor) executeParallel(ctx context.Context, step *StepDefinition, in
 		}(nested)
 	}
 
-	// Collect results
+	// Collect results and aggregate token usage from nested steps
 	output := make(map[string]interface{})
 	var errors []error
+	aggregatedUsage := &llm.TokenUsage{}
+	hasUsage := false
+
 	for i := 0; i < len(step.Steps); i++ {
 		r := <-results
 		if r.err != nil {
@@ -1252,6 +1255,21 @@ func (e *Executor) executeParallel(ctx context.Context, step *StepDefinition, in
 		} else if r.result != nil {
 			output[r.id] = r.result.Output
 		}
+
+		// Aggregate token usage from nested step
+		if r.result != nil && r.result.TokenUsage != nil {
+			hasUsage = true
+			aggregatedUsage.InputTokens += r.result.TokenUsage.InputTokens
+			aggregatedUsage.OutputTokens += r.result.TokenUsage.OutputTokens
+			aggregatedUsage.TotalTokens += r.result.TokenUsage.TotalTokens
+			aggregatedUsage.CacheCreationTokens += r.result.TokenUsage.CacheCreationTokens
+			aggregatedUsage.CacheReadTokens += r.result.TokenUsage.CacheReadTokens
+		}
+	}
+
+	// Include aggregated usage in output so Execute() can extract it
+	if hasUsage {
+		output["_usage"] = aggregatedUsage
 	}
 
 	e.logger.Debug("parallel execution complete",
@@ -1340,9 +1358,10 @@ func (e *Executor) executeForeach(ctx context.Context, step *StepDefinition, inp
 	}
 
 	type iterationResult struct {
-		index  int
-		result interface{}
-		err    error
+		index      int
+		result     interface{}
+		tokenUsage *llm.TokenUsage
+		err        error
 	}
 
 	total := len(array)
@@ -1436,6 +1455,9 @@ func (e *Executor) executeForeach(ctx context.Context, step *StepDefinition, inp
 			// We treat the nested steps as a mini workflow
 			iterOutput := make(map[string]interface{})
 			var iterErr error
+			iterUsage := &llm.TokenUsage{}
+			hasIterUsage := false
+
 			for _, nested := range step.Steps {
 				result, err := e.Execute(ctx, &nested, iterContext)
 				if err != nil {
@@ -1460,6 +1482,15 @@ func (e *Executor) executeForeach(ctx context.Context, step *StepDefinition, inp
 							"status":   result.Status,
 						}
 					}
+					// Aggregate token usage from nested step
+					if result.TokenUsage != nil {
+						hasIterUsage = true
+						iterUsage.InputTokens += result.TokenUsage.InputTokens
+						iterUsage.OutputTokens += result.TokenUsage.OutputTokens
+						iterUsage.TotalTokens += result.TokenUsage.TotalTokens
+						iterUsage.CacheCreationTokens += result.TokenUsage.CacheCreationTokens
+						iterUsage.CacheReadTokens += result.TokenUsage.CacheReadTokens
+					}
 				}
 			}
 
@@ -1470,10 +1501,16 @@ func (e *Executor) executeForeach(ctx context.Context, step *StepDefinition, inp
 				"error", iterErr,
 			)
 
+			var usagePtr *llm.TokenUsage
+			if hasIterUsage {
+				usagePtr = iterUsage
+			}
+
 			results <- iterationResult{
-				index:  index,
-				result: iterOutput,
-				err:    iterErr,
+				index:      index,
+				result:     iterOutput,
+				tokenUsage: usagePtr,
+				err:        iterErr,
 			}
 		}(idx, item)
 	}
@@ -1491,14 +1528,27 @@ func (e *Executor) executeForeach(ctx context.Context, step *StepDefinition, inp
 		sortedResults[r.index] = r
 	}
 
-	// Build output array and collect errors
+	// Build output array, collect errors, and aggregate token usage
 	outputArray := make([]interface{}, total)
 	var errors []error
+	aggregatedUsage := &llm.TokenUsage{}
+	hasUsage := false
+
 	for i, r := range sortedResults {
 		if r.err != nil {
 			errors = append(errors, fmt.Errorf("iteration %d: %w", i, r.err))
 		}
 		outputArray[i] = r.result
+
+		// Aggregate token usage from iteration
+		if r.tokenUsage != nil {
+			hasUsage = true
+			aggregatedUsage.InputTokens += r.tokenUsage.InputTokens
+			aggregatedUsage.OutputTokens += r.tokenUsage.OutputTokens
+			aggregatedUsage.TotalTokens += r.tokenUsage.TotalTokens
+			aggregatedUsage.CacheCreationTokens += r.tokenUsage.CacheCreationTokens
+			aggregatedUsage.CacheReadTokens += r.tokenUsage.CacheReadTokens
+		}
 	}
 
 	e.logger.Debug("foreach execution complete",
@@ -1513,9 +1563,16 @@ func (e *Executor) executeForeach(ctx context.Context, step *StepDefinition, inp
 		return nil, fmt.Errorf("foreach had %d failed iterations (first error: %v)", len(errors), errors[0])
 	}
 
-	return map[string]interface{}{
+	output := map[string]interface{}{
 		"results": outputArray,
-	}, nil
+	}
+
+	// Include aggregated usage in output so Execute() can extract it
+	if hasUsage {
+		output["_usage"] = aggregatedUsage
+	}
+
+	return output, nil
 }
 
 // copyWorkflowContext creates a shallow copy of the workflow context.
