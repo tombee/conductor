@@ -406,10 +406,10 @@ func (h *RunsHandler) streamLogs(w http.ResponseWriter, r *http.Request, run *ru
 			fmt.Fprintf(w, "data: %s\n\n", data)
 			flusher.Flush()
 
-			// Check if this is a completion log
-			if entry.Level == "info" && (strings.Contains(entry.Message, "completed") ||
-				strings.Contains(entry.Message, "failed") ||
-				strings.Contains(entry.Message, "cancelled")) {
+			// Check if this is a run completion status event (not step completion)
+			if entry.Type == "status" && (entry.Status == "completed" ||
+				entry.Status == "failed" ||
+				entry.Status == "cancelled") {
 				// Get updated run status
 				updatedRun, _ := h.runner.Get(run.ID)
 				if updatedRun != nil && (updatedRun.Status == runner.RunStatusCompleted ||
