@@ -214,11 +214,27 @@ type ControllerAuthConfig struct {
 
 // BackendConfig configures the storage backend.
 type BackendConfig struct {
-	// Type is the backend type: "memory" or "postgres".
+	// Type is the backend type: "memory", "sqlite", or "postgres".
 	Type string `yaml:"type,omitempty"`
+
+	// SQLite contains SQLite-specific configuration.
+	SQLite SQLiteConfig `yaml:"sqlite,omitempty"`
 
 	// Postgres contains PostgreSQL-specific configuration.
 	Postgres PostgresConfig `yaml:"postgres,omitempty"`
+}
+
+// SQLiteConfig contains SQLite connection settings.
+type SQLiteConfig struct {
+	// Path is the database file path.
+	// Relative paths are resolved relative to DataDir.
+	// Environment: CONDUCTOR_BACKEND_SQLITE_PATH
+	// Default: conductor.db (in DataDir)
+	Path string `yaml:"path,omitempty"`
+
+	// WAL enables Write-Ahead Logging mode for concurrent reads.
+	// Default: true
+	WAL bool `yaml:"wal,omitempty"`
 }
 
 // PostgresConfig contains PostgreSQL connection settings.
@@ -609,7 +625,11 @@ func Default() *Config {
 			RunRetention:       24 * time.Hour,
 			CheckpointsEnabled: true,
 			Backend: BackendConfig{
-				Type: "memory",
+				Type: "sqlite",
+				SQLite: SQLiteConfig{
+					Path: "conductor.db",
+					WAL:  true,
+				},
 			},
 			Distributed: DistributedConfig{
 				Enabled:                  false,
@@ -962,6 +982,11 @@ func (c *Config) loadFromEnv() {
 	}
 	if val := os.Getenv("CONDUCTOR_CHECKPOINTS_ENABLED"); val != "" {
 		c.Controller.CheckpointsEnabled = val == "1" || strings.ToLower(val) == "true"
+	}
+
+	// Backend configuration
+	if val := os.Getenv("CONDUCTOR_BACKEND_SQLITE_PATH"); val != "" {
+		c.Controller.Backend.SQLite.Path = val
 	}
 }
 

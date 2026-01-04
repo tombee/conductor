@@ -38,6 +38,7 @@ import (
 	"github.com/tombee/conductor/internal/controller/backend"
 	"github.com/tombee/conductor/internal/controller/backend/memory"
 	"github.com/tombee/conductor/internal/controller/backend/postgres"
+	"github.com/tombee/conductor/internal/controller/backend/sqlite"
 	"github.com/tombee/conductor/internal/controller/checkpoint"
 	"github.com/tombee/conductor/internal/controller/debug"
 	"github.com/tombee/conductor/internal/controller/endpoint"
@@ -151,9 +152,40 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 		}
 		be = pgBackend
 		db = pgBackend.DB()
-	default:
-		// Default to in-memory backend
+	case "sqlite", "":
+		// SQLite backend (default)
+		dbPath := cfg.Controller.Backend.SQLite.Path
+		if dbPath == "" {
+			dbPath = "conductor.db"
+		}
+
+		// Resolve relative paths relative to DataDir
+		if !filepath.IsAbs(dbPath) {
+			dbPath = filepath.Join(cfg.Controller.DataDir, dbPath)
+		}
+
+		// Create directory with 0700 permissions if it doesn't exist
+		dbDir := filepath.Dir(dbPath)
+		if err := os.MkdirAll(dbDir, 0700); err != nil {
+			return nil, fmt.Errorf("failed to create database directory: %w", err)
+		}
+
+		sqliteCfg := sqlite.Config{
+			Path: dbPath,
+			WAL:  cfg.Controller.Backend.SQLite.WAL,
+		}
+		sqliteBackend, err := sqlite.New(sqliteCfg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create sqlite backend: %w", err)
+		}
+		be = sqliteBackend
+		logger.Info("using sqlite backend", slog.String("path", dbPath))
+	case "memory":
+		// In-memory backend
 		be = memory.New()
+		logger.Info("using in-memory backend")
+	default:
+		return nil, fmt.Errorf("unsupported backend type: %s", cfg.Controller.Backend.Type)
 	}
 
 	// Create checkpoint manager
