@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/glamour"
 	"github.com/tombee/conductor/internal/cli/prompt"
 	"github.com/tombee/conductor/internal/client"
 	"github.com/tombee/conductor/internal/commands/shared"
@@ -398,7 +399,7 @@ func streamRunLogs(ctx context.Context, c *client.Client, runID string, quiet, v
 							return "", stats, shared.NewExecutionError("workflow failed", nil)
 						}
 						// Fetch final output and stats
-						output, s := fetchRunOutput(ctx, c, runID)
+						output, _, s := fetchRunOutput(ctx, c, runID)
 						// Merge accumulated stats (tokens/costs) with fetched stats (duration)
 						if stats != nil {
 							if s != nil && stats.DurationMs == 0 {
@@ -454,7 +455,7 @@ func pollRunStatus(ctx context.Context, c *client.Client, runID string, quiet bo
 				if !quiet {
 					fmt.Println("Workflow completed")
 				}
-				output, stats := fetchRunOutput(ctx, c, runID)
+				output, _, stats := fetchRunOutput(ctx, c, runID)
 				return output, stats, nil
 			case "failed":
 				errMsg, _ := status["error"].(string)
@@ -469,57 +470,93 @@ func pollRunStatus(ctx context.Context, c *client.Client, runID string, quiet bo
 	}
 }
 
-// fetchRunOutput fetches the final output and stats for a run
-func fetchRunOutput(ctx context.Context, c *client.Client, runID string) (string, *RunStats) {
-	// Fetch output
-	outputResp, err := c.Get(ctx, fmt.Sprintf("/v1/runs/%s/output", runID))
-	if err != nil {
-		return "", nil
-	}
-
-	var output string
-
-	// The output endpoint returns the output directly (e.g., {"response": "..."})
-	// Try common output field names first
-	if outputStr, ok := outputResp["response"].(string); ok {
-		output = outputStr
-	} else if outputStr, ok := outputResp["result"].(string); ok {
-		output = outputStr
-	} else if outputStr, ok := outputResp["output"].(string); ok {
-		output = outputStr
-	} else if len(outputResp) == 1 {
-		// Single output field - extract the value directly for clean display
-		for _, v := range outputResp {
-			if s, ok := v.(string); ok {
-				output = s
-			} else {
-				// Non-string single value - format as JSON
-				outputJSON, _ := json.MarshalIndent(v, "", "  ")
-				output = string(outputJSON)
-			}
-		}
-	} else if len(outputResp) > 1 {
-		// Multiple outputs - format each on its own line
-		var parts []string
-		for k, v := range outputResp {
-			if s, ok := v.(string); ok {
-				parts = append(parts, fmt.Sprintf("## %s\n\n%s", k, s))
-			} else {
-				vJSON, _ := json.MarshalIndent(v, "", "  ")
-				parts = append(parts, fmt.Sprintf("## %s\n\n%s", k, string(vJSON)))
-			}
-		}
-		output = strings.Join(parts, "\n\n")
-	}
-
-	// Fetch run details for stats
+// fetchRunOutput fetches the final output, formats, and stats for a run
+func fetchRunOutput(ctx context.Context, c *client.Client, runID string) (string, map[string]string, *RunStats) {
+	// Fetch run details (includes output, output_formats, and stats)
 	runResp, err := c.Get(ctx, fmt.Sprintf("/v1/runs/%s", runID))
 	if err != nil {
-		return output, nil
+		return "", nil, nil
+	}
+
+	// Extract output formats
+	var formats map[string]string
+	if formatsData, ok := runResp["output_formats"].(map[string]any); ok {
+		formats = make(map[string]string)
+		for k, v := range formatsData {
+			if s, ok := v.(string); ok {
+				formats[k] = s
+			}
+		}
+	}
+
+	// Extract output
+	var output string
+	var outputResp map[string]any
+	if outputData, ok := runResp["output"].(map[string]any); ok {
+		outputResp = outputData
+	}
+
+	if outputResp != nil {
+		// Try common output field names first
+		if outputStr, ok := outputResp["response"].(string); ok {
+			output = formatOutputValue("response", outputStr, formats)
+		} else if outputStr, ok := outputResp["result"].(string); ok {
+			output = formatOutputValue("result", outputStr, formats)
+		} else if outputStr, ok := outputResp["output"].(string); ok {
+			output = formatOutputValue("output", outputStr, formats)
+		} else if len(outputResp) == 1 {
+			// Single output field - extract the value directly for clean display
+			for k, v := range outputResp {
+				if s, ok := v.(string); ok {
+					output = formatOutputValue(k, s, formats)
+				} else {
+					// Non-string single value - format as JSON
+					outputJSON, _ := json.MarshalIndent(v, "", "  ")
+					output = string(outputJSON)
+				}
+			}
+		} else if len(outputResp) > 1 {
+			// Multiple outputs - format each on its own line
+			var parts []string
+			for k, v := range outputResp {
+				if s, ok := v.(string); ok {
+					parts = append(parts, fmt.Sprintf("## %s\n\n%s", k, formatOutputValue(k, s, formats)))
+				} else {
+					vJSON, _ := json.MarshalIndent(v, "", "  ")
+					parts = append(parts, fmt.Sprintf("## %s\n\n%s", k, string(vJSON)))
+				}
+			}
+			output = strings.Join(parts, "\n\n")
+		}
 	}
 
 	stats := parseStatsFromRun(runResp)
-	return output, stats
+	return output, formats, stats
+}
+
+// formatOutputValue formats a single output value based on its format
+func formatOutputValue(name, value string, formats map[string]string) string {
+	format := formats[name]
+	if format == "markdown" {
+		rendered, err := renderMarkdown(value)
+		if err == nil {
+			return rendered
+		}
+		// Fall back to raw value on error
+	}
+	return value
+}
+
+// renderMarkdown renders markdown content for terminal display
+func renderMarkdown(content string) (string, error) {
+	renderer, err := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(100),
+	)
+	if err != nil {
+		return content, err
+	}
+	return renderer.Render(content)
 }
 
 // isRemoteWorkflow checks if a path is a remote workflow reference

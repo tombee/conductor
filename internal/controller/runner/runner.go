@@ -55,14 +55,15 @@ type MetricsCollector interface {
 
 // Run represents a workflow execution.
 type Run struct {
-	ID            string         `json:"id"`
-	WorkflowID    string         `json:"workflow_id"`
-	Workflow      string         `json:"workflow"` // Workflow name
-	Status        RunStatus      `json:"status"`
-	CorrelationID string         `json:"correlation_id,omitempty"` // Correlation ID for request tracing
-	Inputs        map[string]any `json:"inputs,omitempty"`
-	Output        map[string]any `json:"output,omitempty"`
-	Error         string         `json:"error,omitempty"`
+	ID            string            `json:"id"`
+	WorkflowID    string            `json:"workflow_id"`
+	Workflow      string            `json:"workflow"` // Workflow name
+	Status        RunStatus         `json:"status"`
+	CorrelationID string            `json:"correlation_id,omitempty"` // Correlation ID for request tracing
+	Inputs        map[string]any    `json:"inputs,omitempty"`
+	Output        map[string]any    `json:"output,omitempty"`
+	OutputFormats map[string]string `json:"output_formats,omitempty"` // Format for each output (markdown, json, etc.)
+	Error         string            `json:"error,omitempty"`
 	Progress      *Progress      `json:"progress,omitempty"`
 	StartedAt     *time.Time     `json:"started_at,omitempty"`
 	CompletedAt   *time.Time     `json:"completed_at,omitempty"`

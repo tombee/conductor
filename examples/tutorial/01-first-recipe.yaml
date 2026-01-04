@@ -14,3 +14,8 @@ steps:
       - Ingredients with quantities
       - Cooking steps
       - Prep and cook time
+
+outputs:
+  - name: recipe
+    value: "{{.steps.generate.response}}"
+    format: markdown
