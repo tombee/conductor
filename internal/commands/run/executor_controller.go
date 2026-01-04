@@ -499,19 +499,21 @@ func fetchRunOutput(ctx context.Context, c *client.Client, runID string) (string
 	if outputResp != nil {
 		var parts []string
 		for name, v := range outputResp {
-			var part string
+			var content string
 			if s, ok := v.(string); ok {
-				part = s
+				content = s
 				if formats[name] == "markdown" {
-					part, _ = renderMarkdown(part)
+					content, _ = renderMarkdown(content)
 				}
 			} else {
-				partJSON, _ := json.MarshalIndent(v, "", "  ")
-				part = string(partJSON)
+				contentJSON, _ := json.MarshalIndent(v, "", "  ")
+				content = string(contentJSON)
 			}
-			parts = append(parts, part)
+			// Add header for each output
+			header := fmt.Sprintf("━━━ %s ━━━", name)
+			parts = append(parts, header+"\n\n"+content)
 		}
-		output = strings.Join(parts, "\n\n---\n\n")
+		output = strings.Join(parts, "\n\n")
 	}
 
 	stats := parseStatsFromRun(runResp)
