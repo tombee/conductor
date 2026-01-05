@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=../../schemas/workflow.schema.json
-name: better-recipe
-description: Generate a recipe with specific ingredients
+name: generate-recipe
+description: Generate a dinner recipe from ingredients
 
 inputs:
   - name: ingredients
@@ -8,10 +8,9 @@ inputs:
     description: Comma-separated ingredients to use
 
 steps:
-  # Using 'fast' model to minimize token usage during tutorials
   - id: generate
     type: llm
-    model: fast
+    model: balanced
     prompt: |
       Generate a dinner recipe using these ingredients: {{.inputs.ingredients}}
 
@@ -25,5 +24,4 @@ outputs:
   - name: recipe
     type: string
     value: "{{.steps.generate.response}}"
-    description: The generated recipe
     format: markdown

@@ -1,0 +1,74 @@
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
+name: weekly-plan
+description: Generate a weekly meal plan with iterative refinement
+
+inputs:
+  - name: pantry_file
+    type: string
+    default: "pantry.txt"
+    description: Path to pantry inventory file
+
+  - name: diet
+    type: string
+    default: "balanced"
+    description: Dietary preference
+
+steps:
+  - id: read_pantry
+    name: Read Pantry Inventory
+    file.read: "{{.inputs.pantry_file}}"
+
+  - id: refine_plan
+    name: Generate and Refine Plan
+    type: loop
+    max_iterations: 3
+    until: "steps.check.passes == true"
+    steps:
+      - id: generate
+        name: Generate Plan
+        type: llm
+        model: strategic
+        prompt: |
+          Available ingredients:
+          {{.steps.read_pantry.content}}
+
+          {{if .loop.history}}
+          Previous attempt feedback:
+          {{.loop.history.check.feedback}}
+
+          Improve the plan based on this feedback.
+          {{else}}
+          Generate a {{.inputs.diet}} meal plan for Monday through Sunday.
+          {{end}}
+
+          For each day, create breakfast, lunch, and dinner.
+          Don't repeat main proteins on consecutive days.
+
+      - id: check
+        name: Check Variety
+        type: llm
+        model: fast
+        output_schema:
+          type: object
+          properties:
+            passes:
+              type: boolean
+            feedback:
+              type: string
+        prompt: |
+          Review this meal plan for variety:
+          {{.steps.generate.response}}
+
+          Check:
+          1. No main protein repeated on consecutive days
+          2. Breakfast items vary throughout the week
+
+          Return {"passes": true} if requirements are met.
+          Otherwise return {"passes": false, "feedback": "specific issues"}.
+
+outputs:
+  - name: weekly_plan
+    type: string
+    value: "{{.steps.refine_plan.generate.response}}"
+    description: Complete weekly meal plan
+    format: markdown
