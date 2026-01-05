@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/zalando/go-keyring"
 )
@@ -40,6 +41,11 @@ var (
 
 	// ErrMasterKeyNotFound is returned when no master key is configured
 	ErrMasterKeyNotFound = errors.New("master key not found in keychain or environment")
+
+	// generatedKeyCache caches a generated key within a single process run
+	// This prevents generating multiple different keys when keychain is unavailable
+	generatedKeyCache []byte
+	generatedKeyCacheMu sync.Mutex
 )
 
 // KeychainManager handles retrieval and storage of the workspace encryption master key.
@@ -126,6 +132,7 @@ func (m *KeychainManager) GetMasterKey() ([]byte, error) {
 //  3. Return the key
 //
 // If keychain is unavailable, prints the key to stderr with instructions to set CONDUCTOR_MASTER_KEY.
+// The generated key is cached in memory to prevent generating different keys within the same process.
 func (m *KeychainManager) GetOrCreateMasterKey() ([]byte, error) {
 	// Try to get existing key
 	key, err := m.GetMasterKey()
@@ -136,6 +143,14 @@ func (m *KeychainManager) GetOrCreateMasterKey() ([]byte, error) {
 	// Only create new key if error is "not found"
 	if !errors.Is(err, ErrMasterKeyNotFound) {
 		return nil, err
+	}
+
+	// Check if we already generated a key in this process
+	generatedKeyCacheMu.Lock()
+	defer generatedKeyCacheMu.Unlock()
+
+	if generatedKeyCache != nil {
+		return generatedKeyCache, nil
 	}
 
 	// Generate new key
@@ -157,6 +172,9 @@ func (m *KeychainManager) GetOrCreateMasterKey() ([]byte, error) {
 			return key, nil
 		}
 	}
+
+	// Cache the key for subsequent calls in this process
+	generatedKeyCache = key
 
 	// Keychain unavailable - print key to stderr with instructions
 	fmt.Fprintf(os.Stderr, "\n"+

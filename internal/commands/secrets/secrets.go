@@ -20,14 +20,11 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
-	"gopkg.in/yaml.v3"
 
 	"github.com/tombee/conductor/internal/commands/shared"
 	"github.com/tombee/conductor/internal/config"
@@ -55,7 +52,6 @@ func NewCommand() *cobra.Command {
 Secrets are stored in a tiered backend system with automatic fallback:
   1. Environment variables (highest priority, read-only)
   2. System keychain (macOS Keychain, Linux Secret Service, Windows Credential Manager)
-  3. Encrypted file (fallback for headless servers)
 
 Commands:
   set       Store a secret securely
@@ -74,7 +70,6 @@ Examples:
 	cmd.AddCommand(newSecretsGetCommand())
 	cmd.AddCommand(newSecretsListCommand())
 	cmd.AddCommand(newSecretsDeleteCommand())
-	cmd.AddCommand(newSecretsMigrateCommand())
 
 	return cmd
 }
@@ -417,200 +412,6 @@ func getConfigDir() (string, error) {
 	return config.ConfigDir()
 }
 
-func newSecretsMigrateCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "migrate",
-		Short: "Migrate plaintext API keys to secrets",
-		Long: `Migrate plaintext API keys from config to secure storage.
-
-This command:
-1. Scans your config file for plaintext API keys (sk-ant-, sk-, gsk-, xai-)
-2. Stores them securely in the default writable backend
-3. Updates the config to use $secret: references
-4. Creates a backup before modification
-
-Examples:
-  conductor secrets migrate                  # Interactive migration
-  conductor secrets migrate --dry-run        # Preview changes without applying
-  conductor secrets migrate --yes            # Auto-accept without prompts
-  conductor secrets migrate --backend file   # Store in specific backend`,
-		Args: cobra.NoArgs,
-		RunE: runSecretsMigrate,
-	}
-
-	cmd.Flags().BoolVar(&secretDryRun, "dry-run", false, "Preview changes without applying")
-	cmd.Flags().BoolVar(&secretYes, "yes", false, "Auto-accept without prompts")
-	cmd.Flags().StringVar(&secretBackend, "backend", "", "Target backend (env, keychain, file)")
-
-	return cmd
-}
-
-// runSecretsMigrate handles the 'secrets migrate' command.
-func runSecretsMigrate(cmd *cobra.Command, args []string) error {
-	// Get config directory
-	configDir, err := getConfigDir()
-	if err != nil {
-		return fmt.Errorf("failed to get config directory: %w", err)
-	}
-
-	configPath := filepath.Join(configDir, "config.yaml")
-
-	// Check if config exists
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return fmt.Errorf("config file not found at %s\nRun 'conductor init' first", configPath)
-	}
-
-	// Load config
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to read config: %w", err)
-	}
-
-	// Parse YAML to find plaintext API keys
-	var rawConfig map[string]interface{}
-	if err := yaml.Unmarshal(data, &rawConfig); err != nil {
-		return fmt.Errorf("failed to parse config: %w", err)
-	}
-
-	// Scan for plaintext API keys
-	migrations := scanForPlaintextKeys(rawConfig)
-
-	if len(migrations) == 0 {
-		fmt.Println("No plaintext API keys found in config.")
-		fmt.Println("Your secrets are already secure!")
-		return nil
-	}
-
-	// Display findings
-	fmt.Printf("Found %d plaintext API key(s) in config:\n\n", len(migrations))
-	for i, m := range migrations {
-		fmt.Printf("%d. %s (provider: %s)\n", i+1, m.Key, m.Provider)
-		fmt.Printf("   Current: %s\n", maskSecret(m.Value))
-		fmt.Printf("   New ref: $secret:%s\n\n", m.Key)
-	}
-
-	if secretDryRun {
-		fmt.Println("--dry-run mode: No changes will be made")
-		return nil
-	}
-
-	// Confirm migration
-	if !secretYes {
-		fmt.Print("Proceed with migration? [y/N]: ")
-		var response string
-		fmt.Scanln(&response)
-		response = strings.ToLower(strings.TrimSpace(response))
-		if response != "y" && response != "yes" {
-			fmt.Println("Migration canceled")
-			return nil
-		}
-	}
-
-	// Create backup
-	backupPath := configPath + ".backup." + time.Now().Format("20060102-150405")
-	if err := os.WriteFile(backupPath, data, 0600); err != nil {
-		return fmt.Errorf("failed to create backup: %w", err)
-	}
-	fmt.Printf("Created backup: %s\n", backupPath)
-
-	// Create resolver for storing secrets
-	resolver := createResolver()
-	ctx := context.Background()
-
-	// Migrate each key
-	for _, m := range migrations {
-		// Store in secrets backend
-		if err := resolver.Set(ctx, m.Key, m.Value, secretBackend); err != nil {
-			return fmt.Errorf("failed to store secret %q: %w", m.Key, err)
-		}
-		fmt.Printf("Stored secret: %s\n", m.Key)
-
-		// Update the raw config
-		if err := updateConfigKey(rawConfig, m.Provider, "$secret:"+m.Key); err != nil {
-			return fmt.Errorf("failed to update config for %s: %w", m.Provider, err)
-		}
-	}
-
-	// Write updated config
-	updatedData, err := yaml.Marshal(rawConfig)
-	if err != nil {
-		return fmt.Errorf("failed to marshal updated config: %w", err)
-	}
-
-	if err := os.WriteFile(configPath, updatedData, 0600); err != nil {
-		return fmt.Errorf("failed to write updated config: %w", err)
-	}
-
-	fmt.Printf("\nMigration complete!\n")
-	fmt.Printf("Migrated %d API key(s) to secure storage\n", len(migrations))
-	fmt.Printf("Config updated: %s\n", configPath)
-	fmt.Printf("Backup saved: %s\n", backupPath)
-
-	return nil
-}
-
-// migrationTarget represents a plaintext key to migrate
-type migrationTarget struct {
-	Provider string // Provider name
-	Key      string // Secret key (e.g., "providers/anthropic/api_key")
-	Value    string // Plaintext value
-}
-
-// scanForPlaintextKeys scans config for plaintext API keys
-func scanForPlaintextKeys(rawConfig map[string]interface{}) []migrationTarget {
-	var migrations []migrationTarget
-
-	// Check providers section
-	if providers, ok := rawConfig["providers"].(map[string]interface{}); ok {
-		for name, providerData := range providers {
-			if provider, ok := providerData.(map[string]interface{}); ok {
-				if apiKey, ok := provider["api_key"].(string); ok {
-					// Check if it's a plaintext key (not a $secret: reference)
-					if isPlaintextAPIKey(apiKey) {
-						migrations = append(migrations, migrationTarget{
-							Provider: name,
-							Key:      fmt.Sprintf("providers/%s/api_key", name),
-							Value:    apiKey,
-						})
-					}
-				}
-			}
-		}
-	}
-
-	return migrations
-}
-
-// isPlaintextAPIKey checks if a string looks like a plaintext API key
-func isPlaintextAPIKey(value string) bool {
-	// Skip if it's already a secret reference
-	if strings.HasPrefix(value, "$secret:") {
-		return false
-	}
-
-	// Match common API key prefixes
-	return strings.HasPrefix(value, "sk-ant-") ||
-		strings.HasPrefix(value, "sk-") ||
-		strings.HasPrefix(value, "gsk-") ||
-		strings.HasPrefix(value, "xai-")
-}
-
-// updateConfigKey updates a provider's api_key to use a secret reference
-func updateConfigKey(rawConfig map[string]interface{}, providerName, secretRef string) error {
-	providers, ok := rawConfig["providers"].(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("providers section not found")
-	}
-
-	provider, ok := providers[providerName].(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("provider %q not found", providerName)
-	}
-
-	provider["api_key"] = secretRef
-	return nil
-}
-
 // secretsSetDryRun shows what would be stored when setting a secret
 func secretsSetDryRun(key string) error {
 	output := shared.NewDryRunOutput()
@@ -636,8 +437,6 @@ func secretsSetDryRun(key string) error {
 	switch backendName {
 	case "keychain":
 		storagePath = "<system-keychain>"
-	case "file":
-		storagePath = "<config-dir>/secrets.encrypted"
 	case "env":
 		storagePath = "<environment-variable>"
 	default:
