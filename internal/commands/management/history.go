@@ -480,13 +480,11 @@ func printLogEntry(log map[string]any) {
 		if output, ok := log["output"].(map[string]any); ok && len(output) > 0 {
 			if response, ok := output["response"].(string); ok && response != "" {
 				fmt.Println()
-				fmt.Println("         ┌─ Output ─────────────────────────────────────────────")
-				// Indent each line of output
-				lines := strings.Split(response, "\n")
-				for _, line := range lines {
-					fmt.Printf("         │ %s\n", line)
-				}
-				fmt.Println("         └─────────────────────────────────────────────────────")
+				fmt.Println("         --- Output ---")
+				fmt.Println()
+				fmt.Println(response)
+				fmt.Println()
+				fmt.Println("         --- End Output ---")
 				fmt.Println()
 			}
 		}
