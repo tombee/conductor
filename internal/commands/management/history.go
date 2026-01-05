@@ -478,12 +478,16 @@ func printLogEntry(log map[string]any) {
 		}
 		// Show output if present (essential for debugging data flow)
 		if output, ok := log["output"].(map[string]any); ok && len(output) > 0 {
-			if response, ok := output["response"].(string); ok {
-				// Truncate long responses for display
-				if len(response) > 200 {
-					response = response[:200] + "..."
+			if response, ok := output["response"].(string); ok && response != "" {
+				fmt.Println()
+				fmt.Println("         ┌─ Output ─────────────────────────────────────────────")
+				// Indent each line of output
+				lines := strings.Split(response, "\n")
+				for _, line := range lines {
+					fmt.Printf("         │ %s\n", line)
 				}
-				fmt.Printf("         → %s\n", response)
+				fmt.Println("         └─────────────────────────────────────────────────────")
+				fmt.Println()
 			}
 		}
 	case "status":
