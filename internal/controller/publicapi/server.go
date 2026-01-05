@@ -52,7 +52,7 @@ func New(cfg config.PublicAPIConfig, handler http.Handler, logger *slog.Logger) 
 		server: &http.Server{
 			Handler:      handler,
 			ReadTimeout:  30 * time.Second,
-			WriteTimeout: 30 * time.Second,
+			WriteTimeout: 0, // Disabled for SSE streaming - LLM calls can take 10+ minutes
 			IdleTimeout:  60 * time.Second,
 		},
 	}

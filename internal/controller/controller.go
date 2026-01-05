@@ -779,7 +779,7 @@ func (c *Controller) Start(ctx context.Context) error {
 	c.server = &http.Server{
 		Handler:      handler,
 		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		WriteTimeout: 0, // Disabled for SSE streaming - LLM calls can take 10+ minutes
 		IdleTimeout:  60 * time.Second,
 	}
 
