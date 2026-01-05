@@ -324,11 +324,16 @@ func (e *Executor) Execute(ctx context.Context, step *StepDefinition, workflowCo
 	}
 
 	// Apply default timeout when step.Timeout is 0
+	// Loop and parallel steps don't get a default timeout - they rely on max_iterations
+	// and workflow-level timeout for safety limits
 	timeout := step.Timeout
 	if timeout == 0 {
-		if step.Type == StepTypeLLM {
+		switch step.Type {
+		case StepTypeLLM:
 			timeout = DefaultLLMStepTimeout
-		} else {
+		case StepTypeLoop, StepTypeParallel:
+			// No default timeout - these can run multiple LLM iterations
+		default:
 			timeout = DefaultActionStepTimeout
 		}
 	}
