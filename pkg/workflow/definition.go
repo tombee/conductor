@@ -706,20 +706,22 @@ func (d *Definition) Validate() error {
 			}
 			integrationName, operationName := parts[0], parts[1]
 
-			// Check integration exists
-			if !integrationNames[integrationName] {
-				return fmt.Errorf("step %s references undefined integration: %s", step.ID, integrationName)
-			}
-
-			// Check operation exists (only for inline integrations, not packages)
-			integration := d.Integrations[integrationName]
-			if integration.From == "" {
-				// Inline integration - validate operation exists
-				if _, exists := integration.Operations[operationName]; !exists {
-					return fmt.Errorf("step %s references undefined operation %s in integration %s", step.ID, operationName, integrationName)
+			// Check integration exists in workflow definition
+			// If not defined here, it may be a workspace integration (configured via CLI)
+			// which will be resolved at runtime
+			if integrationNames[integrationName] {
+				// Check operation exists (only for inline integrations, not packages)
+				integration := d.Integrations[integrationName]
+				if integration.From == "" {
+					// Inline integration - validate operation exists
+					if _, exists := integration.Operations[operationName]; !exists {
+						return fmt.Errorf("step %s references undefined operation %s in integration %s", step.ID, operationName, integrationName)
+					}
 				}
+				// For package integrations, we can't validate operations at definition time
 			}
-			// For package integrations, we can't validate operations at definition time
+			// If integration not in workflow, assume it's a workspace integration
+			// Runtime will error if it doesn't exist
 		}
 	}
 

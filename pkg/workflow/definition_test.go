@@ -521,7 +521,7 @@ steps:
 			errMsg:  "integration must be in format 'integration_name.operation_name'",
 		},
 		{
-			name: "integration step undefined integration",
+			name: "integration step workspace integration (not defined in workflow)",
 			definition: `
 name: test-workflow
 version: "1.0"
@@ -539,8 +539,7 @@ steps:
     inputs:
       channel: test
 `,
-			wantErr: true,
-			errMsg:  "references undefined integration: slack",
+			wantErr: false, // Workspace integrations are allowed - resolved at runtime
 		},
 		{
 			name: "integration step undefined operation in inline integration",
