@@ -349,7 +349,7 @@ func (p *ProgressDisplay) printCompletedStep(stepName, status string, cost float
 
 // formatCostValue formats a cost value with accuracy indicator.
 func formatCostValue(cost float64, accuracy string) string {
-	if accuracy == "unavailable" {
+	if accuracy == "unavailable" || cost == 0 {
 		return Muted.Render("--")
 	}
 
@@ -358,11 +358,7 @@ func formatCostValue(cost float64, accuracy string) string {
 		prefix = "~"
 	}
 
-	// Format with appropriate precision
-	if cost >= 0.01 {
-		return fmt.Sprintf("%s$%.2f", prefix, cost)
-	}
-	return fmt.Sprintf("%s$%.4f", prefix, cost)
+	return fmt.Sprintf("%s$%.2f", prefix, cost)
 }
 
 // formatDuration formats a duration for display.
