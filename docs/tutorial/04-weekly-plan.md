@@ -1,4 +1,4 @@
-# Step 5: Weekly Plan
+# Step 4: Weekly Plan
 
 Generate a full week of meals with a variety check.
 
@@ -80,4 +80,4 @@ conductor run recipe.yaml
 
 ## Next
 
-[Step 6: Save to Notion](./06-save-to-notion.md) - Save your meal plan to Notion.
+[Step 5: Save to Notion](./05-save-to-notion.md) - Save your meal plan to Notion.

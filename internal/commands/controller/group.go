@@ -42,6 +42,7 @@ communicates with the controller to run workflows, check status, and more.`,
 
 	cmd.AddCommand(NewStartCommand())
 	cmd.AddCommand(NewStopCommand())
+	cmd.AddCommand(NewRestartCommand())
 	cmd.AddCommand(newControllerStatusCommand())
 	cmd.AddCommand(newControllerPingCommand())
 

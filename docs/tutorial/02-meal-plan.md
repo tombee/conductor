@@ -1,4 +1,4 @@
-# Step 3: Meal Plan
+# Step 2: Meal Plan
 
 Generate multiple recipes at once using parallel execution.
 
@@ -72,4 +72,4 @@ All three recipes generate at the same time.
 
 ## Next
 
-[Step 4: Pantry Check](./04-pantry-check.md) - Read ingredients from a file.
+[Step 3: Pantry Check](./03-pantry-check.md) - Read ingredients from a file.

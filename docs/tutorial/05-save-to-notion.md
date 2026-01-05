@@ -1,4 +1,4 @@
-# Step 6: Save to Notion
+# Step 5: Save to Notion
 
 Save your meal plan to a Notion database.
 
@@ -29,7 +29,6 @@ inputs:
     default: "pantry.txt"
   - name: notion_database_id
     type: string
-    required: true
 
 steps:
   - id: read_pantry
@@ -93,4 +92,4 @@ conductor run recipe.yaml -i notion_database_id="your-database-id"
 
 ## Next
 
-[Step 7: Deploy](./07-deploy.md) - Deploy your workflow to run on a schedule.
+[Step 6: Deploy](./06-deploy.md) - Deploy your workflow to run on a schedule.

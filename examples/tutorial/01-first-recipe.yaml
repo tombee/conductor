@@ -16,6 +16,7 @@ steps:
       - Prep and cook time
 
 outputs:
+  # Note: 'type' defaults to "string" if not specified
   - name: recipe
     value: "{{.steps.generate.response}}"
     format: markdown

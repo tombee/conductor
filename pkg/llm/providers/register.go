@@ -23,4 +23,7 @@ func init() {
 
 	// Anthropic - API-based provider for Claude models
 	llm.RegisterFactory("anthropic", NewAnthropicWithCredentials)
+
+	// Ollama - Local LLM provider
+	llm.RegisterFactory("ollama", NewOllamaWithCredentials)
 }

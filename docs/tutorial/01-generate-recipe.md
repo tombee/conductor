@@ -1,21 +1,20 @@
-# Step 2: Better Recipe
+# Step 1: Generate a Recipe
 
-Accept specific ingredients as input and return structured output.
+Create a workflow that generates a dinner recipe from ingredients.
 
 ## Goal
 
-Accept ingredients as input and capture the recipe as a workflow output.
+Build your first useful workflow: accept ingredients as input and generate a recipe.
 
 ## The Workflow
 
-Update `recipe.yaml`:
+Create `recipe.yaml`:
 
 ```yaml
-name: better-recipe
+name: generate-recipe
 inputs:
   - name: ingredients
     type: string
-    required: true
 
 steps:
   - id: generate
@@ -46,8 +45,13 @@ conductor run recipe.yaml
 conductor run recipe.yaml -i ingredients="salmon, asparagus, lemon"
 ```
 
+You'll see a complete recipe tailored to your ingredients.
+
 ## What You Learned
 
+- **Workflows** - YAML files with a name and steps
+- **LLM steps** - Use `type: llm` with a `model` and `prompt`
+- **Model tiers** - `fast`, `balanced`, or `strategic` (not specific model names)
 - **[Inputs](../features/inputs-outputs.md)** - Accept parameters with `-i name=value`
 - **[Outputs](../features/inputs-outputs.md)** - Return structured data from workflows
 - **Template syntax** - Use `{{.inputs.name}}` to reference inputs
@@ -55,4 +59,4 @@ conductor run recipe.yaml -i ingredients="salmon, asparagus, lemon"
 
 ## Next
 
-[Step 3: Meal Plan](./03-meal-plan.md) - Generate multiple recipes in parallel.
+[Step 2: Meal Plan](./02-meal-plan.md) - Generate multiple recipes in parallel.

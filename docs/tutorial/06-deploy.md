@@ -1,4 +1,4 @@
-# Step 7: Deploy
+# Step 6: Deploy
 
 Deploy your workflow to run automatically on a schedule.
 
@@ -18,7 +18,6 @@ inputs:
     default: "pantry.txt"
   - name: notion_database_id
     type: string
-    required: true
 
 steps:
   - id: read_pantry

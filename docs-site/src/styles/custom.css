@@ -1,18 +1,23 @@
-/* Conductor docs custom styles */
+/* Conductor docs custom styles - Dark mode only with yellow accent */
 
 :root {
-  /* Yellow/amber accent - matching landing page */
-  --sl-color-accent-low: #92400e;
-  --sl-color-accent: #d97706;
-  --sl-color-accent-high: #fbbf24;
+  /* Yellow/amber accent */
+  --sl-color-accent-low: #78350f;
+  --sl-color-accent: #f59e0b;
+  --sl-color-accent-high: #fcd34d;
 
-  /* Clean light backgrounds */
-  --sl-color-bg: #fafafa;
-  --sl-color-bg-nav: #ffffff;
-  --sl-color-bg-sidebar: #f8fafc;
+  /* Dark backgrounds */
+  --sl-color-bg: #0c0a09;
+  --sl-color-bg-nav: #1c1917;
+  --sl-color-bg-sidebar: #1c1917;
+
+  /* Text colors for dark mode */
+  --sl-color-text: #e7e5e4;
+  --sl-color-text-accent: #fcd34d;
 }
 
-:root[data-theme='dark'] {
+/* Force dark theme */
+:root[data-theme='light'] {
   --sl-color-accent-low: #78350f;
   --sl-color-accent: #f59e0b;
   --sl-color-accent-high: #fcd34d;
@@ -20,16 +25,14 @@
   --sl-color-bg: #0c0a09;
   --sl-color-bg-nav: #1c1917;
   --sl-color-bg-sidebar: #1c1917;
+
+  --sl-color-text: #e7e5e4;
+  --sl-color-text-accent: #fcd34d;
 }
 
 /* Better code block styling */
 .expressive-code {
-  --ec-brdRad: 8px;
-}
-
-/* Subtle shadow on cards */
-.card {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --ec-brdRad: 0;
 }
 
 /* Hero section enhancement for homepage */
@@ -48,4 +51,9 @@
   font-size: 1.25rem;
   color: var(--sl-color-gray-2);
   margin-bottom: 2rem;
+}
+
+/* Hide theme toggle in Starlight */
+starlight-theme-select {
+  display: none !important;
 }

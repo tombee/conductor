@@ -52,19 +52,19 @@ const features = [
 
 const useCases = [
   {
-    title: 'Code Review Bot',
-    description: 'Automated PR reviews with multi-persona feedback.',
-    link: `${baseUrl}examples/code-review/`,
+    title: 'Recipe Generator',
+    description: 'Build your first workflow that generates recipes from ingredients.',
+    link: `${baseUrl}tutorial/01-generate-recipe/`,
   },
   {
-    title: 'Issue Triage',
-    description: 'Classify and route issues to the right team automatically.',
-    link: `${baseUrl}examples/automation/`,
+    title: 'Parallel Execution',
+    description: 'Generate multiple recipes simultaneously with parallel steps.',
+    link: `${baseUrl}tutorial/02-meal-plan/`,
   },
   {
-    title: 'Build Failure Analysis',
-    description: 'Diagnose CI failures and suggest fixes.',
-    link: `${baseUrl}examples/devops/`,
+    title: 'External Integrations',
+    description: 'Save outputs to Notion, Slack, or other services.',
+    link: `${baseUrl}tutorial/05-save-to-notion/`,
   },
 ];
 
@@ -242,56 +242,44 @@ steps:
   description="Orchestrate LLM agents with built-in observability, cost tracking, and security controls."
 >
   <!-- Header -->
-  <header class="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm border-b border-stone-200 dark:border-stone-800">
+  <header class="fixed top-0 left-0 right-0 z-50 bg-stone-900/80 backdrop-blur-sm border-b border-stone-800">
     <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <a href={baseUrl} class="text-xl font-bold text-stone-900 dark:text-white">
+      <a href={baseUrl} class="text-xl font-bold text-white">
         Conductor
       </a>
 
       <div class="hidden md:flex items-center gap-6">
-        <a href={`${baseUrl}getting-started/`} class="text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-white transition-colors">
+        <a href={`${baseUrl}getting-started/`} class="text-stone-300 hover:text-white transition-colors">
           Docs
         </a>
-        <a href={`${baseUrl}examples/`} class="text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-white transition-colors">
-          Examples
+        <a href={`${baseUrl}tutorial/`} class="text-stone-300 hover:text-white transition-colors">
+          Tutorial
         </a>
-        <a href="https://github.com/tombee/conductor" target="_blank" rel="noopener noreferrer" class="text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-white transition-colors">
+        <a href="https://github.com/tombee/conductor" target="_blank" rel="noopener noreferrer" class="text-stone-300 hover:text-white transition-colors">
           GitHub
         </a>
-        <button
-          id="theme-toggle"
-          class="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
-          aria-label="Toggle dark mode"
-        >
-          <svg class="w-5 h-5 hidden dark:block text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-          <svg class="w-5 h-5 dark:hidden text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-          </svg>
-        </button>
       </div>
 
       <!-- Mobile menu button -->
       <button
         id="mobile-menu-toggle"
-        class="md:hidden p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800"
+        class="md:hidden p-2 hover:bg-stone-800"
         aria-label="Open menu"
         aria-expanded="false"
         aria-controls="mobile-menu"
       >
-        <svg class="w-6 h-6 text-stone-600 dark:text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <svg class="w-6 h-6 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </button>
     </nav>
 
     <!-- Mobile menu -->
-    <div id="mobile-menu" class="hidden md:hidden border-t border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900">
+    <div id="mobile-menu" class="hidden md:hidden border-t border-stone-800 bg-stone-900">
       <div class="px-4 py-4 space-y-3">
-        <a href={`${baseUrl}getting-started/`} class="block py-2 text-stone-600 dark:text-stone-300">Docs</a>
-        <a href={`${baseUrl}examples/`} class="block py-2 text-stone-600 dark:text-stone-300">Examples</a>
-        <a href="https://github.com/tombee/conductor" target="_blank" rel="noopener noreferrer" class="block py-2 text-stone-600 dark:text-stone-300">GitHub</a>
+        <a href={`${baseUrl}getting-started/`} class="block py-2 text-stone-300">Docs</a>
+        <a href={`${baseUrl}tutorial/`} class="block py-2 text-stone-300">Tutorial</a>
+        <a href="https://github.com/tombee/conductor" target="_blank" rel="noopener noreferrer" class="block py-2 text-stone-300">GitHub</a>
       </div>
     </div>
   </header>
@@ -300,19 +288,19 @@ steps:
     <!-- Hero Section -->
     <section class="pt-32 pb-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       <!-- Gradient background -->
-      <div class="absolute inset-0 bg-gradient-to-b from-amber-50/50 to-transparent dark:from-amber-950/20 dark:to-transparent pointer-events-none"></div>
+      <div class="absolute inset-0 bg-gradient-to-b from-amber-950/20 to-transparent pointer-events-none"></div>
       <div class="max-w-4xl mx-auto text-center relative">
-        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-stone-900 dark:text-white mb-6 animate-fade-in">
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 animate-fade-in">
           Portable AI workflows in<br class="hidden sm:block" />
-          <span class="text-amber-600 dark:text-amber-400">simple YAML</span>
+          <span class="text-amber-400">simple YAML</span>
         </h1>
-        <p class="text-xl text-stone-600 dark:text-stone-300 mb-8 max-w-2xl mx-auto">
+        <p class="text-xl text-stone-300 mb-8 max-w-2xl mx-auto">
           Orchestrate LLM agents with built-in observability, cost tracking, and security.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <a
             href={`${baseUrl}getting-started/`}
-            class="inline-flex items-center px-6 py-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium transition-colors min-w-[160px] justify-center"
+            class="inline-flex items-center px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-medium transition-colors min-w-[160px] justify-center"
           >
             Get Started
           </a>
@@ -320,13 +308,13 @@ steps:
             href="https://github.com/tombee/conductor"
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-stone-300 dark:border-stone-600 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-200 font-medium transition-colors min-w-[160px] justify-center"
+            class="inline-flex items-center gap-2 px-6 py-3 border border-stone-600 hover:bg-stone-800 text-stone-200 font-medium transition-colors min-w-[160px] justify-center"
           >
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
             </svg>
             Star on GitHub
-            <span id="github-stars" class="px-2 py-0.5 text-sm bg-stone-100 dark:bg-stone-700 rounded-full">-</span>
+            <span id="github-stars" class="px-2 py-0.5 text-sm bg-stone-700">-</span>
             <span class="sr-only">(opens in new tab)</span>
           </a>
         </div>
@@ -334,7 +322,7 @@ steps:
     </section>
 
     <!-- Code Showcase -->
-    <section class="py-16 px-4 sm:px-6 lg:px-8 bg-stone-50 dark:bg-stone-800/50">
+    <section class="py-16 px-4 sm:px-6 lg:px-8 bg-stone-800/50">
       <div class="max-w-4xl mx-auto">
         <!-- Tab buttons -->
         <div class="flex justify-center mb-4" role="tablist" aria-label="Workflow examples">
@@ -345,10 +333,10 @@ steps:
               aria-controls={`panel-${example.id}`}
               id={`tab-${example.id}`}
               data-example-index={index}
-              class={`px-4 py-2 text-sm font-medium rounded-lg mx-1 transition-colors ${
+              class={`px-4 py-2 text-sm font-medium mx-1 transition-colors ${
                 index === 0
                   ? 'bg-amber-600 text-white'
-                  : 'bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 hover:bg-stone-300 dark:hover:bg-stone-600'
+                  : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
               }`}
             >
               {example.title}
@@ -357,7 +345,7 @@ steps:
         </div>
 
         <!-- Description -->
-        <p id="example-description" class="text-center text-stone-600 dark:text-stone-300 mb-4">
+        <p id="example-description" class="text-center text-stone-300 mb-4">
           {codeExamples[0].description}
         </p>
 
@@ -395,19 +383,19 @@ steps:
     <!-- Features Grid -->
     <section class="py-20 px-4 sm:px-6 lg:px-8" data-animate>
       <div class="max-w-6xl mx-auto">
-        <h2 class="text-3xl font-bold text-center text-stone-900 dark:text-white mb-12">
+        <h2 class="text-3xl font-bold text-center text-white mb-12">
           Everything you need for production AI workflows
         </h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature) => (
-            <div class="p-6 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800/50 transition-all duration-300 hover:shadow-lg hover:border-amber-300 dark:hover:border-amber-600">
-              <div class="w-12 h-12 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center mb-4">
-                <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <div class="p-6 border border-stone-700 bg-stone-800/50 transition-all duration-300 hover:shadow-lg hover:border-amber-600">
+              <div class="w-12 h-12 bg-amber-900/50 flex items-center justify-center mb-4">
+                <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={feature.iconPath} />
                 </svg>
               </div>
-              <h3 class="text-lg font-semibold text-stone-900 dark:text-white mb-2">{feature.title}</h3>
-              <p class="text-stone-600 dark:text-stone-300">{feature.description}</p>
+              <h3 class="text-lg font-semibold text-white mb-2">{feature.title}</h3>
+              <p class="text-stone-300">{feature.description}</p>
             </div>
           ))}
         </div>
@@ -415,24 +403,24 @@ steps:
     </section>
 
     <!-- Use Cases -->
-    <section class="py-20 px-4 sm:px-6 lg:px-8 bg-stone-50 dark:bg-stone-800/50" data-animate>
+    <section class="py-20 px-4 sm:px-6 lg:px-8 bg-stone-800/50" data-animate>
       <div class="max-w-6xl mx-auto">
-        <h2 class="text-3xl font-bold text-center text-stone-900 dark:text-white mb-4">
-          Real-world use cases
+        <h2 class="text-3xl font-bold text-center text-white mb-4">
+          Learn from the tutorial
         </h2>
-        <p class="text-center text-stone-600 dark:text-stone-300 mb-12 max-w-2xl mx-auto">
-          See how teams use Conductor to automate their workflows.
+        <p class="text-center text-stone-300 mb-12 max-w-2xl mx-auto">
+          Build a complete meal planning workflow step by step.
         </p>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           {useCases.map((useCase) => (
             <a
               href={useCase.link}
-              class="group p-6 rounded-xl bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:border-amber-300 dark:hover:border-amber-600 transition-colors"
+              class="group p-6 bg-stone-800 border border-stone-700 hover:border-amber-600 transition-colors"
             >
-              <h3 class="text-lg font-semibold text-stone-900 dark:text-white mb-2 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+              <h3 class="text-lg font-semibold text-white mb-2 group-hover:text-amber-400 transition-colors">
                 {useCase.title}
               </h3>
-              <p class="text-stone-600 dark:text-stone-300">{useCase.description}</p>
+              <p class="text-stone-300">{useCase.description}</p>
             </a>
           ))}
         </div>
@@ -442,7 +430,7 @@ steps:
     <!-- How It Works -->
     <section class="py-20 px-4 sm:px-6 lg:px-8" data-animate>
       <div class="max-w-4xl mx-auto">
-        <h2 class="text-3xl font-bold text-center text-stone-900 dark:text-white mb-12">
+        <h2 class="text-3xl font-bold text-center text-white mb-12">
           How it works
         </h2>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -453,11 +441,11 @@ steps:
             { step: '4', title: 'Iterate', desc: 'Refine prompts and add more steps' },
           ].map((item) => (
             <div class="text-center">
-              <div class="w-12 h-12 rounded-full bg-amber-600 text-white font-bold text-xl flex items-center justify-center mx-auto mb-4">
+              <div class="w-12 h-12 bg-amber-600 text-white font-bold text-xl flex items-center justify-center mx-auto mb-4">
                 {item.step}
               </div>
-              <h3 class="font-semibold text-stone-900 dark:text-white mb-2">{item.title}</h3>
-              <p class="text-sm text-stone-600 dark:text-stone-300">{item.desc}</p>
+              <h3 class="font-semibold text-white mb-2">{item.title}</h3>
+              <p class="text-sm text-stone-300">{item.desc}</p>
             </div>
           ))}
         </div>
@@ -465,7 +453,7 @@ steps:
     </section>
 
     <!-- CTA Section -->
-    <section class="py-20 px-4 sm:px-6 lg:px-8 bg-amber-600 dark:bg-amber-700">
+    <section class="py-20 px-4 sm:px-6 lg:px-8 bg-amber-700">
       <div class="max-w-4xl mx-auto text-center">
         <h2 class="text-3xl font-bold text-white mb-4">
           Ready to get started?
@@ -473,12 +461,12 @@ steps:
         <p class="text-amber-100 mb-8">
           Install Conductor and run your first workflow in minutes.
         </p>
-        <div class="bg-stone-900 rounded-lg p-4 max-w-md mx-auto mb-8">
+        <div class="bg-stone-900 p-4 max-w-md mx-auto mb-8">
           <code class="text-amber-300 text-sm">go install github.com/tombee/conductor@latest</code>
         </div>
         <a
           href={`${baseUrl}getting-started/`}
-          class="inline-flex items-center px-8 py-4 rounded-lg bg-white hover:bg-stone-100 text-amber-700 font-semibold transition-colors"
+          class="inline-flex items-center px-8 py-4 bg-white hover:bg-stone-100 text-amber-700 font-semibold transition-colors"
         >
           Read the Docs
         </a>
@@ -487,43 +475,43 @@ steps:
   </main>
 
   <!-- Footer -->
-  <footer class="py-12 px-4 sm:px-6 lg:px-8 bg-stone-100 dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800">
+  <footer class="py-12 px-4 sm:px-6 lg:px-8 bg-stone-900 border-t border-stone-800">
     <div class="max-w-6xl mx-auto">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
         <div>
-          <h4 class="font-semibold text-stone-900 dark:text-white mb-4">Getting Started</h4>
+          <h4 class="font-semibold text-white mb-4">Getting Started</h4>
           <ul class="space-y-2 text-sm">
-            <li><a href={`${baseUrl}getting-started/`} class="text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white">Quick Start</a></li>
-            <li><a href={`${baseUrl}tutorial/`} class="text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white">Tutorial</a></li>
-            <li><a href={`${baseUrl}concepts/`} class="text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white">Concepts</a></li>
+            <li><a href={`${baseUrl}getting-started/`} class="text-stone-400 hover:text-white">Quick Start</a></li>
+            <li><a href={`${baseUrl}tutorial/`} class="text-stone-400 hover:text-white">Tutorial</a></li>
+            <li><a href={`${baseUrl}concepts/`} class="text-stone-400 hover:text-white">Concepts</a></li>
           </ul>
         </div>
         <div>
-          <h4 class="font-semibold text-stone-900 dark:text-white mb-4">Features</h4>
+          <h4 class="font-semibold text-white mb-4">Features</h4>
           <ul class="space-y-2 text-sm">
-            <li><a href={`${baseUrl}features/actions/`} class="text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white">Actions</a></li>
-            <li><a href={`${baseUrl}features/integrations/`} class="text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white">Integrations</a></li>
-            <li><a href={`${baseUrl}features/triggers/`} class="text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white">Triggers</a></li>
+            <li><a href={`${baseUrl}features/actions/`} class="text-stone-400 hover:text-white">Actions</a></li>
+            <li><a href={`${baseUrl}features/integrations/`} class="text-stone-400 hover:text-white">Integrations</a></li>
+            <li><a href={`${baseUrl}features/triggers/`} class="text-stone-400 hover:text-white">Triggers</a></li>
           </ul>
         </div>
         <div>
-          <h4 class="font-semibold text-stone-900 dark:text-white mb-4">Examples</h4>
+          <h4 class="font-semibold text-white mb-4">Providers</h4>
           <ul class="space-y-2 text-sm">
-            <li><a href={`${baseUrl}examples/code-review/`} class="text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white">Code Review</a></li>
-            <li><a href={`${baseUrl}examples/devops/`} class="text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white">DevOps</a></li>
-            <li><a href={`${baseUrl}examples/automation/`} class="text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white">Automation</a></li>
+            <li><a href={`${baseUrl}providers/claude-code/`} class="text-stone-400 hover:text-white">Claude Code</a></li>
+            <li><a href={`${baseUrl}providers/ollama/`} class="text-stone-400 hover:text-white">Ollama</a></li>
+            <li><a href={`${baseUrl}features/model-tiers/`} class="text-stone-400 hover:text-white">Model Tiers</a></li>
           </ul>
         </div>
         <div>
-          <h4 class="font-semibold text-stone-900 dark:text-white mb-4">Community</h4>
+          <h4 class="font-semibold text-white mb-4">Community</h4>
           <ul class="space-y-2 text-sm">
-            <li><a href="https://github.com/tombee/conductor" target="_blank" rel="noopener noreferrer" class="text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white">GitHub</a></li>
-            <li><a href="https://github.com/tombee/conductor/issues" target="_blank" rel="noopener noreferrer" class="text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white">Issues</a></li>
-            <li><a href="https://github.com/tombee/conductor/discussions" target="_blank" rel="noopener noreferrer" class="text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white">Discussions</a></li>
+            <li><a href="https://github.com/tombee/conductor" target="_blank" rel="noopener noreferrer" class="text-stone-400 hover:text-white">GitHub</a></li>
+            <li><a href="https://github.com/tombee/conductor/issues" target="_blank" rel="noopener noreferrer" class="text-stone-400 hover:text-white">Issues</a></li>
+            <li><a href="https://github.com/tombee/conductor/discussions" target="_blank" rel="noopener noreferrer" class="text-stone-400 hover:text-white">Discussions</a></li>
           </ul>
         </div>
       </div>
-      <div class="border-t border-stone-200 dark:border-stone-800 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-stone-600 dark:text-stone-400">
+      <div class="border-t border-stone-800 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-stone-400">
         <p>Apache 2.0 License</p>
         <p>No tracking cookies used</p>
       </div>
@@ -545,14 +533,6 @@ steps:
       .catch(() => {
         starsEl.textContent = '0';
       });
-
-    // Theme toggle
-    const themeToggle = document.getElementById('theme-toggle');
-    themeToggle?.addEventListener('click', () => {
-      document.documentElement.classList.toggle('dark');
-      const isDark = document.documentElement.classList.contains('dark');
-      localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    });
 
     // Mobile menu
     const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
@@ -592,10 +572,8 @@ steps:
           t.setAttribute('aria-selected', isSelected.toString());
           t.classList.toggle('bg-amber-600', isSelected);
           t.classList.toggle('text-white', isSelected);
-          t.classList.toggle('bg-stone-200', !isSelected);
-          t.classList.toggle('dark:bg-stone-700', !isSelected);
-          t.classList.toggle('text-stone-600', !isSelected);
-          t.classList.toggle('dark:text-stone-300', !isSelected);
+          t.classList.toggle('bg-stone-700', !isSelected);
+          t.classList.toggle('text-stone-300', !isSelected);
         });
 
         // Update panels

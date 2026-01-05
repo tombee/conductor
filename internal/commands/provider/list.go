@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"text/tabwriter"
 	"time"
 
@@ -149,7 +150,36 @@ func checkProviderHealth(ctx context.Context, providerCfg config.ProviderConfig)
 		if hc, ok := interface{}(p).(llm.HealthCheckable); ok {
 			return hc.HealthCheck(ctx)
 		}
-	case "anthropic", "openai", "ollama":
+	case "ollama":
+		baseURL := providerCfg.BaseURL
+		if baseURL == "" {
+			baseURL = "http://localhost:11434"
+		}
+		resp, err := http.Get(baseURL + "/api/tags")
+		if err != nil {
+			return llm.HealthCheckResult{
+				Installed:     true,
+				Authenticated: true,
+				Working:       false,
+				Message:       fmt.Sprintf("Cannot connect to Ollama at %s: %v", baseURL, err),
+			}
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return llm.HealthCheckResult{
+				Installed:     true,
+				Authenticated: true,
+				Working:       false,
+				Message:       fmt.Sprintf("Ollama returned status %d", resp.StatusCode),
+			}
+		}
+		return llm.HealthCheckResult{
+			Installed:     true,
+			Authenticated: true,
+			Working:       true,
+			Message:       fmt.Sprintf("Connected to Ollama at %s", baseURL),
+		}
+	case "anthropic", "openai":
 		// Not yet implemented - return basic result
 		return llm.HealthCheckResult{
 			Installed:     true,

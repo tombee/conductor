@@ -102,22 +102,23 @@ type Run struct {
 // RunSnapshot is an immutable deep copy of Run state for external access.
 // Contains NO aliasing to internal mutable state.
 type RunSnapshot struct {
-	ID            string         `json:"id"`
-	WorkflowID    string         `json:"workflow_id"`
-	Workflow      string         `json:"workflow"`
-	Status        RunStatus      `json:"status"`
-	CorrelationID string         `json:"correlation_id,omitempty"` // Correlation ID for request tracing
-	Inputs        map[string]any `json:"inputs,omitempty"`
-	Output        map[string]any `json:"output,omitempty"`
-	Error         string         `json:"error,omitempty"`
-	Progress      *Progress      `json:"progress,omitempty"`
-	StartedAt     *time.Time     `json:"started_at,omitempty"`
-	CompletedAt   *time.Time     `json:"completed_at,omitempty"`
-	CreatedAt     time.Time      `json:"created_at"`
-	Logs          []LogEntry     `json:"logs,omitempty"`
-	SourceURL     string         `json:"source_url,omitempty"`
-	Workspace     string         `json:"workspace,omitempty"` // Workspace used for profile resolution
-	Profile       string         `json:"profile,omitempty"`   // Profile used for binding resolution
+	ID            string            `json:"id"`
+	WorkflowID    string            `json:"workflow_id"`
+	Workflow      string            `json:"workflow"`
+	Status        RunStatus         `json:"status"`
+	CorrelationID string            `json:"correlation_id,omitempty"` // Correlation ID for request tracing
+	Inputs        map[string]any    `json:"inputs,omitempty"`
+	Output        map[string]any    `json:"output,omitempty"`
+	OutputFormats map[string]string `json:"output_formats,omitempty"` // Format for each output (markdown, json, etc.)
+	Error         string            `json:"error,omitempty"`
+	Progress      *Progress         `json:"progress,omitempty"`
+	StartedAt     *time.Time        `json:"started_at,omitempty"`
+	CompletedAt   *time.Time        `json:"completed_at,omitempty"`
+	CreatedAt     time.Time         `json:"created_at"`
+	Logs          []LogEntry        `json:"logs,omitempty"`
+	SourceURL     string            `json:"source_url,omitempty"`
+	Workspace     string            `json:"workspace,omitempty"` // Workspace used for profile resolution
+	Profile       string            `json:"profile,omitempty"`   // Profile used for binding resolution
 
 	// Runtime overrides
 	Provider   string        `json:"provider,omitempty"`    // Provider override

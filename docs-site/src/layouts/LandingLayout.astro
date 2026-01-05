@@ -39,14 +39,9 @@ const baseUrl = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
 
-    <!-- Dark mode detection - runs before paint to prevent flash -->
+    <!-- Force dark mode -->
     <script is:inline>
-      (function() {
-        const theme = localStorage.getItem('theme');
-        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-          document.documentElement.classList.add('dark');
-        }
-      })();
+      document.documentElement.classList.add('dark');
     </script>
 
     <style is:global>

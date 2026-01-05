@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -455,7 +456,29 @@ func streamRunLogs(ctx context.Context, c *client.Client, runID, workflowName st
 	}
 
 	if err := scanner.Err(); err != nil {
+		// EOF during SSE stream usually means the server closed the connection
+		// This can happen when the run completes - fetch the final status
+		if err == io.EOF || strings.Contains(err.Error(), "EOF") {
+			output, _, s := fetchRunOutput(ctx, c, runID)
+			if stats == nil {
+				stats = s
+			} else if s != nil && stats.DurationMs == 0 {
+				stats.DurationMs = s.DurationMs
+			}
+			if output != "" {
+				return output, stats, nil
+			}
+		}
 		return "", stats, fmt.Errorf("error reading logs: %w", err)
+	}
+
+	// Stream ended normally - fetch output if we don't have it
+	if outputText == "" {
+		output, _, s := fetchRunOutput(ctx, c, runID)
+		if stats == nil {
+			stats = s
+		}
+		return output, stats, nil
 	}
 
 	return outputText, stats, nil

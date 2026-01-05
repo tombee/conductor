@@ -1,4 +1,4 @@
-# Step 4: Pantry Check
+# Step 3: Pantry Check
 
 Read available ingredients from a file.
 
@@ -105,4 +105,4 @@ Recipes will only use ingredients from your pantry file.
 
 ## Next
 
-[Step 5: Weekly Plan](./05-weekly-plan.md) - Generate a full week of meals with variety checking.
+[Step 4: Weekly Plan](./04-weekly-plan.md) - Generate a full week of meals with variety checking.

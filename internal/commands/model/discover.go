@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tombee/conductor/internal/config"
 	"github.com/tombee/conductor/pkg/llm"
+	"github.com/tombee/conductor/pkg/llm/providers"
 	"github.com/tombee/conductor/pkg/llm/providers/claudecode"
 )
 
@@ -40,8 +41,8 @@ func newDiscoverCmd() *cobra.Command {
 
 Supported providers:
   - claude-code: Returns haiku, sonnet, opus (CLI handles version mapping internally)
+  - ollama: Queries GET /api/tags for locally installed models
   - anthropic: (not yet implemented) Queries GET /v1/models
-  - ollama: (not yet implemented) Queries GET /api/tags for locally installed models
   - openai: (not yet implemented) Queries GET /v1/models
 
 The --register flag automatically adds discovered models to your configuration.
@@ -51,8 +52,11 @@ Examples:
   # Discover models from claude-code provider
   conductor model discover claude-code
 
+  # Discover locally installed Ollama models
+  conductor model discover ollama
+
   # Discover and auto-register models
-  conductor model discover claude-code --register --yes`,
+  conductor model discover ollama --register --yes`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			out := cmd.OutOrStdout()
@@ -207,19 +211,31 @@ Examples:
 
 // discoverModels queries a provider to discover available models
 func discoverModels(ctx context.Context, providerName string) ([]llm.ModelInfo, error) {
-	// For now, only claude-code is implemented
+	// For now, only claude-code and ollama are implemented
 	// Other providers will be added as they're implemented
 	switch providerName {
 	case "claude-code":
 		p := claudecode.New()
 		caps := p.Capabilities()
 		return caps.Models, nil
+	case "ollama":
+		// Create Ollama provider with empty credentials for discovery
+		provider, err := providers.NewOllamaWithCredentials(llm.OllamaCredentials{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create ollama provider: %w", err)
+		}
+
+		// Check if provider implements ModelDiscoverer interface
+		discoverer, ok := provider.(llm.ModelDiscoverer)
+		if !ok {
+			return nil, fmt.Errorf("ollama provider does not support model discovery")
+		}
+
+		return discoverer.DiscoverModels(ctx)
 	case "anthropic":
 		return nil, fmt.Errorf("model discovery not yet implemented for anthropic provider")
 	case "openai":
 		return nil, fmt.Errorf("model discovery not yet implemented for openai provider")
-	case "ollama":
-		return nil, fmt.Errorf("model discovery not yet implemented for ollama provider")
 	default:
 		return nil, fmt.Errorf("unknown provider type: %s", providerName)
 	}

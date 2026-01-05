@@ -6,13 +6,12 @@ Each step introduces one new feature while building on what you learned before.
 
 ## Steps
 
-1. [First Recipe](./01-first-recipe.md) - Single LLM step generating a recipe
-2. [Better Recipe](./02-better-recipe.md) - Accept ingredients, output structured data
-3. [Meal Plan](./03-meal-plan.md) - Three recipes generated in parallel
-4. [Pantry Check](./04-pantry-check.md) - Read pantry file, use in prompt
-5. [Weekly Plan](./05-weekly-plan.md) - Loop through days, refine with conditions
-6. [Save to Notion](./06-save-to-notion.md) - Save meal plan to Notion
-7. [Deploy](./07-deploy.md) - Deploy to a remote server with schedule
+1. [Generate a Recipe](./01-generate-recipe.md) - Accept ingredients, generate a recipe
+2. [Meal Plan](./02-meal-plan.md) - Three recipes generated in parallel
+3. [Pantry Check](./03-pantry-check.md) - Read pantry file, use in prompt
+4. [Weekly Plan](./04-weekly-plan.md) - Loop through days, refine with conditions
+5. [Save to Notion](./05-save-to-notion.md) - Save meal plan to Notion
+6. [Deploy](./06-deploy.md) - Deploy to a remote server with schedule
 
 ## What You'll Learn
 
@@ -32,7 +31,7 @@ Each step introduces one new feature while building on what you learned before.
 
 - Conductor installed (see [Getting Started](../getting-started.md))
 - Text editor
-- For step 6: Notion account (free tier)
-- For step 7: Remote server or exe.dev account
+- For step 5: Notion account (free tier)
+- For step 6: Remote server or exe.dev account
 
-Let's start with [Step 1: First Recipe](./01-first-recipe.md).
+Let's start with [Step 1: Generate a Recipe](./01-generate-recipe.md).

@@ -162,7 +162,14 @@ Examples:
 			// Handle base URL
 			if baseURL != "" {
 				// Validate base URL format and security
-				if err := validateBaseURL(cmd.Context(), baseURL); err != nil {
+				// Use Ollama-specific validation for ollama provider (allows localhost/private IPs)
+				var err error
+				if providerType == "ollama" {
+					err = validateOllamaBaseURL(cmd.Context(), baseURL)
+				} else {
+					err = validateBaseURL(cmd.Context(), baseURL)
+				}
+				if err != nil {
 					return fmt.Errorf("invalid base URL: %w", err)
 				}
 				providerCfg.BaseURL = baseURL

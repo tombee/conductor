@@ -18,6 +18,7 @@ package llm
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/tombee/conductor/internal/config"
@@ -31,11 +32,17 @@ import (
 // workflow.LLMProvider interface expected by the step executor.
 type ProviderAdapter struct {
 	provider llm.Provider
+	tiers    map[string]string // tier name -> "provider/model"
 }
 
 // NewProviderAdapter creates a new adapter wrapping an llm.Provider.
 func NewProviderAdapter(provider llm.Provider) *ProviderAdapter {
 	return &ProviderAdapter{provider: provider}
+}
+
+// NewProviderAdapterWithTiers creates a new adapter with tier resolution support.
+func NewProviderAdapterWithTiers(provider llm.Provider, tiers map[string]string) *ProviderAdapter {
+	return &ProviderAdapter{provider: provider, tiers: tiers}
 }
 
 // Complete implements workflow.LLMProvider interface.
@@ -58,8 +65,17 @@ func (a *ProviderAdapter) Complete(ctx context.Context, prompt string, options m
 		Messages: messages,
 	}
 
-	// Handle model option
+	// Handle model option with tier resolution
 	if model, ok := options["model"].(string); ok {
+		// Check if this is a tier name that needs resolution
+		if a.tiers != nil {
+			if tierRef, exists := a.tiers[model]; exists {
+				// Tier format is "provider/model", extract just the model part
+				if idx := strings.Index(tierRef, "/"); idx >= 0 {
+					model = tierRef[idx+1:]
+				}
+			}
+		}
 		req.Model = model
 	}
 
@@ -144,6 +160,16 @@ func CreateProvider(cfg *config.Config, providerName string) (llm.Provider, erro
 			return nil, fmt.Errorf("anthropic provider requires api_key in config")
 		}
 		baseProvider, err = providers.NewAnthropicProvider(providerCfg.APIKey)
+		if err != nil {
+			return nil, err
+		}
+
+	case "ollama":
+		baseURL := providerCfg.BaseURL
+		if baseURL == "" {
+			baseURL = "http://localhost:11434"
+		}
+		baseProvider, err = providers.NewOllamaProvider(baseURL)
 		if err != nil {
 			return nil, err
 		}

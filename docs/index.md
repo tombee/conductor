@@ -12,5 +12,6 @@ Conductor combines LLMs, APIs, and local actions into YAML workflows.
 ## Quick Links
 
 - [Getting Started](./getting-started.md) - Install and run your first workflow
+- [Providers](./providers/index.md) - Provider configuration reference
 - [Tutorial](./tutorial/index.md) - Build a meal planning workflow step-by-step
 - [Features](./features/inputs-outputs.md) - Reference documentation

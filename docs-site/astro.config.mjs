@@ -38,13 +38,20 @@ export default defineConfig({
           label: 'Tutorial',
           items: [
             { label: 'Overview', slug: 'tutorial' },
-            { label: '1. First Recipe', slug: 'tutorial/01-first-recipe' },
-            { label: '2. Better Recipe', slug: 'tutorial/02-better-recipe' },
-            { label: '3. Meal Plan', slug: 'tutorial/03-meal-plan' },
-            { label: '4. Pantry Check', slug: 'tutorial/04-pantry-check' },
-            { label: '5. Weekly Plan', slug: 'tutorial/05-weekly-plan' },
-            { label: '6. Save to Notion', slug: 'tutorial/06-save-to-notion' },
-            { label: '7. Deploy', slug: 'tutorial/07-deploy' },
+            { label: '1. Generate a Recipe', slug: 'tutorial/01-generate-recipe' },
+            { label: '2. Meal Plan', slug: 'tutorial/02-meal-plan' },
+            { label: '3. Pantry Check', slug: 'tutorial/03-pantry-check' },
+            { label: '4. Weekly Plan', slug: 'tutorial/04-weekly-plan' },
+            { label: '5. Save to Notion', slug: 'tutorial/05-save-to-notion' },
+            { label: '6. Deploy', slug: 'tutorial/06-deploy' },
+          ],
+        },
+        {
+          label: 'Providers',
+          items: [
+            { label: 'Overview', slug: 'providers' },
+            { label: 'Claude Code', slug: 'providers/claude-code' },
+            { label: 'Ollama', slug: 'providers/ollama' },
           ],
         },
         {

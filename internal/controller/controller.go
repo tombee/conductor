@@ -245,8 +245,8 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 				slog.String("provider", providerName))
 			logger.Warn("workflows requiring LLM steps may fail without a configured provider")
 		} else {
-			// Create the workflow executor adapter
-			providerAdapter := internalllm.NewProviderAdapter(llmProvider)
+			// Create the workflow executor adapter with tier resolution
+			providerAdapter := internalllm.NewProviderAdapterWithTiers(llmProvider, cfg.Tiers)
 			// Tool registry is nil; tools are resolved dynamically per-workflow.
 			executor := workflow.NewExecutor(nil, providerAdapter)
 			executionAdapter := runner.NewExecutorAdapter(executor)

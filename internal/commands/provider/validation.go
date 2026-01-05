@@ -72,6 +72,23 @@ func ValidateProviderNameFunc(existingProviders config.ProvidersMap) func(string
 	}
 }
 
+// ValidateProviderNameOrEmptyFunc returns a validation function that allows empty
+// (which will default to defaultName) or validates the provided name.
+func ValidateProviderNameOrEmptyFunc(existingProviders config.ProvidersMap, defaultName string) func(string) error {
+	return func(name string) error {
+		if name == "" {
+			// Empty is allowed, will default to defaultName - but check if default exists
+			if existingProviders != nil {
+				if _, exists := existingProviders[defaultName]; exists {
+					return fmt.Errorf("provider '%s' already exists", defaultName)
+				}
+			}
+			return nil
+		}
+		return ValidateProviderName(name, existingProviders)
+	}
+}
+
 // Placeholder patterns that indicate invalid API keys.
 var placeholderPatterns = []string{
 	"xxx",

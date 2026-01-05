@@ -130,13 +130,16 @@ func (r *Runner) execute(run *Run) {
 
 	if adapter == nil {
 		// No adapter configured - workflow execution will fail
+		errMsg := "no LLM provider configured. Run 'conductor provider add' to set up a provider, then restart the controller"
 		run.mu.Lock()
 		run.Status = RunStatusFailed
-		run.Error = "no execution adapter configured - check controller initialization"
+		run.Error = errMsg
 		completedAt := time.Now()
 		run.CompletedAt = &completedAt
 		run.mu.Unlock()
-		r.addLog(run, "error", "No execution adapter configured for step execution", "")
+
+		// Send status event so CLI displays the error
+		r.addStatus(run, "failed", errMsg)
 
 		// Update backend with run context (respects cancellation during execution)
 		if be := r.getBackend(); be != nil {

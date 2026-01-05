@@ -254,20 +254,13 @@ func (s *StateManager) snapshotRun(run *Run) *RunSnapshot {
 		}
 	}
 
-	// Deep copy OutputTypes map to prevent aliasing
-	var outputTypes map[string]string
-	if run.OutputTypes != nil {
-		outputTypes = make(map[string]string, len(run.OutputTypes))
-		for k, v := range run.OutputTypes {
-			outputTypes[k] = v
+	// Deep copy OutputFormats map to prevent aliasing
+	var outputFormats map[string]string
+	if run.OutputFormats != nil {
+		outputFormats = make(map[string]string, len(run.OutputFormats))
+		for k, v := range run.OutputFormats {
+			outputFormats[k] = v
 		}
-	}
-
-	// Deep copy OutputOrder slice to prevent aliasing
-	var outputOrder []string
-	if run.OutputOrder != nil {
-		outputOrder = make([]string, len(run.OutputOrder))
-		copy(outputOrder, run.OutputOrder)
 	}
 
 	// Deep copy AllowHosts and AllowPaths slices to prevent aliasing
@@ -290,8 +283,7 @@ func (s *StateManager) snapshotRun(run *Run) *RunSnapshot {
 		CorrelationID: run.CorrelationID,
 		Inputs:        inputs,
 		Output:        output,
-		OutputTypes:   outputTypes,
-		OutputOrder:   outputOrder,
+		OutputFormats: outputFormats,
 		Error:         run.Error,
 		Progress:      progress,
 		StartedAt:     run.StartedAt,

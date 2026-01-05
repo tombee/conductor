@@ -294,18 +294,18 @@ function processDirectory(srcDir, destDir, isRoot = false) {
 function createHomepage() {
   const content = `---
 title: Conductor
-description: A production-ready platform for AI agent workflows
+description: AI workflows as simple as shell scripts
 ---
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-Define AI agent workflows in YAML. Run them anywhere. Built-in observability, security, cost controls, and flexible deployment.
+Conductor combines LLMs, APIs, and local actions into YAML workflows.
 
 <CardGrid>
-  <LinkCard title="What is Conductor?" description="Overview and use cases" href="/conductor/learn/overview/" />
-  <LinkCard title="Quick Start" description="First workflow in 5 minutes" href="/conductor/quick-start/" />
-  <LinkCard title="Installation" description="Homebrew, Go, or binary" href="/conductor/learn/installation/" />
-  <LinkCard title="Examples" description="Ready-to-use workflows" href="/conductor/examples/" />
+  <LinkCard title="Getting Started" description="Install and run your first workflow" href="/conductor/getting-started/" />
+  <LinkCard title="Tutorial" description="Build a meal planning workflow" href="/conductor/tutorial/" />
+  <LinkCard title="Providers" description="Configure Claude Code or Ollama" href="/conductor/providers/" />
+  <LinkCard title="Concepts" description="Core concepts and terminology" href="/conductor/concepts/" />
 </CardGrid>
 
 ## Quick Example
@@ -314,7 +314,8 @@ Define AI agent workflows in YAML. Run them anywhere. Built-in observability, se
 name: summarize
 steps:
   - id: summarize
-    model: fast
+    type: llm
+    model: balanced
     prompt: "Summarize: {{.inputs.text}}"
 \`\`\`
 
@@ -322,33 +323,20 @@ steps:
 conductor run summarize.yaml -i text="Your long text here..."
 \`\`\`
 
-## Documentation
-
-| Learn | Tutorials | Guides | Reference |
-|-------|-----------|--------|-----------|
-| [Installation](/conductor/learn/installation/) | [First Workflow](/conductor/learn/tutorials/first-workflow/) | [Flow Control](/conductor/guides/flow-control/) | [CLI](/conductor/reference/cli/) |
-| [Workflows & Steps](/conductor/learn/concepts/workflows-steps/) | [Code Review Bot](/conductor/learn/tutorials/code-review-bot/) | [Error Handling](/conductor/guides/error-handling/) | [Workflow Schema](/conductor/reference/workflow-schema/) |
-| [Inputs & Outputs](/conductor/learn/concepts/inputs-outputs/) | [Slack Integration](/conductor/learn/tutorials/slack-integration/) | [Performance](/conductor/guides/performance/) | [Configuration](/conductor/reference/configuration/) |
-| [Template Variables](/conductor/learn/concepts/template-variables/) | [Multi-Agent](/conductor/learn/tutorials/multi-agent-workflows/) | [Testing](/conductor/guides/testing/) | [Error Codes](/conductor/reference/error-codes/) |
-
-**Operations:** [File](/conductor/reference/connectors/file/) · [Shell](/conductor/reference/connectors/shell/) · [HTTP](/conductor/reference/connectors/http/) · [Transform](/conductor/reference/connectors/transform/)
-
-**Service Integrations:** [GitHub](/conductor/reference/connectors/github/) · [Slack](/conductor/reference/connectors/slack/) · [Discord](/conductor/reference/connectors/discord/) · [Jira](/conductor/reference/connectors/jira/) · [Jenkins](/conductor/reference/connectors/jenkins/) · [Custom](/conductor/reference/connectors/custom/)
-
 ## Features
 
 <CardGrid>
-  <Card title="Workflow Logic in YAML" icon="pencil">
-    Define what your agents do declaratively. The platform handles retries, fallbacks, and error handling.
+  <Card title="YAML-First" icon="pencil">
+    Define workflows declaratively. No SDK required.
+  </Card>
+  <Card title="Any LLM" icon="random">
+    Claude Code, Ollama, or other providers with one config change.
   </Card>
   <Card title="Production-Ready" icon="approve-check-circle">
-    Observability, cost tracking, and security built in.
+    Built-in observability, cost tracking, and security.
   </Card>
-  <Card title="Flexible Deployment" icon="rocket">
-    Run from CLI, as an API, on a schedule, or via webhooks.
-  </Card>
-  <Card title="Any LLM Provider" icon="random">
-    Anthropic, OpenAI, Ollama, or others. Swap without changing workflows.
+  <Card title="Flexible Runtime" icon="rocket">
+    Run from CLI, on a schedule, or via webhooks.
   </Card>
 </CardGrid>
 `;
