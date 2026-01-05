@@ -8,7 +8,7 @@ Generate a meal plan and save it to Notion using the HTTP action.
 
 ## Setup
 
-1. Create a Notion integration at https://www.notion.so/my-integrations
+1. Create a Notion integration at https://www.notion.so/profile/integrations
 2. Create a database with Name and Content properties
 3. Share the database with your integration
 4. Set your token as an environment variable:
