@@ -101,29 +101,33 @@ steps:
 
 ## Notion
 
-Create and update Notion pages:
+Create and update Notion pages and database items:
 
 ```yaml
 steps:
-  - id: create_page
-    http:
-      method: POST
-      url: https://api.notion.com/v1/pages
-      headers:
-        Authorization: "Bearer ${NOTION_TOKEN}"
-        Notion-Version: "2022-06-28"
-        Content-Type: application/json
-      body:
-        parent:
-          database_id: ${inputs.databaseId}
-        properties:
-          Name:
-            title:
-              - text:
-                  content: ${steps.generate.output}
+  - id: save_item
+    notion.create_database_item:
+      database_id: "{{.inputs.database_id}}"
+      properties:
+        Name:
+          title:
+            - text:
+                content: "{{.steps.generate.response}}"
+        Status:
+          select:
+            name: "New"
 ```
 
-Notion uses the HTTP action with their API. See [Notion API docs](https://developers.notion.com) for details.
+### Notion Actions
+
+- `create_page` - Create a new page under a parent
+- `get_page` - Retrieve page properties
+- `update_page` - Update page title, icon, or cover
+- `upsert_page` - Update if exists by title, create if not
+- `append_blocks` - Add content blocks to a page
+- `query_database` - Query with filters and sorts
+- `create_database_item` - Add item to a database
+- `update_database_item` - Update database item properties
 
 ## Authentication
 

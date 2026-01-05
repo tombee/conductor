@@ -4,7 +4,7 @@ Save your meal plan to a Notion database.
 
 ## Goal
 
-Generate a meal plan and save it to Notion using the HTTP action.
+Generate a meal plan and save it to Notion using the Notion integration.
 
 ## Setup
 
@@ -14,11 +14,12 @@ Generate a meal plan and save it to Notion using the HTTP action.
 4. Add a database to the page with Name (title) and Content (text) properties
 5. Create an integration at https://www.notion.so/profile/integrations
 6. Share the database with your integration (click ••• → Connections → Add your integration)
-7. Copy the database ID from the URL (the 32-character string after the page name)
-8. Set your token as an environment variable:
+7. Copy your integration token (you'll use this to configure Conductor)
+8. Copy the database ID from the URL (the 32-character string after the page name - you'll pass this when running the workflow)
+9. Configure the Notion integration in Conductor:
 
 ```bash
-export NOTION_TOKEN="your-integration-token"
+conductor integration add notion --token "your-integration-token"
 ```
 
 ## The Workflow
@@ -35,10 +36,9 @@ conductor run recipe.yaml -i notion_database_id="your-database-id"
 
 ## What You Learned
 
-- **[HTTP actions](../features/actions.md)** - Use `http.post:` for API calls
-- **Environment variables** - Access secrets with `{{env.VAR_NAME}}`
-- **[Integrations](../features/integrations.md)** - Connect to external services
-- **JSON output** - Ask the LLM to return structured data when needed for APIs
+- **[Integrations](../features/integrations.md)** - Use `notion.create_database_item:` for Notion API
+- **Integration configuration** - Add credentials with `conductor integration add`
+- **Input validation** - Use `pattern` for regex validation on inputs
 
 ## Next
 
