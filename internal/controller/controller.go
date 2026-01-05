@@ -32,7 +32,7 @@ import (
 
 	// Import operation package to trigger init() which registers action factories
 	// This enables file.read, shell.run, and other builtin actions
-	_ "github.com/tombee/conductor/internal/operation"
+	"github.com/tombee/conductor/internal/operation"
 	"github.com/tombee/conductor/internal/controller/api"
 	"github.com/tombee/conductor/internal/controller/auth"
 	"github.com/tombee/conductor/internal/controller/backend"
@@ -59,6 +59,7 @@ import (
 	"github.com/tombee/conductor/internal/tracing"
 	"github.com/tombee/conductor/internal/tracing/audit"
 	"github.com/tombee/conductor/internal/triggers"
+	"github.com/tombee/conductor/internal/workspace"
 	"github.com/tombee/conductor/pkg/security"
 	securityaudit "github.com/tombee/conductor/pkg/security/audit"
 	"github.com/tombee/conductor/pkg/workflow"
@@ -249,6 +250,15 @@ func New(cfg *config.Config, opts Options) (*Controller, error) {
 			providerAdapter := internalllm.NewProviderAdapterWithTiers(llmProvider, cfg.Tiers)
 			// Tool registry is nil; tools are resolved dynamically per-workflow.
 			executor := workflow.NewExecutor(nil, providerAdapter)
+
+			// Create operation registry with builtin actions and workspace integrations
+			opRegistry, integrationCount := createOperationRegistry(cfg.Controller.WorkflowsDir, logger)
+			if opRegistry != nil {
+				executor = executor.WithOperationRegistry(opRegistry.AsWorkflowRegistry())
+				logger.Info("operation registry initialized",
+					slog.Int("integrations", integrationCount))
+			}
+
 			executionAdapter := runner.NewExecutorAdapter(executor)
 			r.SetAdapter(executionAdapter)
 
@@ -1517,4 +1527,111 @@ func (c *Controller) scanAndRegisterPollTriggers(ctx context.Context) {
 		c.logger.Info("poll trigger scan complete",
 			slog.Int("registered", registeredCount))
 	}
+}
+
+// createOperationRegistry creates an operation registry with builtin actions and workspace integrations.
+// Returns the registry and the count of integrations loaded.
+func createOperationRegistry(workflowsDir string, logger *slog.Logger) (*operation.Registry, int) {
+	// Create registry with builtin actions
+	opConfig := &operation.BuiltinConfig{
+		WorkflowDir: workflowsDir,
+	}
+	registry, err := operation.NewBuiltinRegistry(opConfig)
+	if err != nil {
+		logger.Warn("failed to create operation registry",
+			internallog.Error(err))
+		return nil, 0
+	}
+
+	// Load workspace integrations
+	integrationCount := 0
+	storage, err := openWorkspaceStorage()
+	if err != nil {
+		logger.Debug("workspace storage unavailable, skipping integration loading",
+			internallog.Error(err))
+		return registry, 0
+	}
+	defer storage.Close()
+
+	// Get current workspace
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	workspaceName, err := storage.GetCurrentWorkspace(ctx)
+	if err != nil || workspaceName == "" {
+		workspaceName = "default"
+	}
+
+	// List all integrations in the workspace
+	integrations, err := storage.ListIntegrations(ctx, workspaceName)
+	if err != nil {
+		logger.Debug("failed to list integrations",
+			internallog.Error(err),
+			slog.String("workspace", workspaceName))
+		return registry, 0
+	}
+
+	// Register each integration
+	for _, integration := range integrations {
+		cfg := operation.IntegrationConfig{
+			Name:      integration.Name,
+			Type:      integration.Type,
+			BaseURL:   integration.BaseURL,
+			AuthType:  string(integration.Auth.Type),
+			AuthToken: integration.Auth.Token,
+		}
+
+		if err := registry.RegisterIntegration(cfg); err != nil {
+			logger.Warn("failed to register integration",
+				internallog.Error(err),
+				slog.String("integration", integration.Name),
+				slog.String("type", integration.Type))
+			continue
+		}
+
+		logger.Debug("registered integration",
+			slog.String("integration", integration.Name),
+			slog.String("type", integration.Type))
+		integrationCount++
+	}
+
+	return registry, integrationCount
+}
+
+// openWorkspaceStorage creates a workspace storage connection.
+func openWorkspaceStorage() (workspace.Storage, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	conductorDir := filepath.Join(homeDir, ".conductor")
+	if err := os.MkdirAll(conductorDir, 0700); err != nil {
+		return nil, fmt.Errorf("failed to create conductor directory: %w", err)
+	}
+
+	dbPath := filepath.Join(conductorDir, "conductor.db")
+
+	// Get master key from keychain or environment
+	keychainMgr := workspace.NewKeychainManager()
+	masterKey, err := keychainMgr.GetOrCreateMasterKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get master key: %w", err)
+	}
+
+	// Create encryptor with master key
+	encryptor, err := workspace.NewAESEncryptor(masterKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create encryptor: %w", err)
+	}
+
+	storage, err := workspace.NewSQLiteStorage(workspace.SQLiteConfig{
+		Path:      dbPath,
+		Encryptor: encryptor,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to open storage: %w", err)
+	}
+
+	return storage, nil
 }

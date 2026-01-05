@@ -134,6 +134,38 @@ func NewBuiltinRegistry(config *BuiltinConfig) (*Registry, error) {
 	return registry, nil
 }
 
+// IntegrationConfig represents a workspace integration to be registered.
+type IntegrationConfig struct {
+	// Name is the integration identifier (e.g., "notion", "github")
+	Name string
+
+	// Type is the integration type (e.g., "notion", "github", "slack")
+	Type string
+
+	// BaseURL is the API base URL
+	BaseURL string
+
+	// AuthType is the authentication type (e.g., "token", "basic")
+	AuthType string
+
+	// AuthToken is the authentication token/credential
+	AuthToken string
+}
+
+// RegisterIntegration registers a workspace integration with the registry.
+// This allows workflows to use integrations configured via 'conductor integrations add'.
+func (r *Registry) RegisterIntegration(cfg IntegrationConfig) error {
+	// Create the provider using the builtin API factory
+	provider, err := newBuiltinAPIProvider(cfg.Type, cfg.BaseURL, cfg.AuthType, cfg.AuthToken)
+	if err != nil {
+		return fmt.Errorf("failed to create integration provider %q: %w", cfg.Name, err)
+	}
+
+	// Register under the integration name (usually same as type, but could be aliased)
+	r.Register(cfg.Name, provider)
+	return nil
+}
+
 // AsWorkflowRegistry returns a wrapper that implements workflow.OperationRegistry.
 func (r *Registry) AsWorkflowRegistry() workflow.OperationRegistry {
 	return &workflowRegistryAdapter{r}
