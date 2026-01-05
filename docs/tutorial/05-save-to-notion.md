@@ -10,10 +10,12 @@ Generate a meal plan and save it to Notion using the HTTP action.
 
 1. Sign up for Notion at https://www.notion.so if you don't have an account
 2. Create a workspace if you don't have one
-3. Create an integration at https://www.notion.so/profile/integrations
-4. Create a database with Name and Content properties
-5. Share the database with your integration (click ••• → Connections → Add your integration)
-6. Set your token as an environment variable:
+3. Create a "Meal Plans" page in your workspace
+4. Add a database to the page with Name (title) and Content (text) properties
+5. Create an integration at https://www.notion.so/profile/integrations
+6. Share the database with your integration (click ••• → Connections → Add your integration)
+7. Copy the database ID from the URL (the 32-character string after the page name)
+8. Set your token as an environment variable:
 
 ```bash
 export NOTION_TOKEN="your-integration-token"
