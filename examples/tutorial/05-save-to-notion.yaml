@@ -36,14 +36,14 @@ steps:
       - id: generate
         name: Generate Plan
         type: llm
-        model: strategic
+        model: fast
         prompt: |
           Available ingredients:
           {{.steps.read_pantry.content}}
 
-          {{if .loop.history}}
+          {{if gt .loop.iteration 0}}
           Previous attempt feedback:
-          {{.loop.history.check.feedback}}
+          {{.steps.check.feedback}}
 
           Improve the plan based on this feedback.
           {{else}}
