@@ -1,149 +1,134 @@
 # Loops
 
-Iterate over lists with `foreach` to process multiple items.
+Conductor supports two loop patterns: `foreach` for iterating over lists, and `type: loop` for iterative refinement.
 
-## Basic Loop
+## Iterative Refinement
 
-Iterate over a static list:
+Use `type: loop` to repeatedly execute steps until a condition is met:
+
+```yaml
+steps:
+  - id: refine
+    type: loop
+    max_iterations: 5
+    until: "steps.validate.score >= 8"
+    steps:
+      - id: generate
+        type: llm
+        prompt: |
+          {{if .loop.history}}
+          Previous feedback: {{.loop.history.validate.feedback}}
+          Improve based on this feedback.
+          {{else}}
+          Generate initial content.
+          {{end}}
+
+      - id: validate
+        type: llm
+        output_schema:
+          type: object
+          properties:
+            score:
+              type: number
+            feedback:
+              type: string
+        prompt: "Rate this content 1-10 and provide feedback: {{.steps.generate.response}}"
+```
+
+### Loop Context
+
+Within a loop, access:
+- `{{.loop.iteration}}` - Current iteration (0-based)
+- `{{.loop.history}}` - Previous iteration outputs
+- `{{.loop.history.stepId.field}}` - Specific field from previous iteration
+
+### Termination
+
+Loops terminate when:
+1. The `until` condition evaluates to true
+2. `max_iterations` is reached (required, max 100)
+
+## Foreach
+
+Iterate over a list with `foreach`:
 
 ```yaml
 steps:
   - id: greet_all
+    foreach: "{{.inputs.names}}"
+    steps:
+      - id: greet
+        type: llm
+        prompt: "Say hello to {{.item}}"
+```
+
+Access the current item with `{{.item}}` and index with `{{.index}}`.
+
+### Static Lists
+
+```yaml
+steps:
+  - id: process
     foreach:
       items:
         - Alice
         - Bob
         - Carol
-      steps:
-        - id: greet
-          llm:
-            prompt: "Say hello to ${item}"
+    steps:
+      - id: greet
+        type: llm
+        prompt: "Greet {{.item}}"
 ```
 
-Access the current item with `${item}`.
-
-## Dynamic Lists
+### Dynamic Lists
 
 Iterate over step outputs:
 
 ```yaml
 steps:
-  - id: fetch_users
-    http:
-      method: GET
-      url: https://api.example.com/users
-  - id: process_users
-    foreach:
-      items: ${steps.fetch_users.output.users}
-      steps:
-        - id: analyze
-          llm:
-            prompt: "Analyze user: ${item.name}"
+  - id: fetch
+    http.get: https://api.example.com/users
+
+  - id: process
+    foreach: "{{.steps.fetch.users}}"
+    steps:
+      - id: analyze
+        type: llm
+        prompt: "Analyze user: {{.item.name}}"
 ```
 
-## Nested Loops
+### Parallel Foreach
 
-Loops can contain other loops:
+Run iterations concurrently:
 
 ```yaml
 steps:
-  - id: process_teams
-    foreach:
-      items: ${inputs.teams}
-      steps:
-        - id: process_members
-          foreach:
-            items: ${item.members}
-            steps:
-              - id: greet
-                llm:
-                  prompt: "Welcome ${item.name} from team ${parent.item.name}"
+  - id: process
+    foreach: "{{.inputs.items}}"
+    parallel: true
+    steps:
+      - id: handle
+        type: llm
+        prompt: "Process {{.item}}"
 ```
 
-## Access Loop Results
+### Loop Results
 
-Reference all outputs from a loop:
+Access all outputs from a foreach:
 
 ```yaml
 steps:
-  - id: generate_recipes
+  - id: recipes
     foreach:
-      items:
-        - breakfast
-        - lunch
-        - dinner
-      steps:
-        - id: recipe
-          llm:
-            prompt: "Generate a ${item} recipe"
+      items: [breakfast, lunch, dinner]
+    steps:
+      - id: generate
+        type: llm
+        prompt: "Generate a {{.item}} recipe"
+
   - id: combine
-    llm:
-      prompt: "Create a meal plan from these recipes: ${steps.generate_recipes.outputs}"
+    type: llm
+    prompt: "Create meal plan from: {{.steps.recipes.outputs}}"
 ```
 
-`${steps.loopId.outputs}` contains an array of all iteration outputs.
-
-## Current Iteration
-
-Access the current iteration index:
-
-```yaml
-steps:
-  - id: number_items
-    foreach:
-      items: ${inputs.items}
-      steps:
-        - id: label
-          llm:
-            prompt: "Item ${index}: ${item}"
-```
-
-Use `${index}` for the zero-based position.
-
-## Loop Context
-
-Within a loop, access:
-- `${item}` - Current item
-- `${index}` - Current index (0-based)
-- `${steps.loopId.outputs}` - Previous iteration outputs
-
-## Parallel Loop Execution
-
-Loop iterations run sequentially by default. For parallel execution:
-
-```yaml
-steps:
-  - id: process_all
-    foreach:
-      items: ${inputs.items}
-      parallel: true
-      steps:
-        - id: process
-          llm:
-            prompt: "Process ${item}"
-```
-
-Use `parallel: true` when iterations are independent.
-
-## Breaking Early
-
-Loops run all iterations. To exit early, use conditions in subsequent steps:
-
-```yaml
-steps:
-  - id: search
-    foreach:
-      items: ${inputs.candidates}
-      steps:
-        - id: check
-          llm:
-            prompt: "Is ${item} suitable? Answer yes or no."
-  - id: select
-    condition: ${steps.search.outputs | contains("yes")}
-    llm:
-      prompt: "Select the first suitable item"
-```
-
-## Performance
-
-Sequential loops process one item at a time. For large lists, use `parallel: true` to process multiple items concurrently.
+`{{.steps.loopId.outputs}}` contains an array of all iteration outputs.

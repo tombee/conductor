@@ -1,10 +1,10 @@
 # Step 4: Weekly Plan
 
-Generate a full week of meals with a variety check.
+Refine a meal plan iteratively until it meets quality criteria.
 
 ## Goal
 
-Create a weekly meal plan and validate it for variety.
+Use `type: loop` to generate and refine a meal plan until variety requirements are satisfied.
 
 ## The Workflow
 
@@ -24,46 +24,55 @@ steps:
   - id: read_pantry
     file.read: "{{.inputs.pantry_file}}"
 
-  - id: plan_week
-    type: llm
-    model: strategic
-    prompt: |
-      Available ingredients:
-      {{.steps.read_pantry.content}}
+  - id: refine_plan
+    type: loop
+    max_iterations: 3
+    until: "steps.check.passes == true"
+    steps:
+      - id: generate
+        type: llm
+        model: strategic
+        prompt: |
+          Available ingredients:
+          {{.steps.read_pantry.content}}
 
-      Generate a {{.inputs.diet}} meal plan for the entire week (Monday through Sunday).
-      For each day, create breakfast, lunch, and dinner recipes.
+          {{if .loop.history}}
+          Previous attempt feedback:
+          {{.loop.history.check.feedback}}
 
-      Requirements:
-      - Use only the available ingredients
-      - Ensure variety - don't repeat main proteins on consecutive days
-      - Include prep times for each meal
+          Improve the plan based on this feedback.
+          {{else}}
+          Generate a {{.inputs.diet}} meal plan for Monday through Sunday.
+          {{end}}
 
-      Format each day clearly with the day name as a header.
+          For each day, create breakfast, lunch, and dinner.
+          Don't repeat main proteins on consecutive days.
 
-  - id: check_variety
-    type: llm
-    model: balanced
-    condition:
-      expression: "true"
-    prompt: |
-      Review this meal plan for variety:
-      {{.steps.plan_week.response}}
+      - id: check
+        type: llm
+        model: fast
+        output_schema:
+          type: object
+          properties:
+            passes:
+              type: boolean
+            feedback:
+              type: string
+        prompt: |
+          Review this meal plan for variety:
+          {{.steps.generate.response}}
 
-      Check that:
-      1. No main protein is repeated on consecutive days
-      2. Breakfast items have variety
-      3. Different cuisines are represented
+          Check:
+          1. No main protein repeated on consecutive days
+          2. Breakfast items vary throughout the week
 
-      If there are issues, suggest specific swaps.
+          Return {"passes": true} if requirements are met.
+          Otherwise return {"passes": false, "feedback": "specific issues"}.
 
 outputs:
   - name: weekly_plan
     type: string
-    value: "{{.steps.plan_week.response}}"
-  - name: variety_check
-    type: string
-    value: "{{.steps.check_variety.response}}"
+    value: "{{.steps.refine_plan.generate.response}}"
 ```
 
 ## Run It
@@ -72,11 +81,14 @@ outputs:
 conductor run recipe.yaml
 ```
 
+The loop runs until `check.passes` is true or 3 iterations complete.
+
 ## What You Learned
 
-- **[Model tiers](../features/model-tiers.md)** - Use `strategic` for complex reasoning
-- **[Conditions](../features/conditions.md)** - Use `condition.expression` to control step execution
-- **Multi-step workflows** - Chain LLM steps to review and refine output
+- **[Loops](../features/loops.md)** - Use `type: loop` for iterative refinement
+- **until** - Termination condition evaluated after each iteration
+- **max_iterations** - Safety limit to prevent infinite loops
+- **loop.history** - Access previous iteration outputs to improve results
 
 ## Next
 
