@@ -2,6 +2,10 @@
 name: save-to-notion
 description: Generate a meal plan and save it to Notion
 
+integrations:
+  notion:
+    from: integrations/notion
+
 inputs:
   - name: pantry_file
     type: string
@@ -79,7 +83,9 @@ steps:
 
   - id: save_plan
     name: Save to Notion
-    notion.create_database_item:
+    type: integration
+    integration: notion.create_database_item
+    inputs:
       database_id: "{{.inputs.notion_database_id}}"
       properties:
         Name:

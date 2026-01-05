@@ -4,6 +4,10 @@
 name: weekly-meal-planner
 description: Weekly meal planner designed for remote deployment
 
+integrations:
+  notion:
+    from: integrations/notion
+
 inputs:
   - name: pantry_file
     type: string
@@ -81,7 +85,9 @@ steps:
 
   - id: save_plan
     name: Save to Notion
-    notion.create_database_item:
+    type: integration
+    integration: notion.create_database_item
+    inputs:
       database_id: "{{.inputs.notion_database_id}}"
       properties:
         Name:

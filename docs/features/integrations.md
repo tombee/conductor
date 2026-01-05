@@ -104,9 +104,15 @@ steps:
 Create and update Notion pages and database items:
 
 ```yaml
+integrations:
+  notion:
+    from: integrations/notion
+
 steps:
   - id: save_item
-    notion.create_database_item:
+    type: integration
+    integration: notion.create_database_item
+    inputs:
       database_id: "{{.inputs.database_id}}"
       properties:
         Name:
@@ -131,16 +137,27 @@ steps:
 
 ## Authentication
 
-All integrations require credentials. Use environment variables:
+All integrations require credentials. Configure them using `conductor integrations add`:
 
 ```bash
-export GITHUB_TOKEN="ghp_..."
-export SLACK_TOKEN="xoxb-..."
-export JIRA_TOKEN="..."
-export DISCORD_WEBHOOK="https://discord.com/api/webhooks/..."
-export NOTION_TOKEN="secret_..."
+conductor integrations add notion --token "secret_..."
+conductor integrations add github --token "ghp_..."
+conductor integrations add slack --token "xoxb-..."
+```
 
-conductor run workflow.yaml
+Then declare and use the integration in your workflow:
+
+```yaml
+integrations:
+  notion:
+    from: integrations/notion
+
+steps:
+  - id: save
+    type: integration
+    integration: notion.create_page
+    inputs:
+      # ...
 ```
 
 Never hardcode tokens in workflow files.
