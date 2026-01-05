@@ -19,7 +19,7 @@ Generate a meal plan and save it to Notion using the Notion integration.
 9. Configure the Notion integration in Conductor:
 
 ```bash
-conductor integration add notion --token "your-integration-token"
+conductor integrations add notion --token "your-integration-token"
 ```
 
 ## The Workflow
@@ -37,7 +37,7 @@ conductor run recipe.yaml -i notion_database_id="your-database-id"
 ## What You Learned
 
 - **[Integrations](../features/integrations.md)** - Use `notion.create_database_item:` for Notion API
-- **Integration configuration** - Add credentials with `conductor integration add`
+- **Integration configuration** - Add credentials with `conductor integrations add`
 - **Input validation** - Use `pattern` for regex validation on inputs
 
 ## Next
