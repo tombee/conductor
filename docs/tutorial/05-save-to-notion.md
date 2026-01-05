@@ -10,7 +10,7 @@ Generate a meal plan and save it to Notion using the HTTP action.
 
 1. Sign up for Notion at https://www.notion.so if you don't have an account
 2. Create a workspace if you don't have one
-3. Create a "Meal Plans" page in your workspace
+3. Create a "Meal Plans" page in your workspace (use the "empty page" option)
 4. Add a database to the page with Name (title) and Content (text) properties
 5. Create an integration at https://www.notion.so/profile/integrations
 6. Share the database with your integration (click ••• → Connections → Add your integration)
