@@ -22,6 +22,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -828,6 +829,16 @@ func validateInputs(inputs map[string]any, inputDefs []workflow.InputDefinition)
 		if len(def.Enum) > 0 {
 			if err := validateEnum(name, value, def.Enum); err != nil {
 				return err
+			}
+		}
+
+		// Validate pattern constraint
+		if def.Pattern != "" {
+			if strValue, ok := value.(string); ok {
+				re, err := regexp.Compile(def.Pattern)
+				if err == nil && !re.MatchString(strValue) {
+					return fmt.Errorf("input %q does not match required pattern %q", name, def.Pattern)
+				}
 			}
 		}
 	}

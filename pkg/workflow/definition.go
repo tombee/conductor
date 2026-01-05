@@ -91,6 +91,9 @@ type InputDefinition struct {
 
 	// Enum defines the allowed values for enum-type inputs
 	Enum []string `yaml:"enum,omitempty" json:"enum,omitempty"`
+
+	// Pattern is a regex pattern for validating string inputs
+	Pattern string `yaml:"pattern,omitempty" json:"pattern,omitempty"`
 }
 
 // StepDefinition represents a single step in a workflow.
@@ -789,6 +792,16 @@ func (i *InputDefinition) Validate() error {
 	}
 	if !validTypes[i.Type] {
 		return fmt.Errorf("invalid input type: %s (must be string, number, boolean, object, or array)", i.Type)
+	}
+
+	// Validate pattern is a valid regex (only for string type)
+	if i.Pattern != "" {
+		if i.Type != "string" {
+			return fmt.Errorf("pattern can only be used with string type inputs")
+		}
+		if _, err := regexp.Compile(i.Pattern); err != nil {
+			return fmt.Errorf("invalid pattern regex: %w", err)
+		}
 	}
 
 	return nil
