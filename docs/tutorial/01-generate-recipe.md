@@ -10,30 +10,7 @@ Build your first useful workflow: accept ingredients as input and generate a rec
 
 Create `recipe.yaml`:
 
-```yaml
-name: generate-recipe
-inputs:
-  - name: ingredients
-    type: string
-
-steps:
-  - id: generate
-    type: llm
-    model: balanced
-    prompt: |
-      Generate a dinner recipe using these ingredients: {{.inputs.ingredients}}
-
-      Include:
-      - Recipe name
-      - Full ingredient list with quantities
-      - Step-by-step cooking instructions
-      - Prep and cook time
-
-outputs:
-  - name: recipe
-    type: string
-    value: "{{.steps.generate.response}}"
-```
+<!-- include: examples/tutorial/01-generate-recipe.yaml -->
 
 ## Run It
 

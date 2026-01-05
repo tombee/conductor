@@ -10,50 +10,7 @@ Generate breakfast, lunch, and dinner recipes simultaneously.
 
 Update `recipe.yaml`:
 
-```yaml
-name: meal-plan
-inputs:
-  - name: diet
-    type: string
-    default: "vegetarian"
-
-steps:
-  - id: meals
-    type: parallel
-    max_concurrency: 3
-    steps:
-      - id: breakfast
-        type: llm
-        model: balanced
-        prompt: |
-          Generate a {{.inputs.diet}} breakfast recipe.
-          Include the recipe name, ingredients with quantities, and cooking steps.
-
-      - id: lunch
-        type: llm
-        model: balanced
-        prompt: |
-          Generate a {{.inputs.diet}} lunch recipe.
-          Include the recipe name, ingredients with quantities, and cooking steps.
-
-      - id: dinner
-        type: llm
-        model: balanced
-        prompt: |
-          Generate a {{.inputs.diet}} dinner recipe.
-          Include the recipe name, ingredients with quantities, and cooking steps.
-
-outputs:
-  - name: breakfast
-    type: string
-    value: "{{.steps.meals.breakfast.response}}"
-  - name: lunch
-    type: string
-    value: "{{.steps.meals.lunch.response}}"
-  - name: dinner
-    type: string
-    value: "{{.steps.meals.dinner.response}}"
-```
+<!-- include: examples/tutorial/02-meal-plan.yaml -->
 
 ## Run It
 

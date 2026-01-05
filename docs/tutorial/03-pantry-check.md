@@ -29,65 +29,7 @@ Pepper
 
 Update `recipe.yaml`:
 
-```yaml
-name: pantry-check
-inputs:
-  - name: pantry_file
-    type: string
-    default: "pantry.txt"
-  - name: diet
-    type: string
-    default: "any"
-
-steps:
-  - id: read_pantry
-    file.read: "{{.inputs.pantry_file}}"
-
-  - id: meals
-    type: parallel
-    max_concurrency: 3
-    steps:
-      - id: breakfast
-        type: llm
-        model: balanced
-        prompt: |
-          Available ingredients:
-          {{.steps.read_pantry.content}}
-
-          Generate a {{.inputs.diet}} breakfast using only these ingredients.
-          Include the recipe name, ingredients with quantities, and cooking steps.
-
-      - id: lunch
-        type: llm
-        model: balanced
-        prompt: |
-          Available ingredients:
-          {{.steps.read_pantry.content}}
-
-          Generate a {{.inputs.diet}} lunch using only these ingredients.
-          Include the recipe name, ingredients with quantities, and cooking steps.
-
-      - id: dinner
-        type: llm
-        model: balanced
-        prompt: |
-          Available ingredients:
-          {{.steps.read_pantry.content}}
-
-          Generate a {{.inputs.diet}} dinner using only these ingredients.
-          Include the recipe name, ingredients with quantities, and cooking steps.
-
-outputs:
-  - name: breakfast
-    type: string
-    value: "{{.steps.meals.breakfast.response}}"
-  - name: lunch
-    type: string
-    value: "{{.steps.meals.lunch.response}}"
-  - name: dinner
-    type: string
-    value: "{{.steps.meals.dinner.response}}"
-```
+<!-- include: examples/tutorial/03-pantry-check.yaml -->
 
 ## Run It
 
