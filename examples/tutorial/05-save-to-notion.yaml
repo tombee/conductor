@@ -66,3 +66,8 @@ outputs:
     value: "{{.steps.plan_week.response}}"
     description: Complete weekly meal plan
     format: markdown
+
+  - name: notion_response
+    type: string
+    value: "{{.steps.save_plan.response}}"
+    description: Notion API response
