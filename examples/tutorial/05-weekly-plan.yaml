@@ -21,7 +21,6 @@ steps:
     name: Generate Weekly Plan
     type: llm
     model: fast
-    timeout: 120
     prompt: |
       Available ingredients:
       {{.steps.read_pantry.content}}
@@ -40,7 +39,6 @@ steps:
     name: Check Variety
     type: llm
     model: fast
-    timeout: 120
     condition:
       expression: "true"
     prompt: |

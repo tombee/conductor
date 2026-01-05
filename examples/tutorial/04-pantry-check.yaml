@@ -26,7 +26,6 @@ steps:
         name: Generate Breakfast
         type: llm
         model: fast
-        timeout: 120
         prompt: |
           Available ingredients:
           {{.steps.read_pantry.content}}
@@ -38,7 +37,6 @@ steps:
         name: Generate Lunch
         type: llm
         model: fast
-        timeout: 120
         prompt: |
           Available ingredients:
           {{.steps.read_pantry.content}}
@@ -50,7 +48,6 @@ steps:
         name: Generate Dinner
         type: llm
         model: fast
-        timeout: 120
         prompt: |
           Available ingredients:
           {{.steps.read_pantry.content}}

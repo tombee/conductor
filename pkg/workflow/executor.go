@@ -323,10 +323,14 @@ func (e *Executor) Execute(ctx context.Context, step *StepDefinition, workflowCo
 		}
 	}
 
-	// Apply default timeout (30s) when step.Timeout is 0
+	// Apply default timeout when step.Timeout is 0
 	timeout := step.Timeout
 	if timeout == 0 {
-		timeout = 30 // Default 30 seconds
+		if step.Type == StepTypeLLM {
+			timeout = DefaultLLMStepTimeout
+		} else {
+			timeout = DefaultActionStepTimeout
+		}
 	}
 	if timeout > 0 {
 		var cancel context.CancelFunc

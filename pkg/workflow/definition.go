@@ -242,11 +242,11 @@ const (
 // Default step timeouts in seconds.
 // These are applied when a step does not specify an explicit timeout.
 const (
-	// DefaultLLMStepTimeout is the default timeout for LLM steps (5 minutes).
-	// LLM calls involve network latency and model inference, which can take
-	// 30-60+ seconds depending on prompt complexity and model tier. With retries,
-	// complex prompts may need multiple attempts.
-	DefaultLLMStepTimeout = 300
+	// DefaultLLMStepTimeout is the default timeout for LLM steps (10 minutes).
+	// LLM calls can take significant time, especially with local models like Ollama
+	// which may need 2-5+ minutes for complex prompts. Cloud APIs are faster but
+	// we use a generous default to support all providers.
+	DefaultLLMStepTimeout = 600
 
 	// DefaultActionStepTimeout is the default timeout for action and other steps (2 minutes).
 	// This covers HTTP calls, shell commands, file operations, etc.
