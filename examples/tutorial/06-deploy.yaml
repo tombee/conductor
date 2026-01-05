@@ -10,36 +10,74 @@ inputs:
     default: "pantry.txt"
     description: Path to pantry inventory file
 
+  - name: diet
+    type: string
+    default: "balanced"
+    description: Dietary preference
+
   - name: notion_database_id
     type: string
-    description: Notion database ID for meal plans
+    description: Notion database ID (32-character hex string from URL)
+    pattern: "^[a-f0-9]{32}$"
 
 steps:
   - id: read_pantry
     name: Read Pantry Inventory
     file.read: "{{.inputs.pantry_file}}"
 
-  - id: plan_week
-    name: Generate Weekly Plan
-    type: llm
-    model: fast
-    prompt: |
-      Available ingredients:
-      {{.steps.read_pantry.content}}
+  - id: refine_plan
+    name: Generate and Refine Plan
+    type: loop
+    max_iterations: 3
+    until: "steps.check.passes == true"
+    steps:
+      - id: generate
+        name: Generate Plan
+        type: llm
+        model: strategic
+        prompt: |
+          Available ingredients:
+          {{.steps.read_pantry.content}}
 
-      Generate a balanced meal plan for Monday through Sunday.
-      For each day, create breakfast, lunch, and dinner.
+          {{if .loop.history}}
+          Previous attempt feedback:
+          {{.loop.history.check.feedback}}
 
-      Return JSON:
-      {
-        "monday": {"breakfast": "...", "lunch": "...", "dinner": "..."},
-        "tuesday": {"breakfast": "...", "lunch": "...", "dinner": "..."},
-        "wednesday": {"breakfast": "...", "lunch": "...", "dinner": "..."},
-        "thursday": {"breakfast": "...", "lunch": "...", "dinner": "..."},
-        "friday": {"breakfast": "...", "lunch": "...", "dinner": "..."},
-        "saturday": {"breakfast": "...", "lunch": "...", "dinner": "..."},
-        "sunday": {"breakfast": "...", "lunch": "...", "dinner": "..."}
-      }
+          Improve the plan based on this feedback.
+          {{else}}
+          Generate a {{.inputs.diet}} meal plan for Monday through Sunday.
+          {{end}}
+
+          For each day, create breakfast, lunch, and dinner.
+          Don't repeat main proteins on consecutive days.
+
+          Return as JSON:
+          {
+            "monday": {"breakfast": "...", "lunch": "...", "dinner": "..."},
+            ...
+          }
+
+      - id: check
+        name: Check Variety
+        type: llm
+        model: fast
+        output_schema:
+          type: object
+          properties:
+            passes:
+              type: boolean
+            feedback:
+              type: string
+        prompt: |
+          Review this meal plan for variety:
+          {{.steps.generate.response}}
+
+          Check:
+          1. No main protein repeated on consecutive days
+          2. Breakfast items vary throughout the week
+
+          Return {"passes": true} if requirements are met.
+          Otherwise return {"passes": false, "feedback": "specific issues"}.
 
   - id: save_plan
     name: Save to Notion
@@ -60,11 +98,11 @@ steps:
           Content:
             rich_text:
               - text:
-                  content: "{{.steps.plan_week.response}}"
+                  content: "{{.steps.refine_plan.generate.response}}"
 
 outputs:
   - name: weekly_plan
     type: string
-    value: "{{.steps.plan_week.response}}"
+    value: "{{.steps.refine_plan.generate.response}}"
     description: Complete weekly meal plan
     format: markdown
