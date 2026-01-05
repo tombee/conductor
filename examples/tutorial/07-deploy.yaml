@@ -23,6 +23,7 @@ steps:
     name: Generate Weekly Plan
     type: llm
     model: fast
+    timeout: 120
     prompt: |
       Available ingredients:
       {{.steps.read_pantry.content}}

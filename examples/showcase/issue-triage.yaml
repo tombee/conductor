@@ -28,6 +28,7 @@ steps:
     name: Classify Issue
     type: llm
     model: fast
+    timeout: 120
     prompt: |
       Analyze this issue and classify it.
 
@@ -53,6 +54,7 @@ steps:
     name: Extract Labels
     type: llm
     model: fast
+    timeout: 120
     prompt: |
       Extract relevant labels for this issue.
 
@@ -77,6 +79,7 @@ steps:
     name: Suggest Assignment
     type: llm
     model: fast
+    timeout: 120
     prompt: |
       Suggest which team should handle this issue.
 
@@ -98,6 +101,7 @@ steps:
     name: Generate Summary
     type: llm
     model: balanced
+    timeout: 120
     prompt: |
       Create a triage summary for this issue.
 

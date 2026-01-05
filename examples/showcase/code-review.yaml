@@ -40,6 +40,7 @@ steps:
         name: Security Review
         type: llm
         model: strategic
+        timeout: 120
         condition:
           expression: '"security" in inputs.personas'
         prompt: |
@@ -57,6 +58,7 @@ steps:
         name: Performance Review
         type: llm
         model: balanced
+        timeout: 120
         condition:
           expression: '"performance" in inputs.personas'
         prompt: |
@@ -74,6 +76,7 @@ steps:
         name: Style Review
         type: llm
         model: fast
+        timeout: 120
         condition:
           expression: '"style" in inputs.personas'
         prompt: |
@@ -91,6 +94,7 @@ steps:
     name: Generate Report
     type: llm
     model: balanced
+    timeout: 120
     prompt: |
       Generate a comprehensive code review report in Markdown.
 

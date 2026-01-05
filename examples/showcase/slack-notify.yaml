@@ -33,6 +33,7 @@ steps:
     name: Generate Summary
     type: llm
     model: fast
+    timeout: 120
     prompt: |
       Create a concise summary (2-3 sentences) for this {{.inputs.event_type}} event.
 
@@ -50,6 +51,7 @@ steps:
     name: Format Message
     type: llm
     model: fast
+    timeout: 120
     prompt: |
       Format this event for Slack using mrkdwn syntax.
 

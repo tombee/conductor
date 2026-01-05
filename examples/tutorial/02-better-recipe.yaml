@@ -12,6 +12,7 @@ steps:
   - id: generate
     type: llm
     model: fast
+    timeout: 120
     prompt: |
       Generate a dinner recipe using these ingredients: {{.inputs.ingredients}}
 

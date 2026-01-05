@@ -16,6 +16,7 @@ steps:
       - id: breakfast
         type: llm
         model: fast
+        timeout: 120
         prompt: |
           Generate a {{.inputs.diet}} breakfast recipe.
           Include the recipe name, ingredients with quantities, and cooking steps.
@@ -23,6 +24,7 @@ steps:
       - id: lunch
         type: llm
         model: fast
+        timeout: 120
         prompt: |
           Generate a {{.inputs.diet}} lunch recipe.
           Include the recipe name, ingredients with quantities, and cooking steps.
@@ -30,6 +32,7 @@ steps:
       - id: dinner
         type: llm
         model: fast
+        timeout: 120
         prompt: |
           Generate a {{.inputs.diet}} dinner recipe.
           Include the recipe name, ingredients with quantities, and cooking steps.
