@@ -3,9 +3,101 @@ package notion
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/tombee/conductor/internal/operation"
 )
+
+// getBlocks retrieves content blocks from a page and returns the text content.
+func (c *NotionIntegration) getBlocks(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
+	// Validate required parameters
+	if err := c.ValidateRequired(inputs, []string{"page_id"}); err != nil {
+		return nil, err
+	}
+
+	pageID, _ := inputs["page_id"].(string)
+
+	// Validate page ID format
+	if !isValidNotionID(pageID) {
+		return nil, &NotionError{
+			ErrorCode: "validation_error",
+			Message:   "page_id must be a 32-character Notion ID",
+			Category:  ErrorCategoryValidation,
+		}
+	}
+
+	// Get child blocks
+	url, err := c.BuildURL(fmt.Sprintf("/blocks/%s/children", pageID), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.ExecuteRequest(ctx, "GET", url, c.defaultHeaders(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := ParseError(resp); err != nil {
+		return nil, err
+	}
+
+	var blocksResp struct {
+		Results []map[string]interface{} `json:"results"`
+	}
+	if err := c.ParseJSONResponse(resp, &blocksResp); err != nil {
+		return nil, err
+	}
+
+	// Extract text content from blocks
+	var textParts []string
+	for _, block := range blocksResp.Results {
+		text := extractBlockText(block)
+		if text != "" {
+			textParts = append(textParts, text)
+		}
+	}
+
+	content := strings.Join(textParts, "\n")
+
+	return c.ToResult(resp, map[string]interface{}{
+		"content":      content,
+		"block_count":  len(blocksResp.Results),
+		"raw_blocks":   blocksResp.Results,
+	}), nil
+}
+
+// extractBlockText extracts text content from a Notion block.
+func extractBlockText(block map[string]interface{}) string {
+	blockType, _ := block["type"].(string)
+	if blockType == "" {
+		return ""
+	}
+
+	// Get the block content based on type
+	content, ok := block[blockType].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+
+	// Most text blocks have a "rich_text" array
+	richText, ok := content["rich_text"].([]interface{})
+	if !ok {
+		return ""
+	}
+
+	var parts []string
+	for _, rt := range richText {
+		rtMap, ok := rt.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if text, ok := rtMap["plain_text"].(string); ok {
+			parts = append(parts, text)
+		}
+	}
+
+	return strings.Join(parts, "")
+}
 
 // Maximum blocks per append request
 const maxBlocksPerAppend = 100
@@ -241,6 +333,77 @@ func buildNotionBlock(blockType string, blockMap map[string]interface{}) (map[st
 	}
 
 	return notionBlock, nil
+}
+
+// replaceContent replaces all content on a page with new blocks.
+// This deletes existing blocks and appends new ones.
+func (c *NotionIntegration) replaceContent(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
+	// Validate required parameters
+	if err := c.ValidateRequired(inputs, []string{"page_id", "blocks"}); err != nil {
+		return nil, err
+	}
+
+	pageID, _ := inputs["page_id"].(string)
+
+	// Validate page ID format
+	if !isValidNotionID(pageID) {
+		return nil, &NotionError{
+			ErrorCode: "validation_error",
+			Message:   "page_id must be a 32-character Notion ID",
+			Category:  ErrorCategoryValidation,
+		}
+	}
+
+	// Step 1: Get existing child blocks
+	getURL, err := c.BuildURL(fmt.Sprintf("/blocks/%s/children", pageID), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.ExecuteRequest(ctx, "GET", getURL, c.defaultHeaders(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := ParseError(resp); err != nil {
+		return nil, err
+	}
+
+	var childrenResp struct {
+		Results []struct {
+			ID   string `json:"id"`
+			Type string `json:"type"`
+		} `json:"results"`
+	}
+	if err := c.ParseJSONResponse(resp, &childrenResp); err != nil {
+		return nil, err
+	}
+
+	// Step 2: Delete each existing block EXCEPT child_page blocks (preserve nested pages)
+	for _, block := range childrenResp.Results {
+		// Skip child_page blocks - these are links to nested pages that should be preserved
+		if block.Type == "child_page" || block.Type == "child_database" {
+			continue
+		}
+
+		deleteURL, err := c.BuildURL(fmt.Sprintf("/blocks/%s", block.ID), nil)
+		if err != nil {
+			return nil, err
+		}
+
+		resp, err := c.ExecuteRequest(ctx, "DELETE", deleteURL, c.defaultHeaders(), nil)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := ParseError(resp); err != nil {
+			// Ignore errors for blocks that may have been deleted already
+			continue
+		}
+	}
+
+	// Step 3: Append new blocks using the existing append logic
+	return c.appendBlocks(ctx, inputs)
 }
 
 // validateBlockContentLength validates block content against character limits.

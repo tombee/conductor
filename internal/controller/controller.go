@@ -33,6 +33,10 @@ import (
 	// Import operation package to trigger init() which registers action factories
 	// This enables file.read, shell.run, and other builtin actions
 	"github.com/tombee/conductor/internal/operation"
+
+	// Import integration package to trigger init() which registers integration factories
+	// This enables notion.create_database_item, github.list_issues, etc.
+	_ "github.com/tombee/conductor/internal/integration"
 	"github.com/tombee/conductor/internal/controller/api"
 	"github.com/tombee/conductor/internal/controller/auth"
 	"github.com/tombee/conductor/internal/controller/backend"

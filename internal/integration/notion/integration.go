@@ -46,8 +46,12 @@ func (c *NotionIntegration) Execute(ctx context.Context, operation string, input
 		return c.upsertPage(ctx, inputs)
 
 	// Block operations
+	case "get_blocks":
+		return c.getBlocks(ctx, inputs)
 	case "append_blocks":
 		return c.appendBlocks(ctx, inputs)
+	case "replace_content":
+		return c.replaceContent(ctx, inputs)
 
 	// Database operations
 	case "query_database":
@@ -72,7 +76,9 @@ func (c *NotionIntegration) Operations() []api.OperationInfo {
 		{Name: "upsert_page", Description: "Update if exists by title match, create if not", Category: "pages", Tags: []string{"write"}},
 
 		// Block operations
+		{Name: "get_blocks", Description: "Get content blocks from a page (returns text content)", Category: "blocks", Tags: []string{"read"}},
 		{Name: "append_blocks", Description: "Append content blocks to an existing page", Category: "blocks", Tags: []string{"write"}},
+		{Name: "replace_content", Description: "Replace all content on a page with new blocks", Category: "blocks", Tags: []string{"write"}},
 
 		// Database operations
 		{Name: "query_database", Description: "Query a database with optional filters and sorts", Category: "databases", Tags: []string{"read", "paginated"}},

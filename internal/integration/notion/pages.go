@@ -231,6 +231,8 @@ func (c *NotionIntegration) updatePage(ctx context.Context, inputs map[string]in
 }
 
 // upsertPage updates if exists by title match, creates if not.
+// Uses block children API instead of search to avoid indexing lag.
+// Optionally accepts "blocks" parameter to add content to the page.
 func (c *NotionIntegration) upsertPage(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"parent_id", "title"}); err != nil {
@@ -249,27 +251,14 @@ func (c *NotionIntegration) upsertPage(ctx context.Context, inputs map[string]in
 		}
 	}
 
-	// Search for existing pages with matching title under parent
-	// Use Notion's search API to find pages with this title
-	searchURL, err := c.BuildURL("/search", nil)
+	// Get child blocks of parent to find existing pages with matching title
+	// Use block children API instead of search to avoid indexing lag
+	childrenURL, err := c.BuildURL(fmt.Sprintf("/blocks/%s/children", parentID), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	searchReq := map[string]interface{}{
-		"query": title,
-		"filter": map[string]interface{}{
-			"value":    "page",
-			"property": "object",
-		},
-	}
-
-	searchBody, err := marshalRequest(searchReq)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := c.ExecuteRequest(ctx, "POST", searchURL, c.defaultHeaders(), searchBody)
+	resp, err := c.ExecuteRequest(ctx, "GET", childrenURL, c.defaultHeaders(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -278,47 +267,64 @@ func (c *NotionIntegration) upsertPage(ctx context.Context, inputs map[string]in
 		return nil, err
 	}
 
-	// Parse search results
-	var searchResults struct {
-		Results []Page `json:"results"`
+	// Parse children results
+	var childrenResults struct {
+		Results []struct {
+			ID        string `json:"id"`
+			Type      string `json:"type"`
+			ChildPage *struct {
+				Title string `json:"title"`
+			} `json:"child_page,omitempty"`
+		} `json:"results"`
 	}
-	if err := c.ParseJSONResponse(resp, &searchResults); err != nil {
+	if err := c.ParseJSONResponse(resp, &childrenResults); err != nil {
 		return nil, err
 	}
 
-	// Filter results to exact title match within parent scope
-	var matchingPages []Page
-	for _, page := range searchResults.Results {
-		// Check if page has matching title (exact, case-sensitive)
-		if pageTitle := extractPageTitle(page.Properties); pageTitle == title {
-			// Check if parent matches
-			if page.Parent.PageID == parentID || page.Parent.DatabaseID == parentID {
-				matchingPages = append(matchingPages, page)
+	// Find child pages with matching title
+	var matchingPageIDs []string
+	for _, child := range childrenResults.Results {
+		if child.Type == "child_page" && child.ChildPage != nil {
+			if child.ChildPage.Title == title {
+				matchingPageIDs = append(matchingPageIDs, normalizeNotionID(child.ID))
 			}
 		}
 	}
 
-	switch len(matchingPages) {
+	var pageID string
+	var pageURL string
+	var isNew bool
+
+	switch len(matchingPageIDs) {
 	case 0:
 		// No match found - create new page
-		return c.createPage(ctx, inputs)
+		result, err := c.createPage(ctx, inputs)
+		if err != nil {
+			return nil, err
+		}
+		if respMap, ok := result.Response.(map[string]interface{}); ok {
+			pageID, _ = respMap["id"].(string)
+			pageURL, _ = respMap["url"].(string)
+		}
+		if pageID == "" {
+			return nil, fmt.Errorf("failed to get page ID from create response")
+		}
+		isNew = true
 
 	case 1:
-		// Exactly one match - update existing page
-		updateInputs := map[string]interface{}{
-			"page_id": matchingPages[0].ID,
+		// Exactly one match - get page info
+		pageID = matchingPageIDs[0]
+		getInputs := map[string]interface{}{
+			"page_id": pageID,
 		}
-		// Copy properties if provided
-		if props, ok := inputs["properties"]; ok {
-			updateInputs["properties"] = props
+		result, err := c.getPage(ctx, getInputs)
+		if err != nil {
+			return nil, err
 		}
-		if icon, ok := inputs["icon"]; ok {
-			updateInputs["icon"] = icon
+		if respMap, ok := result.Response.(map[string]interface{}); ok {
+			pageURL, _ = respMap["url"].(string)
 		}
-		if cover, ok := inputs["cover"]; ok {
-			updateInputs["cover"] = cover
-		}
-		return c.updatePage(ctx, updateInputs)
+		isNew = false
 
 	default:
 		// Multiple matches - return error directing user to use explicit page_id
@@ -328,6 +334,117 @@ func (c *NotionIntegration) upsertPage(ctx context.Context, inputs map[string]in
 			Category:  ErrorCategoryValidation,
 		}
 	}
+
+	// Handle blocks if provided
+	if blocks, ok := inputs["blocks"]; ok && blocks != nil {
+		var blocksList []interface{}
+		switch b := blocks.(type) {
+		case []interface{}:
+			blocksList = b
+		case []map[string]interface{}:
+			for _, block := range b {
+				blocksList = append(blocksList, block)
+			}
+		}
+
+		if len(blocksList) > 0 {
+			// Validate and transform blocks
+			notionBlocks := make([]map[string]interface{}, 0, len(blocksList))
+			for i, block := range blocksList {
+				blockMap, ok := block.(map[string]interface{})
+				if !ok {
+					return nil, fmt.Errorf("block at index %d is not a valid object", i)
+				}
+
+				blockType, ok := blockMap["type"].(string)
+				if !ok {
+					return nil, fmt.Errorf("block at index %d missing 'type' field", i)
+				}
+
+				notionBlock, err := buildNotionBlock(blockType, blockMap)
+				if err != nil {
+					return nil, err
+				}
+				notionBlocks = append(notionBlocks, notionBlock)
+			}
+
+			// For existing pages, first delete existing content blocks
+			if !isNew {
+				getURL, err := c.BuildURL(fmt.Sprintf("/blocks/%s/children", pageID), nil)
+				if err != nil {
+					return nil, err
+				}
+
+				resp, err := c.ExecuteRequest(ctx, "GET", getURL, c.defaultHeaders(), nil)
+				if err != nil {
+					return nil, err
+				}
+
+				if parseErr := ParseError(resp); parseErr != nil {
+					return nil, parseErr
+				}
+
+				var childrenResp struct {
+					Results []struct {
+						ID   string `json:"id"`
+						Type string `json:"type"`
+					} `json:"results"`
+				}
+				if parseErr := c.ParseJSONResponse(resp, &childrenResp); parseErr != nil {
+					return nil, parseErr
+				}
+
+				// Delete each existing block except child_page blocks
+				for _, block := range childrenResp.Results {
+					if block.Type == "child_page" || block.Type == "child_database" {
+						continue
+					}
+					deleteURL, delErr := c.BuildURL(fmt.Sprintf("/blocks/%s", block.ID), nil)
+					if delErr != nil {
+						continue
+					}
+					delResp, delErr := c.ExecuteRequest(ctx, "DELETE", deleteURL, c.defaultHeaders(), nil)
+					if delErr != nil {
+						continue
+					}
+					ParseError(delResp) // Ignore errors
+				}
+			}
+
+			// Append new blocks
+			appendReq := AppendBlocksRequest{
+				Children: notionBlocks,
+			}
+
+			appendURL, err := c.BuildURL(fmt.Sprintf("/blocks/%s/children", pageID), nil)
+			if err != nil {
+				return nil, fmt.Errorf("failed to build append URL: %w", err)
+			}
+
+			body, err := marshalRequest(appendReq)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal blocks request: %w", err)
+			}
+
+			appendResp, err := c.ExecuteRequest(ctx, "PATCH", appendURL, c.defaultHeaders(), body)
+			if err != nil {
+				return nil, fmt.Errorf("failed to append blocks: %w", err)
+			}
+
+			if parseErr := ParseError(appendResp); parseErr != nil {
+				return nil, fmt.Errorf("failed to append blocks: %w", parseErr)
+			}
+		}
+	}
+
+	// Return a result without HTTP response metadata
+	return &operation.Result{
+		Response: map[string]interface{}{
+			"id":     pageID,
+			"url":    pageURL,
+			"is_new": isNew,
+		},
+	}, nil
 }
 
 // extractPageTitle extracts the title from page properties.
@@ -361,10 +478,15 @@ func extractPageTitle(properties map[string]interface{}) string {
 	return content
 }
 
+// normalizeNotionID removes hyphens from a Notion ID.
+func normalizeNotionID(id string) string {
+	return strings.ReplaceAll(id, "-", "")
+}
+
 // isValidNotionID validates a Notion ID format (32 characters, alphanumeric).
 func isValidNotionID(id string) bool {
 	// Remove hyphens if present (Notion IDs can be formatted with or without hyphens)
-	id = strings.ReplaceAll(id, "-", "")
+	id = normalizeNotionID(id)
 
 	if len(id) != 32 {
 		return false

@@ -258,11 +258,19 @@ func SetDefaultSubworkflowLoaderFactory(factory SubworkflowLoaderFactory) {
 	})
 }
 
-// WithWorkflowDir sets the workflow directory and initializes the builtin action registry.
+// WithWorkflowDir sets the workflow directory for path resolution.
 // Actions like file.read and shell.run will resolve paths relative to this directory.
 // Also stores the directory for sub-workflow resolution.
+// Note: This only creates a default registry if one isn't already set via WithOperationRegistry.
 func (e *Executor) WithWorkflowDir(workflowDir string) *Executor {
 	e.workflowDir = workflowDir
+
+	// Only create a new registry if one isn't already configured.
+	// The controller sets a registry with workspace integrations via WithOperationRegistry,
+	// which we don't want to overwrite.
+	if e.operationRegistry != nil {
+		return e
+	}
 
 	if defaultActionRegistryFactory == nil {
 		e.logger.Warn("action registry factory not configured, actions will not be available")

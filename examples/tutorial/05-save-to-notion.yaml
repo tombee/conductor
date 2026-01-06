@@ -1,104 +1,252 @@
 # yaml-language-server: $schema=../../schemas/workflow.schema.json
-name: save-to-notion
-description: Generate a meal plan and save it to Notion
+name: meal-planner
+description: Generate meal plans with detailed recipes and save to Notion
 
 inputs:
-  - name: pantry_file
+  - name: parent_page_id
     type: string
-    default: "pantry.txt"
-    description: Path to pantry inventory file
+    description: Notion page ID where meal planning pages will be created
+    pattern: "^[a-f0-9]{32}$"
+
+  - name: days_to_plan
+    type: number
+    default: 3
+    description: Number of days to plan (1-7)
 
   - name: diet
     type: string
     default: "balanced"
-    description: Dietary preference
-
-  - name: notion_database_id
-    type: string
-    description: Notion database ID (32-character hex string from URL)
-    pattern: "^[a-f0-9]{32}$"
+    description: Dietary preference (balanced, vegetarian, low-carb, etc.)
 
 steps:
+  # Step 1: Create or find the Pantry page
+  - id: setup_pantry
+    name: Setup Pantry Page
+    notion.upsert_page:
+      parent_id: "{{.inputs.parent_page_id}}"
+      title: "Pantry"
+
+  # Step 2: Read current pantry contents
   - id: read_pantry
-    name: Read Pantry Inventory
-    file.read: "{{.inputs.pantry_file}}"
+    name: Read Pantry Contents
+    notion.get_blocks:
+      page_id: "{{.steps.setup_pantry.id}}"
 
-  - id: refine_plan
-    name: Generate and Refine Plan
-    type: loop
-    max_iterations: 3
-    until: "steps.check.passes == true"
-    steps:
-      - id: generate
-        name: Generate Plan
-        type: llm
-        model: fast
-        prompt: |
-          Available ingredients:
-          {{.steps.read_pantry.content}}
+  # Step 3: Initialize pantry with template if empty
+  - id: init_pantry
+    name: Initialize Pantry (if empty)
+    condition:
+      expression: "steps.read_pantry.block_count == 0"
+    notion.replace_content:
+      page_id: "{{.steps.setup_pantry.id}}"
+      blocks:
+        - type: heading_1
+          text: "My Pantry"
+        - type: paragraph
+          text: "List the ingredients you have available. The meal planner will use these to generate your meals."
+        - type: divider
+        - type: paragraph
+          text: "Add your ingredients here..."
 
-          {{if gt .loop.iteration 0}}
-          Previous attempt feedback:
-          {{.steps.check.feedback}}
-
-          Improve the plan based on this feedback.
-          {{else}}
-          Generate a {{.inputs.diet}} meal plan for Monday through Sunday.
-          {{end}}
-
-          For each day, create breakfast, lunch, and dinner.
-          Don't repeat main proteins on consecutive days.
-
-          Return as JSON:
-          {
-            "monday": {"breakfast": "...", "lunch": "...", "dinner": "..."},
-            ...
-          }
-
-      - id: check
-        name: Check Variety
-        type: llm
-        model: fast
-        output_schema:
-          type: object
-          properties:
-            passes:
-              type: boolean
-            feedback:
-              type: string
-        prompt: |
-          Review this meal plan for variety:
-          {{.steps.generate.response}}
-
-          Check:
-          1. No main protein repeated on consecutive days
-          2. Breakfast items vary throughout the week
-
-          Return {"passes": true} if requirements are met.
-          Otherwise return {"passes": false, "feedback": "specific issues"}.
-
-  - id: save_plan
-    name: Save to Notion
-    notion.create_database_item:
-      database_id: "{{.inputs.notion_database_id}}"
+  # Step 4: Generate meal plan with array of days
+  - id: generate_plan
+    name: Generate Meal Plan
+    type: llm
+    model: balanced
+    output_schema:
+      type: object
       properties:
-        Name:
-          title:
-            - text:
-                content: "Weekly Meal Plan"
-        Content:
-          rich_text:
-            - text:
-                content: "{{.steps.refine_plan.generate.response}}"
+        overview:
+          type: array
+          items:
+            type: string
+          description: "Array of day summaries, one per day"
+        days:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: "Day number: Day 1, Day 2, Day 3, etc."
+              breakfast:
+                type: string
+                description: "Complete breakfast recipe with ingredients and instructions"
+              lunch:
+                type: string
+                description: "Complete lunch recipe with ingredients and instructions"
+              dinner:
+                type: string
+                description: "Complete dinner recipe with ingredients and instructions"
+            required: [name, breakfast, lunch, dinner]
+        shopping_list:
+          type: array
+          items:
+            type: string
+          description: "Flat shopping list with items only (no category headers)"
+      required: [overview, days, shopping_list]
+    prompt: |
+      Create a {{.inputs.diet}} meal plan for {{.inputs.days_to_plan}} days.
+
+      Available pantry ingredients:
+      {{.steps.read_pantry.content}}
+
+      Generate DETAILED recipes with full cooking instructions. Each recipe must include:
+      - Dish name
+      - Prep time and cook time
+      - Estimated calories and macros (protein, carbs, fat) per serving
+      - Complete ingredient list with exact measurements
+      - Step-by-step cooking instructions (numbered)
+      - Any tips or variations
+
+      FORMAT REQUIREMENTS:
+      - All recipe fields must be plain text strings (not nested objects)
+      - Each day object MUST have four fields: name, breakfast, lunch, dinner
+      - Day names must have numbered prefixes for sorting: "1 - Day 1", "2 - Day 2", "3 - Day 3"
+      - Shopping list must be an array of strings, one item per entry
+
+      DAYS ARRAY EXAMPLE:
+      [
+        {"name": "1 - Day 1", "breakfast": "recipe...", "lunch": "recipe...", "dinner": "recipe..."},
+        {"name": "2 - Day 2", "breakfast": "recipe...", "lunch": "recipe...", "dinner": "recipe..."}
+      ]
+
+      OVERVIEW: Return as an array of strings, one per day in title case (not all caps):
+      ["Day 1: Veggie Omelette → Grilled Chicken Salad → Garlic Butter Salmon", "Day 2: Greek Yogurt Parfait → Turkey Club Wrap → Beef Stir-Fry", "Day 3: Avocado Toast → Tomato Soup → Lemon Herb Chicken"]
+
+      RECIPE FORMAT - YOU MUST FOLLOW THIS EXACT STRUCTURE:
+
+      "Honey Garlic Salmon
+
+      Prep: 10 min | Cook: 15 min | Serves: 2
+      Calories: 385 | Protein: 34g | Carbs: 18g | Fat: 19g
+
+      Ingredients:
+      • 2 salmon fillets (6 oz each)
+      • 3 tbsp honey
+      • 2 tbsp soy sauce
+      • 4 cloves garlic, minced
+      • 1 tbsp olive oil
+      • Salt and pepper to taste
+      • Fresh parsley for garnish
+
+      Instructions:
+      1. Pat salmon dry and season with salt and pepper.
+      2. Mix honey, soy sauce, and garlic in a small bowl.
+      3. Heat olive oil in a skillet over medium-high heat.
+      4. Place salmon skin-side up, cook 4 minutes until golden.
+      5. Flip salmon, pour honey garlic sauce over top.
+      6. Cook 4-5 more minutes, basting with sauce.
+      7. Garnish with parsley and serve immediately.
+
+      Tip: Serve with steamed rice and roasted vegetables."
+
+      CRITICAL: Every recipe MUST have all sections - dish name, times, nutrition, ingredients list, numbered instructions, and tip.
+
+      SHOPPING LIST: Return as a flat array of item strings with quantities. Group similar items together but no category headers:
+      ["2 lemons", "1 bunch parsley", "4 tomatoes", "1 head lettuce", "2 salmon fillets (6 oz each)", "1 lb chicken breast", "1 cup Greek yogurt", "4 oz feta cheese", "1 dozen eggs"]
+
+      Make recipes varied and interesting. Use different proteins and cooking methods across days.
+
+  # Step 5: Update the parent page with meal plan content
+  - id: update_meal_plan
+    name: Update Meal Plan Overview
+    notion.replace_content:
+      page_id: "{{.inputs.parent_page_id}}"
+      blocks:
+        - type: heading_1
+          text: "Weekly Meal Plan"
+        - type: paragraph
+          text: "Your personalized meal plan with breakfast, lunch, and dinner for each day."
+        - type: divider
+        - type: heading_2
+          text: "Overview"
+
+  # Add overview items as bullet points
+  - id: add_overview_items
+    name: Add Overview Items
+    type: parallel
+    foreach: "{{.steps.generate_plan.output.overview}}"
+    steps:
+      - id: add_overview_item
+        name: Add Overview Item
+        notion.append_blocks:
+          page_id: "{{.inputs.parent_page_id}}"
+          blocks:
+            - type: bulleted_list_item
+              text: "{{.inputs.item}}"
+
+  - id: add_daily_header
+    name: Add Daily Recipes Header
+    notion.append_blocks:
+      page_id: "{{.inputs.parent_page_id}}"
+      blocks:
+        - type: divider
+        - type: heading_2
+          text: "Daily Recipes"
+        - type: paragraph
+          text: "Click on each day below for detailed recipes with ingredients, instructions, and nutritional info."
+
+  # Step 6: Create daily pages using foreach
+  - id: create_daily_pages
+    name: Create Daily Pages
+    type: parallel
+    foreach: "{{.steps.generate_plan.output.days}}"
+    steps:
+      - id: create_day
+        name: Create Day Page
+        notion.upsert_page:
+          parent_id: "{{.inputs.parent_page_id}}"
+          title: "{{.inputs.item.name}}"
+          blocks:
+            - type: heading_1
+              text: "{{.inputs.item.name}}"
+            - type: heading_2
+              text: "Breakfast"
+            - type: paragraph
+              text: "{{.inputs.item.breakfast}}"
+            - type: heading_2
+              text: "Lunch"
+            - type: paragraph
+              text: "{{.inputs.item.lunch}}"
+            - type: heading_2
+              text: "Dinner"
+            - type: paragraph
+              text: "{{.inputs.item.dinner}}"
+
+  # Step 7: Create/update Shopping List page with header
+  - id: setup_shopping
+    name: Setup Shopping List Page
+    notion.upsert_page:
+      parent_id: "{{.inputs.parent_page_id}}"
+      title: "Shopping List"
+      blocks:
+        - type: heading_1
+          text: "Shopping List"
+        - type: paragraph
+          text: "Check off items as you shop!"
+
+  # Step 8: Add shopping items as checkboxes
+  - id: add_shopping_items
+    name: Add Shopping Items
+    type: parallel
+    foreach: "{{.steps.generate_plan.output.shopping_list}}"
+    steps:
+      - id: add_item
+        name: Add Item
+        notion.append_blocks:
+          page_id: "{{.steps.setup_shopping.id}}"
+          blocks:
+            - type: to_do
+              text: "{{.inputs.item}}"
 
 outputs:
-  - name: weekly_plan
+  - name: pantry_url
     type: string
-    value: "{{.steps.refine_plan.generate.response}}"
-    description: Complete weekly meal plan
-    format: markdown
+    value: "{{.steps.setup_pantry.url}}"
+    description: Link to Pantry page
 
-  - name: notion_response
+  - name: shopping_list_url
     type: string
-    value: "{{.steps.save_plan.response}}"
-    description: Notion API response
+    value: "{{.steps.setup_shopping.url}}"
+    description: Link to Shopping List page

@@ -122,37 +122,79 @@ func ResolveInputs(inputs map[string]interface{}, ctx *TemplateContext) (map[str
 	resolved := make(map[string]interface{})
 
 	for key, value := range inputs {
-		switch v := value.(type) {
-		case string:
-			resolved[key] = resolveOrKeep(v, ctx)
-		default:
-			resolved[key] = value
+		resolvedVal, err := resolveValue(value, ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve input %q: %w", key, err)
 		}
+		resolved[key] = resolvedVal
 	}
 
 	return resolved, nil
 }
 
-// resolveOrKeep tries to resolve a string as a template, returns original if no template syntax.
-func resolveOrKeep(s string, ctx *TemplateContext) string {
+// resolveValue recursively resolves template variables in a value.
+func resolveValue(value interface{}, ctx *TemplateContext) (interface{}, error) {
+	switch v := value.(type) {
+	case string:
+		// Check if this is a pure template reference (preserves type)
+		if isPureTemplateRef(v) {
+			rawVal, ok := extractRawValue(v, ctx)
+			if ok {
+				return rawVal, nil
+			}
+		}
+		return resolveOrKeep(v, ctx)
+	case map[string]interface{}:
+		resolved := make(map[string]interface{})
+		for k, val := range v {
+			resolvedVal, err := resolveValue(val, ctx)
+			if err != nil {
+				return nil, fmt.Errorf("in field %q: %w", k, err)
+			}
+			resolved[k] = resolvedVal
+		}
+		return resolved, nil
+	case []interface{}:
+		resolved := make([]interface{}, len(v))
+		for i, val := range v {
+			resolvedVal, err := resolveValue(val, ctx)
+			if err != nil {
+				return nil, fmt.Errorf("at index %d: %w", i, err)
+			}
+			resolved[i] = resolvedVal
+		}
+		return resolved, nil
+	default:
+		return value, nil
+	}
+}
+
+// resolveOrKeep tries to resolve a string as a template, returns error if template syntax is present but fails.
+func resolveOrKeep(s string, ctx *TemplateContext) (string, error) {
 	// Check if string contains template syntax
 	if !containsTemplateSyntax(s) {
-		return s
+		return s, nil
 	}
 
 	result, err := ResolveTemplate(s, ctx)
 	if err != nil {
-		// Return original string if template fails (might not be a template)
-		return s
+		return "", fmt.Errorf("template error in %q: %w", truncateForError(s), err)
 	}
 
 	// If template produced "<no value>", it means variable was undefined
-	// Return original string to preserve the template for debugging
 	if result == "<no value>" {
-		return s
+		return "", fmt.Errorf("undefined template variable in %q", truncateForError(s))
 	}
 
-	return result
+	return result, nil
+}
+
+// truncateForError truncates a string for inclusion in error messages.
+func truncateForError(s string) string {
+	if len(s) > 60 {
+		return s[:57] + "..."
+	}
+	return s
 }
 
 // containsTemplateSyntax checks if a string contains Go template syntax.
@@ -164,4 +206,98 @@ func containsTemplateSyntax(s string) bool {
 		}
 	}
 	return false
+}
+
+// isPureTemplateRef checks if a string is exactly a single template reference
+// like "{{.steps.foo.response}}" with no surrounding text.
+func isPureTemplateRef(s string) bool {
+	s = trimWhitespace(s)
+	if len(s) < 5 { // Minimum: {{.x}}
+		return false
+	}
+	if s[:2] != "{{" || s[len(s)-2:] != "}}" {
+		return false
+	}
+	// Check there's no other {{ in the middle
+	inner := s[2 : len(s)-2]
+	for i := 0; i < len(inner)-1; i++ {
+		if inner[i] == '{' && inner[i+1] == '{' {
+			return false
+		}
+		if inner[i] == '}' && inner[i+1] == '}' {
+			return false
+		}
+	}
+	return true
+}
+
+// trimWhitespace removes leading and trailing whitespace
+func trimWhitespace(s string) string {
+	start, end := 0, len(s)
+	for start < end && (s[start] == ' ' || s[start] == '\t' || s[start] == '\n' || s[start] == '\r') {
+		start++
+	}
+	for end > start && (s[end-1] == ' ' || s[end-1] == '\t' || s[end-1] == '\n' || s[end-1] == '\r') {
+		end--
+	}
+	return s[start:end]
+}
+
+// extractRawValue extracts the raw value from a pure template reference.
+// It parses paths like "{{.steps.foo.response}}" and navigates the context.
+func extractRawValue(s string, ctx *TemplateContext) (interface{}, bool) {
+	s = trimWhitespace(s)
+	inner := trimWhitespace(s[2 : len(s)-2]) // Remove {{ and }}
+
+	// Must start with a dot
+	if len(inner) == 0 || inner[0] != '.' {
+		return nil, false
+	}
+	inner = inner[1:] // Remove leading dot
+
+	// Split the path
+	parts := splitPath(inner)
+	if len(parts) == 0 {
+		return nil, false
+	}
+
+	data := ctx.ToMap()
+	var current interface{} = data
+
+	for _, part := range parts {
+		switch v := current.(type) {
+		case map[string]interface{}:
+			val, ok := v[part]
+			if !ok {
+				return nil, false
+			}
+			current = val
+		default:
+			return nil, false
+		}
+	}
+
+	return current, true
+}
+
+// splitPath splits a template path like "steps.foo.response" into parts.
+func splitPath(path string) []string {
+	var parts []string
+	var current string
+
+	for i := 0; i < len(path); i++ {
+		if path[i] == '.' {
+			if current != "" {
+				parts = append(parts, current)
+				current = ""
+			}
+		} else {
+			current += string(path[i])
+		}
+	}
+	if current != "" {
+		parts = append(parts, current)
+	}
+
+	return parts
 }

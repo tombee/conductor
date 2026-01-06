@@ -2,6 +2,7 @@ package integration
 
 import (
 	"strings"
+	"time"
 
 	"github.com/tombee/conductor/internal/integration/cloudwatch"
 	"github.com/tombee/conductor/internal/integration/datadog"
@@ -17,6 +18,7 @@ import (
 	"github.com/tombee/conductor/internal/integration/splunk"
 	"github.com/tombee/conductor/internal/operation"
 	"github.com/tombee/conductor/internal/operation/api"
+	"github.com/tombee/conductor/internal/operation/transport"
 )
 
 // BuiltinRegistry holds all built-in API integration factories.
@@ -42,9 +44,19 @@ func init() {
 	for name := range BuiltinRegistry {
 		intName := name // capture for closure
 		operation.RegisterBuiltinAPI(name, func(integrationName string, baseURL string, authType string, authToken string) (operation.Provider, error) {
-			config := &api.ProviderConfig{
+			// Create HTTP transport for the integration
+			httpTransport, err := transport.NewHTTPTransport(&transport.HTTPTransportConfig{
 				BaseURL: baseURL,
-				Token:   authToken,
+				Timeout: 30 * time.Second,
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			config := &api.ProviderConfig{
+				Transport: httpTransport,
+				BaseURL:   baseURL,
+				Token:     authToken,
 			}
 
 			// Handle basic auth by parsing username:password

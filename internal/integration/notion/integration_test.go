@@ -85,7 +85,9 @@ func TestNotionIntegration_Operations(t *testing.T) {
 		"get_page":             true,
 		"update_page":          true,
 		"upsert_page":          true,
+		"get_blocks":           true,
 		"append_blocks":        true,
+		"replace_content":      true,
 		"query_database":       true,
 		"create_database_item": true,
 		"update_database_item": true,
@@ -516,6 +518,111 @@ func TestNotionIntegration_ValidationErrors(t *testing.T) {
 				t.Errorf("expected error to contain '%s', got '%s'", tt.errMsg, err.Error())
 			}
 		})
+	}
+}
+
+func TestNotionIntegration_UpsertPageWithBlocks(t *testing.T) {
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.Header().Set("Content-Type", "application/json")
+
+		// First call: get block children (to check for existing pages)
+		if r.Method == "GET" && r.URL.Path == "/blocks/abc123def456789012345678901234ab/children" {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"object": "list",
+				"results": []interface{}{},
+			})
+			return
+		}
+
+		// Second call: create page
+		if r.Method == "POST" && r.URL.Path == "/pages" {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"object": "page",
+				"id":     "newpage123def456789012345678901234",
+				"url":    "https://notion.so/new-page",
+				"created_time": "2026-01-06T12:00:00.000Z",
+			})
+			return
+		}
+
+		// Third call: append blocks (should NOT happen if blocks handling crashes)
+		if r.Method == "PATCH" && r.URL.Path == "/blocks/newpage123def456789012345678901234/children" {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"object": "list",
+				"results": []interface{}{
+					map[string]interface{}{"object": "block", "id": "block1"},
+					map[string]interface{}{"object": "block", "id": "block2"},
+				},
+			})
+			return
+		}
+
+		// Unknown endpoint
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"object":  "error",
+			"status":  404,
+			"message": "Unknown endpoint: " + r.Method + " " + r.URL.Path,
+		})
+	}))
+	defer server.Close()
+
+	httpTransport, err := transport.NewHTTPTransport(&transport.HTTPTransportConfig{
+		BaseURL: server.URL,
+	})
+	if err != nil {
+		t.Fatalf("failed to create transport: %v", err)
+	}
+
+	config := &api.ProviderConfig{
+		BaseURL:   server.URL,
+		Token:     "test-token",
+		Transport: httpTransport,
+	}
+
+	integration, err := NewNotionIntegration(config)
+	if err != nil {
+		t.Fatalf("failed to create integration: %v", err)
+	}
+
+	result, err := integration.Execute(context.Background(), "upsert_page", map[string]interface{}{
+		"parent_id": "abc123def456789012345678901234ab",
+		"title":     "Test Page",
+		"blocks": []interface{}{
+			map[string]interface{}{
+				"type": "heading_1",
+				"text": "Hello World",
+			},
+			map[string]interface{}{
+				"type": "paragraph",
+				"text": "Test paragraph content",
+			},
+		},
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if result == nil {
+		t.Fatal("expected result, got nil")
+	}
+
+	data, ok := result.Response.(map[string]interface{})
+	if !ok {
+		t.Fatal("expected response to be map[string]interface{}")
+	}
+
+	// Should have page ID from the create response
+	if data["id"] == nil || data["id"] == "" {
+		t.Error("expected page id in response")
+	}
+
+	// With blocks, we expect 3 calls: get children, create page, append blocks
+	if callCount < 3 {
+		t.Errorf("expected at least 3 API calls (got %d), blocks may not have been appended", callCount)
 	}
 }
 

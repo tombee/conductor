@@ -318,11 +318,19 @@ func (e *Executor) createIterationContext(workflowContext map[string]interface{}
 }
 
 // buildLoopOutput constructs the output structure for a completed loop.
+// Nested step outputs are flattened to the top level for easier access:
+// .steps.loop_id.nested_step_id.response works (in addition to .steps.loop_id.step_outputs.nested_step_id.response)
 func (e *Executor) buildLoopOutput(stepOutputs map[string]interface{}, iterationCount int, terminatedBy string, history []IterationRecord) map[string]interface{} {
 	output := map[string]interface{}{
 		"step_outputs":    stepOutputs,
 		"iteration_count": iterationCount,
 		"terminated_by":   terminatedBy,
+	}
+
+	// Flatten nested step outputs to top level for easier template access
+	// This allows .steps.loop_id.nested_step.response instead of .steps.loop_id.step_outputs.nested_step.response
+	for stepID, stepOutput := range stepOutputs {
+		output[stepID] = stepOutput
 	}
 
 	// Include history if not too large
