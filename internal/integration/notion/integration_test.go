@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/tombee/conductor/internal/operation/api"
 	"github.com/tombee/conductor/internal/operation/transport"
@@ -667,4 +670,256 @@ func findSubstring(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// =============================================================================
+// REAL API TESTS
+// =============================================================================
+// These tests run against the real Notion API when credentials are provided.
+// They verify actual API behavior that mocks cannot capture.
+//
+// Run with:
+//   NOTION_TOKEN=secret_xxx NOTION_TEST_PAGE_ID=xxx go test ./internal/integration/notion/... -run "TestRealAPI" -v
+//
+// Environment variables:
+//   NOTION_TOKEN       - Notion integration token (required)
+//   NOTION_TEST_PAGE_ID - ID of a page the integration has access to (required)
+// =============================================================================
+
+// TestRealAPI_NotionOperations comprehensively tests all Notion operations
+// against the real API.
+func TestRealAPI_NotionOperations(t *testing.T) {
+	token := os.Getenv("NOTION_TOKEN")
+	pageID := os.Getenv("NOTION_TEST_PAGE_ID")
+
+	if token == "" {
+		t.Skip("NOTION_TOKEN not set, skipping real API test")
+	}
+	if pageID == "" {
+		t.Skip("NOTION_TEST_PAGE_ID not set, skipping real API test")
+	}
+
+	httpTransport, err := transport.NewHTTPTransport(&transport.HTTPTransportConfig{
+		BaseURL: "https://api.notion.com/v1",
+		Timeout: 30 * time.Second,
+	})
+	if err != nil {
+		t.Fatalf("failed to create transport: %v", err)
+	}
+
+	config := &api.ProviderConfig{
+		BaseURL:   "https://api.notion.com/v1",
+		Token:     token,
+		Transport: httpTransport,
+	}
+
+	integration, err := NewNotionIntegration(config)
+	if err != nil {
+		t.Fatalf("failed to create integration: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	var createdPageID string
+
+	// Test: get_page
+	t.Run("get_page", func(t *testing.T) {
+		result, err := integration.Execute(ctx, "get_page", map[string]interface{}{
+			"page_id": pageID,
+		})
+		if err != nil {
+			t.Fatalf("get_page failed: %v", err)
+		}
+
+		response, ok := result.Response.(map[string]interface{})
+		if !ok {
+			t.Fatalf("unexpected response type: %T", result.Response)
+		}
+
+		if response["id"] == nil {
+			t.Error("response missing 'id'")
+		}
+		if response["url"] == nil {
+			t.Error("response missing 'url'")
+		}
+		t.Logf("get_page: Retrieved page %v", response["id"])
+	})
+
+	// Test: get_blocks
+	t.Run("get_blocks", func(t *testing.T) {
+		result, err := integration.Execute(ctx, "get_blocks", map[string]interface{}{
+			"page_id": pageID,
+		})
+		if err != nil {
+			t.Fatalf("get_blocks failed: %v", err)
+		}
+
+		response, ok := result.Response.(map[string]interface{})
+		if !ok {
+			t.Fatalf("unexpected response type: %T", result.Response)
+		}
+
+		if response["block_count"] == nil {
+			t.Error("response missing 'block_count'")
+		}
+		t.Logf("get_blocks: Retrieved %v blocks", response["block_count"])
+	})
+
+	// Test: create_page
+	t.Run("create_page", func(t *testing.T) {
+		testTitle := "API Test - " + time.Now().Format("15:04:05")
+
+		result, err := integration.Execute(ctx, "create_page", map[string]interface{}{
+			"parent_id": pageID,
+			"title":     testTitle,
+		})
+		if err != nil {
+			t.Fatalf("create_page failed: %v", err)
+		}
+
+		response, ok := result.Response.(map[string]interface{})
+		if !ok {
+			t.Fatalf("unexpected response type: %T", result.Response)
+		}
+
+		id, _ := response["id"].(string)
+		if id == "" {
+			t.Fatal("create_page did not return page id")
+		}
+
+		createdPageID = id
+		t.Logf("create_page: Created page %s", id)
+	})
+
+	// Test: append_blocks
+	t.Run("append_blocks", func(t *testing.T) {
+		if createdPageID == "" {
+			t.Skip("no page created")
+		}
+
+		result, err := integration.Execute(ctx, "append_blocks", map[string]interface{}{
+			"page_id": createdPageID,
+			"blocks": []interface{}{
+				map[string]interface{}{"type": "heading_1", "text": "Test Heading"},
+				map[string]interface{}{"type": "paragraph", "text": "Test paragraph content."},
+				map[string]interface{}{"type": "bulleted_list_item", "text": "Bullet 1"},
+				map[string]interface{}{"type": "code", "text": "console.log('test');", "language": "javascript"},
+				map[string]interface{}{"type": "divider"},
+				map[string]interface{}{"type": "quote", "text": "A quote"},
+			},
+		})
+		if err != nil {
+			t.Fatalf("append_blocks failed: %v", err)
+		}
+
+		response, ok := result.Response.(map[string]interface{})
+		if !ok {
+			t.Fatalf("unexpected response type: %T", result.Response)
+		}
+
+		t.Logf("append_blocks: Added %v blocks", response["blocks_added"])
+	})
+
+	// Test: upsert_page (create new)
+	t.Run("upsert_page_create", func(t *testing.T) {
+		testTitle := "Upsert Test - " + time.Now().Format("15:04:05")
+
+		result, err := integration.Execute(ctx, "upsert_page", map[string]interface{}{
+			"parent_id": pageID,
+			"title":     testTitle,
+			"blocks": []interface{}{
+				map[string]interface{}{"type": "paragraph", "text": "Created via upsert"},
+			},
+		})
+		if err != nil {
+			t.Fatalf("upsert_page failed: %v", err)
+		}
+
+		response, ok := result.Response.(map[string]interface{})
+		if !ok {
+			t.Fatalf("unexpected response type: %T", result.Response)
+		}
+
+		isNew, _ := response["is_new"].(bool)
+		if !isNew {
+			t.Error("expected is_new=true for new page")
+		}
+		t.Logf("upsert_page: Created new page %v", response["id"])
+	})
+
+	// Test: replace_content
+	t.Run("replace_content", func(t *testing.T) {
+		if createdPageID == "" {
+			t.Skip("no page created")
+		}
+
+		result, err := integration.Execute(ctx, "replace_content", map[string]interface{}{
+			"page_id": createdPageID,
+			"blocks": []interface{}{
+				map[string]interface{}{"type": "heading_1", "text": "Replaced"},
+				map[string]interface{}{"type": "paragraph", "text": "Content was replaced."},
+			},
+		})
+		if err != nil {
+			t.Fatalf("replace_content failed: %v", err)
+		}
+
+		response, ok := result.Response.(map[string]interface{})
+		if !ok {
+			t.Fatalf("unexpected response type: %T", result.Response)
+		}
+
+		t.Logf("replace_content: Replaced with %v blocks", response["blocks_added"])
+	})
+
+	// Test: verify replace worked
+	t.Run("verify_replace", func(t *testing.T) {
+		if createdPageID == "" {
+			t.Skip("no page created")
+		}
+
+		result, err := integration.Execute(ctx, "get_blocks", map[string]interface{}{
+			"page_id": createdPageID,
+		})
+		if err != nil {
+			t.Fatalf("get_blocks failed: %v", err)
+		}
+
+		response, ok := result.Response.(map[string]interface{})
+		if !ok {
+			t.Fatalf("unexpected response type: %T", result.Response)
+		}
+
+		content, _ := response["content"].(string)
+		if !strings.Contains(content, "Replaced") {
+			t.Errorf("expected 'Replaced' in content, got: %s", content)
+		}
+	})
+
+	// Test: error handling - invalid ID
+	t.Run("error_invalid_id", func(t *testing.T) {
+		_, err := integration.Execute(ctx, "get_page", map[string]interface{}{
+			"page_id": "invalid",
+		})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		if !strings.Contains(err.Error(), "32-character") {
+			t.Errorf("expected validation error, got: %v", err)
+		}
+	})
+
+	// Test: error handling - missing param
+	t.Run("error_missing_param", func(t *testing.T) {
+		_, err := integration.Execute(ctx, "create_page", map[string]interface{}{
+			"parent_id": pageID,
+		})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		if !strings.Contains(err.Error(), "title") {
+			t.Errorf("expected title error, got: %v", err)
+		}
+	})
 }

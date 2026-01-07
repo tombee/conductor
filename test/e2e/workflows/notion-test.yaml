@@ -1,0 +1,87 @@
+# yaml-language-server: $schema=../../../schemas/workflow.schema.json
+#
+# Notion Integration E2E Test Workflow
+# ====================================
+# This workflow tests Notion integration operations against a real API.
+#
+# Prerequisites:
+#   1. Add Notion integration: conductor integrations add notion --token secret_xxx
+#   2. Set a parent page ID that your integration has access to
+#
+# Run with:
+#   conductor run test/e2e/workflows/notion-test.yaml --input parent_page_id=YOUR_PAGE_ID
+#
+name: notion-e2e-test
+description: End-to-end test for Notion integration operations
+
+inputs:
+  - name: parent_page_id
+    type: string
+    description: Notion page ID where test pages will be created
+    pattern: "^[a-f0-9]{32}$"
+
+steps:
+  # Test 1: Create a page
+  - id: create_test_page
+    name: Create Test Page
+    notion.upsert_page:
+      parent_id: "{{.inputs.parent_page_id}}"
+      title: "E2E Test Page"
+
+  # Test 2: Append blocks to the page
+  - id: append_blocks
+    name: Append Content Blocks
+    notion.append_blocks:
+      page_id: "{{.steps.create_test_page.id}}"
+      blocks:
+        - type: heading_1
+          text: "Test Heading"
+        - type: paragraph
+          text: "This is a test paragraph created by the E2E test."
+        - type: bulleted_list_item
+          text: "First bullet point"
+        - type: bulleted_list_item
+          text: "Second bullet point"
+        - type: divider
+        - type: code
+          text: "console.log('Hello from E2E test');"
+          language: javascript
+
+  # Test 3: Read the page back
+  - id: read_page
+    name: Read Page
+    notion.get_page:
+      page_id: "{{.steps.create_test_page.id}}"
+
+  # Test 4: Read the blocks
+  - id: read_blocks
+    name: Read Blocks
+    notion.get_blocks:
+      page_id: "{{.steps.create_test_page.id}}"
+
+  # Test 5: Replace content (tests delete + append flow)
+  - id: replace_content
+    name: Replace Content
+    notion.replace_content:
+      page_id: "{{.steps.create_test_page.id}}"
+      blocks:
+        - type: heading_1
+          text: "Updated Heading"
+        - type: paragraph
+          text: "Content was replaced by the E2E test."
+
+outputs:
+  - name: page_id
+    type: string
+    value: "{{.steps.create_test_page.id}}"
+    description: ID of the created test page
+
+  - name: page_url
+    type: string
+    value: "{{.steps.create_test_page.url}}"
+    description: URL of the created test page
+
+  - name: block_count
+    type: number
+    value: "{{.steps.read_blocks.block_count}}"
+    description: Number of blocks read from the page
