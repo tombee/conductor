@@ -223,6 +223,87 @@ func ValidateWorkflowPath(path string) error {
 	return nil
 }
 
+// Security limits for parallel execution
+const (
+	// MaxForeachItems is the maximum number of items allowed in a foreach array
+	// to prevent resource exhaustion via unbounded goroutine creation.
+	MaxForeachItems = 10000
+
+	// MaxParallelNestingDepth is the maximum depth of nested parallel blocks
+	// to prevent exponential goroutine explosion.
+	MaxParallelNestingDepth = 3
+
+	// MaxConcurrencyLimit is the maximum allowed value for max_concurrency
+	// to prevent overwhelming system resources.
+	MaxConcurrencyLimit = 100
+)
+
+// ValidateParallelNestingDepth checks that parallel blocks don't nest too deeply.
+// Deeply nested parallel blocks can cause exponential goroutine explosion.
+func ValidateParallelNestingDepth(step *StepDefinition, currentDepth int) error {
+	if step.Type == StepTypeParallel {
+		currentDepth++
+		if currentDepth > MaxParallelNestingDepth {
+			return &errors.ValidationError{
+				Field:      "type",
+				Message:    fmt.Sprintf("parallel block nesting exceeds maximum depth of %d", MaxParallelNestingDepth),
+				Suggestion: "flatten nested parallel blocks or use sequential execution for inner steps",
+			}
+		}
+
+		for i := range step.Steps {
+			if err := ValidateParallelNestingDepth(&step.Steps[i], currentDepth); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Also check nested steps in loop blocks
+	if step.Type == StepTypeLoop {
+		for i := range step.Steps {
+			if err := ValidateParallelNestingDepth(&step.Steps[i], currentDepth); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// ValidateMaxConcurrency validates that max_concurrency is within acceptable bounds.
+func ValidateMaxConcurrency(step *StepDefinition) error {
+	if step.MaxConcurrency < 0 {
+		return &errors.ValidationError{
+			Field:      "max_concurrency",
+			Message:    "max_concurrency must be positive",
+			Suggestion: "use a value between 1 and 100, or omit to use default (3)",
+		}
+	}
+
+	if step.MaxConcurrency > MaxConcurrencyLimit {
+		return &errors.ValidationError{
+			Field:      "max_concurrency",
+			Message:    fmt.Sprintf("max_concurrency exceeds maximum of %d", MaxConcurrencyLimit),
+			Suggestion: fmt.Sprintf("use a value between 1 and %d", MaxConcurrencyLimit),
+		}
+	}
+
+	return nil
+}
+
+// ValidateForeachArraySize checks that a resolved foreach array doesn't exceed limits.
+// This is called at runtime after the array is resolved from template expressions.
+func ValidateForeachArraySize(arrayLen int, stepID string) error {
+	if arrayLen > MaxForeachItems {
+		return &errors.ValidationError{
+			Field:      "foreach",
+			Message:    fmt.Sprintf("foreach array size (%d items) exceeds maximum of %d in step '%s'", arrayLen, MaxForeachItems, stepID),
+			Suggestion: "reduce array size or process in batches",
+		}
+	}
+	return nil
+}
+
 // ValidateFileTrigger validates file trigger configuration.
 func ValidateFileTrigger(trigger *FileTriggerConfig) error {
 	if trigger == nil {

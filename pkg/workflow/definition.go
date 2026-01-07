@@ -644,6 +644,11 @@ func (d *Definition) Validate() error {
 			return fmt.Errorf("invalid step %s: %w", step.ID, err)
 		}
 
+		// Validate parallel nesting depth (security limit)
+		if err := ValidateParallelNestingDepth(&step, 0); err != nil {
+			return fmt.Errorf("invalid step %s: %w", step.ID, err)
+		}
+
 		// Validate agent reference exists if specified
 		if step.Agent != "" {
 			if _, exists := d.Agents[step.Agent]; !exists {
@@ -986,6 +991,10 @@ func (s *StepDefinition) Validate() error {
 	if s.Type == StepTypeParallel {
 		if len(s.Steps) == 0 {
 			return fmt.Errorf("parallel step requires nested steps")
+		}
+		// Validate max_concurrency bounds
+		if err := ValidateMaxConcurrency(s); err != nil {
+			return err
 		}
 		// Validate each nested step
 		nestedIDs := make(map[string]bool)
@@ -1438,6 +1447,24 @@ func (s *StepDefinition) UnmarshalYAML(unmarshal func(interface{}) error) error 
 		return err
 	}
 
+	// Check for parallel shorthand syntax (parallel: [...])
+	// This must be checked before the action shorthand pattern matching
+	if parallelSteps, ok := raw["parallel"]; ok {
+		nestedSteps, err := parseParallelShorthand(parallelSteps)
+		if err != nil {
+			stepID := ""
+			if id, ok := raw["id"].(string); ok {
+				stepID = id
+			}
+			return fmt.Errorf("Invalid parallel block: %s. parallel: must be a list of steps: %w", stepID, err)
+		}
+
+		s.Type = StepTypeParallel
+		s.Steps = nestedSteps
+		extractParallelFields(raw, s)
+		return nil
+	}
+
 	// Look for shorthand key
 	shorthandKey, shorthandValue := findShorthandKey(raw)
 
@@ -1572,4 +1599,71 @@ func getPrimaryParameter(operation string) string {
 		return param
 	}
 	return ""
+}
+
+// parseParallelShorthand parses the value of a parallel: shorthand key into nested steps
+func parseParallelShorthand(value interface{}) ([]StepDefinition, error) {
+	// Value must be an array of step definitions
+	rawSteps, ok := value.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("expected array of steps, got %T", value)
+	}
+
+	if len(rawSteps) == 0 {
+		return nil, fmt.Errorf("parallel block requires at least one nested step")
+	}
+
+	steps := make([]StepDefinition, 0, len(rawSteps))
+	for i, rawStep := range rawSteps {
+		// Each step should be a map
+		stepMap, ok := rawStep.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("step %d: expected map, got %T", i, rawStep)
+		}
+
+		// Re-marshal and unmarshal to get proper StepDefinition
+		// This allows nested steps to use their own shorthand syntax
+		yamlBytes, err := yaml.Marshal(stepMap)
+		if err != nil {
+			return nil, fmt.Errorf("step %d: failed to marshal: %w", i, err)
+		}
+
+		var step StepDefinition
+		if err := yaml.Unmarshal(yamlBytes, &step); err != nil {
+			return nil, fmt.Errorf("step %d: failed to unmarshal: %w", i, err)
+		}
+
+		steps = append(steps, step)
+	}
+
+	return steps, nil
+}
+
+// extractParallelFields copies parallel-specific fields from raw map to step
+func extractParallelFields(raw map[string]interface{}, s *StepDefinition) {
+	// Extract standard fields
+	if id, ok := raw["id"].(string); ok {
+		s.ID = id
+		s.hasExplicitID = true
+	}
+	if name, ok := raw["name"].(string); ok {
+		s.Name = name
+	}
+	if timeout, ok := raw["timeout"].(int); ok {
+		s.Timeout = timeout
+	}
+
+	// Extract parallel-specific fields
+	if maxConcurrency, ok := raw["max_concurrency"].(int); ok {
+		s.MaxConcurrency = maxConcurrency
+	}
+
+	// Extract foreach if present
+	if foreach, ok := raw["foreach"].(string); ok {
+		s.Foreach = foreach
+	}
+
+	// Note: on_error is a complex type that would require additional
+	// unmarshaling support. For now, parallel shorthand doesn't support it.
+	// Users needing on_error should use the full type: parallel syntax.
 }
