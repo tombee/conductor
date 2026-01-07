@@ -372,6 +372,27 @@ func (c *NotionIntegration) upsertPage(ctx context.Context, inputs map[string]in
 		}
 		isNew = true
 
+		// Apply default_markdown if provided (only on create)
+		if defaultMD, ok := inputs["default_markdown"].(string); ok && defaultMD != "" {
+			mdBlocks, err := markdownToBlocks(defaultMD)
+			if err != nil {
+				slog.Warn("failed to parse default_markdown", "error", err)
+			} else if len(mdBlocks) > 0 {
+				// Convert to []interface{} for appendBlocks
+				blocks := make([]interface{}, len(mdBlocks))
+				for i, b := range mdBlocks {
+					blocks[i] = b
+				}
+				appendInputs := map[string]interface{}{
+					"page_id": pageID,
+					"blocks":  blocks,
+				}
+				if _, err := c.appendBlocks(ctx, appendInputs); err != nil {
+					slog.Warn("failed to append default_markdown blocks", "error", err)
+				}
+			}
+		}
+
 	case 1:
 		// Exactly one match - get page info
 		pageID = matchingPageIDs[0]

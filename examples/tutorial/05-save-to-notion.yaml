@@ -2,6 +2,12 @@
 name: meal-planner
 description: Generate meal plans with detailed recipes and save to Notion
 
+# This example demonstrates:
+# - Markdown input/output for Notion pages (simpler than block arrays)
+# - default_markdown parameter (initializes page only when created)
+# - format: markdown for reading content (returns markdown string)
+# - Template range loops for dynamic content
+
 inputs:
   - name: parent_page_id
     type: string
@@ -19,36 +25,30 @@ inputs:
     description: Dietary preference (balanced, vegetarian, low-carb, etc.)
 
 steps:
-  # Step 1: Create or find the Pantry page
-  - id: setup_pantry
+  # Step 1: Create pantry page with default content (only applied when page is created)
+  # The is_new field in the response indicates if it was created or found
+  - id: pantry
     name: Setup Pantry Page
     notion.upsert_page:
       parent_id: "{{.inputs.parent_page_id}}"
       title: "Pantry"
+      default_markdown: |
+        # My Pantry
 
-  # Step 2: Read current pantry contents
-  - id: read_pantry
+        List the ingredients you have available. The meal planner will use these to generate your meals.
+
+        ---
+
+        Add your ingredients here...
+
+  # Step 2: Read pantry contents as markdown (easier for LLM to process)
+  - id: pantry_content
     name: Read Pantry Contents
     notion.get_blocks:
-      page_id: "{{.steps.setup_pantry.id}}"
+      page_id: "{{.steps.pantry.id}}"
+      format: markdown
 
-  # Step 3: Initialize pantry with template if empty
-  - id: init_pantry
-    name: Initialize Pantry (if empty)
-    condition:
-      expression: "steps.read_pantry.block_count == 0"
-    notion.replace_content:
-      page_id: "{{.steps.setup_pantry.id}}"
-      blocks:
-        - type: heading_1
-          text: "My Pantry"
-        - type: paragraph
-          text: "List the ingredients you have available. The meal planner will use these to generate your meals."
-        - type: divider
-        - type: paragraph
-          text: "Add your ingredients here..."
-
-  # Step 4: Generate meal plan with array of days
+  # Step 3: Generate meal plan with LLM
   - id: generate_plan
     name: Generate Meal Plan
     type: llm
@@ -89,7 +89,7 @@ steps:
       Create a {{.inputs.diet}} meal plan for {{.inputs.days_to_plan}} days.
 
       Available pantry ingredients:
-      {{.steps.read_pantry.content}}
+      {{.steps.pantry_content.content}}
 
       Generate DETAILED recipes with full cooking instructions. Each recipe must include:
       - Dish name
@@ -112,7 +112,7 @@ steps:
       ]
 
       OVERVIEW: Return as an array of strings, one per day in title case (not all caps):
-      ["Day 1: Veggie Omelette → Grilled Chicken Salad → Garlic Butter Salmon", "Day 2: Greek Yogurt Parfait → Turkey Club Wrap → Beef Stir-Fry", "Day 3: Avocado Toast → Tomato Soup → Lemon Herb Chicken"]
+      ["Day 1: Veggie Omelette -> Grilled Chicken Salad -> Garlic Butter Salmon", "Day 2: Greek Yogurt Parfait -> Turkey Club Wrap -> Beef Stir-Fry"]
 
       RECIPE FORMAT - YOU MUST FOLLOW THIS EXACT STRUCTURE:
 
@@ -122,13 +122,11 @@ steps:
       Calories: 385 | Protein: 34g | Carbs: 18g | Fat: 19g
 
       Ingredients:
-      • 2 salmon fillets (6 oz each)
-      • 3 tbsp honey
-      • 2 tbsp soy sauce
-      • 4 cloves garlic, minced
-      • 1 tbsp olive oil
-      • Salt and pepper to taste
-      • Fresh parsley for garnish
+      - 2 salmon fillets (6 oz each)
+      - 3 tbsp honey
+      - 2 tbsp soy sauce
+      - 4 cloves garlic, minced
+      - 1 tbsp olive oil
 
       Instructions:
       1. Pat salmon dry and season with salt and pepper.
@@ -137,57 +135,36 @@ steps:
       4. Place salmon skin-side up, cook 4 minutes until golden.
       5. Flip salmon, pour honey garlic sauce over top.
       6. Cook 4-5 more minutes, basting with sauce.
-      7. Garnish with parsley and serve immediately.
 
       Tip: Serve with steamed rice and roasted vegetables."
 
-      CRITICAL: Every recipe MUST have all sections - dish name, times, nutrition, ingredients list, numbered instructions, and tip.
+      SHOPPING LIST: Return as a flat array of item strings with quantities:
+      ["2 lemons", "1 bunch parsley", "4 tomatoes", "2 salmon fillets (6 oz each)"]
 
-      SHOPPING LIST: Return as a flat array of item strings with quantities. Group similar items together but no category headers:
-      ["2 lemons", "1 bunch parsley", "4 tomatoes", "1 head lettuce", "2 salmon fillets (6 oz each)", "1 lb chicken breast", "1 cup Greek yogurt", "4 oz feta cheese", "1 dozen eggs"]
-
-      Make recipes varied and interesting. Use different proteins and cooking methods across days.
-
-  # Step 5: Update the parent page with meal plan content
+  # Step 4: Update parent page with meal plan overview using markdown
+  # The markdown parameter converts markdown to Notion blocks automatically
   - id: update_meal_plan
     name: Update Meal Plan Overview
     notion.replace_content:
       page_id: "{{.inputs.parent_page_id}}"
-      blocks:
-        - type: heading_1
-          text: "Weekly Meal Plan"
-        - type: paragraph
-          text: "Your personalized meal plan with breakfast, lunch, and dinner for each day."
-        - type: divider
-        - type: heading_2
-          text: "Overview"
+      markdown: |
+        # Weekly Meal Plan
 
-  # Add overview items as bullet points
-  - id: add_overview_items
-    name: Add Overview Items
-    type: parallel
-    foreach: "{{.steps.generate_plan.output.overview}}"
-    steps:
-      - id: add_overview_item
-        name: Add Overview Item
-        notion.append_blocks:
-          page_id: "{{.inputs.parent_page_id}}"
-          blocks:
-            - type: bulleted_list_item
-              text: "{{.inputs.item}}"
+        Your personalized meal plan with breakfast, lunch, and dinner for each day.
 
-  - id: add_daily_header
-    name: Add Daily Recipes Header
-    notion.append_blocks:
-      page_id: "{{.inputs.parent_page_id}}"
-      blocks:
-        - type: divider
-        - type: heading_2
-          text: "Daily Recipes"
-        - type: paragraph
-          text: "Click on each day below for detailed recipes with ingredients, instructions, and nutritional info."
+        ---
 
-  # Step 6: Create daily pages using foreach
+        ## Overview
+        {{range .steps.generate_plan.output.overview}}
+        - {{.}}
+        {{end}}
+
+        ---
+
+        ## Daily Recipes
+        Click on each day below for detailed recipes with ingredients, instructions, and nutritional info.
+
+  # Step 5: Create daily pages with markdown content
   - id: create_daily_pages
     name: Create Daily Pages
     type: parallel
@@ -198,55 +175,40 @@ steps:
         notion.upsert_page:
           parent_id: "{{.inputs.parent_page_id}}"
           title: "{{.inputs.item.name}}"
-          blocks:
-            - type: heading_1
-              text: "{{.inputs.item.name}}"
-            - type: heading_2
-              text: "Breakfast"
-            - type: paragraph
-              text: "{{.inputs.item.breakfast}}"
-            - type: heading_2
-              text: "Lunch"
-            - type: paragraph
-              text: "{{.inputs.item.lunch}}"
-            - type: heading_2
-              text: "Dinner"
-            - type: paragraph
-              text: "{{.inputs.item.dinner}}"
+          markdown: |
+            # {{.inputs.item.name}}
 
-  # Step 7: Create/update Shopping List page with header
-  - id: setup_shopping
-    name: Setup Shopping List Page
+            ## Breakfast
+            {{.inputs.item.breakfast}}
+
+            ## Lunch
+            {{.inputs.item.lunch}}
+
+            ## Dinner
+            {{.inputs.item.dinner}}
+
+  # Step 6: Create shopping list with checkboxes using markdown
+  # The - [ ] syntax creates to_do blocks (checkboxes)
+  - id: create_shopping
+    name: Create Shopping List
     notion.upsert_page:
       parent_id: "{{.inputs.parent_page_id}}"
       title: "Shopping List"
-      blocks:
-        - type: heading_1
-          text: "Shopping List"
-        - type: paragraph
-          text: "Check off items as you shop!"
+      markdown: |
+        # Shopping List
+        Check off items as you shop!
 
-  # Step 8: Add shopping items as checkboxes
-  - id: add_shopping_items
-    name: Add Shopping Items
-    type: parallel
-    foreach: "{{.steps.generate_plan.output.shopping_list}}"
-    steps:
-      - id: add_item
-        name: Add Item
-        notion.append_blocks:
-          page_id: "{{.steps.setup_shopping.id}}"
-          blocks:
-            - type: to_do
-              text: "{{.inputs.item}}"
+        {{range .steps.generate_plan.output.shopping_list}}
+        - [ ] {{.}}
+        {{end}}
 
 outputs:
   - name: pantry_url
     type: string
-    value: "{{.steps.setup_pantry.url}}"
+    value: "{{.steps.pantry.url}}"
     description: Link to Pantry page
 
   - name: shopping_list_url
     type: string
-    value: "{{.steps.setup_shopping.url}}"
+    value: "{{.steps.create_shopping.url}}"
     description: Link to Shopping List page

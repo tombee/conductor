@@ -689,10 +689,14 @@ func (d *Definition) Validate() error {
 	}
 
 	// Validate step function references
-	for _, step := range d.Steps {
-		for _, functionName := range step.Tools {
-			if !functionNames[functionName] {
-				return fmt.Errorf("step %s references undefined function: %s", step.ID, functionName)
+	// Only validate if functions are defined in the workflow.
+	// If no functions are defined, tools are assumed to come from a runtime registry.
+	if len(functionNames) > 0 {
+		for _, step := range d.Steps {
+			for _, functionName := range step.Tools {
+				if !functionNames[functionName] {
+					return fmt.Errorf("step %s references undefined function: %s", step.ID, functionName)
+				}
 			}
 		}
 	}

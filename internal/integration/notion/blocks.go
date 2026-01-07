@@ -9,7 +9,8 @@ import (
 	"github.com/tombee/conductor/internal/operation"
 )
 
-// getBlocks retrieves content blocks from a page and returns the text content.
+// getBlocks retrieves content blocks from a page and returns the content.
+// Supports format parameter: "blocks" (default), "markdown", or "text"
 func (c *NotionIntegration) getBlocks(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
 	// Validate required parameters
 	if err := c.ValidateRequired(inputs, []string{"page_id"}); err != nil {
@@ -25,6 +26,12 @@ func (c *NotionIntegration) getBlocks(ctx context.Context, inputs map[string]int
 			Message:   "page_id must be a 32-character Notion ID",
 			Category:  ErrorCategoryValidation,
 		}
+	}
+
+	// Get format parameter (default: "blocks")
+	format := "blocks"
+	if f, ok := inputs["format"].(string); ok {
+		format = f
 	}
 
 	// Get child blocks
@@ -49,22 +56,39 @@ func (c *NotionIntegration) getBlocks(ctx context.Context, inputs map[string]int
 		return nil, err
 	}
 
-	// Extract text content from blocks
-	var textParts []string
-	for _, block := range blocksResp.Results {
-		text := extractBlockText(block)
-		if text != "" {
-			textParts = append(textParts, text)
-		}
+	// Build response based on format
+	result := map[string]interface{}{
+		"block_count": len(blocksResp.Results),
+		"raw_blocks":  blocksResp.Results,
 	}
 
-	content := strings.Join(textParts, "\n")
+	switch format {
+	case "markdown":
+		// Convert blocks to markdown
+		result["content"] = blocksToMarkdown(blocksResp.Results)
+	case "text":
+		// Extract plain text content
+		var textParts []string
+		for _, block := range blocksResp.Results {
+			text := extractBlockText(block)
+			if text != "" {
+				textParts = append(textParts, text)
+			}
+		}
+		result["content"] = strings.Join(textParts, "\n")
+	default: // "blocks"
+		// Extract text content (legacy behavior)
+		var textParts []string
+		for _, block := range blocksResp.Results {
+			text := extractBlockText(block)
+			if text != "" {
+				textParts = append(textParts, text)
+			}
+		}
+		result["content"] = strings.Join(textParts, "\n")
+	}
 
-	return c.ToResult(resp, map[string]interface{}{
-		"content":      content,
-		"block_count":  len(blocksResp.Results),
-		"raw_blocks":   blocksResp.Results,
-	}), nil
+	return c.ToResult(resp, result), nil
 }
 
 // extractBlockText extracts text content from a Notion block.
@@ -125,19 +149,41 @@ var supportedBlockTypes = map[string]bool{
 }
 
 // appendBlocks appends content blocks to an existing page.
+// Supports either `blocks` array or `markdown` string parameter.
 func (c *NotionIntegration) appendBlocks(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
-	// Validate required parameters
-	if err := c.ValidateRequired(inputs, []string{"page_id", "blocks"}); err != nil {
+	// Validate page_id
+	if err := c.ValidateRequired(inputs, []string{"page_id"}); err != nil {
 		return nil, err
 	}
 
 	pageID, _ := inputs["page_id"].(string)
-	blocks, ok := inputs["blocks"].([]interface{})
-	if !ok {
-		return nil, &NotionError{
-			ErrorCode: "validation_error",
-			Message:   "blocks must be an array",
-			Category:  ErrorCategoryValidation,
+
+	// Check for markdown parameter first
+	var blocks []interface{}
+	if md, ok := inputs["markdown"].(string); ok && md != "" {
+		// Convert markdown to blocks
+		mdBlocks, err := markdownToBlocks(md)
+		if err != nil {
+			return nil, &NotionError{
+				ErrorCode: "validation_error",
+				Message:   fmt.Sprintf("failed to parse markdown: %v", err),
+				Category:  ErrorCategoryValidation,
+			}
+		}
+		// Convert []map[string]interface{} to []interface{}
+		for _, b := range mdBlocks {
+			blocks = append(blocks, b)
+		}
+	} else {
+		// Use blocks parameter
+		var ok bool
+		blocks, ok = inputs["blocks"].([]interface{})
+		if !ok {
+			return nil, &NotionError{
+				ErrorCode: "validation_error",
+				Message:   "either 'blocks' array or 'markdown' string is required",
+				Category:  ErrorCategoryValidation,
+			}
 		}
 	}
 
@@ -150,13 +196,14 @@ func (c *NotionIntegration) appendBlocks(ctx context.Context, inputs map[string]
 		}
 	}
 
-	// Validate block count
+	// Validate block count (allow empty for markdown which may produce no blocks)
 	if len(blocks) == 0 {
-		return nil, &NotionError{
-			ErrorCode: "validation_error",
-			Message:   "blocks array cannot be empty",
-			Category:  ErrorCategoryValidation,
-		}
+		// Return success with 0 blocks added for empty markdown
+		return &operation.Result{
+			Response: map[string]interface{}{
+				"blocks_added": 0,
+			},
+		}, nil
 	}
 
 	if len(blocks) > maxBlocksPerAppend {
@@ -347,9 +394,10 @@ func buildNotionBlock(blockType string, blockMap map[string]interface{}) (map[st
 
 // replaceContent replaces all content on a page with new blocks.
 // This deletes existing blocks and appends new ones.
+// Supports either `blocks` array or `markdown` string parameter.
 func (c *NotionIntegration) replaceContent(ctx context.Context, inputs map[string]interface{}) (*operation.Result, error) {
-	// Validate required parameters
-	if err := c.ValidateRequired(inputs, []string{"page_id", "blocks"}); err != nil {
+	// Validate page_id
+	if err := c.ValidateRequired(inputs, []string{"page_id"}); err != nil {
 		return nil, err
 	}
 
@@ -360,6 +408,33 @@ func (c *NotionIntegration) replaceContent(ctx context.Context, inputs map[strin
 		return nil, &NotionError{
 			ErrorCode: "validation_error",
 			Message:   "page_id must be a 32-character Notion ID",
+			Category:  ErrorCategoryValidation,
+		}
+	}
+
+	// Check for markdown parameter and convert to blocks
+	if md, ok := inputs["markdown"].(string); ok && md != "" {
+		mdBlocks, err := markdownToBlocks(md)
+		if err != nil {
+			return nil, &NotionError{
+				ErrorCode: "validation_error",
+				Message:   fmt.Sprintf("failed to parse markdown: %v", err),
+				Category:  ErrorCategoryValidation,
+			}
+		}
+		// Convert to []interface{} for the blocks parameter
+		blocks := make([]interface{}, len(mdBlocks))
+		for i, b := range mdBlocks {
+			blocks[i] = b
+		}
+		inputs["blocks"] = blocks
+	}
+
+	// Now validate blocks is present
+	if _, ok := inputs["blocks"]; !ok {
+		return nil, &NotionError{
+			ErrorCode: "validation_error",
+			Message:   "either 'blocks' array or 'markdown' string is required",
 			Category:  ErrorCategoryValidation,
 		}
 	}

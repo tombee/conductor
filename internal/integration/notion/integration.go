@@ -73,6 +73,22 @@ func (c *NotionIntegration) Execute(ctx context.Context, op string, inputs map[s
 	case "search":
 		return c.search(ctx, inputs)
 
+	// Comments
+	case "get_comments":
+		return c.getComments(ctx, inputs)
+	case "add_comment":
+		return c.addComment(ctx, inputs)
+
+	// Database schema
+	case "get_database_schema":
+		return c.getDatabaseSchema(ctx, inputs)
+	case "update_database_schema":
+		return c.updateDatabaseSchema(ctx, inputs)
+
+	// Batch operations
+	case "batch_create_pages":
+		return c.batchCreatePages(ctx, inputs)
+
 	default:
 		return nil, fmt.Errorf("unknown operation: %s", op)
 	}
@@ -102,6 +118,17 @@ func (c *NotionIntegration) Operations() []api.OperationInfo {
 
 		// Search
 		{Name: "search", Description: "Search pages and databases by title or content", Category: "search", Tags: []string{"read", "paginated"}},
+
+		// Comments
+		{Name: "get_comments", Description: "Get comments from a page or block", Category: "comments", Tags: []string{"read"}},
+		{Name: "add_comment", Description: "Add a comment to a page or reply to a discussion", Category: "comments", Tags: []string{"write"}},
+
+		// Database schema
+		{Name: "get_database_schema", Description: "Get property definitions for a database", Category: "schema", Tags: []string{"read"}},
+		{Name: "update_database_schema", Description: "Update property definitions for a database", Category: "schema", Tags: []string{"write"}},
+
+		// Batch operations
+		{Name: "batch_create_pages", Description: "Create multiple pages in a database with rate limiting", Category: "batch", Tags: []string{"write"}},
 	}
 }
 
@@ -162,20 +189,22 @@ func (c *NotionIntegration) OperationSchema(op string) *api.OperationSchema {
 				{Name: "parent_id", Type: "string", Description: "32-character Notion ID of the parent page", Required: true},
 				{Name: "title", Type: "string", Description: "Page title to match or create", Required: true},
 				{Name: "blocks", Type: "array", Description: "Content blocks to add/replace"},
+				{Name: "default_markdown", Type: "string", Description: "Markdown content applied only when page is created (ignored if page exists)"},
 			},
 			ResponseFields: []api.ResponseFieldInfo{
 				{Name: "id", Type: "string", Description: "Page ID"},
 				{Name: "url", Type: "string", Description: "Page URL"},
-				{Name: "is_new", Type: "boolean", Description: "True if page was created, false if updated"},
+				{Name: "is_new", Type: "boolean", Description: "True if page was created, false if found existing"},
 			},
 		},
 		"get_blocks": {
 			Description: "Get content blocks from a page",
 			Parameters: []api.ParameterInfo{
 				{Name: "page_id", Type: "string", Description: "32-character Notion page ID", Required: true},
+				{Name: "format", Type: "string", Description: "Output format: 'blocks' (default), 'markdown', or 'text'"},
 			},
 			ResponseFields: []api.ResponseFieldInfo{
-				{Name: "content", Type: "string", Description: "Extracted text content"},
+				{Name: "content", Type: "string", Description: "Content in requested format (text, markdown, or plain text)"},
 				{Name: "block_count", Type: "integer", Description: "Number of blocks"},
 				{Name: "raw_blocks", Type: "array", Description: "Raw block data"},
 			},
@@ -184,7 +213,8 @@ func (c *NotionIntegration) OperationSchema(op string) *api.OperationSchema {
 			Description: "Append content blocks to an existing page",
 			Parameters: []api.ParameterInfo{
 				{Name: "page_id", Type: "string", Description: "32-character Notion page ID", Required: true},
-				{Name: "blocks", Type: "array", Description: "Array of blocks (max 100). Each block needs type and text fields.", Required: true},
+				{Name: "blocks", Type: "array", Description: "Array of blocks (max 100). Each block needs type and text fields."},
+				{Name: "markdown", Type: "string", Description: "Markdown content to convert to blocks (alternative to blocks param)"},
 			},
 			ResponseFields: []api.ResponseFieldInfo{
 				{Name: "blocks_added", Type: "integer", Description: "Number of blocks added"},
@@ -194,7 +224,8 @@ func (c *NotionIntegration) OperationSchema(op string) *api.OperationSchema {
 			Description: "Replace all content on a page with new blocks (preserves child pages)",
 			Parameters: []api.ParameterInfo{
 				{Name: "page_id", Type: "string", Description: "32-character Notion page ID", Required: true},
-				{Name: "blocks", Type: "array", Description: "Array of replacement blocks (max 100)", Required: true},
+				{Name: "blocks", Type: "array", Description: "Array of replacement blocks (max 100)"},
+				{Name: "markdown", Type: "string", Description: "Markdown content to convert to blocks (alternative to blocks param)"},
 			},
 			ResponseFields: []api.ResponseFieldInfo{
 				{Name: "blocks_added", Type: "integer", Description: "Number of blocks added"},
@@ -268,6 +299,71 @@ func (c *NotionIntegration) OperationSchema(op string) *api.OperationSchema {
 				{Name: "results", Type: "array", Description: "Search results with id, type, title, url"},
 				{Name: "has_more", Type: "boolean", Description: "Whether more results exist"},
 				{Name: "next_cursor", Type: "string", Description: "Cursor for pagination"},
+			},
+		},
+		// Comments
+		"get_comments": {
+			Description: "Get comments from a page or block",
+			Parameters: []api.ParameterInfo{
+				{Name: "page_id", Type: "string", Description: "Page ID to get comments from"},
+				{Name: "block_id", Type: "string", Description: "Block ID to get comments from (alternative to page_id)"},
+			},
+			ResponseFields: []api.ResponseFieldInfo{
+				{Name: "comments", Type: "array", Description: "Array of comments with id, discussion_id, author, content, created_time"},
+				{Name: "has_more", Type: "boolean", Description: "Whether more comments exist"},
+				{Name: "next_cursor", Type: "string", Description: "Cursor for pagination"},
+			},
+		},
+		"add_comment": {
+			Description: "Add a comment to a page or reply to a discussion",
+			Parameters: []api.ParameterInfo{
+				{Name: "page_id", Type: "string", Description: "Page ID to comment on (for new comments)"},
+				{Name: "discussion_id", Type: "string", Description: "Discussion ID to reply to (for replies)"},
+				{Name: "content", Type: "string", Description: "Comment text content", Required: true},
+			},
+			ResponseFields: []api.ResponseFieldInfo{
+				{Name: "id", Type: "string", Description: "Created comment ID"},
+				{Name: "discussion_id", Type: "string", Description: "Discussion thread ID"},
+				{Name: "created_time", Type: "string", Description: "Creation timestamp"},
+			},
+		},
+		// Database schema
+		"get_database_schema": {
+			Description: "Get property definitions for a database",
+			Parameters: []api.ParameterInfo{
+				{Name: "database_id", Type: "string", Description: "32-character Notion database ID", Required: true},
+			},
+			ResponseFields: []api.ResponseFieldInfo{
+				{Name: "id", Type: "string", Description: "Database ID"},
+				{Name: "title", Type: "string", Description: "Database title"},
+				{Name: "properties", Type: "object", Description: "Property definitions with types and options"},
+			},
+		},
+		"update_database_schema": {
+			Description: "Update property definitions for a database",
+			Parameters: []api.ParameterInfo{
+				{Name: "database_id", Type: "string", Description: "32-character Notion database ID", Required: true},
+				{Name: "title", Type: "string", Description: "New database title"},
+				{Name: "properties", Type: "object", Description: "Properties to add, modify, or remove"},
+			},
+			ResponseFields: []api.ResponseFieldInfo{
+				{Name: "id", Type: "string", Description: "Database ID"},
+				{Name: "title", Type: "string", Description: "Updated database title"},
+			},
+		},
+		// Batch operations
+		"batch_create_pages": {
+			Description: "Create multiple pages in a database with automatic rate limiting",
+			Parameters: []api.ParameterInfo{
+				{Name: "database_id", Type: "string", Description: "32-character Notion database ID", Required: true},
+				{Name: "pages", Type: "array", Description: "Array of page definitions (max 100). Each can have properties, title, markdown.", Required: true},
+			},
+			ResponseFields: []api.ResponseFieldInfo{
+				{Name: "succeeded", Type: "array", Description: "Successfully created pages with id, url"},
+				{Name: "failed", Type: "array", Description: "Failed pages with error message and original input"},
+				{Name: "total", Type: "integer", Description: "Total pages attempted"},
+				{Name: "success_count", Type: "integer", Description: "Number of successful creates"},
+				{Name: "failure_count", Type: "integer", Description: "Number of failed creates"},
 			},
 		},
 	}

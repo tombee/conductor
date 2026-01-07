@@ -4,6 +4,11 @@
 name: weekly-meal-planner
 description: Weekly meal planner designed for remote deployment
 
+# This example demonstrates:
+# - Loop steps with LLM refinement
+# - Saving formatted content to Notion using markdown
+# - upsert_page with markdown for formatted display
+
 inputs:
   - name: pantry_file
     type: string
@@ -15,9 +20,9 @@ inputs:
     default: "balanced"
     description: Dietary preference
 
-  - name: notion_database_id
+  - name: notion_page_id
     type: string
-    description: Notion database ID (32-character hex string from URL)
+    description: Notion page ID where meal plans will be saved
     pattern: "^[a-f0-9]{32}$"
 
 steps:
@@ -35,6 +40,51 @@ steps:
         name: Generate Plan
         type: llm
         model: strategic
+        output_schema:
+          type: object
+          properties:
+            monday:
+              type: object
+              properties:
+                breakfast: { type: string }
+                lunch: { type: string }
+                dinner: { type: string }
+            tuesday:
+              type: object
+              properties:
+                breakfast: { type: string }
+                lunch: { type: string }
+                dinner: { type: string }
+            wednesday:
+              type: object
+              properties:
+                breakfast: { type: string }
+                lunch: { type: string }
+                dinner: { type: string }
+            thursday:
+              type: object
+              properties:
+                breakfast: { type: string }
+                lunch: { type: string }
+                dinner: { type: string }
+            friday:
+              type: object
+              properties:
+                breakfast: { type: string }
+                lunch: { type: string }
+                dinner: { type: string }
+            saturday:
+              type: object
+              properties:
+                breakfast: { type: string }
+                lunch: { type: string }
+                dinner: { type: string }
+            sunday:
+              type: object
+              properties:
+                breakfast: { type: string }
+                lunch: { type: string }
+                dinner: { type: string }
         prompt: |
           Available ingredients:
           {{.steps.read_pantry.content}}
@@ -51,12 +101,6 @@ steps:
           For each day, create breakfast, lunch, and dinner.
           Don't repeat main proteins on consecutive days.
 
-          Return as JSON:
-          {
-            "monday": {"breakfast": "...", "lunch": "...", "dinner": "..."},
-            ...
-          }
-
       - id: check
         name: Check Variety
         type: llm
@@ -70,7 +114,7 @@ steps:
               type: string
         prompt: |
           Review this meal plan for variety:
-          {{.steps.generate.response}}
+          {{.steps.generate.output | toJSON}}
 
           Check:
           1. No main protein repeated on consecutive days
@@ -79,23 +123,57 @@ steps:
           Return {"passes": true} if requirements are met.
           Otherwise return {"passes": false, "feedback": "specific issues"}.
 
+  # Save the meal plan as a formatted Notion page using markdown
+  # The upsert_page operation replaces content if the page exists
   - id: save_plan
     name: Save to Notion
-    notion.create_database_item:
-      database_id: "{{.inputs.notion_database_id}}"
-      properties:
-        Name:
-          title:
-            - text:
-                content: "Weekly Meal Plan"
-        Content:
-          rich_text:
-            - text:
-                content: "{{.steps.refine_plan.generate.response}}"
+    notion.upsert_page:
+      parent_id: "{{.inputs.notion_page_id}}"
+      title: "Weekly Meal Plan"
+      markdown: |
+        # Weekly Meal Plan
+
+        Generated on {{.meta.started_at | formatTime "January 2, 2006"}}
+
+        ---
+
+        ## Monday
+        - **Breakfast:** {{.steps.refine_plan.generate.output.monday.breakfast}}
+        - **Lunch:** {{.steps.refine_plan.generate.output.monday.lunch}}
+        - **Dinner:** {{.steps.refine_plan.generate.output.monday.dinner}}
+
+        ## Tuesday
+        - **Breakfast:** {{.steps.refine_plan.generate.output.tuesday.breakfast}}
+        - **Lunch:** {{.steps.refine_plan.generate.output.tuesday.lunch}}
+        - **Dinner:** {{.steps.refine_plan.generate.output.tuesday.dinner}}
+
+        ## Wednesday
+        - **Breakfast:** {{.steps.refine_plan.generate.output.wednesday.breakfast}}
+        - **Lunch:** {{.steps.refine_plan.generate.output.wednesday.lunch}}
+        - **Dinner:** {{.steps.refine_plan.generate.output.wednesday.dinner}}
+
+        ## Thursday
+        - **Breakfast:** {{.steps.refine_plan.generate.output.thursday.breakfast}}
+        - **Lunch:** {{.steps.refine_plan.generate.output.thursday.lunch}}
+        - **Dinner:** {{.steps.refine_plan.generate.output.thursday.dinner}}
+
+        ## Friday
+        - **Breakfast:** {{.steps.refine_plan.generate.output.friday.breakfast}}
+        - **Lunch:** {{.steps.refine_plan.generate.output.friday.lunch}}
+        - **Dinner:** {{.steps.refine_plan.generate.output.friday.dinner}}
+
+        ## Saturday
+        - **Breakfast:** {{.steps.refine_plan.generate.output.saturday.breakfast}}
+        - **Lunch:** {{.steps.refine_plan.generate.output.saturday.lunch}}
+        - **Dinner:** {{.steps.refine_plan.generate.output.saturday.dinner}}
+
+        ## Sunday
+        - **Breakfast:** {{.steps.refine_plan.generate.output.sunday.breakfast}}
+        - **Lunch:** {{.steps.refine_plan.generate.output.sunday.lunch}}
+        - **Dinner:** {{.steps.refine_plan.generate.output.sunday.dinner}}
 
 outputs:
-  - name: weekly_plan
+  - name: notion_url
     type: string
-    value: "{{.steps.refine_plan.generate.response}}"
-    description: Complete weekly meal plan
-    format: markdown
+    value: "{{.steps.save_plan.url}}"
+    description: Link to the weekly meal plan page

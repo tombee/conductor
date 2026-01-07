@@ -101,18 +101,84 @@ steps:
 
 ## Notion
 
-Create and update Notion pages and database items:
+Create and update Notion pages using markdown or block arrays.
+
+### Markdown Content
+
+The simplest way to create Notion content is with markdown:
 
 ```yaml
-integrations:
-  notion:
-    from: integrations/notion
+steps:
+  - id: save_plan
+    notion.upsert_page:
+      parent_id: "{{.inputs.parent_page_id}}"
+      title: "Weekly Meal Plan"
+      markdown: |
+        # Weekly Meal Plan
 
+        ## Overview
+        {{range .steps.generate_plan.output.overview}}
+        - {{.}}
+        {{end}}
+
+        ---
+
+        ## Shopping List
+        {{range .steps.shopping_list}}
+        - [ ] {{.}}
+        {{end}}
+```
+
+Supported markdown elements:
+- Headings (`#`, `##`, `###`)
+- Paragraphs
+- Bulleted lists (`-`)
+- Numbered lists (`1.`)
+- Checkboxes (`- [ ]`, `- [x]`)
+- Code blocks (`` ``` ``)
+- Quotes (`>`)
+- Dividers (`---`)
+- Images (`![alt](url)`)
+- Callouts (`> [!NOTE]`, `> [!WARNING]`)
+- Rich text: **bold**, *italic*, ~~strikethrough~~, `code`, [links](url)
+
+### Default Content
+
+Use `default_markdown` to initialize a page only when it's created:
+
+```yaml
+steps:
+  - id: pantry
+    notion.upsert_page:
+      parent_id: "{{.inputs.parent_page_id}}"
+      title: "Pantry"
+      default_markdown: |
+        # My Pantry
+        Add your ingredients here...
+```
+
+The response includes `is_new: true/false` indicating if the page was created or found.
+
+### Reading Content
+
+Read page content as markdown for LLM processing:
+
+```yaml
+steps:
+  - id: read_content
+    notion.get_blocks:
+      page_id: "{{.steps.pantry.id}}"
+      format: markdown  # or "blocks" (default), "text"
+```
+
+### Block Arrays
+
+For more control, use block arrays:
+
+```yaml
 steps:
   - id: save_item
-    type: integration
-    integration: notion.create_database_item
-    inputs:
+    notion.create_database_item:
       database_id: "{{.inputs.database_id}}"
       properties:
         Name:
@@ -124,16 +190,34 @@ steps:
             name: "New"
 ```
 
-### Notion Actions
+### Notion Operations
 
-- `create_page` - Create a new page under a parent
+**Page Operations:**
+- `create_page` - Create page under a parent
 - `get_page` - Retrieve page properties
 - `update_page` - Update page title, icon, or cover
-- `upsert_page` - Update if exists by title, create if not
-- `append_blocks` - Add content blocks to a page
+- `delete_page` - Archive a page
+- `upsert_page` - Create or find by title (supports `default_markdown`, `markdown`)
+
+**Content Operations:**
+- `get_blocks` - Get page content (supports `format: markdown|blocks|text`)
+- `append_blocks` - Add content (supports `markdown` parameter)
+- `replace_content` - Replace all content (supports `markdown` parameter)
+
+**Database Operations:**
 - `query_database` - Query with filters and sorts
-- `create_database_item` - Add item to a database
-- `update_database_item` - Update database item properties
+- `create_database_item` - Add item to database
+- `update_database_item` - Update item properties
+- `delete_database_item` - Archive database item
+- `list_databases` - List accessible databases
+- `get_database_schema` - Get property definitions
+- `update_database_schema` - Modify property definitions
+- `batch_create_pages` - Create multiple pages (rate-limited)
+
+**Other Operations:**
+- `search` - Search pages and databases
+- `get_comments` - Get page/block comments
+- `add_comment` - Add comment or reply
 
 ## Authentication
 
