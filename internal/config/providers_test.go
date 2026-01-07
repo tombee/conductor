@@ -368,16 +368,23 @@ func containsMiddle(s, substr string) bool {
 	return false
 }
 
-// isKeychainAvailable checks if the system keychain is accessible.
+// isKeychainAvailable checks if the system keychain is accessible for writing.
 // Returns false on systems without a keychain (e.g., headless Linux CI).
 func isKeychainAvailable() bool {
 	resolver := createSecretResolver()
-	// Try to access the keychain - if it fails with anything other than
-	// "not found", the keychain is unavailable
+	// Try to access the keychain - if it fails with "no writable backend"
+	// or similar errors, the keychain is unavailable
 	_, err := resolver.Get(context.Background(), "__keychain_availability_test__")
 	if err == nil {
 		return true
 	}
+	errStr := err.Error()
 	// If the error is "not found", the keychain is available but empty
-	return strings.Contains(err.Error(), "not found")
+	// If the error mentions "no writable backend" or "unavailable", skip the test
+	if strings.Contains(errStr, "no writable backend") ||
+		strings.Contains(errStr, "unavailable") ||
+		strings.Contains(errStr, "no available backends") {
+		return false
+	}
+	return strings.Contains(errStr, "not found")
 }
