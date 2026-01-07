@@ -166,3 +166,31 @@ type QueryDatabaseRequest struct {
 	StartCursor string      `json:"start_cursor,omitempty"`
 	PageSize    int         `json:"page_size,omitempty"`
 }
+
+// SearchRequest represents a request to search Notion content.
+type SearchRequest struct {
+	Query       string      `json:"query,omitempty"`
+	Filter      interface{} `json:"filter,omitempty"`
+	Sort        interface{} `json:"sort,omitempty"`
+	StartCursor string      `json:"start_cursor,omitempty"`
+	PageSize    int         `json:"page_size,omitempty"`
+}
+
+// SearchResponse represents the response from a search request.
+type SearchResponse struct {
+	Object     string         `json:"object"`
+	Results    []SearchResult `json:"results"`
+	HasMore    bool           `json:"has_more"`
+	NextCursor string         `json:"next_cursor,omitempty"`
+}
+
+// SearchResult represents a single search result (page or database).
+type SearchResult struct {
+	Object         string      `json:"object"`
+	ID             string      `json:"id"`
+	CreatedTime    string      `json:"created_time"`
+	LastEditedTime string      `json:"last_edited_time"`
+	URL            string      `json:"url,omitempty"`
+	Title          interface{} `json:"title,omitempty"`       // For databases
+	Properties     interface{} `json:"properties,omitempty"`  // For pages
+}

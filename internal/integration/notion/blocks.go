@@ -3,6 +3,7 @@ package notion
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/tombee/conductor/internal/operation"
@@ -272,6 +273,15 @@ func buildNotionBlock(blockType string, blockMap map[string]interface{}) (map[st
 		return nil, err
 	}
 
+	// Validate checked field is only used with to_do blocks
+	if _, hasChecked := blockMap["checked"]; hasChecked && blockType != "to_do" {
+		return nil, &NotionError{
+			ErrorCode: "validation_error",
+			Message:   fmt.Sprintf("'checked' field is only valid for 'to_do' blocks, not '%s'", blockType),
+			Category:  ErrorCategoryValidation,
+		}
+	}
+
 	// Build rich text array
 	richText := []map[string]interface{}{
 		{
@@ -388,16 +398,19 @@ func (c *NotionIntegration) replaceContent(ctx context.Context, inputs map[strin
 
 		deleteURL, err := c.BuildURL(fmt.Sprintf("/blocks/%s", block.ID), nil)
 		if err != nil {
-			return nil, err
+			slog.Warn("failed to build delete URL for block", "block_id", block.ID, "error", err)
+			continue
 		}
 
 		resp, err := c.ExecuteRequest(ctx, "DELETE", deleteURL, c.defaultHeaders(), nil)
 		if err != nil {
-			return nil, err
+			slog.Warn("failed to delete block during replace", "block_id", block.ID, "error", err)
+			continue
 		}
 
 		if err := ParseError(resp); err != nil {
-			// Ignore errors for blocks that may have been deleted already
+			// Log warning for blocks that may have been deleted already or have other issues
+			slog.Warn("block deletion returned error", "block_id", block.ID, "error", err)
 			continue
 		}
 	}

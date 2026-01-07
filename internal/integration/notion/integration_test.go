@@ -87,6 +87,7 @@ func TestNotionIntegration_Operations(t *testing.T) {
 		"create_page":          true,
 		"get_page":             true,
 		"update_page":          true,
+		"delete_page":          true,
 		"upsert_page":          true,
 		"get_blocks":           true,
 		"append_blocks":        true,
@@ -94,6 +95,9 @@ func TestNotionIntegration_Operations(t *testing.T) {
 		"query_database":       true,
 		"create_database_item": true,
 		"update_database_item": true,
+		"delete_database_item": true,
+		"list_databases":       true,
+		"search":               true,
 	}
 
 	if len(ops) != len(expectedOps) {
@@ -629,6 +633,314 @@ func TestNotionIntegration_UpsertPageWithBlocks(t *testing.T) {
 	}
 }
 
+func TestNotionIntegration_DeletePage(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PATCH" {
+			t.Errorf("expected PATCH method, got %s", r.Method)
+		}
+		if !strings.HasPrefix(r.URL.Path, "/pages/") {
+			t.Errorf("expected /pages/ path, got %s", r.URL.Path)
+		}
+
+		// Verify request body contains archived: true
+		var body map[string]interface{}
+		json.NewDecoder(r.Body).Decode(&body)
+		if body["archived"] != true {
+			t.Errorf("expected archived=true in request body")
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"object":   "page",
+			"id":       "abc123def456789012345678901234ab",
+			"archived": true,
+		})
+	}))
+	defer server.Close()
+
+	httpTransport, _ := transport.NewHTTPTransport(&transport.HTTPTransportConfig{BaseURL: server.URL})
+	config := &api.ProviderConfig{BaseURL: server.URL, Token: "test-token", Transport: httpTransport}
+	integration, _ := NewNotionIntegration(config)
+
+	result, err := integration.Execute(context.Background(), "delete_page", map[string]interface{}{
+		"page_id": "abc123def456789012345678901234ab",
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	data, _ := result.Response.(map[string]interface{})
+	if data["archived"] != true {
+		t.Errorf("expected archived=true in response")
+	}
+}
+
+func TestNotionIntegration_DeleteDatabaseItem(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"object":   "page",
+			"id":       "abc123def456789012345678901234ab",
+			"archived": true,
+		})
+	}))
+	defer server.Close()
+
+	httpTransport, _ := transport.NewHTTPTransport(&transport.HTTPTransportConfig{BaseURL: server.URL})
+	config := &api.ProviderConfig{BaseURL: server.URL, Token: "test-token", Transport: httpTransport}
+	integration, _ := NewNotionIntegration(config)
+
+	result, err := integration.Execute(context.Background(), "delete_database_item", map[string]interface{}{
+		"item_id": "abc123def456789012345678901234ab",
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	data, _ := result.Response.(map[string]interface{})
+	if data["archived"] != true {
+		t.Errorf("expected archived=true in response")
+	}
+}
+
+func TestNotionIntegration_ListDatabases(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" || r.URL.Path != "/search" {
+			t.Errorf("expected POST /search, got %s %s", r.Method, r.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"object": "list",
+			"results": []map[string]interface{}{
+				{
+					"object":           "database",
+					"id":               "db123def456789012345678901234ab",
+					"created_time":     "2026-01-01T00:00:00.000Z",
+					"last_edited_time": "2026-01-02T00:00:00.000Z",
+					"title": []map[string]interface{}{
+						{"plain_text": "Test Database"},
+					},
+				},
+			},
+			"has_more": false,
+		})
+	}))
+	defer server.Close()
+
+	httpTransport, _ := transport.NewHTTPTransport(&transport.HTTPTransportConfig{BaseURL: server.URL})
+	config := &api.ProviderConfig{BaseURL: server.URL, Token: "test-token", Transport: httpTransport}
+	integration, _ := NewNotionIntegration(config)
+
+	result, err := integration.Execute(context.Background(), "list_databases", map[string]interface{}{})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	data, _ := result.Response.(map[string]interface{})
+	databases, ok := data["databases"].([]map[string]interface{})
+	if !ok || len(databases) != 1 {
+		t.Errorf("expected 1 database, got %v", data["databases"])
+	}
+	if databases[0]["title"] != "Test Database" {
+		t.Errorf("expected title 'Test Database', got %v", databases[0]["title"])
+	}
+}
+
+func TestNotionIntegration_Search(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" || r.URL.Path != "/search" {
+			t.Errorf("expected POST /search, got %s %s", r.Method, r.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"object": "list",
+			"results": []map[string]interface{}{
+				{
+					"object":           "page",
+					"id":               "page123def456789012345678901234a",
+					"url":              "https://notion.so/page",
+					"created_time":     "2026-01-01T00:00:00.000Z",
+					"last_edited_time": "2026-01-02T00:00:00.000Z",
+				},
+			},
+			"has_more":    true,
+			"next_cursor": "cursor123",
+		})
+	}))
+	defer server.Close()
+
+	httpTransport, _ := transport.NewHTTPTransport(&transport.HTTPTransportConfig{BaseURL: server.URL})
+	config := &api.ProviderConfig{BaseURL: server.URL, Token: "test-token", Transport: httpTransport}
+	integration, _ := NewNotionIntegration(config)
+
+	result, err := integration.Execute(context.Background(), "search", map[string]interface{}{
+		"query": "test query",
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	data, _ := result.Response.(map[string]interface{})
+	if data["has_more"] != true {
+		t.Errorf("expected has_more=true")
+	}
+	if data["next_cursor"] != "cursor123" {
+		t.Errorf("expected next_cursor='cursor123'")
+	}
+}
+
+func TestNotionIntegration_CheckedFieldValidation(t *testing.T) {
+	// Test that 'checked' field is rejected on non-to_do block types
+	httpTransport, _ := transport.NewHTTPTransport(&transport.HTTPTransportConfig{BaseURL: "https://api.notion.com/v1"})
+	config := &api.ProviderConfig{BaseURL: "https://api.notion.com/v1", Token: "test-token", Transport: httpTransport}
+	integration, _ := NewNotionIntegration(config)
+
+	_, err := integration.Execute(context.Background(), "append_blocks", map[string]interface{}{
+		"page_id": "abc123def456789012345678901234ab",
+		"blocks": []interface{}{
+			map[string]interface{}{
+				"type":    "paragraph",
+				"text":    "Test",
+				"checked": true, // Invalid - checked only valid for to_do
+			},
+		},
+	})
+
+	if err == nil {
+		t.Fatal("expected error for checked field on paragraph block")
+	}
+	if !contains(err.Error(), "checked") || !contains(err.Error(), "to_do") {
+		t.Errorf("expected error about checked field, got: %v", err)
+	}
+}
+
+func TestNotionIntegration_IDNormalization(t *testing.T) {
+	// Test that IDs with hyphens are accepted and normalized
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"object": "page",
+			"id":     "abc123de-f456-7890-1234-5678901234ab",
+			"url":    "https://notion.so/page",
+		})
+	}))
+	defer server.Close()
+
+	httpTransport, _ := transport.NewHTTPTransport(&transport.HTTPTransportConfig{BaseURL: server.URL})
+	config := &api.ProviderConfig{BaseURL: server.URL, Token: "test-token", Transport: httpTransport}
+	integration, _ := NewNotionIntegration(config)
+
+	// UUID with hyphens should be accepted
+	result, err := integration.Execute(context.Background(), "get_page", map[string]interface{}{
+		"page_id": "abc123de-f456-7890-1234-5678901234ab",
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error for hyphenated ID: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected result")
+	}
+}
+
+func TestNotionIntegration_AdditionalErrorCodes(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+		errMsg     string
+	}{
+		{"400 bad request", 400, "400"},
+		{"500 internal server error", 500, "500"},
+		{"503 service unavailable", 503, "503"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.statusCode)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"object":  "error",
+					"status":  tt.statusCode,
+					"code":    "error",
+					"message": "Error",
+				})
+			}))
+			defer server.Close()
+
+			httpTransport, _ := transport.NewHTTPTransport(&transport.HTTPTransportConfig{BaseURL: server.URL})
+			config := &api.ProviderConfig{BaseURL: server.URL, Token: "test-token", Transport: httpTransport}
+			integration, _ := NewNotionIntegration(config)
+
+			_, err := integration.Execute(context.Background(), "get_page", map[string]interface{}{
+				"page_id": "abc123def456789012345678901234ab",
+			})
+
+			if err == nil {
+				t.Fatal("expected error")
+			}
+			if !contains(err.Error(), tt.errMsg) {
+				t.Errorf("expected error to contain '%s', got '%s'", tt.errMsg, err.Error())
+			}
+		})
+	}
+}
+
+func TestNotionIntegration_OperationSchema(t *testing.T) {
+	httpTransport, _ := transport.NewHTTPTransport(&transport.HTTPTransportConfig{BaseURL: "https://api.notion.com/v1"})
+	config := &api.ProviderConfig{BaseURL: "https://api.notion.com/v1", Token: "test-token", Transport: httpTransport}
+	integration, _ := NewNotionIntegration(config)
+	notionIntegration := integration.(*NotionIntegration)
+
+	// Test that all operations have schemas
+	ops := notionIntegration.Operations()
+	for _, op := range ops {
+		schema := notionIntegration.OperationSchema(op.Name)
+		if schema == nil {
+			t.Errorf("missing schema for operation: %s", op.Name)
+			continue
+		}
+		if schema.Description == "" {
+			t.Errorf("missing description in schema for operation: %s", op.Name)
+		}
+	}
+
+	// Test specific schema content
+	createPageSchema := notionIntegration.OperationSchema("create_page")
+	if createPageSchema == nil {
+		t.Fatal("missing create_page schema")
+	}
+
+	// Should have parent_id and title as required
+	hasParentID := false
+	hasTitle := false
+	for _, param := range createPageSchema.Parameters {
+		if param.Name == "parent_id" && param.Required {
+			hasParentID = true
+		}
+		if param.Name == "title" && param.Required {
+			hasTitle = true
+		}
+	}
+	if !hasParentID {
+		t.Error("create_page schema missing required parent_id parameter")
+	}
+	if !hasTitle {
+		t.Error("create_page schema missing required title parameter")
+	}
+}
+
 func TestNotionIntegration_UnknownOperation(t *testing.T) {
 	httpTransport, err := transport.NewHTTPTransport(&transport.HTTPTransportConfig{
 		BaseURL: "https://api.notion.com/v1",
@@ -895,6 +1207,104 @@ func TestRealAPI_NotionOperations(t *testing.T) {
 		if !strings.Contains(content, "Replaced") {
 			t.Errorf("expected 'Replaced' in content, got: %s", content)
 		}
+	})
+
+	// Test: search
+	t.Run("search", func(t *testing.T) {
+		result, err := integration.Execute(ctx, "search", map[string]interface{}{
+			"query":     "Test",
+			"page_size": 5,
+		})
+		if err != nil {
+			t.Fatalf("search failed: %v", err)
+		}
+
+		response, ok := result.Response.(map[string]interface{})
+		if !ok {
+			t.Fatalf("unexpected response type: %T", result.Response)
+		}
+
+		results, _ := response["results"].([]map[string]interface{})
+		t.Logf("search: Found %d results for 'Test'", len(results))
+
+		// Verify response structure
+		if _, ok := response["has_more"]; !ok {
+			t.Error("expected has_more field in response")
+		}
+	})
+
+	// Test: search with filter
+	t.Run("search_with_filter", func(t *testing.T) {
+		result, err := integration.Execute(ctx, "search", map[string]interface{}{
+			"filter": map[string]interface{}{
+				"property": "object",
+				"value":    "page",
+			},
+			"page_size": 5,
+		})
+		if err != nil {
+			t.Fatalf("search with filter failed: %v", err)
+		}
+
+		response, ok := result.Response.(map[string]interface{})
+		if !ok {
+			t.Fatalf("unexpected response type: %T", result.Response)
+		}
+
+		t.Logf("search_with_filter: Found results with page filter")
+		_ = response // verify we got a valid response
+	})
+
+	// Test: list_databases
+	t.Run("list_databases", func(t *testing.T) {
+		result, err := integration.Execute(ctx, "list_databases", map[string]interface{}{})
+		if err != nil {
+			t.Fatalf("list_databases failed: %v", err)
+		}
+
+		response, ok := result.Response.(map[string]interface{})
+		if !ok {
+			t.Fatalf("unexpected response type: %T", result.Response)
+		}
+
+		databases, _ := response["databases"].([]map[string]interface{})
+		t.Logf("list_databases: Found %d accessible databases", len(databases))
+
+		// Log database titles if any
+		for i, db := range databases {
+			if i >= 3 {
+				break // Only log first 3
+			}
+			title, _ := db["title"].(string)
+			id, _ := db["id"].(string)
+			t.Logf("  - %s (ID: %s...)", title, id[:8])
+		}
+	})
+
+	// Test: delete_page (cleanup - run last)
+	t.Run("delete_page", func(t *testing.T) {
+		if createdPageID == "" {
+			t.Skip("no page created to delete")
+		}
+
+		result, err := integration.Execute(ctx, "delete_page", map[string]interface{}{
+			"page_id": createdPageID,
+		})
+		if err != nil {
+			t.Fatalf("delete_page failed: %v", err)
+		}
+
+		response, ok := result.Response.(map[string]interface{})
+		if !ok {
+			t.Fatalf("unexpected response type: %T", result.Response)
+		}
+
+		archived, _ := response["archived"].(bool)
+		if !archived {
+			t.Error("expected archived=true after delete")
+		}
+
+		t.Logf("delete_page: Archived page %s", createdPageID)
 	})
 
 	// Test: error handling - invalid ID

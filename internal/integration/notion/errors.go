@@ -33,6 +33,9 @@ const (
 
 	// ErrorCategoryNetwork indicates network/transport errors
 	ErrorCategoryNetwork ErrorCategory = "network_error"
+
+	// ErrorCategoryTimeout indicates context deadline/timeout errors
+	ErrorCategoryTimeout ErrorCategory = "timeout"
 )
 
 // Error implements the error interface.
@@ -71,7 +74,7 @@ func ParseError(resp *transport.Response) error {
 				ErrorCode:  "parse_error",
 				Message:    fmt.Sprintf("failed to parse response: %v", err),
 				StatusCode: resp.StatusCode,
-				Category:   ErrorCategoryNetwork,
+				Category:   ErrorCategoryValidation,
 			}
 		}
 
