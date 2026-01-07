@@ -20,6 +20,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -62,9 +63,9 @@ func TestBreakpointWorkflow(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Monitor events in a goroutine
-	var pausedAtStep2 bool
-	var resumedFromStep2 bool
+	// Monitor events in a goroutine (use atomic to avoid data race)
+	var pausedAtStep2 atomic.Bool
+	var resumedFromStep2 atomic.Bool
 
 	go func() {
 		for {
@@ -82,7 +83,7 @@ func TestBreakpointWorkflow(t *testing.T) {
 				switch event.Type {
 				case debug.EventPaused:
 					if event.StepID == "step2" {
-						pausedAtStep2 = true
+						pausedAtStep2.Store(true)
 						// Send continue command after a short delay
 						go func() {
 							time.Sleep(100 * time.Millisecond)
@@ -92,7 +93,7 @@ func TestBreakpointWorkflow(t *testing.T) {
 
 				case debug.EventResumed:
 					if event.StepID == "step2" {
-						resumedFromStep2 = true
+						resumedFromStep2.Store(true)
 					}
 				}
 			}
@@ -109,8 +110,8 @@ func TestBreakpointWorkflow(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	// Verify expectations
-	assert.True(t, pausedAtStep2, "Should have paused at step2 breakpoint")
-	assert.True(t, resumedFromStep2, "Should have resumed from step2 after continue command")
+	assert.True(t, pausedAtStep2.Load(), "Should have paused at step2 breakpoint")
+	assert.True(t, resumedFromStep2.Load(), "Should have resumed from step2 after continue command")
 }
 
 // TestBreakpointSkipStep tests that a step can be skipped during debugging.
@@ -128,7 +129,7 @@ func TestBreakpointSkipStep(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	var skipped bool
+	var skipped atomic.Bool
 	go func() {
 		for {
 			select {
@@ -148,7 +149,7 @@ func TestBreakpointSkipStep(t *testing.T) {
 				}
 
 				if event.Type == debug.EventSkipped && event.StepID == "step2" {
-					skipped = true
+					skipped.Store(true)
 				}
 			}
 		}
@@ -164,7 +165,7 @@ func TestBreakpointSkipStep(t *testing.T) {
 
 	time.Sleep(500 * time.Millisecond)
 
-	assert.True(t, skipped, "Step should have been skipped")
+	assert.True(t, skipped.Load(), "Step should have been skipped")
 }
 
 // TestMultipleBreakpoints tests pausing at multiple steps.
