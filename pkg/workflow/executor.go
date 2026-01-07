@@ -10,9 +10,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/tombee/conductor/pkg/agent"
 	"github.com/tombee/conductor/pkg/errors"
 	"github.com/tombee/conductor/pkg/llm"
 	"github.com/tombee/conductor/pkg/security"
+	"github.com/tombee/conductor/pkg/tools"
 	"github.com/tombee/conductor/pkg/workflow/expression"
 	"github.com/tombee/conductor/pkg/workflow/schema"
 )
@@ -439,11 +441,13 @@ func (e *Executor) executeStep(ctx context.Context, step *StepDefinition, workfl
 		return e.executeLoop(ctx, &resolvedStep, inputs, workflowContext)
 	case StepTypeWorkflow:
 		return e.executeWorkflow(ctx, &resolvedStep, inputs, workflowContext)
+	case StepTypeAgent:
+		return e.executeAgent(ctx, &resolvedStep, inputs, workflowContext)
 	default:
 		return nil, &errors.ValidationError{
 			Field:      "type",
 			Message:    fmt.Sprintf("unsupported step type: %s", step.Type),
-			Suggestion: "use one of: llm, condition, parallel, integration, loop, workflow",
+			Suggestion: "use one of: llm, condition, parallel, integration, loop, workflow, agent",
 		}
 	}
 }
@@ -1837,4 +1841,170 @@ func (e *Executor) resolveForeachValue(expr string, workflowContext map[string]i
 	}
 
 	return current, nil
+}
+
+// executeAgent executes an agent step using the ReAct loop pattern.
+func (e *Executor) executeAgent(ctx context.Context, step *StepDefinition, inputs map[string]interface{}, workflowContext map[string]interface{}) (map[string]interface{}, error) {
+	// Check if tool registry is configured
+	if e.toolRegistry == nil {
+		return nil, &errors.ConfigError{
+			Key:    "tool_registry",
+			Reason: "tool registry not configured for agent execution",
+		}
+	}
+
+	// Create filtered tool registry with only specified tools
+	// For agent execution, we require the concrete *tools.Registry type to access Filter
+	// Type assertion will fail at compile time if toolRegistry isn't compatible
+	var filteredRegistry *tools.Registry
+
+	// Try to use Filter if available (only *tools.Registry has this method)
+	type FilterableRegistry interface {
+		Filter([]string) (*tools.Registry, error)
+	}
+
+	if fr, ok := e.toolRegistry.(FilterableRegistry); ok {
+		var err error
+		filteredRegistry, err = fr.Filter(step.Tools)
+		if err != nil {
+			return nil, fmt.Errorf("failed to filter tools: %w", err)
+		}
+	} else {
+		return nil, fmt.Errorf("tool registry must support Filter method for agent execution")
+	}
+
+	// Get agent config with defaults
+	config := agent.DefaultConfig()
+	if step.AgentConfig != nil {
+		if step.AgentConfig.MaxIterations > 0 {
+			config.MaxIterations = step.AgentConfig.MaxIterations
+		}
+		if step.AgentConfig.TokenLimit > 0 {
+			config.TokenLimit = step.AgentConfig.TokenLimit
+		}
+		config.StopOnError = step.AgentConfig.StopOnError
+	}
+
+	// Resolve model tier
+	model := step.Model
+	if model == "" {
+		model = string(ModelTierBalanced)
+	}
+	config.Model = model
+
+	// Create LLM provider adapter
+	llmProvider := &agentLLMAdapter{
+		executor: e,
+		model:    model,
+	}
+
+	// Create agent with configuration
+	agentInstance := agent.NewAgent(llmProvider, filteredRegistry).
+		WithConfig(config)
+
+	// Wire event callback to emit workflow events
+	// Event callback will be implemented in T5.2
+
+	// Prepare prompts
+	systemPrompt := step.SystemPrompt
+	if systemPrompt == "" {
+		systemPrompt = "You are a helpful AI assistant. Use the provided tools to accomplish the task."
+	}
+	userPrompt := step.UserPrompt
+
+	// Execute agent
+	result, err := agentInstance.Run(ctx, systemPrompt, userPrompt)
+	if err != nil {
+		// Agent may return partial results even on error
+		if result != nil {
+			return buildAgentOutput(result), err
+		}
+		return nil, err
+	}
+
+	// Build structured output matching spec format
+	return buildAgentOutput(result), nil
+}
+
+// buildAgentOutput constructs the agent step output in spec format.
+func buildAgentOutput(result *agent.Result) map[string]interface{} {
+	output := map[string]interface{}{
+		"response":      result.FinalResponse,
+		"iterations":    result.Iterations,
+		"tokens_used":   result.TokensUsed.TotalTokens,
+		"status":        result.Status,
+		"tool_outputs":  make([]map[string]interface{}, 0),
+	}
+
+	// Add reason if present
+	if result.Reason != "" {
+		output["reason"] = result.Reason
+	}
+
+	// Convert tool executions to spec format
+	toolOutputs := make([]map[string]interface{}, len(result.ToolExecutions))
+	for i, execution := range result.ToolExecutions {
+		toolOutputs[i] = map[string]interface{}{
+			"tool":        execution.ToolName,
+			"input":       execution.Inputs,
+			"output":      execution.Outputs,
+			"status":      execution.Status,
+			"duration_ms": execution.DurationMs,
+		}
+	}
+	output["tool_outputs"] = toolOutputs
+
+	// Add token usage for workflow-level tracking
+	output["_usage"] = map[string]interface{}{
+		"input_tokens":  result.TokensUsed.InputTokens,
+		"output_tokens": result.TokensUsed.OutputTokens,
+	}
+
+	return output
+}
+
+// agentLLMAdapter adapts the executor's LLM provider to the agent.LLMProvider interface.
+type agentLLMAdapter struct {
+	executor *Executor
+	model    string
+}
+
+func (a *agentLLMAdapter) Complete(ctx context.Context, messages []agent.Message) (*agent.Response, error) {
+	// Convert messages to prompt format
+	// For now, use simple concatenation
+	// Future: proper message formatting
+	prompt := ""
+	for _, msg := range messages {
+		if msg.Content != "" {
+			prompt += msg.Content + "\n\n"
+		}
+	}
+
+	// Call executor's LLM provider
+	options := map[string]interface{}{
+		"model": a.model,
+	}
+
+	result, err := a.executor.llmProvider.Complete(ctx, prompt, options)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to agent response format
+	response := &agent.Response{
+		Content:      result.Content,
+		FinishReason: "stop",
+		Usage: agent.TokenUsage{
+			InputTokens:  result.Usage.InputTokens,
+			OutputTokens: result.Usage.OutputTokens,
+			TotalTokens:  result.Usage.TotalTokens,
+		},
+	}
+
+	return response, nil
+}
+
+func (a *agentLLMAdapter) Stream(ctx context.Context, messages []agent.Message) (<-chan agent.StreamEvent, error) {
+	// Streaming not yet implemented for agent steps
+	return nil, fmt.Errorf("streaming not supported for agent steps")
 }

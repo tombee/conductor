@@ -260,9 +260,75 @@ func (a *AgentStepBuilder) Prompt(prompt string) *AgentStepBuilder {
 	return a
 }
 
+// System sets the system prompt for the agent.
+//
+// Example:
+//
+//	.Agent().
+//		System("You are a helpful research assistant.").
+//		Prompt("Research {{.inputs.topic}}")
+func (a *AgentStepBuilder) System(prompt string) *AgentStepBuilder {
+	a.stepBuilder.stepDef.agentSystemPrompt = prompt
+	return a
+}
+
+// Model sets the LLM model for the agent.
+//
+// Example:
+//
+//	.Agent().
+//		Model("claude-sonnet-4-20250514").
+//		Prompt("Research the topic")
+func (a *AgentStepBuilder) Model(model string) *AgentStepBuilder {
+	a.stepBuilder.stepDef.model = model
+	return a
+}
+
+// Tools sets the tools available to the agent.
+//
+// Example:
+//
+//	.Agent().
+//		Tools("web_search", "file_read").
+//		Prompt("Find information about the topic")
+func (a *AgentStepBuilder) Tools(names ...string) *AgentStepBuilder {
+	a.stepBuilder.stepDef.tools = names
+	return a
+}
+
 // MaxIterations sets the maximum number of agent loop iterations.
+//
+// Example:
+//
+//	.Agent().
+//		MaxIterations(10).
+//		Prompt("Complete the task")
 func (a *AgentStepBuilder) MaxIterations(n int) *AgentStepBuilder {
-	// TODO: Store max iterations in stepDef
+	a.stepBuilder.stepDef.agentMaxIter = n
+	return a
+}
+
+// TokenLimit sets the cumulative token limit across all iterations.
+//
+// Example:
+//
+//	.Agent().
+//		TokenLimit(50000).
+//		Prompt("Complete the task")
+func (a *AgentStepBuilder) TokenLimit(n int) *AgentStepBuilder {
+	a.stepBuilder.stepDef.agentTokenLimit = n
+	return a
+}
+
+// StopOnError determines whether the agent should stop on first tool error.
+//
+// Example:
+//
+//	.Agent().
+//		StopOnError(true).
+//		Prompt("Complete the task")
+func (a *AgentStepBuilder) StopOnError(stop bool) *AgentStepBuilder {
+	a.stepBuilder.stepDef.agentStopOnError = stop
 	return a
 }
 

@@ -363,3 +363,40 @@ func hasNamespacePrefix(toolName, namespace string) bool {
 	prefix := namespace + "."
 	return len(toolName) > len(prefix) && toolName[:len(prefix)] == prefix
 }
+
+// Filter creates a new registry containing only the specified tools.
+// Returns an error if the tools array is empty or if any tool name is not found.
+func (r *Registry) Filter(allowedNames []string) (*Registry, error) {
+	// Validate empty array
+	if len(allowedNames) == 0 {
+		return nil, &errors.ValidationError{
+			Field:      "tools",
+			Message:    "tools array cannot be empty",
+			Suggestion: "specify at least one tool name",
+		}
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	// Create new registry with filtered tools
+	filtered := NewRegistry()
+	filtered.interceptor = r.interceptor
+
+	// Add each allowed tool to the filtered registry
+	for _, name := range allowedNames {
+		tool, exists := r.tools[name]
+		if !exists {
+			return nil, &errors.ValidationError{
+				Field:      "tools",
+				Message:    fmt.Sprintf("unknown tool: %s", name),
+				Suggestion: fmt.Sprintf("tool %s is not registered in the tool registry", name),
+			}
+		}
+		// Register returns error if tool already exists, but we control the new registry
+		// so this should never fail
+		_ = filtered.Register(tool)
+	}
+
+	return filtered, nil
+}
