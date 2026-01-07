@@ -350,10 +350,20 @@ func (s *SDK) convertStepDef(stepDef *stepDef) (*pkgWorkflow.StepDefinition, err
 		pkgStep.Inputs = stepDef.actionInputs
 
 	case "agent":
-		// Agent steps are implemented as LLM steps with tool use
-		pkgStep.Type = pkgWorkflow.StepTypeLLM
-		pkgStep.Prompt = stepDef.agentPrompt
-		// TODO: Configure agent-specific settings
+		pkgStep.Type = pkgWorkflow.StepTypeAgent
+		pkgStep.UserPrompt = stepDef.agentPrompt
+		pkgStep.SystemPrompt = stepDef.agentSystemPrompt
+		pkgStep.Model = stepDef.model
+		pkgStep.Tools = stepDef.tools
+
+		// Configure agent config if any settings are specified
+		if stepDef.agentMaxIter > 0 || stepDef.agentTokenLimit > 0 || stepDef.agentStopOnError {
+			pkgStep.AgentConfig = &pkgWorkflow.AgentConfigDefinition{
+				MaxIterations: stepDef.agentMaxIter,
+				TokenLimit:    stepDef.agentTokenLimit,
+				StopOnError:   stepDef.agentStopOnError,
+			}
+		}
 
 	case "parallel":
 		return nil, fmt.Errorf("parallel steps are not yet implemented - this is a planned feature for a future release")

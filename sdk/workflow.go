@@ -175,7 +175,11 @@ type stepDef struct {
 	actionInputs map[string]any
 
 	// Agent step fields
-	agentPrompt string
+	agentPrompt       string
+	agentSystemPrompt string
+	agentMaxIter      int
+	agentTokenLimit   int
+	agentStopOnError  bool
 
 	// Parallel step fields
 	parallelSteps  []*stepDef

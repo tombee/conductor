@@ -213,6 +213,17 @@ type StepDefinition struct {
 	// Loop terminates when expression evaluates to true.
 	Until string `yaml:"until,omitempty" json:"until,omitempty"`
 
+	// SystemPrompt is the system prompt for agent steps (optional)
+	// Guides agent behavior and provides context
+	SystemPrompt string `yaml:"system_prompt,omitempty" json:"system_prompt,omitempty"`
+
+	// UserPrompt is the user prompt for agent steps (required for type=agent)
+	// Defines the agent's task objective
+	UserPrompt string `yaml:"user_prompt,omitempty" json:"user_prompt,omitempty"`
+
+	// AgentConfig configures agent execution limits (max_iterations, token_limit, stop_on_error)
+	AgentConfig *AgentConfigDefinition `yaml:"config,omitempty" json:"config,omitempty"`
+
 	// Permissions define access control at the step level (SPEC-141)
 	// Step-level permissions are intersected with workflow permissions (most restrictive wins)
 	Permissions *PermissionDefinition `yaml:"permissions,omitempty" json:"permissions,omitempty"`
@@ -240,6 +251,9 @@ const (
 
 	// StepTypeWorkflow invokes another workflow file as a sub-workflow
 	StepTypeWorkflow StepType = "workflow"
+
+	// StepTypeAgent executes a ReAct loop with tool use
+	StepTypeAgent StepType = "agent"
 )
 
 // Default step timeouts in seconds.
@@ -365,6 +379,19 @@ type OutputDefinition struct {
 	Format string `yaml:"format,omitempty" json:"format,omitempty"`
 }
 
+// AgentConfigDefinition configures agent step execution limits.
+type AgentConfigDefinition struct {
+	// MaxIterations limits the number of ReAct loop iterations
+	MaxIterations int `yaml:"max_iterations,omitempty" json:"max_iterations,omitempty"`
+
+	// TokenLimit sets cumulative token threshold across all iterations
+	TokenLimit int `yaml:"token_limit,omitempty" json:"token_limit,omitempty"`
+
+	// StopOnError determines agent behavior on tool failures
+	// When true: stop immediately on first tool error
+	// When false: report error to agent, allow recovery attempts (default)
+	StopOnError bool `yaml:"stop_on_error,omitempty" json:"stop_on_error,omitempty"`
+}
 
 
 
@@ -829,6 +856,7 @@ func (s *StepDefinition) Validate() error {
 		StepTypeIntegration: true,
 		StepTypeLoop:        true,
 		StepTypeWorkflow:    true,
+		StepTypeAgent:       true,
 	}
 	if !validTypes[s.Type] {
 		return fmt.Errorf("invalid step type: %s", s.Type)
@@ -895,6 +923,32 @@ func (s *StepDefinition) Validate() error {
 		// Validate workflow path security at definition time
 		if err := ValidateWorkflowPath(s.Workflow); err != nil {
 			return fmt.Errorf("invalid workflow path: %w", err)
+		}
+	}
+
+	// Validate agent steps
+	if s.Type == StepTypeAgent {
+		// user_prompt is required
+		if s.UserPrompt == "" {
+			return fmt.Errorf("user_prompt is required for agent step type")
+		}
+
+		// tools array must not be empty
+		if len(s.Tools) == 0 {
+			return fmt.Errorf("tools array cannot be empty for agent step type")
+		}
+
+		// Validate agent config if present
+		if s.AgentConfig != nil {
+			// max_iterations must be positive
+			if s.AgentConfig.MaxIterations < 0 {
+				return fmt.Errorf("max_iterations must be non-negative")
+			}
+
+			// token_limit must be positive
+			if s.AgentConfig.TokenLimit < 0 {
+				return fmt.Errorf("token_limit must be non-negative")
+			}
 		}
 	}
 

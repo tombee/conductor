@@ -143,7 +143,12 @@ func resolveValue(value interface{}, ctx *TemplateContext) (interface{}, error) 
 				return rawVal, nil
 			}
 		}
-		return resolveOrKeep(v, ctx)
+		// Graceful degradation: if template resolution fails, keep original value
+		resolved, err := resolveOrKeep(v, ctx)
+		if err != nil {
+			return v, nil
+		}
+		return resolved, nil
 	case map[string]interface{}:
 		resolved := make(map[string]interface{})
 		for k, val := range v {

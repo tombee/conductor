@@ -14,34 +14,37 @@
 
 package tools
 
-import "github.com/tombee/conductor/pkg/workflow"
-
 // ToolResult wraps tool execution results.
+// This type is currently unused and exists for future extensibility.
 type ToolResult struct {
-	// Output contains the typed tool output
-	Output workflow.StepOutput
+	// Output contains the tool output data
+	Output map[string]interface{}
+
+	// Text contains extracted text result (if applicable)
+	Text string
+
+	// Error contains error information (if applicable)
+	Error string
 }
 
 // NewToolResult creates a ToolResult from a map output.
 func NewToolResult(rawOutput map[string]interface{}) ToolResult {
-	output := workflow.StepOutput{
-		Data: rawOutput,
+	result := ToolResult{
+		Output: rawOutput,
 	}
 
 	// Extract common fields from raw output
 	if text, ok := rawOutput["text"].(string); ok {
-		output.Text = text
-	} else if result, ok := rawOutput["result"].(string); ok {
-		output.Text = result
+		result.Text = text
+	} else if textResult, ok := rawOutput["result"].(string); ok {
+		result.Text = textResult
 	} else if response, ok := rawOutput["response"].(string); ok {
-		output.Text = response
+		result.Text = response
 	}
 
 	if err, ok := rawOutput["error"].(string); ok {
-		output.Error = err
+		result.Error = err
 	}
 
-	return ToolResult{
-		Output: output,
-	}
+	return result
 }

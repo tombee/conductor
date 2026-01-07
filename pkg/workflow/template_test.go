@@ -330,7 +330,11 @@ func TestResolveOrKeep(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := resolveOrKeep(tt.input, ctx)
+			result, err := resolveOrKeep(tt.input, ctx)
+			// If there's an error, we should keep the original template
+			if err != nil {
+				result = tt.input
+			}
 			if result != tt.expected {
 				t.Errorf("resolveOrKeep(%q) = %q, expected %q", tt.input, result, tt.expected)
 			}

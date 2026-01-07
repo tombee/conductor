@@ -17,11 +17,14 @@ const (
 	EventStepStarted       EventType = "step.started"
 	EventStepCompleted     EventType = "step.completed"
 	EventStepFailed        EventType = "step.failed"
-	EventLLMToken          EventType = "llm.token"       // Streaming token
-	EventLLMToolCall       EventType = "llm.tool_call"   // Tool invocation
-	EventLLMToolResult     EventType = "llm.tool_result" // Tool result
-	EventAgentIteration    EventType = "agent.iteration" // Agent loop iteration
-	EventTokenUpdate       EventType = "token.update"    // Token usage update
+	EventLLMToken          EventType = "llm.token"         // Streaming token
+	EventLLMToolCall       EventType = "llm.tool_call"     // Tool invocation
+	EventLLMToolResult     EventType = "llm.tool_result"   // Tool result
+	EventAgentIteration    EventType = "agent.iteration"   // Agent loop iteration
+	EventAgentToolCall     EventType = "agent.tool_call"   // Agent tool invocation
+	EventAgentToolResult   EventType = "agent.tool_result" // Agent tool result
+	EventAgentComplete     EventType = "agent.complete"    // Agent completion
+	EventTokenUpdate       EventType = "token.update"      // Token usage update
 )
 
 // Event represents a workflow event.
@@ -68,8 +71,38 @@ type ToolResultEvent struct {
 
 // AgentIterationEvent is the Data for EventAgentIteration.
 type AgentIterationEvent struct {
-	Iteration int
-	State     string // Current agent state (thinking, acting, responding)
+	Iteration           int
+	State               string            // Current agent state (thinking, acting, responding)
+	ToolCalls           []ToolCallSummary // Tools called in this iteration
+	TokensThisIteration int               // Tokens used in this iteration
+}
+
+// ToolCallSummary provides a summary of a tool call for event reporting.
+type ToolCallSummary struct {
+	Name  string         // Tool name
+	Input map[string]any // Tool input parameters
+}
+
+// AgentToolCallEvent is the Data for EventAgentToolCall.
+type AgentToolCallEvent struct {
+	Tool  string // Tool name
+	Input any    // Tool input (typically map[string]any)
+}
+
+// AgentToolResultEvent is the Data for EventAgentToolResult.
+type AgentToolResultEvent struct {
+	Tool       string // Tool name
+	Status     string // "success" or "error"
+	Output     any    // Tool output
+	DurationMs int    // Execution duration in milliseconds
+}
+
+// AgentCompleteEvent is the Data for EventAgentComplete.
+type AgentCompleteEvent struct {
+	Status     string // "completed", "limit_exceeded", or "error"
+	Reason     string // Reason for completion (e.g., "task_completed", "max_iterations", "token_limit")
+	Iterations int    // Number of iterations completed
+	TokensUsed int    // Total tokens consumed
 }
 
 // TokenUsage tracks token consumption for cost calculation.

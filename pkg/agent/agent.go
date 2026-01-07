@@ -26,15 +26,25 @@ type Agent struct {
 	// registry provides access to available tools
 	registry *tools.Registry
 
-	// maxIterations limits the number of loop iterations
+	// maxIterations limits the number of loop iterations (deprecated: use config)
 	maxIterations int
+
+	// config holds agent execution configuration
+	config Config
 
 	// contextManager tracks token usage and manages context window
 	contextManager *ContextManager
 
 	// streamHandler receives streaming events (optional)
 	streamHandler StreamHandler
+
+	// eventCallback receives agent events during execution (optional)
+	eventCallback EventCallback
 }
+
+// EventCallback receives agent events during execution.
+// Events are emitted for iteration start, tool calls, tool results, and completion.
+type EventCallback func(eventType string, data interface{})
 
 // LLMProvider defines the interface for LLM interactions.
 type LLMProvider interface {
@@ -108,8 +118,14 @@ type StreamHandler func(event StreamEvent)
 
 // Result represents the final result of an agent execution.
 type Result struct {
-	// Success indicates if the task completed successfully
+	// Success indicates if the task completed successfully (deprecated: use Status)
 	Success bool
+
+	// Status indicates the completion status: "completed", "limit_exceeded", or "error"
+	Status string
+
+	// Reason provides additional context for the status (e.g., "max_iterations", "token_limit")
+	Reason string
 
 	// FinalResponse is the agent's final text response
 	FinalResponse string
@@ -126,7 +142,7 @@ type Result struct {
 	// Duration is the total execution time
 	Duration time.Duration
 
-	// Error contains error information if the agent failed
+	// Error contains error information if the agent failed (deprecated: use Status/Reason)
 	Error string
 }
 
@@ -141,14 +157,20 @@ type ToolExecution struct {
 	// Outputs are the tool outputs
 	Outputs map[string]interface{}
 
-	// Success indicates if the tool succeeded
+	// Success indicates if the tool succeeded (deprecated: use Status)
 	Success bool
+
+	// Status indicates execution status: "success" or "error"
+	Status string
 
 	// Error contains error information if the tool failed
 	Error string
 
 	// Duration is how long the tool took to execute
 	Duration time.Duration
+
+	// DurationMs is the duration in milliseconds (for spec compliance)
+	DurationMs int
 }
 
 // NewAgent creates a new agent.
@@ -173,6 +195,20 @@ func (a *Agent) WithStreamHandler(handler StreamHandler) *Agent {
 	return a
 }
 
+// WithConfig applies configuration to the agent.
+func (a *Agent) WithConfig(cfg Config) *Agent {
+	a.config = cfg.WithDefaults()
+	// Update maxIterations for backward compatibility
+	a.maxIterations = a.config.MaxIterations
+	return a
+}
+
+// WithEventCallback sets a callback to receive agent events during execution.
+func (a *Agent) WithEventCallback(callback EventCallback) *Agent {
+	a.eventCallback = callback
+	return a
+}
+
 // Run executes the agent loop.
 func (a *Agent) Run(ctx context.Context, systemPrompt string, userPrompt string) (*Result, error) {
 	startTime := time.Now()
@@ -194,6 +230,8 @@ func (a *Agent) Run(ctx context.Context, systemPrompt string, userPrompt string)
 		response, err := a.llm.Complete(ctx, messages)
 		if err != nil {
 			result.Success = false
+			result.Status = "error"
+			result.Reason = "llm_error"
 			result.Error = fmt.Sprintf("LLM call failed: %v", err)
 			result.Duration = time.Since(startTime)
 			return result, fmt.Errorf("LLM call failed: %w", err)
@@ -203,6 +241,17 @@ func (a *Agent) Run(ctx context.Context, systemPrompt string, userPrompt string)
 		result.TokensUsed.InputTokens += response.Usage.InputTokens
 		result.TokensUsed.OutputTokens += response.Usage.OutputTokens
 		result.TokensUsed.TotalTokens += response.Usage.TotalTokens
+
+		// Check token limit if configured
+		if a.config.TokenLimit > 0 && result.TokensUsed.TotalTokens > a.config.TokenLimit {
+			result.Success = false
+			result.Status = "limit_exceeded"
+			result.Reason = "token_limit"
+			result.FinalResponse = response.Content
+			result.Error = "token_limit"
+			result.Duration = time.Since(startTime)
+			return result, fmt.Errorf("token limit exceeded: %d > %d", result.TokensUsed.TotalTokens, a.config.TokenLimit)
+		}
 
 		// Add assistant message to conversation
 		assistantMsg := Message{
@@ -215,6 +264,8 @@ func (a *Agent) Run(ctx context.Context, systemPrompt string, userPrompt string)
 		// Check if agent is done
 		if response.FinishReason == "stop" && len(response.ToolCalls) == 0 {
 			result.Success = true
+			result.Status = "completed"
+			result.Reason = "task_completed"
 			result.FinalResponse = response.Content
 			result.Duration = time.Since(startTime)
 			return result, nil
@@ -233,6 +284,17 @@ func (a *Agent) Run(ctx context.Context, systemPrompt string, userPrompt string)
 					ToolCallID: toolCall.ID,
 				}
 				messages = append(messages, toolMsg)
+
+				// Check stop_on_error behavior
+				if a.config.StopOnError && !execution.Success {
+					result.Success = false
+					result.Status = "error"
+					result.Reason = "tool_error"
+					result.FinalResponse = response.Content
+					result.Error = fmt.Sprintf("tool execution failed: %s", execution.Error)
+					result.Duration = time.Since(startTime)
+					return result, fmt.Errorf("tool execution failed (stop_on_error=true): %s", execution.Error)
+				}
 			}
 		}
 
@@ -244,6 +306,8 @@ func (a *Agent) Run(ctx context.Context, systemPrompt string, userPrompt string)
 
 	// Max iterations reached
 	result.Success = false
+	result.Status = "limit_exceeded"
+	result.Reason = "max_iterations"
 	result.Error = fmt.Sprintf("max iterations (%d) reached without completion", a.maxIterations)
 	result.Duration = time.Since(startTime)
 	return result, fmt.Errorf("max iterations reached")
@@ -279,14 +343,17 @@ func (a *Agent) executeTool(ctx context.Context, toolCall ToolCall) ToolExecutio
 	// Execute tool
 	outputs, err := a.registry.Execute(ctx, toolCall.Name, inputs)
 	execution.Duration = time.Since(startTime)
+	execution.DurationMs = int(execution.Duration.Milliseconds())
 
 	if err != nil {
 		execution.Success = false
+		execution.Status = "error"
 		execution.Error = err.Error()
 		return execution
 	}
 
 	execution.Success = true
+	execution.Status = "success"
 	execution.Outputs = outputs
 	return execution
 }
