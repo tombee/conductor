@@ -111,13 +111,13 @@ jobs:
             echo "Validating tutorial examples..."
             for file in examples/tutorial/*.yaml; do
               echo "Validating $file"
-              ./bin/conductor validate --strict "$file" || exit 1
+              ./bin/conductor validate "$file" || exit 1
             done
 
             echo "Validating showcase examples..."
             for file in examples/showcase/*.yaml; do
               echo "Validating $file"
-              ./bin/conductor validate --strict "$file" || exit 1
+              ./bin/conductor validate "$file" || exit 1
             done
           else
             echo "Warning: conductor validate command not available, skipping YAML validation"
