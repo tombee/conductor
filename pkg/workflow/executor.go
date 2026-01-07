@@ -1929,11 +1929,11 @@ func (e *Executor) executeAgent(ctx context.Context, step *StepDefinition, input
 // buildAgentOutput constructs the agent step output in spec format.
 func buildAgentOutput(result *agent.Result) map[string]interface{} {
 	output := map[string]interface{}{
-		"response":      result.FinalResponse,
-		"iterations":    result.Iterations,
-		"tokens_used":   result.TokensUsed.TotalTokens,
-		"status":        result.Status,
-		"tool_outputs":  make([]map[string]interface{}, 0),
+		"response":     result.FinalResponse,
+		"iterations":   result.Iterations,
+		"tokens_used":  result.TokensUsed.TotalTokens,
+		"status":       result.Status,
+		"tool_outputs": make([]map[string]interface{}, 0),
 	}
 
 	// Add reason if present

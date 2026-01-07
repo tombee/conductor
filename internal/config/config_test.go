@@ -397,9 +397,9 @@ func TestGetPrimaryProvider(t *testing.T) {
 			name: "multiple providers no tiers returns alphabetically first",
 			config: &Config{
 				Providers: ProvidersMap{
-					"zebra":    ProviderConfig{Type: "openai"},
+					"zebra":     ProviderConfig{Type: "openai"},
 					"anthropic": ProviderConfig{Type: "anthropic"},
-					"claude":   ProviderConfig{Type: "claude-code"},
+					"claude":    ProviderConfig{Type: "claude-code"},
 				},
 			},
 			expected: "anthropic",

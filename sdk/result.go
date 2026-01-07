@@ -29,11 +29,11 @@ type StepResult struct {
 type StepStatus string
 
 const (
-	StepStatusPending  StepStatus = "pending"
-	StepStatusRunning  StepStatus = "running"
-	StepStatusSuccess  StepStatus = "success"
-	StepStatusFailed   StepStatus = "failed"
-	StepStatusSkipped  StepStatus = "skipped"
+	StepStatusPending StepStatus = "pending"
+	StepStatusRunning StepStatus = "running"
+	StepStatusSuccess StepStatus = "success"
+	StepStatusFailed  StepStatus = "failed"
+	StepStatusSkipped StepStatus = "skipped"
 )
 
 // UsageStats tracks token usage across workflow execution.

@@ -36,7 +36,6 @@ import (
 
 	// Import integration package to trigger init() which registers integration factories
 	// This enables notion.create_database_item, github.list_issues, etc.
-	_ "github.com/tombee/conductor/internal/integration"
 	"github.com/tombee/conductor/internal/controller/api"
 	"github.com/tombee/conductor/internal/controller/auth"
 	"github.com/tombee/conductor/internal/controller/backend"
@@ -57,6 +56,7 @@ import (
 	"github.com/tombee/conductor/internal/controller/scheduler"
 	"github.com/tombee/conductor/internal/controller/trigger"
 	"github.com/tombee/conductor/internal/controller/webhook"
+	_ "github.com/tombee/conductor/internal/integration"
 	internalllm "github.com/tombee/conductor/internal/llm"
 	internallog "github.com/tombee/conductor/internal/log"
 	"github.com/tombee/conductor/internal/mcp"

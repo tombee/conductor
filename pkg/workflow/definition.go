@@ -72,7 +72,6 @@ type Definition struct {
 	Security *SecurityAccessConfig `yaml:"security,omitempty" json:"security,omitempty"`
 }
 
-
 // InputDefinition describes a workflow input parameter.
 // Inputs without a default value are required.
 type InputDefinition struct {
@@ -392,11 +391,6 @@ type AgentConfigDefinition struct {
 	// When false: report error to agent, allow recovery attempts (default)
 	StopOnError bool `yaml:"stop_on_error,omitempty" json:"stop_on_error,omitempty"`
 }
-
-
-
-
-
 
 // ParseDefinition parses a workflow definition from YAML bytes.
 func ParseDefinition(data []byte) (*Definition, error) {
@@ -1150,8 +1144,6 @@ func (a *AgentDefinition) Validate() error {
 	return nil
 }
 
-
-
 // expandOutputType expands built-in output types to their equivalent output_schema.
 // This implements T1.3: schema expansion logic for classification, decision, and extraction types.
 // This method should be called from ApplyDefaults before validation.
@@ -1357,7 +1349,6 @@ func validateSchemaDepthAndProperties(schema map[string]interface{}, depth int, 
 
 	return nil
 }
-
 
 // shorthandPattern matches action.operation or integration.operation keys like "file.read" or "github.list_issues"
 var shorthandPattern = regexp.MustCompile(`^([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)$`)

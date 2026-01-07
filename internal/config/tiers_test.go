@@ -21,12 +21,12 @@ import (
 
 func TestParseModelReference(t *testing.T) {
 	tests := []struct {
-		name          string
-		ref           string
-		wantProvider  string
-		wantModel     string
-		wantErr       bool
-		wantErrIs     error
+		name         string
+		ref          string
+		wantProvider string
+		wantModel    string
+		wantErr      bool
+		wantErrIs    error
 	}{
 		{
 			name:         "valid reference",
@@ -155,13 +155,13 @@ func TestValidateTierName(t *testing.T) {
 
 func TestResolveTier(t *testing.T) {
 	tests := []struct {
-		name          string
-		config        *Config
-		tierName      string
-		wantProvider  string
-		wantModel     string
-		wantErr       bool
-		wantErrIs     error
+		name         string
+		config       *Config
+		tierName     string
+		wantProvider string
+		wantModel    string
+		wantErr      bool
+		wantErrIs    error
 	}{
 		{
 			name: "resolve existing tier",

@@ -61,9 +61,9 @@ func (c *NotionIntegration) getBlocks(ctx context.Context, inputs map[string]int
 	content := strings.Join(textParts, "\n")
 
 	return c.ToResult(resp, map[string]interface{}{
-		"content":      content,
-		"block_count":  len(blocksResp.Results),
-		"raw_blocks":   blocksResp.Results,
+		"content":     content,
+		"block_count": len(blocksResp.Results),
+		"raw_blocks":  blocksResp.Results,
 	}), nil
 }
 
@@ -112,16 +112,16 @@ const (
 
 // Supported block types
 var supportedBlockTypes = map[string]bool{
-	"paragraph":           true,
-	"heading_1":           true,
-	"heading_2":           true,
-	"heading_3":           true,
-	"bulleted_list_item":  true,
-	"numbered_list_item":  true,
-	"to_do":               true,
-	"code":                true,
-	"quote":               true,
-	"divider":             true,
+	"paragraph":          true,
+	"heading_1":          true,
+	"heading_2":          true,
+	"heading_3":          true,
+	"bulleted_list_item": true,
+	"numbered_list_item": true,
+	"to_do":              true,
+	"code":               true,
+	"quote":              true,
+	"divider":            true,
 }
 
 // appendBlocks appends content blocks to an existing page.

@@ -64,14 +64,14 @@ type Run struct {
 	Output        map[string]any    `json:"output,omitempty"`
 	OutputFormats map[string]string `json:"output_formats,omitempty"` // Format for each output (markdown, json, etc.)
 	Error         string            `json:"error,omitempty"`
-	Progress      *Progress      `json:"progress,omitempty"`
-	StartedAt     *time.Time     `json:"started_at,omitempty"`
-	CompletedAt   *time.Time     `json:"completed_at,omitempty"`
-	CreatedAt     time.Time      `json:"created_at"`
-	Logs          []LogEntry     `json:"logs,omitempty"`
-	SourceURL     string         `json:"source_url,omitempty"` // Remote workflow source (for provenance)
-	Workspace     string         `json:"workspace,omitempty"`  // Workspace used for profile resolution
-	Profile       string         `json:"profile,omitempty"`    // Profile used for binding resolution
+	Progress      *Progress         `json:"progress,omitempty"`
+	StartedAt     *time.Time        `json:"started_at,omitempty"`
+	CompletedAt   *time.Time        `json:"completed_at,omitempty"`
+	CreatedAt     time.Time         `json:"created_at"`
+	Logs          []LogEntry        `json:"logs,omitempty"`
+	SourceURL     string            `json:"source_url,omitempty"` // Remote workflow source (for provenance)
+	Workspace     string            `json:"workspace,omitempty"`  // Workspace used for profile resolution
+	Profile       string            `json:"profile,omitempty"`    // Profile used for binding resolution
 
 	// Runtime overrides
 	Provider   string        `json:"provider,omitempty"`    // Provider override
@@ -140,23 +140,23 @@ type Progress struct {
 // LogEntry represents a log message from a run.
 type LogEntry struct {
 	Timestamp     time.Time      `json:"timestamp"`
-	Type          string         `json:"type,omitempty"`             // Event type: log, step_start, step_complete, status
-	Level         string         `json:"level,omitempty"`            // Log level for type=log entries
-	Message       string         `json:"message,omitempty"`          // Log message or status message
-	StepID        string         `json:"step_id,omitempty"`          // Step identifier
-	StepName      string         `json:"step_name,omitempty"`        // Human-readable step name
-	StepIndex     int            `json:"step_index,omitempty"`       // 0-based step index
-	TotalSteps    int            `json:"total_steps,omitempty"`      // Total number of steps
-	Status        string         `json:"status,omitempty"`           // For status events: running, completed, failed
-	Output        map[string]any `json:"output,omitempty"`           // Step output for step_complete events
-	CostUSD       float64        `json:"cost_usd,omitempty"`         // Cost for step_complete events
-	TokensIn      int            `json:"tokens_in,omitempty"`        // Input tokens for step_complete events
-	TokensOut     int            `json:"tokens_out,omitempty"`       // Output tokens for step_complete events
-	CacheCreation int            `json:"cache_creation,omitempty"`   // Cache creation tokens for step_complete events
-	CacheRead     int            `json:"cache_read,omitempty"`       // Cache read tokens for step_complete events
-	DurationMs    int64          `json:"duration_ms,omitempty"`      // Step duration in milliseconds
-	CorrelationID string         `json:"correlation_id,omitempty"`   // Correlation ID for distributed tracing
-	Error         string         `json:"error,omitempty"`            // Error message if failed
+	Type          string         `json:"type,omitempty"`           // Event type: log, step_start, step_complete, status
+	Level         string         `json:"level,omitempty"`          // Log level for type=log entries
+	Message       string         `json:"message,omitempty"`        // Log message or status message
+	StepID        string         `json:"step_id,omitempty"`        // Step identifier
+	StepName      string         `json:"step_name,omitempty"`      // Human-readable step name
+	StepIndex     int            `json:"step_index,omitempty"`     // 0-based step index
+	TotalSteps    int            `json:"total_steps,omitempty"`    // Total number of steps
+	Status        string         `json:"status,omitempty"`         // For status events: running, completed, failed
+	Output        map[string]any `json:"output,omitempty"`         // Step output for step_complete events
+	CostUSD       float64        `json:"cost_usd,omitempty"`       // Cost for step_complete events
+	TokensIn      int            `json:"tokens_in,omitempty"`      // Input tokens for step_complete events
+	TokensOut     int            `json:"tokens_out,omitempty"`     // Output tokens for step_complete events
+	CacheCreation int            `json:"cache_creation,omitempty"` // Cache creation tokens for step_complete events
+	CacheRead     int            `json:"cache_read,omitempty"`     // Cache read tokens for step_complete events
+	DurationMs    int64          `json:"duration_ms,omitempty"`    // Step duration in milliseconds
+	CorrelationID string         `json:"correlation_id,omitempty"` // Correlation ID for distributed tracing
+	Error         string         `json:"error,omitempty"`          // Error message if failed
 }
 
 // Config contains runner configuration.

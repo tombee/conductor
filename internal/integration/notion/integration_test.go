@@ -125,9 +125,9 @@ func TestNotionIntegration_CreatePage(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"object": "page",
-			"id":     "abc123def456789012345678901234ab",
-			"url":    "https://notion.so/page-abc123",
+			"object":       "page",
+			"id":           "abc123def456789012345678901234ab",
+			"url":          "https://notion.so/page-abc123",
 			"created_time": "2026-01-03T12:00:00.000Z",
 		})
 	}))
@@ -305,8 +305,8 @@ func TestNotionIntegration_QueryDatabase(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"object":  "list",
-			"results": []interface{}{},
+			"object":   "list",
+			"results":  []interface{}{},
 			"has_more": false,
 		})
 	}))
@@ -537,7 +537,7 @@ func TestNotionIntegration_UpsertPageWithBlocks(t *testing.T) {
 		// First call: get block children (to check for existing pages)
 		if r.Method == "GET" && r.URL.Path == "/blocks/abc123def456789012345678901234ab/children" {
 			json.NewEncoder(w).Encode(map[string]interface{}{
-				"object": "list",
+				"object":  "list",
 				"results": []interface{}{},
 			})
 			return
@@ -546,9 +546,9 @@ func TestNotionIntegration_UpsertPageWithBlocks(t *testing.T) {
 		// Second call: create page
 		if r.Method == "POST" && r.URL.Path == "/pages" {
 			json.NewEncoder(w).Encode(map[string]interface{}{
-				"object": "page",
-				"id":     "newpage123def456789012345678901234",
-				"url":    "https://notion.so/new-page",
+				"object":       "page",
+				"id":           "newpage123def456789012345678901234",
+				"url":          "https://notion.so/new-page",
 				"created_time": "2026-01-06T12:00:00.000Z",
 			})
 			return

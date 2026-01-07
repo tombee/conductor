@@ -206,4 +206,3 @@ func TestToOAuth2TransportConfig(t *testing.T) {
 		})
 	}
 }
-

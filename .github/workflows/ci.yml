@@ -28,8 +28,6 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    # Continue even if lint fails - golangci-lint doesn't support Go 1.25.5 yet
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -38,10 +36,16 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Check formatting
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "Code is not formatted. Run 'gofmt -w .' to fix."
+            gofmt -l .
+            exit 1
+          fi
 
   build:
     name: Build
@@ -94,8 +98,6 @@ jobs:
   docs-validate:
     name: Validate Documentation
     runs-on: ubuntu-latest
-    # Continue even if validation fails - markdown link checker has false positives on YAML code examples
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 

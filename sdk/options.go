@@ -212,4 +212,3 @@ func WithMCPServer(name string, config MCPConfig) Option {
 		return nil
 	}
 }
-

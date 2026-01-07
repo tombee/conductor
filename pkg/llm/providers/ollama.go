@@ -213,9 +213,9 @@ type ollamaModel struct {
 
 // ollamaChatRequest represents a request to POST /api/chat
 type ollamaChatRequest struct {
-	Model    string               `json:"model"`
-	Messages []ollamaChatMessage  `json:"messages"`
-	Stream   bool                 `json:"stream"`
+	Model    string              `json:"model"`
+	Messages []ollamaChatMessage `json:"messages"`
+	Stream   bool                `json:"stream"`
 }
 
 // ollamaChatMessage represents a single message in the chat

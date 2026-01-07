@@ -44,7 +44,7 @@ var (
 
 	// generatedKeyCache caches a generated key within a single process run
 	// This prevents generating multiple different keys when keychain is unavailable
-	generatedKeyCache []byte
+	generatedKeyCache   []byte
 	generatedKeyCacheMu sync.Mutex
 )
 

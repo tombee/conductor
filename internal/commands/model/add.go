@@ -97,8 +97,8 @@ Examples:
 
 				// Create model configuration
 				modelCfg := config.ModelConfig{
-					ContextWindow:     contextWindow,
-					InputPricePerMTok: inputPrice,
+					ContextWindow:      contextWindow,
+					InputPricePerMTok:  inputPrice,
 					OutputPricePerMTok: outputPrice,
 				}
 

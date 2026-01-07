@@ -46,7 +46,7 @@ type Config struct {
 	Security   security.SecurityConfig `yaml:"security"`   // Security framework settings
 
 	// Multi-provider configuration
-	Providers ProvidersMap `yaml:"providers,omitempty" json:"providers,omitempty"`
+	Providers                ProvidersMap  `yaml:"providers,omitempty" json:"providers,omitempty"`
 	AgentMappings            AgentMappings `yaml:"agent_mappings,omitempty" json:"agent_mappings,omitempty"`
 	AcknowledgedDefaults     []string      `yaml:"acknowledged_defaults,omitempty" json:"acknowledged_defaults,omitempty"`
 	SuppressUnmappedWarnings bool          `yaml:"suppress_unmapped_warnings,omitempty" json:"suppress_unmapped_warnings,omitempty"`
@@ -567,7 +567,6 @@ type Workspace struct {
 	DefaultProfile string `yaml:"default_profile,omitempty" json:"default_profile,omitempty"`
 }
 
-
 // LogConfig configures logging behavior.
 type LogConfig struct {
 	// Level sets the minimum log level (debug, info, warn, error).
@@ -585,7 +584,6 @@ type LogConfig struct {
 	// Default: false
 	AddSource bool `yaml:"add_source"`
 }
-
 
 // Default returns a Config with sensible defaults.
 func Default() *Config {

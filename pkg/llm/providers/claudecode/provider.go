@@ -184,9 +184,9 @@ func (p *Provider) executeSimple(ctx context.Context, req llm.CompletionRequest)
 
 	// Build response with usage stats
 	usage := llm.TokenUsage{
-		InputTokens:        cliResp.Usage.InputTokens,
-		OutputTokens:       cliResp.Usage.OutputTokens,
-		TotalTokens:        cliResp.Usage.InputTokens + cliResp.Usage.OutputTokens,
+		InputTokens:         cliResp.Usage.InputTokens,
+		OutputTokens:        cliResp.Usage.OutputTokens,
+		TotalTokens:         cliResp.Usage.InputTokens + cliResp.Usage.OutputTokens,
 		CacheCreationTokens: cliResp.Usage.CacheCreationInputTokens,
 		CacheReadTokens:     cliResp.Usage.CacheReadInputTokens,
 	}

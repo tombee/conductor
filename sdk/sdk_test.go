@@ -132,9 +132,9 @@ func TestWorkflowBuilder(t *testing.T) {
 	wf, err := sdk.NewWorkflow("test").
 		Input("name", TypeString).
 		Step("greet").LLM().
-			Model("claude-sonnet-4-20250514").
-			Prompt("Say hello to {{.inputs.name}}").
-			Done().
+		Model("claude-sonnet-4-20250514").
+		Prompt("Say hello to {{.inputs.name}}").
+		Done().
 		Build()
 
 	if err != nil {
@@ -389,4 +389,3 @@ func TestWorkflow_TemplateValidation(t *testing.T) {
 		t.Errorf("Build() should succeed with valid template reference, got: %v", err)
 	}
 }
-

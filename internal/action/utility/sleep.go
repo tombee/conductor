@@ -102,9 +102,9 @@ func (c *UtilityAction) sleep(ctx context.Context, inputs map[string]interface{}
 	return &Result{
 		Response: sleepDuration.Milliseconds(),
 		Metadata: map[string]interface{}{
-			"operation":            "sleep",
-			"requested_duration":   sleepDuration.String(),
-			"actual_duration_ms":   actualDuration.Milliseconds(),
+			"operation":             "sleep",
+			"requested_duration":    sleepDuration.String(),
+			"actual_duration_ms":    actualDuration.Milliseconds(),
 			"requested_duration_ms": sleepDuration.Milliseconds(),
 		},
 	}, nil

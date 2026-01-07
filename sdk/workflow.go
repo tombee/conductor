@@ -186,9 +186,9 @@ type stepDef struct {
 	maxConcurrency int
 
 	// Condition step fields
-	condition     string
-	thenSteps     []*stepDef
-	elseSteps     []*stepDef
+	condition string
+	thenSteps []*stepDef
+	elseSteps []*stepDef
 }
 
 // StepCount returns the number of steps in the workflow.

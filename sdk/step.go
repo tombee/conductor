@@ -383,16 +383,16 @@ type ConditionStepBuilder struct {
 // Then starts defining steps to execute if condition is true.
 func (c *ConditionStepBuilder) Then() *ConditionalBranchBuilder {
 	return &ConditionalBranchBuilder{
-		parent:   c,
-		isThen:   true,
+		parent: c,
+		isThen: true,
 	}
 }
 
 // Else starts defining steps to execute if condition is false.
 func (c *ConditionStepBuilder) Else() *ConditionalBranchBuilder {
 	return &ConditionalBranchBuilder{
-		parent:   c,
-		isThen:   false,
+		parent: c,
+		isThen: false,
 	}
 }
 

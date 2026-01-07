@@ -25,4 +25,3 @@ type MCPConfig struct {
 	RequestTimeout time.Duration // Max time for tool execution (default 30s)
 	MaxOutputSize  int64         // Max bytes tool can return (default 10MB)
 }
-

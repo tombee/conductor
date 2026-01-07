@@ -291,9 +291,9 @@ func (s *SDK) executeWorkflow(ctx context.Context, wf *Workflow, inputs map[stri
 			WorkflowID: wf.name,
 			StepID:     stepDef.id,
 			Data: map[string]any{
-				"step_tokens":       stepTokens,
-				"total_tokens":      result.Usage.TotalTokens,
-				"tokens_remaining":  tokenLimit - result.Usage.TotalTokens,
+				"step_tokens":      stepTokens,
+				"total_tokens":     result.Usage.TotalTokens,
+				"tokens_remaining": tokenLimit - result.Usage.TotalTokens,
 			},
 		})
 

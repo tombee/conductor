@@ -191,6 +191,6 @@ type SearchResult struct {
 	CreatedTime    string      `json:"created_time"`
 	LastEditedTime string      `json:"last_edited_time"`
 	URL            string      `json:"url,omitempty"`
-	Title          interface{} `json:"title,omitempty"`       // For databases
-	Properties     interface{} `json:"properties,omitempty"`  // For pages
+	Title          interface{} `json:"title,omitempty"`      // For databases
+	Properties     interface{} `json:"properties,omitempty"` // For pages
 }

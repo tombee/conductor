@@ -299,12 +299,12 @@ func TestTracedProvider_Stream(t *testing.T) {
 	// Verify usage attributes were set
 	attrs := span.Attributes
 	expectedAttrs := map[string]any{
-		"llm.provider":             "test-provider",
-		"llm.model":                "test-model",
-		"llm.response.request_id":  "req-456",
-		"llm.usage.input_tokens":   int64(15),
-		"llm.usage.output_tokens":  int64(25),
-		"llm.usage.total_tokens":   int64(40),
+		"llm.provider":            "test-provider",
+		"llm.model":               "test-model",
+		"llm.response.request_id": "req-456",
+		"llm.usage.input_tokens":  int64(15),
+		"llm.usage.output_tokens": int64(25),
+		"llm.usage.total_tokens":  int64(40),
 	}
 
 	for key, expectedValue := range expectedAttrs {

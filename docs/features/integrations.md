@@ -63,7 +63,7 @@ steps:
       summary: ${steps.generate.output}
       description: "Automated task creation"
       credentials:
-        url: https://company.atlassian.net
+        base_url: https://company.atlassian.net
         email: ${JIRA_EMAIL}
         token: ${JIRA_TOKEN}
 ```

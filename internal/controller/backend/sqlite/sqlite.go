@@ -90,10 +90,10 @@ func New(cfg Config) (*Backend, error) {
 // configurePragmas sets SQLite configuration options.
 func (b *Backend) configurePragmas(ctx context.Context, enableWAL bool) error {
 	pragmas := []string{
-		"PRAGMA foreign_keys=ON",           // Enable foreign key constraints
-		"PRAGMA busy_timeout=5000",         // 5 second timeout for lock contention
-		"PRAGMA auto_vacuum=INCREMENTAL",   // Incremental auto-vacuum for space reclamation
-		"PRAGMA synchronous=NORMAL",        // Balance between performance and durability
+		"PRAGMA foreign_keys=ON",         // Enable foreign key constraints
+		"PRAGMA busy_timeout=5000",       // 5 second timeout for lock contention
+		"PRAGMA auto_vacuum=INCREMENTAL", // Incremental auto-vacuum for space reclamation
+		"PRAGMA synchronous=NORMAL",      // Balance between performance and durability
 	}
 
 	if enableWAL {
