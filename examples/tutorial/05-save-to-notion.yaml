@@ -56,35 +56,17 @@ steps:
     output_schema:
       type: object
       properties:
-        overview:
-          type: array
-          items:
-            type: string
-          description: "Array of day summaries, one per day"
+        overview: { type: array, items: { type: string } }
         days:
           type: array
           items:
             type: object
             properties:
-              name:
-                type: string
-                description: "Day number: Day 1, Day 2, Day 3, etc."
-              breakfast:
-                type: string
-                description: "Complete breakfast recipe with ingredients and instructions"
-              lunch:
-                type: string
-                description: "Complete lunch recipe with ingredients and instructions"
-              dinner:
-                type: string
-                description: "Complete dinner recipe with ingredients and instructions"
-            required: [name, breakfast, lunch, dinner]
-        shopping_list:
-          type: array
-          items:
-            type: string
-          description: "Flat shopping list with items only (no category headers)"
-      required: [overview, days, shopping_list]
+              name: { type: string }
+              breakfast: { type: string }
+              lunch: { type: string }
+              dinner: { type: string }
+        shopping_list: { type: array, items: { type: string } }
     prompt: |
       Create a {{.inputs.diet}} meal plan for {{.inputs.days_to_plan}} days.
 
