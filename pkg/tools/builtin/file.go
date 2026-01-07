@@ -2,10 +2,13 @@
 package builtin
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/tombee/conductor/pkg/errors"
 	"github.com/tombee/conductor/pkg/security"
@@ -23,6 +26,108 @@ type FileTool struct {
 
 	// securityConfig provides enhanced security controls
 	securityConfig *security.FileSecurityConfig
+}
+
+// getIntParam extracts an integer parameter from inputs map with validation.
+// Returns the value, whether it was found, and any validation error.
+func getIntParam(inputs map[string]interface{}, name string) (int, bool, error) {
+	val, exists := inputs[name]
+	if !exists {
+		return 0, false, nil
+	}
+
+	// Handle nil explicitly (means parameter not set)
+	if val == nil {
+		return 0, false, nil
+	}
+
+	// Try to extract as int
+	switch v := val.(type) {
+	case int:
+		if v < 0 {
+			return 0, false, fmt.Errorf("%s must be a non-negative integer", name)
+		}
+		return v, true, nil
+	case float64:
+		// JSON unmarshaling typically produces float64 for numbers
+		if v < 0 {
+			return 0, false, fmt.Errorf("%s must be a non-negative integer", name)
+		}
+		return int(v), true, nil
+	default:
+		return 0, false, fmt.Errorf("%s must be an integer, got %T", name, val)
+	}
+}
+
+// readWithLimits reads a file with optional line-based limits for memory efficiency.
+// maxLines <= 0 means unlimited (read entire file).
+// offset specifies how many lines to skip before reading (0-indexed).
+func readWithLimits(reader io.Reader, maxLines, offset int) (content string, linesRead int, err error) {
+	scanner := bufio.NewScanner(reader)
+	var lines []string
+	currentLine := 0
+
+	for scanner.Scan() {
+		if offset > 0 && currentLine < offset {
+			currentLine++
+			continue
+		}
+
+		if maxLines > 0 && linesRead >= maxLines {
+			break
+		}
+
+		lines = append(lines, scanner.Text())
+		linesRead++
+		currentLine++
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", 0, err
+	}
+
+	return strings.Join(lines, "\n"), linesRead, nil
+}
+
+// countFileLines efficiently counts the total number of lines in a file.
+func countFileLines(path string) (int, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return 0, err
+	}
+	defer file.Close()
+
+	lineCount := 0
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lineCount++
+	}
+
+	if err := scanner.Err(); err != nil {
+		return 0, err
+	}
+
+	return lineCount, nil
+}
+
+// buildTruncationMetadata creates the structured truncation metadata.
+func buildTruncationMetadata(truncated bool, linesShown, totalLines, startLine int) map[string]interface{} {
+	metadata := map[string]interface{}{
+		"truncated":   truncated,
+		"lines_shown": linesShown,
+		"total_lines": totalLines,
+		"start_line":  startLine,
+	}
+
+	if truncated {
+		metadata["end_line"] = startLine + linesShown - 1
+		metadata["more_content"] = true
+	} else if linesShown > 0 {
+		metadata["end_line"] = startLine + linesShown - 1
+		metadata["more_content"] = false
+	}
+
+	return metadata
 }
 
 // NewFileTool creates a new file tool with default settings.
@@ -115,6 +220,14 @@ func (t *FileTool) Schema() *tools.Schema {
 					Type:        "string",
 					Description: "The content to write (required for write operation)",
 				},
+				"max_lines": {
+					Type:        "integer",
+					Description: "Maximum number of lines to read. If not specified, reads entire file. Only applies to read operations.",
+				},
+				"offset": {
+					Type:        "integer",
+					Description: "Number of lines to skip before reading (0-indexed). Default: 0. Only applies to read operations.",
+				},
 			},
 			Required: []string{"operation", "path"},
 		},
@@ -132,6 +245,10 @@ func (t *FileTool) Schema() *tools.Schema {
 				"error": {
 					Type:        "string",
 					Description: "Error message if operation failed",
+				},
+				"metadata": {
+					Type:        "object",
+					Description: "Additional metadata about the operation (e.g., truncation info for read operations)",
 				},
 			},
 		},
@@ -163,11 +280,35 @@ func (t *FileTool) Execute(ctx context.Context, inputs map[string]interface{}) (
 	// Execute based on operation
 	switch operation {
 	case "read":
+		// Extract and validate max_lines parameter
+		maxLines := 0 // 0 means unlimited
+		if ml, found, err := getIntParam(inputs, "max_lines"); err != nil {
+			return nil, &errors.ValidationError{
+				Field:      "max_lines",
+				Message:    err.Error(),
+				Suggestion: "Provide a non-negative integer for max_lines",
+			}
+		} else if found {
+			maxLines = ml
+		}
+
+		// Extract and validate offset parameter
+		offset := 0 // Default to 0
+		if off, found, err := getIntParam(inputs, "offset"); err != nil {
+			return nil, &errors.ValidationError{
+				Field:      "offset",
+				Message:    err.Error(),
+				Suggestion: "Provide a non-negative integer for offset",
+			}
+		} else if found {
+			offset = off
+		}
+
 		// Validate path for read access
 		if err := t.validatePath(path, security.ActionRead); err != nil {
 			return nil, fmt.Errorf("read access validation failed for path %s: %w", path, err)
 		}
-		return t.read(ctx, path)
+		return t.read(ctx, path, maxLines, offset)
 	case "write":
 		content, ok := inputs["content"].(string)
 		if !ok {
@@ -192,10 +333,10 @@ func (t *FileTool) Execute(ctx context.Context, inputs map[string]interface{}) (
 }
 
 // read reads a file and returns its content.
-func (t *FileTool) read(ctx context.Context, path string) (map[string]interface{}, error) {
+func (t *FileTool) read(ctx context.Context, path string, maxLines, offset int) (map[string]interface{}, error) {
 	// Use secure file opening if security config available
 	if t.securityConfig != nil && t.securityConfig.UseFileDescriptors {
-		return t.readSecure(ctx, path)
+		return t.readSecure(ctx, path, maxLines, offset)
 	}
 
 	// Check file size
@@ -207,14 +348,59 @@ func (t *FileTool) read(ctx context.Context, path string) (map[string]interface{
 		}, nil
 	}
 
-	if info.Size() > t.maxFileSize {
+	// Only check max file size for unlimited reads (backward compatibility)
+	if maxLines <= 0 && info.Size() > t.maxFileSize {
 		return map[string]interface{}{
 			"success": false,
 			"error":   fmt.Sprintf("file size (%d bytes) exceeds maximum allowed size (%d bytes)", info.Size(), t.maxFileSize),
 		}, nil
 	}
 
-	// Read file
+	// Handle line-limited reads
+	if maxLines > 0 || offset > 0 {
+		file, err := os.Open(path)
+		if err != nil {
+			return map[string]interface{}{
+				"success": false,
+				"error":   fmt.Sprintf("failed to open file: %v", err),
+			}, nil
+		}
+		defer file.Close()
+
+		content, linesRead, err := readWithLimits(file, maxLines, offset)
+		if err != nil {
+			return map[string]interface{}{
+				"success": false,
+				"error":   fmt.Sprintf("failed to read file: %v", err),
+			}, nil
+		}
+
+		// Count total lines if we read with limits and got results
+		totalLines := linesRead
+		truncated := false
+		if maxLines > 0 {
+			// Count total lines to determine if truncated
+			total, err := countFileLines(path)
+			if err == nil {
+				totalLines = total
+				truncated = (offset + linesRead) < total
+			}
+		}
+
+		result := map[string]interface{}{
+			"success": true,
+			"content": content,
+		}
+
+		// Add metadata if limits were specified
+		if maxLines > 0 || offset > 0 {
+			result["metadata"] = buildTruncationMetadata(truncated, linesRead, totalLines, offset)
+		}
+
+		return result, nil
+	}
+
+	// Unlimited read (backward compatibility path)
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return map[string]interface{}{
@@ -230,7 +416,7 @@ func (t *FileTool) read(ctx context.Context, path string) (map[string]interface{
 }
 
 // readSecure reads a file using secure file descriptor approach.
-func (t *FileTool) readSecure(ctx context.Context, path string) (map[string]interface{}, error) {
+func (t *FileTool) readSecure(ctx context.Context, path string, maxLines, offset int) (map[string]interface{}, error) {
 	// Open file securely
 	file, err := t.securityConfig.OpenFileSecure(path, os.O_RDONLY, 0)
 	if err != nil {
@@ -256,14 +442,50 @@ func (t *FileTool) readSecure(ctx context.Context, path string) (map[string]inte
 		maxSize = t.securityConfig.MaxFileSize
 	}
 
-	if info.Size() > maxSize {
+	// Only check max file size for unlimited reads (backward compatibility)
+	if maxLines <= 0 && info.Size() > maxSize {
 		return map[string]interface{}{
 			"success": false,
 			"error":   fmt.Sprintf("file size (%d bytes) exceeds maximum allowed size (%d bytes)", info.Size(), maxSize),
 		}, nil
 	}
 
-	// Read content
+	// Handle line-limited reads
+	if maxLines > 0 || offset > 0 {
+		content, linesRead, err := readWithLimits(file, maxLines, offset)
+		if err != nil {
+			return map[string]interface{}{
+				"success": false,
+				"error":   fmt.Sprintf("failed to read file: %v", err),
+			}, nil
+		}
+
+		// Count total lines if we read with limits and got results
+		totalLines := linesRead
+		truncated := false
+		if maxLines > 0 {
+			// Count total lines to determine if truncated
+			total, err := countFileLines(path)
+			if err == nil {
+				totalLines = total
+				truncated = (offset + linesRead) < total
+			}
+		}
+
+		result := map[string]interface{}{
+			"success": true,
+			"content": content,
+		}
+
+		// Add metadata if limits were specified
+		if maxLines > 0 || offset > 0 {
+			result["metadata"] = buildTruncationMetadata(truncated, linesRead, totalLines, offset)
+		}
+
+		return result, nil
+	}
+
+	// Unlimited read (backward compatibility path)
 	content := make([]byte, info.Size())
 	_, err = file.Read(content)
 	if err != nil {

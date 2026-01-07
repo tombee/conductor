@@ -873,3 +873,529 @@ func TestFileTool_DirectoryPermissions(t *testing.T) {
 		})
 	}
 }
+
+// Tests for line-limited reading functionality
+
+func TestFileTool_ReadWithMaxLines(t *testing.T) {
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "test.txt")
+
+	// Create a file with 10 lines
+	content := "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10"
+	err := os.WriteFile(testFile, []byte(content), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	tool := NewFileTool()
+	ctx := context.Background()
+
+	tests := []struct {
+		name            string
+		maxLines        int
+		expectedLines   int
+		expectedContent string
+		expectTruncated bool
+	}{
+		{
+			name:            "read 5 lines from 10",
+			maxLines:        5,
+			expectedLines:   5,
+			expectedContent: "line 1\nline 2\nline 3\nline 4\nline 5",
+			expectTruncated: true,
+		},
+		{
+			name:            "read all lines (max_lines equals total)",
+			maxLines:        10,
+			expectedLines:   10,
+			expectedContent: content,
+			expectTruncated: false,
+		},
+		{
+			name:            "read more lines than available",
+			maxLines:        20,
+			expectedLines:   10,
+			expectedContent: content,
+			expectTruncated: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := tool.Execute(ctx, map[string]interface{}{
+				"operation": "read",
+				"path":      testFile,
+				"max_lines": float64(tt.maxLines), // JSON unmarshaling produces float64
+			})
+			if err != nil {
+				t.Fatalf("Execute() error = %v", err)
+			}
+
+			if success, ok := result["success"].(bool); !ok || !success {
+				t.Errorf("Read failed: %v", result)
+			}
+
+			readContent, ok := result["content"].(string)
+			if !ok {
+				t.Fatal("Content is not a string")
+			}
+
+			if readContent != tt.expectedContent {
+				t.Errorf("Content = %q, want %q", readContent, tt.expectedContent)
+			}
+
+			// Check metadata
+			metadata, ok := result["metadata"].(map[string]interface{})
+			if !ok {
+				t.Fatal("Metadata is missing or not a map")
+			}
+
+			truncated, ok := metadata["truncated"].(bool)
+			if !ok {
+				t.Fatal("Metadata truncated field missing or not bool")
+			}
+			if truncated != tt.expectTruncated {
+				t.Errorf("Truncated = %v, want %v", truncated, tt.expectTruncated)
+			}
+
+			linesShown, ok := metadata["lines_shown"].(int)
+			if !ok {
+				t.Fatal("Metadata lines_shown field missing or not int")
+			}
+			if linesShown != tt.expectedLines {
+				t.Errorf("lines_shown = %d, want %d", linesShown, tt.expectedLines)
+			}
+
+			totalLines, ok := metadata["total_lines"].(int)
+			if !ok {
+				t.Fatal("Metadata total_lines field missing or not int")
+			}
+			if totalLines != 10 {
+				t.Errorf("total_lines = %d, want 10", totalLines)
+			}
+		})
+	}
+}
+
+func TestFileTool_ReadWithOffset(t *testing.T) {
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "test.txt")
+
+	// Create a file with 10 lines
+	content := "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10"
+	err := os.WriteFile(testFile, []byte(content), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	tool := NewFileTool()
+	ctx := context.Background()
+
+	tests := []struct {
+		name            string
+		offset          int
+		expectedContent string
+		expectedLines   int
+		expectMetadata  bool
+	}{
+		{
+			name:            "skip 5 lines",
+			offset:          5,
+			expectedContent: "line 6\nline 7\nline 8\nline 9\nline 10",
+			expectedLines:   5,
+			expectMetadata:  true,
+		},
+		{
+			name:            "skip 9 lines (read last line)",
+			offset:          9,
+			expectedContent: "line 10",
+			expectedLines:   1,
+			expectMetadata:  true,
+		},
+		{
+			name:            "offset equals file length",
+			offset:          10,
+			expectedContent: "",
+			expectedLines:   0,
+			expectMetadata:  true,
+		},
+		{
+			name:            "offset beyond file length",
+			offset:          20,
+			expectedContent: "",
+			expectedLines:   0,
+			expectMetadata:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := tool.Execute(ctx, map[string]interface{}{
+				"operation": "read",
+				"path":      testFile,
+				"offset":    float64(tt.offset),
+			})
+			if err != nil {
+				t.Fatalf("Execute() error = %v", err)
+			}
+
+			if success, ok := result["success"].(bool); !ok || !success {
+				t.Errorf("Read failed: %v", result)
+			}
+
+			readContent, ok := result["content"].(string)
+			if !ok {
+				t.Fatal("Content is not a string")
+			}
+
+			if readContent != tt.expectedContent {
+				t.Errorf("Content = %q, want %q", readContent, tt.expectedContent)
+			}
+
+			// Check metadata if expected
+			if tt.expectMetadata {
+				metadata, ok := result["metadata"].(map[string]interface{})
+				if !ok {
+					t.Fatal("Metadata is missing or not a map")
+				}
+
+				linesShown, ok := metadata["lines_shown"].(int)
+				if !ok {
+					t.Fatal("Metadata lines_shown field missing or not int")
+				}
+				if linesShown != tt.expectedLines {
+					t.Errorf("lines_shown = %d, want %d", linesShown, tt.expectedLines)
+				}
+
+				startLine, ok := metadata["start_line"].(int)
+				if !ok {
+					t.Fatal("Metadata start_line field missing or not int")
+				}
+				if startLine != tt.offset {
+					t.Errorf("start_line = %d, want %d", startLine, tt.offset)
+				}
+			}
+		})
+	}
+}
+
+func TestFileTool_ReadWithMaxLinesAndOffset(t *testing.T) {
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "test.txt")
+
+	// Create a file with 10 lines
+	content := "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10"
+	err := os.WriteFile(testFile, []byte(content), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	tool := NewFileTool()
+	ctx := context.Background()
+
+	tests := []struct {
+		name            string
+		offset          int
+		maxLines        int
+		expectedContent string
+		expectedLines   int
+		expectTruncated bool
+	}{
+		{
+			name:            "skip 3, read 4",
+			offset:          3,
+			maxLines:        4,
+			expectedContent: "line 4\nline 5\nline 6\nline 7",
+			expectedLines:   4,
+			expectTruncated: true,
+		},
+		{
+			name:            "skip 5, read 10 (but only 5 available)",
+			offset:          5,
+			maxLines:        10,
+			expectedContent: "line 6\nline 7\nline 8\nline 9\nline 10",
+			expectedLines:   5,
+			expectTruncated: false,
+		},
+		{
+			name:            "skip 8, read 1",
+			offset:          8,
+			maxLines:        1,
+			expectedContent: "line 9",
+			expectedLines:   1,
+			expectTruncated: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := tool.Execute(ctx, map[string]interface{}{
+				"operation": "read",
+				"path":      testFile,
+				"offset":    float64(tt.offset),
+				"max_lines": float64(tt.maxLines),
+			})
+			if err != nil {
+				t.Fatalf("Execute() error = %v", err)
+			}
+
+			if success, ok := result["success"].(bool); !ok || !success {
+				t.Errorf("Read failed: %v", result)
+			}
+
+			readContent, ok := result["content"].(string)
+			if !ok {
+				t.Fatal("Content is not a string")
+			}
+
+			if readContent != tt.expectedContent {
+				t.Errorf("Content = %q, want %q", readContent, tt.expectedContent)
+			}
+
+			// Check metadata
+			metadata, ok := result["metadata"].(map[string]interface{})
+			if !ok {
+				t.Fatal("Metadata is missing or not a map")
+			}
+
+			truncated, ok := metadata["truncated"].(bool)
+			if !ok {
+				t.Fatal("Metadata truncated field missing or not bool")
+			}
+			if truncated != tt.expectTruncated {
+				t.Errorf("Truncated = %v, want %v", truncated, tt.expectTruncated)
+			}
+
+			linesShown, ok := metadata["lines_shown"].(int)
+			if !ok {
+				t.Fatal("Metadata lines_shown field missing or not int")
+			}
+			if linesShown != tt.expectedLines {
+				t.Errorf("lines_shown = %d, want %d", linesShown, tt.expectedLines)
+			}
+		})
+	}
+}
+
+func TestFileTool_ParameterValidation(t *testing.T) {
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "test.txt")
+
+	err := os.WriteFile(testFile, []byte("test content"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	tool := NewFileTool()
+	ctx := context.Background()
+
+	tests := []struct {
+		name        string
+		maxLines    interface{}
+		offset      interface{}
+		expectError bool
+		errorField  string
+	}{
+		{
+			name:        "negative max_lines",
+			maxLines:    float64(-5),
+			expectError: true,
+			errorField:  "max_lines",
+		},
+		{
+			name:        "negative offset",
+			offset:      float64(-3),
+			expectError: true,
+			errorField:  "offset",
+		},
+		{
+			name:        "invalid max_lines type (string)",
+			maxLines:    "not a number",
+			expectError: true,
+			errorField:  "max_lines",
+		},
+		{
+			name:        "invalid offset type (string)",
+			offset:      "not a number",
+			expectError: true,
+			errorField:  "offset",
+		},
+		{
+			name:        "valid max_lines as int",
+			maxLines:    5,
+			expectError: false,
+		},
+		{
+			name:        "valid offset as int",
+			offset:      2,
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inputs := map[string]interface{}{
+				"operation": "read",
+				"path":      testFile,
+			}
+			if tt.maxLines != nil {
+				inputs["max_lines"] = tt.maxLines
+			}
+			if tt.offset != nil {
+				inputs["offset"] = tt.offset
+			}
+
+			result, err := tool.Execute(ctx, inputs)
+
+			if tt.expectError {
+				if err == nil {
+					t.Error("Expected error but got none")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
+				if success, ok := result["success"].(bool); !ok || !success {
+					t.Errorf("Read failed: %v", result)
+				}
+			}
+		})
+	}
+}
+
+func TestFileTool_BackwardCompatibility(t *testing.T) {
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "test.txt")
+
+	content := "line 1\nline 2\nline 3\nline 4\nline 5"
+	err := os.WriteFile(testFile, []byte(content), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	tool := NewFileTool()
+	ctx := context.Background()
+
+	t.Run("read without parameters returns full file", func(t *testing.T) {
+		result, err := tool.Execute(ctx, map[string]interface{}{
+			"operation": "read",
+			"path":      testFile,
+		})
+		if err != nil {
+			t.Fatalf("Execute() error = %v", err)
+		}
+
+		if success, ok := result["success"].(bool); !ok || !success {
+			t.Errorf("Read failed: %v", result)
+		}
+
+		readContent, ok := result["content"].(string)
+		if !ok {
+			t.Fatal("Content is not a string")
+		}
+
+		if readContent != content {
+			t.Errorf("Content = %q, want %q", readContent, content)
+		}
+
+		// Should not have metadata for unlimited read
+		if _, hasMetadata := result["metadata"]; hasMetadata {
+			t.Error("Unexpected metadata for unlimited read")
+		}
+	})
+
+	t.Run("explicit nil max_lines means unlimited", func(t *testing.T) {
+		result, err := tool.Execute(ctx, map[string]interface{}{
+			"operation": "read",
+			"path":      testFile,
+			"max_lines": nil,
+		})
+		if err != nil {
+			t.Fatalf("Execute() error = %v", err)
+		}
+
+		if success, ok := result["success"].(bool); !ok || !success {
+			t.Errorf("Read failed: %v", result)
+		}
+
+		readContent, ok := result["content"].(string)
+		if !ok {
+			t.Fatal("Content is not a string")
+		}
+
+		if readContent != content {
+			t.Errorf("Content = %q, want %q", readContent, content)
+		}
+	})
+}
+
+func TestFileTool_EmptyFileWithLimits(t *testing.T) {
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "empty.txt")
+
+	// Create empty file
+	err := os.WriteFile(testFile, []byte(""), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	tool := NewFileTool()
+	ctx := context.Background()
+
+	tests := []struct {
+		name     string
+		maxLines int
+		offset   int
+	}{
+		{"empty with max_lines", 10, 0},
+		{"empty with offset", 0, 5},
+		{"empty with both", 10, 5},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inputs := map[string]interface{}{
+				"operation": "read",
+				"path":      testFile,
+			}
+			if tt.maxLines > 0 {
+				inputs["max_lines"] = float64(tt.maxLines)
+			}
+			if tt.offset > 0 {
+				inputs["offset"] = float64(tt.offset)
+			}
+
+			result, err := tool.Execute(ctx, inputs)
+			if err != nil {
+				t.Fatalf("Execute() error = %v", err)
+			}
+
+			if success, ok := result["success"].(bool); !ok || !success {
+				t.Errorf("Read failed: %v", result)
+			}
+
+			readContent, ok := result["content"].(string)
+			if !ok {
+				t.Fatal("Content is not a string")
+			}
+
+			if readContent != "" {
+				t.Errorf("Expected empty content, got %q", readContent)
+			}
+
+			// Check metadata indicates empty file
+			metadata, ok := result["metadata"].(map[string]interface{})
+			if !ok {
+				t.Fatal("Metadata is missing or not a map")
+			}
+
+			linesShown, ok := metadata["lines_shown"].(int)
+			if !ok {
+				t.Fatal("Metadata lines_shown field missing or not int")
+			}
+			if linesShown != 0 {
+				t.Errorf("lines_shown = %d, want 0", linesShown)
+			}
+		})
+	}
+}
