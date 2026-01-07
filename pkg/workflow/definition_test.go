@@ -880,3 +880,169 @@ func contains(s, substr string) bool {
 	}
 	return false
 }
+
+func TestParallelShorthandSyntax(t *testing.T) {
+	tests := []struct {
+		name       string
+		yaml       string
+		wantErr    bool
+		validate   func(t *testing.T, def *Definition)
+	}{
+		{
+			name: "basic parallel shorthand",
+			yaml: `
+name: test
+steps:
+  - id: reviews
+    parallel:
+      - id: step1
+        type: llm
+        prompt: "First task"
+      - id: step2
+        type: llm
+        prompt: "Second task"
+`,
+			wantErr: false,
+			validate: func(t *testing.T, def *Definition) {
+				if len(def.Steps) != 1 {
+					t.Errorf("expected 1 step, got %d", len(def.Steps))
+					return
+				}
+				step := def.Steps[0]
+				if step.Type != StepTypeParallel {
+					t.Errorf("expected type parallel, got %s", step.Type)
+				}
+				if step.ID != "reviews" {
+					t.Errorf("expected id reviews, got %s", step.ID)
+				}
+				if len(step.Steps) != 2 {
+					t.Errorf("expected 2 nested steps, got %d", len(step.Steps))
+				}
+			},
+		},
+		{
+			name: "parallel shorthand with max_concurrency",
+			yaml: `
+name: test
+steps:
+  - id: batch
+    parallel:
+      - id: task1
+        type: llm
+        prompt: "Task 1"
+      - id: task2
+        type: llm
+        prompt: "Task 2"
+    max_concurrency: 5
+`,
+			wantErr: false,
+			validate: func(t *testing.T, def *Definition) {
+				step := def.Steps[0]
+				if step.MaxConcurrency != 5 {
+					t.Errorf("expected max_concurrency 5, got %d", step.MaxConcurrency)
+				}
+			},
+		},
+		{
+			name: "parallel shorthand with foreach",
+			yaml: `
+name: test
+steps:
+  - id: process
+    parallel:
+      - id: handle
+        type: llm
+        prompt: "Process {{.item}}"
+    foreach: "{{.inputs.items}}"
+`,
+			wantErr: false,
+			validate: func(t *testing.T, def *Definition) {
+				step := def.Steps[0]
+				if step.Foreach != "{{.inputs.items}}" {
+					t.Errorf("expected foreach '{{.inputs.items}}', got %s", step.Foreach)
+				}
+			},
+		},
+		{
+			name: "parallel shorthand with nested action shorthand",
+			yaml: `
+name: test
+steps:
+  - id: files
+    parallel:
+      - id: read1
+        file.read: ./config.json
+      - id: read2
+        file.read: ./data.json
+`,
+			wantErr: false,
+			validate: func(t *testing.T, def *Definition) {
+				step := def.Steps[0]
+				if len(step.Steps) != 2 {
+					t.Errorf("expected 2 nested steps, got %d", len(step.Steps))
+					return
+				}
+				// Nested steps should have action shorthand parsed
+				if step.Steps[0].Type != StepTypeIntegration {
+					t.Errorf("expected nested step type integration, got %s", step.Steps[0].Type)
+				}
+				if step.Steps[0].Action != "file" {
+					t.Errorf("expected nested step action file, got %s", step.Steps[0].Action)
+				}
+			},
+		},
+		{
+			name: "parallel shorthand empty array fails",
+			yaml: `
+name: test
+steps:
+  - id: empty
+    parallel: []
+`,
+			wantErr: true,
+		},
+		{
+			name: "parallel shorthand non-array fails",
+			yaml: `
+name: test
+steps:
+  - id: invalid
+    parallel: "not an array"
+`,
+			wantErr: true,
+		},
+		{
+			name: "explicit type parallel still works",
+			yaml: `
+name: test
+steps:
+  - id: explicit
+    type: parallel
+    steps:
+      - id: step1
+        type: llm
+        prompt: "Task"
+`,
+			wantErr: false,
+			validate: func(t *testing.T, def *Definition) {
+				step := def.Steps[0]
+				if step.Type != StepTypeParallel {
+					t.Errorf("expected type parallel, got %s", step.Type)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			def, err := ParseDefinition([]byte(tt.yaml))
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseDefinition() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err == nil && tt.validate != nil {
+				tt.validate(t, def)
+			}
+		})
+	}
+}
