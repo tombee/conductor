@@ -75,16 +75,11 @@ func TestAnthropicComplete_RealAPI(t *testing.T) {
 	}
 
 	// Track cost
-	modelInfo, err := provider.GetModelInfo(resp.Model)
-	if err != nil {
-		t.Fatalf("Failed to get model info: %v", err)
-	}
-
 	if err := tracker.Record(resp.Usage); err != nil {
 		t.Fatalf("Cost tracking failed: %v", err)
 	}
 
-	t.Logf("Test cost: $%.4f (model: %s, tokens: %d)", tracker.GetTestCost(), resp.Model, resp.Usage.TotalTokens)
+	t.Logf("Test tokens: %d (model: %s)", tracker.GetTestTokens(), resp.Model)
 }
 
 // TestAnthropicStream_RealAPI tests real streaming completion from Anthropic.
@@ -161,16 +156,11 @@ func TestAnthropicStream_RealAPI(t *testing.T) {
 		}
 
 		// Track cost
-		modelInfo, err := provider.GetModelInfo(model)
-		if err != nil {
-			t.Fatalf("Failed to get model info: %v", err)
-		}
-
 		if err := tracker.Record(*finalUsage); err != nil {
 			t.Fatalf("Cost tracking failed: %v", err)
 		}
 
-		t.Logf("Stream test cost: $%.4f (chunks: %d, tokens: %d)", tracker.GetTestCost(), chunkCount, finalUsage.TotalTokens)
+		t.Logf("Stream test tokens: %d (chunks: %d)", tracker.GetTestTokens(), chunkCount)
 	}
 }
 
@@ -238,16 +228,11 @@ func TestAnthropicToolCalling_RealAPI(t *testing.T) {
 	}
 
 	// Track cost
-	modelInfo, err := provider.GetModelInfo(resp.Model)
-	if err != nil {
-		t.Fatalf("Failed to get model info: %v", err)
-	}
-
 	if err := tracker.Record(resp.Usage); err != nil {
 		t.Fatalf("Cost tracking failed: %v", err)
 	}
 
-	t.Logf("Tool calling test cost: $%.4f", tracker.GetTestCost())
+	t.Logf("Tool calling test tokens: %d", tracker.GetTestTokens())
 }
 
 // TestAnthropicErrorHandling_RealAPI tests error handling with real API.
