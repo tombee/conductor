@@ -790,7 +790,7 @@ func TestValidateInputs(t *testing.T) {
 				"name": "test",
 			},
 			inputDefs: []workflow.InputDefinition{
-				{Name: "name", Type: "string", Required: true},
+				{Name: "name", Type: "string"},
 			},
 			wantErr: false,
 		},
@@ -798,7 +798,7 @@ func TestValidateInputs(t *testing.T) {
 			name:   "missing required input",
 			inputs: map[string]any{},
 			inputDefs: []workflow.InputDefinition{
-				{Name: "name", Type: "string", Required: true},
+				{Name: "name", Type: "string"},
 			},
 			wantErr: true,
 			errMsg:  "required input \"name\" is missing",
@@ -809,8 +809,8 @@ func TestValidateInputs(t *testing.T) {
 				"required": "value",
 			},
 			inputDefs: []workflow.InputDefinition{
-				{Name: "required", Type: "string", Required: true},
-				{Name: "optional", Type: "string", Required: false},
+				{Name: "required", Type: "string"},
+				{Name: "optional", Type: "string", Default: ""},
 			},
 			wantErr: false,
 		},
@@ -922,7 +922,7 @@ func TestValidateInputs(t *testing.T) {
 			name:   "input with default not required",
 			inputs: map[string]any{},
 			inputDefs: []workflow.InputDefinition{
-				{Name: "optional", Type: "string", Required: true, Default: "default-value"},
+				{Name: "optional", Type: "string", Default: "default-value"},
 			},
 			wantErr: false,
 		},

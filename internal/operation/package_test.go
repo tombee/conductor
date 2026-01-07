@@ -18,8 +18,9 @@ func TestNewPackageIntegration(t *testing.T) {
 		{
 			name: "github integration with auth",
 			def: &workflow.IntegrationDefinition{
-				Name: "github",
-				From: "integrations/github",
+				Name:    "github",
+				From:    "integrations/github",
+				BaseURL: "https://api.github.com",
 				Auth: &workflow.AuthDefinition{
 					Type:  "bearer",
 					Token: "ghp_test123",
@@ -43,8 +44,9 @@ func TestNewPackageIntegration(t *testing.T) {
 		{
 			name: "slack integration",
 			def: &workflow.IntegrationDefinition{
-				Name: "slack",
-				From: "integrations/slack",
+				Name:    "slack",
+				From:    "integrations/slack",
+				BaseURL: "https://slack.com/api",
 				Auth: &workflow.AuthDefinition{
 					Type:  "bearer",
 					Token: "xoxb-test123",
@@ -69,8 +71,9 @@ func TestNewPackageIntegration(t *testing.T) {
 		{
 			name: "discord integration",
 			def: &workflow.IntegrationDefinition{
-				Name: "discord",
-				From: "integrations/discord",
+				Name:    "discord",
+				From:    "integrations/discord",
+				BaseURL: "https://discord.com/api/v10",
 				Auth: &workflow.AuthDefinition{
 					Type:  "bearer",
 					Token: "Bot MjM4NDk0NzU2NTIxMjY",

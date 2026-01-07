@@ -285,6 +285,11 @@ providers:
 }
 
 func TestWriteConfigWithSecrets(t *testing.T) {
+	// Skip test if keychain is not available (e.g., on Linux CI)
+	if !isKeychainAvailable() {
+		t.Skip("keychain not available on this system")
+	}
+
 	ctx := context.Background()
 
 	// Create a temporary directory for the test
@@ -361,4 +366,18 @@ func containsMiddle(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// isKeychainAvailable checks if the system keychain is accessible.
+// Returns false on systems without a keychain (e.g., headless Linux CI).
+func isKeychainAvailable() bool {
+	resolver := createSecretResolver()
+	// Try to access the keychain - if it fails with anything other than
+	// "not found", the keychain is unavailable
+	_, err := resolver.Get(context.Background(), "__keychain_availability_test__")
+	if err == nil {
+		return true
+	}
+	// If the error is "not found", the keychain is available but empty
+	return strings.Contains(err.Error(), "not found")
 }
