@@ -169,6 +169,10 @@ type StepDefinition struct {
 	// Only valid for type: integration steps
 	Operation string `yaml:"operation,omitempty" json:"operation,omitempty"`
 
+	// If is a simplified condition expression (ergonomic alias for condition.expression)
+	// Mutually exclusive with Condition field
+	If string `yaml:"if,omitempty" json:"if,omitempty"`
+
 	// Condition defines when this step should execute
 	Condition *ConditionDefinition `yaml:"condition,omitempty" json:"condition,omitempty"`
 
@@ -1484,6 +1488,22 @@ func (s *StepDefinition) UnmarshalYAML(unmarshal func(interface{}) error) error 
 	// Check if ID was explicitly set in the raw map
 	if _, ok := raw["id"]; ok {
 		s.hasExplicitID = true
+	}
+
+	// Validate mutual exclusivity of 'if' and 'condition' BEFORE normalization
+	if s.If != "" && s.Condition != nil {
+		// If condition has any content (expression, then_steps, or else_steps), it's an error
+		if s.Condition.Expression != "" || len(s.Condition.ThenSteps) > 0 || len(s.Condition.ElseSteps) > 0 {
+			return fmt.Errorf("'if' and 'condition' fields are mutually exclusive - use only one")
+		}
+	}
+
+	// Normalize 'if' field to 'condition.expression'
+	if s.If != "" {
+		if s.Condition == nil {
+			s.Condition = &ConditionDefinition{}
+		}
+		s.Condition.Expression = s.If
 	}
 
 	return nil

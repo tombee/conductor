@@ -18,9 +18,10 @@ Progressive meal planning workflows from the [documentation tutorial](../docs/tu
 
 Complete real-world workflows demonstrating best practices:
 
-| Directory | Description |
-|-----------|-------------|
+| File | Description |
+|------|-------------|
 | `showcase/code-review.yaml` | Multi-persona code review |
+| `showcase/conditional-workflow.yaml` | Conditional execution patterns with `if` field |
 | `showcase/issue-triage.yaml` | GitHub issue classification |
 | `showcase/slack-notify.yaml` | Formatted Slack notifications |
 

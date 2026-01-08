@@ -470,3 +470,105 @@ func TestEvaluator_LengthFunction(t *testing.T) {
 		})
 	}
 }
+
+func TestEvaluator_BooleanEnforcement(t *testing.T) {
+	e := New()
+
+	tests := []struct {
+		name    string
+		expr    string
+		ctx     map[string]interface{}
+		want    bool
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "nil evaluates to false",
+			expr: `inputs.value`,
+			ctx: map[string]interface{}{
+				"inputs": map[string]interface{}{
+					"value": nil,
+				},
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "nil in comparison still works",
+			expr: `inputs.value == nil`,
+			ctx: map[string]interface{}{
+				"inputs": map[string]interface{}{
+					"value": nil,
+				},
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "string literal produces error",
+			expr: `"string"`,
+			ctx:  map[string]interface{}{},
+			// This will fail at compile time with expr.AsBool()
+			wantErr: true,
+			errMsg:  "expected bool",
+		},
+		{
+			name: "integer literal produces error",
+			expr: `42`,
+			ctx:  map[string]interface{}{},
+			// This will fail at compile time with expr.AsBool()
+			wantErr: true,
+			errMsg:  "expected bool",
+		},
+		{
+			name: "valid boolean expression",
+			expr: `inputs.enabled == true`,
+			ctx: map[string]interface{}{
+				"inputs": map[string]interface{}{
+					"enabled": true,
+				},
+			},
+			want:    true,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := e.Evaluate(tt.expr, tt.ctx)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg)
+				}
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func TestEvaluator_NilHandling(t *testing.T) {
+	e := New()
+
+	// Test that nil values in boolean context evaluate to false
+	ctx := map[string]interface{}{
+		"inputs": map[string]interface{}{
+			"nilValue":   nil,
+			"trueValue":  true,
+			"falseValue": false,
+		},
+	}
+
+	// Direct nil reference should evaluate to false (not error)
+	result, err := e.Evaluate(`inputs.nilValue`, ctx)
+	require.NoError(t, err)
+	assert.False(t, result, "nil should evaluate to false in boolean context")
+
+	// Missing key should also evaluate to false
+	result, err = e.Evaluate(`inputs.missingKey`, ctx)
+	require.NoError(t, err)
+	assert.False(t, result, "missing key should evaluate to false in boolean context")
+}

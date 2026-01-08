@@ -70,11 +70,16 @@ func (e *Evaluator) Evaluate(expression string, ctx map[string]interface{}) (boo
 		}
 	}
 
+	// Handle nil as false in boolean context
+	if result == nil {
+		return false, nil
+	}
+
 	boolResult, ok := result.(bool)
 	if !ok {
 		return false, &errors.ValidationError{
 			Field:      "expression",
-			Message:    fmt.Sprintf("expression must return boolean, got %T (%v)", result, result),
+			Message:    fmt.Sprintf("Condition must evaluate to boolean, got %T", result),
 			Suggestion: "use comparison operators (==, !=, <, >, etc.) or boolean functions",
 		}
 	}

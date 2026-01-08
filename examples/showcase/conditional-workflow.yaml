@@ -1,0 +1,189 @@
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
+name: conditional-workflow
+description: Demonstrates conditional step execution patterns using the if field
+
+inputs:
+  - name: environment
+    type: string
+    required: true
+    description: Target environment (development, staging, production)
+
+  - name: run_tests
+    type: boolean
+    required: false
+    description: Whether to run test suite
+
+  - name: features
+    type: array
+    required: false
+    description: List of feature flags to enable
+
+steps:
+  # Example 1: Conditional based on workflow input
+  - id: development_setup
+    name: Development Environment Setup
+    if: "inputs.environment == 'development'"
+    type: shell
+    command: |
+      echo "Setting up development environment"
+      echo "Debug mode: enabled"
+
+  - id: production_setup
+    name: Production Environment Setup
+    if: "inputs.environment == 'production'"
+    type: shell
+    command: |
+      echo "Setting up production environment"
+      echo "Debug mode: disabled"
+      echo "Monitoring: enabled"
+
+  # Example 2: Conditional based on boolean input
+  - id: run_test_suite
+    name: Run Tests
+    if: "inputs.run_tests == true"
+    type: shell
+    command: |
+      echo "Running test suite..."
+      echo "Tests: PASSED"
+
+  - id: skip_tests_message
+    name: Skip Tests Message
+    if: "inputs.run_tests == false || inputs.run_tests == nil"
+    type: llm
+    model: fast
+    prompt: "Generate a message explaining that tests were skipped."
+
+  # Example 3: Environment detection
+  - id: check_docker
+    name: Check Docker Availability
+    type: shell
+    command: |
+      if command -v docker &> /dev/null; then
+        echo "available"
+      else
+        echo "unavailable"
+      fi
+
+  - id: docker_deploy
+    name: Deploy with Docker
+    if: "{{.steps.check_docker.stdout}} == 'available'"
+    type: shell
+    command: |
+      echo "Deploying with Docker..."
+      echo "Container started: app-${ENVIRONMENT}"
+
+  - id: manual_deploy
+    name: Manual Deployment
+    if: "{{.steps.check_docker.stdout}} == 'unavailable'"
+    type: shell
+    command: |
+      echo "Docker not available, using manual deployment"
+      echo "Starting application manually..."
+
+  # Example 4: Array membership check
+  - id: security_scan
+    name: Security Scan
+    if: "'security' in inputs.features"
+    type: llm
+    model: balanced
+    prompt: |
+      Perform a security scan analysis.
+
+      Environment: {{.inputs.environment}}
+      Docker status: {{.steps.check_docker.stdout}}
+
+      Provide a security checklist for this deployment.
+
+  - id: performance_analysis
+    name: Performance Analysis
+    if: "'performance' in inputs.features || inputs.environment == 'production'"
+    type: llm
+    model: balanced
+    prompt: |
+      Analyze performance considerations for this deployment.
+
+      Environment: {{.inputs.environment}}
+      Docker: {{.steps.check_docker.stdout}}
+
+      Provide performance optimization recommendations.
+
+  # Example 5: Chained conditions with boolean operators
+  - id: production_validation
+    name: Production Pre-Deploy Validation
+    if: "inputs.environment == 'production' && {{.steps.check_docker.stdout}} == 'available' && (inputs.run_tests == true || inputs.run_tests == nil)"
+    type: shell
+    command: |
+      echo "Running production validation checks..."
+      echo "✓ Environment: production"
+      echo "✓ Docker: available"
+      echo "✓ Tests: completed or skipped intentionally"
+      echo "Validation: PASSED"
+
+  # Example 6: Conditional based on previous step status
+  - id: check_validation
+    name: Check Validation Status
+    if: "steps.production_validation.status == 'success'"
+    type: llm
+    model: fast
+    prompt: |
+      The production validation passed successfully.
+      Generate a deployment approval message.
+
+  # Example 7: Error recovery pattern
+  - id: deployment
+    name: Deploy Application
+    if: "inputs.environment != 'development'"
+    type: shell
+    command: |
+      echo "Deploying to {{.inputs.environment}}..."
+      # Simulate deployment
+      if [ "{{.inputs.environment}}" = "production" ]; then
+        echo "Production deployment complete"
+        exit 0
+      else
+        echo "Staging deployment complete"
+        exit 0
+      fi
+
+  - id: deployment_success
+    name: Deployment Success Notification
+    if: "steps.deployment.status == 'success'"
+    type: llm
+    model: fast
+    prompt: |
+      Generate a success notification for the deployment to {{.inputs.environment}}.
+      Include the key steps that were executed.
+
+  - id: deployment_failure
+    name: Deployment Failure Recovery
+    if: "steps.deployment.status != 'success' && steps.deployment.status != 'skipped'"
+    type: llm
+    model: fast
+    prompt: |
+      The deployment to {{.inputs.environment}} failed.
+      Generate a recovery plan and rollback instructions.
+
+  # Example 8: Negation operator
+  - id: non_production_notice
+    name: Non-Production Notice
+    if: "!inputs.environment == 'production'"
+    type: shell
+    command: |
+      echo "Note: This is a non-production environment"
+      echo "Additional logging and debugging enabled"
+
+outputs:
+  - name: environment
+    type: string
+    value: "{{.inputs.environment}}"
+    description: Target environment
+
+  - name: docker_status
+    type: string
+    value: "{{.steps.check_docker.stdout}}"
+    description: Docker availability status
+
+  - name: deployment_result
+    type: string
+    value: "{{.steps.deployment.stdout}}"
+    description: Deployment result message
