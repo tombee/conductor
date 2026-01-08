@@ -37,6 +37,11 @@ func TestKeychainProvider_Resolve(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("not found", func(t *testing.T) {
+		// Skip test if keychain is not available
+		if !provider.available {
+			t.Skip("keychain not available on this system")
+		}
+
 		_, err := provider.Resolve(ctx, "nonexistent-key")
 		if err == nil {
 			t.Fatal("expected error for nonexistent key, got nil")
