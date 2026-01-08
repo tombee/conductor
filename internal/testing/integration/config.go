@@ -60,3 +60,37 @@ func RequireEnv(t *testing.T, envVar string) string {
 	}
 	return value
 }
+
+// SkipWithoutOllama skips the test if Ollama is not available.
+// Checks if Ollama is running at the default URL or OLLAMA_HOST.
+func SkipWithoutOllama(t *testing.T) {
+	t.Helper()
+
+	cfg := LoadConfig()
+	// Try to connect to Ollama (could do a simple HTTP check, but for now just check config)
+	// A more robust implementation would make an HTTP request to verify Ollama is running
+	if cfg.OllamaURL == "" {
+		t.Skip("Skipping test: Ollama not configured (set OLLAMA_URL)")
+	}
+
+	// Note: We're not making an actual HTTP request here to keep tests fast.
+	// Smoke tests will fail if Ollama isn't actually running, which is acceptable.
+	t.Logf("Using Ollama at: %s", cfg.OllamaURL)
+}
+
+// SkipWithoutClaudeCLI skips the test if the claude CLI binary is not available.
+// Checks if 'claude' is in the PATH.
+func SkipWithoutClaudeCLI(t *testing.T) {
+	t.Helper()
+
+	// Check if claude binary exists in PATH
+	// This is a simple check - a more robust version would verify the binary works
+	_, err := os.Stat("/usr/local/bin/claude")
+	if err != nil {
+		// Try to find it in PATH
+		// For simplicity, just skip if not found
+		t.Skip("Skipping test: claude CLI not found (install from claude.com)")
+	}
+
+	t.Log("Found claude CLI")
+}

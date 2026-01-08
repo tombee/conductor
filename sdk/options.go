@@ -57,6 +57,27 @@ func WithAnthropicProvider(apiKey string) Option {
 	}
 }
 
+// WithOllamaProvider creates an Ollama provider with a custom base URL.
+// If baseURL is empty, defaults to http://localhost:11434.
+// Ollama is a local LLM provider that doesn't require API keys.
+//
+// Example:
+//
+//	s, err := sdk.New(
+//		sdk.WithOllamaProvider("http://localhost:11434"),
+//	)
+func WithOllamaProvider(baseURL string) Option {
+	return func(s *SDK) error {
+		provider, err := providers.NewOllamaProvider(baseURL)
+		if err != nil {
+			return fmt.Errorf("create Ollama provider: %w", err)
+		}
+
+		s.providers.Register(provider)
+		return nil
+	}
+}
+
 // WithLogger sets a custom structured logger.
 // If not set, logs go to slog.Default().
 //

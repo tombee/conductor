@@ -1,0 +1,18 @@
+name: simple-llm
+description: Simple LLM workflow for E2E testing
+
+inputs:
+  - name: prompt
+    type: string
+    description: The prompt to send to the LLM
+
+steps:
+  - id: generate
+    type: llm
+    model: mock
+    prompt: "{{.inputs.prompt}}"
+
+outputs:
+  - name: result
+    type: string
+    value: "{{.steps.generate.response}}"

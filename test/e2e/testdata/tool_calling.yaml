@@ -1,0 +1,31 @@
+name: tool-calling
+description: Workflow testing tool calls for E2E testing
+
+inputs:
+  - name: query
+    type: string
+    description: Query that may require tool use
+
+steps:
+  - id: analyze
+    type: llm
+    model: mock
+    prompt: |
+      Analyze this query: {{.inputs.query}}
+      If you need more information, you can call tools.
+
+  - id: process_response
+    type: llm
+    model: mock
+    prompt: |
+      Based on this analysis: {{.steps.analyze.response}}
+      Provide a final answer.
+
+outputs:
+  - name: analysis
+    type: string
+    value: "{{.steps.analyze.response}}"
+
+  - name: final_answer
+    type: string
+    value: "{{.steps.process_response.response}}"
