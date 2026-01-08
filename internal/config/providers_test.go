@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	conductorerrors "github.com/tombee/conductor/pkg/errors"
+	"github.com/tombee/conductor/internal/secrets"
 )
 
 func TestResolveSecretReference(t *testing.T) {
@@ -285,6 +286,12 @@ providers:
 }
 
 func TestWriteConfigWithSecrets(t *testing.T) {
+	// Skip if keychain is not available (fails on Linux CI)
+	keychainBackend := secrets.NewKeychainBackend()
+	if !keychainBackend.Available() {
+		t.Skip("keychain not available on this system")
+	}
+
 	ctx := context.Background()
 
 	// Create a temporary directory for the test

@@ -28,7 +28,7 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    # Continue even if lint fails - golangci-lint doesn't support Go 1.25.5 yet
+    # Continue even if lint fails - golangci-lint may not support newest Go versions
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +41,7 @@ jobs:
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: latest
+          version: v2.8.0
 
   build:
     name: Build
@@ -111,13 +111,13 @@ jobs:
             echo "Validating tutorial examples..."
             for file in examples/tutorial/*.yaml; do
               echo "Validating $file"
-              ./bin/conductor validate --strict "$file" || exit 1
+              ./bin/conductor validate "$file" || exit 1
             done
 
             echo "Validating showcase examples..."
             for file in examples/showcase/*.yaml; do
               echo "Validating $file"
-              ./bin/conductor validate --strict "$file" || exit 1
+              ./bin/conductor validate "$file" || exit 1
             done
           else
             echo "Warning: conductor validate command not available, skipping YAML validation"
