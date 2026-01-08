@@ -560,3 +560,193 @@ func (m *mockStreamingLLMProvider) Stream(ctx context.Context, messages []Messag
 	close(ch)
 	return ch, nil
 }
+
+// mockStreamingTool implements StreamingTool for testing
+type mockStreamingTool struct {
+	name   string
+	chunks []tools.ToolChunk
+}
+
+func (m *mockStreamingTool) Name() string {
+	return m.name
+}
+
+func (m *mockStreamingTool) Description() string {
+	return "A mock streaming tool"
+}
+
+func (m *mockStreamingTool) Schema() *tools.Schema {
+	return &tools.Schema{
+		Inputs: &tools.ParameterSchema{
+			Type: "object",
+		},
+		Outputs: &tools.ParameterSchema{
+			Type: "object",
+		},
+	}
+}
+
+func (m *mockStreamingTool) Execute(ctx context.Context, inputs map[string]interface{}) (map[string]interface{}, error) {
+	// For non-streaming execution, collect all chunks and return the final result
+	ch, err := m.ExecuteStream(ctx, inputs)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]interface{}
+	var execError error
+	for chunk := range ch {
+		if chunk.IsFinal {
+			result = chunk.Result
+			execError = chunk.Error
+		}
+	}
+
+	if execError != nil {
+		return nil, execError
+	}
+	return result, nil
+}
+
+func (m *mockStreamingTool) ExecuteStream(ctx context.Context, inputs map[string]interface{}) (<-chan tools.ToolChunk, error) {
+	ch := make(chan tools.ToolChunk, len(m.chunks))
+	go func() {
+		defer close(ch)
+		for _, chunk := range m.chunks {
+			ch <- chunk
+		}
+	}()
+	return ch, nil
+}
+
+func TestAgent_ToolStreamingExecution(t *testing.T) {
+	// Create a streaming tool that emits chunks
+	streamingTool := &mockStreamingTool{
+		name: "streaming-tool",
+		chunks: []tools.ToolChunk{
+			{
+				Data:   "Line 1\n",
+				Stream: "stdout",
+			},
+			{
+				Data:   "Line 2\n",
+				Stream: "stdout",
+			},
+			{
+				Data:   "Error message\n",
+				Stream: "stderr",
+			},
+			{
+				IsFinal: true,
+				Result: map[string]interface{}{
+					"exit_code": 0,
+					"duration":  100,
+				},
+			},
+		},
+	}
+
+	registry := tools.NewRegistry()
+	if err := registry.Register(streamingTool); err != nil {
+		t.Fatalf("Failed to register tool: %v", err)
+	}
+
+	llm := &mockLLMProvider{
+		responses: []Response{
+			{
+				Content:      "Using streaming tool",
+				FinishReason: "tool_calls",
+				ToolCalls: []ToolCall{
+					{
+						ID:        "call-1",
+						Name:      "streaming-tool",
+						Arguments: map[string]interface{}{},
+					},
+				},
+				Usage: TokenUsage{TotalTokens: 10},
+			},
+			{
+				Content:      "Completed with streaming output",
+				FinishReason: "stop",
+				Usage:        TokenUsage{TotalTokens: 10},
+			},
+		},
+	}
+
+	// Track events emitted via callback
+	var capturedEvents []map[string]interface{}
+	agent := NewAgent(llm, registry).WithEventCallback(func(eventType string, data interface{}) {
+		if eventType == "tool.output" {
+			if eventData, ok := data.(map[string]interface{}); ok {
+				capturedEvents = append(capturedEvents, eventData)
+			}
+		}
+	})
+
+	ctx := context.Background()
+	result, err := agent.Run(ctx, "System", "Task")
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	// Verify tool execution
+	if len(result.ToolExecutions) != 1 {
+		t.Fatalf("ToolExecutions count = %d, want 1", len(result.ToolExecutions))
+	}
+
+	execution := result.ToolExecutions[0]
+
+	// Verify output chunks are captured in execution
+	if len(execution.OutputChunks) != 4 {
+		t.Errorf("OutputChunks count = %d, want 4", len(execution.OutputChunks))
+	}
+
+	// Verify chunk content
+	if execution.OutputChunks[0].Data != "Line 1\n" {
+		t.Errorf("Chunk 0 data = %q, want %q", execution.OutputChunks[0].Data, "Line 1\n")
+	}
+	if execution.OutputChunks[0].Stream != "stdout" {
+		t.Errorf("Chunk 0 stream = %q, want %q", execution.OutputChunks[0].Stream, "stdout")
+	}
+
+	if execution.OutputChunks[2].Stream != "stderr" {
+		t.Errorf("Chunk 2 stream = %q, want %q", execution.OutputChunks[2].Stream, "stderr")
+	}
+
+	// Verify final chunk
+	if !execution.OutputChunks[3].IsFinal {
+		t.Error("Last chunk should have IsFinal=true")
+	}
+
+	// Verify events were emitted
+	if len(capturedEvents) != 4 {
+		t.Errorf("Captured %d events, want 4", len(capturedEvents))
+	}
+
+	// Verify event structure
+	if len(capturedEvents) > 0 {
+		firstEvent := capturedEvents[0]
+		if firstEvent["tool_name"] != "streaming-tool" {
+			t.Errorf("Event tool_name = %q, want %q", firstEvent["tool_name"], "streaming-tool")
+		}
+		if firstEvent["tool_call_id"] != "call-1" {
+			t.Errorf("Event tool_call_id = %q, want %q", firstEvent["tool_call_id"], "call-1")
+		}
+		if firstEvent["data"] != "Line 1\n" {
+			t.Errorf("Event data = %q, want %q", firstEvent["data"], "Line 1\n")
+		}
+	}
+
+	// Verify execution succeeded
+	if !execution.Success {
+		t.Error("Tool execution should have succeeded")
+	}
+
+	// Verify final result
+	if execution.Outputs == nil {
+		t.Error("Execution outputs should not be nil")
+	}
+	if exitCode, ok := execution.Outputs["exit_code"].(int); !ok || exitCode != 0 {
+		t.Errorf("Exit code = %v, want 0", execution.Outputs["exit_code"])
+	}
+}

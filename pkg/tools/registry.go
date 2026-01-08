@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/tombee/conductor/pkg/errors"
 )
 
@@ -27,6 +28,51 @@ type Tool interface {
 
 	// Execute runs the tool with the given inputs and returns outputs
 	Execute(ctx context.Context, inputs map[string]interface{}) (map[string]interface{}, error)
+}
+
+// StreamingTool extends Tool with streaming execution support.
+// Tools that implement this interface can emit incremental output chunks during execution,
+// enabling real-time progress visibility for long-running operations.
+type StreamingTool interface {
+	Tool
+
+	// ExecuteStream runs the tool and streams output chunks via a channel.
+	// The channel is closed when execution completes.
+	// Callers should drain the channel to get the complete result.
+	//
+	// Returns:
+	//   - A receive-only channel of ToolChunk values
+	//   - An error if the tool fails to start (startup errors only)
+	//
+	// Runtime errors during execution are delivered in the final chunk's Error field.
+	// Exactly one chunk will have IsFinal=true, which is always the last chunk.
+	ExecuteStream(ctx context.Context, inputs map[string]any) (<-chan ToolChunk, error)
+}
+
+// ToolChunk represents an incremental output from a streaming tool.
+// Chunks are emitted during tool execution to provide real-time progress feedback.
+type ToolChunk struct {
+	// Data is the chunk content (e.g., a line of output from stdout/stderr)
+	Data string
+
+	// Stream identifies the output stream ("stdout", "stderr", or empty for general output)
+	Stream string
+
+	// IsFinal indicates this is the last chunk with complete results.
+	// Exactly one chunk will have IsFinal=true, and it will be the last chunk sent.
+	IsFinal bool
+
+	// Result contains the final tool output (only set when IsFinal is true).
+	// For non-final chunks, this field is nil.
+	Result map[string]any
+
+	// Error contains any execution error (only set when IsFinal is true).
+	// For non-final chunks, this field is nil.
+	Error error
+
+	// Metadata contains optional additional information about the chunk.
+	// Common uses include truncation indicators, timing data, or tool-specific context.
+	Metadata map[string]any
 }
 
 // Schema defines the input and output schema for a tool using JSON Schema.
@@ -73,10 +119,15 @@ type Property struct {
 
 // Registry maintains a collection of registered tools.
 type Registry struct {
-	mu          sync.RWMutex
-	tools       map[string]Tool
-	interceptor Interceptor
+	mu           sync.RWMutex
+	tools        map[string]Tool
+	interceptor  Interceptor
+	eventEmitter EventEmitter
 }
+
+// EventEmitter emits tool execution events.
+// This allows the registry to publish streaming output events to the SDK event system.
+type EventEmitter func(ctx context.Context, eventType string, workflowID string, stepID string, data any)
 
 // Interceptor validates tool execution against security policy.
 // This interface is defined here to avoid circular dependencies.
@@ -101,6 +152,14 @@ func (r *Registry) SetInterceptor(interceptor Interceptor) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.interceptor = interceptor
+}
+
+// SetEventEmitter sets the event emitter for this registry.
+// The emitter will be called for each streaming tool output chunk.
+func (r *Registry) SetEventEmitter(emitter EventEmitter) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.eventEmitter = emitter
 }
 
 // Register adds a tool to the registry.
@@ -399,4 +458,154 @@ func (r *Registry) Filter(allowedNames []string) (*Registry, error) {
 	}
 
 	return filtered, nil
+}
+
+// SupportsStreaming checks if a tool implements the StreamingTool interface.
+// Returns false if the tool is not registered.
+func (r *Registry) SupportsStreaming(name string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	tool, exists := r.tools[name]
+	if !exists {
+		return false
+	}
+
+	_, ok := tool.(StreamingTool)
+	return ok
+}
+
+// ExecuteStream executes a tool with streaming output support.
+// If the tool implements StreamingTool, it delegates to the tool's ExecuteStream method.
+// If the tool does not implement StreamingTool, it wraps the standard Execute method
+// to emit a single chunk with IsFinal=true containing the complete result.
+//
+// The toolCallID parameter is used to correlate tool execution with LLM tool calls.
+// If empty, a UUID will be generated automatically.
+//
+// Returns a channel that emits ToolChunk values during execution.
+// The channel is closed when execution completes.
+// Exactly one chunk will have IsFinal=true, which is always the last chunk.
+func (r *Registry) ExecuteStream(ctx context.Context, name string, inputs map[string]interface{}, toolCallID string) (<-chan ToolChunk, error) {
+	// Generate UUID for toolCallID if not provided
+	if toolCallID == "" {
+		toolCallID = uuid.New().String()
+	}
+
+	tool, err := r.Get(name)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate inputs against schema
+	if err := r.validateInputs(tool, inputs); err != nil {
+		return nil, &errors.ValidationError{
+			Field:      "inputs",
+			Message:    fmt.Sprintf("input validation failed for tool %s: %v", name, err),
+			Suggestion: "Check the tool schema for required inputs and correct types",
+		}
+	}
+
+	// Call security interceptor before execution
+	r.mu.RLock()
+	interceptor := r.interceptor
+	r.mu.RUnlock()
+
+	if interceptor != nil {
+		if err := interceptor.Intercept(ctx, tool, inputs); err != nil {
+			return nil, fmt.Errorf("security validation failed for tool %s: %w", name, err)
+		}
+	}
+
+	// Check if tool supports streaming
+	if streamingTool, ok := tool.(StreamingTool); ok {
+		// Use native streaming support
+		chunks, err := streamingTool.ExecuteStream(ctx, inputs)
+		if err != nil {
+			return nil, fmt.Errorf("tool execution failed for %s: %w", name, err)
+		}
+
+		// Wrap channel to emit events and call post-execute interceptor
+		wrappedChunks := make(chan ToolChunk)
+		go func() {
+			defer close(wrappedChunks)
+			var finalResult map[string]interface{}
+			var finalError error
+
+			for chunk := range chunks {
+				// Emit event for this chunk
+				r.emitToolOutputEvent(ctx, toolCallID, name, chunk)
+
+				wrappedChunks <- chunk
+				if chunk.IsFinal {
+					finalResult = chunk.Result
+					finalError = chunk.Error
+				}
+			}
+
+			// Call post-execute interceptor after streaming completes
+			if interceptor != nil {
+				interceptor.PostExecute(ctx, tool, finalResult, finalError)
+			}
+		}()
+		return wrappedChunks, nil
+	}
+
+	// Tool does not support streaming - wrap standard Execute method
+	// to emit a single chunk with IsFinal=true
+	chunks := make(chan ToolChunk, 1)
+
+	go func() {
+		defer close(chunks)
+
+		result, err := tool.Execute(ctx, inputs)
+
+		// Call post-execute interceptor
+		if interceptor != nil {
+			interceptor.PostExecute(ctx, tool, result, err)
+		}
+
+		// Create single final chunk
+		chunk := ToolChunk{
+			IsFinal: true,
+			Result:  result,
+			Error:   err,
+		}
+
+		// Emit event for this chunk
+		r.emitToolOutputEvent(ctx, toolCallID, name, chunk)
+
+		// Emit single final chunk
+		chunks <- chunk
+	}()
+
+	return chunks, nil
+}
+
+// emitToolOutputEvent emits a tool output event for a chunk.
+// This is called for every chunk produced by ExecuteStream.
+func (r *Registry) emitToolOutputEvent(ctx context.Context, toolCallID string, toolName string, chunk ToolChunk) {
+	r.mu.RLock()
+	emitter := r.eventEmitter
+	r.mu.RUnlock()
+
+	if emitter == nil {
+		return
+	}
+
+	// Extract workflow and step IDs from context if available
+	workflowID, _ := ctx.Value("workflow_id").(string)
+	stepID, _ := ctx.Value("step_id").(string)
+
+	// Create ToolOutputEvent matching sdk/events.go structure
+	eventData := map[string]any{
+		"tool_call_id": toolCallID,
+		"tool_name":    toolName,
+		"stream":       chunk.Stream,
+		"data":         chunk.Data,
+		"is_final":     chunk.IsFinal,
+		"metadata":     chunk.Metadata,
+	}
+
+	emitter(ctx, "tool.output", workflowID, stepID, eventData)
 }
