@@ -112,6 +112,8 @@ steps:
         prompt: "Process {{.item}}"
 ```
 
+For more control over parallel execution (concurrency limits, error handling), use `type: parallel` with `foreach`. See [Parallel Execution](parallel.md#parallel-foreach) for details.
+
 ### Loop Results
 
 Access all outputs from a foreach:

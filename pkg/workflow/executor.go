@@ -1396,6 +1396,11 @@ func (e *Executor) executeForeach(ctx context.Context, step *StepDefinition, inp
 		}, nil
 	}
 
+	// Security check: validate array size to prevent resource exhaustion
+	if err := ValidateForeachArraySize(len(array), step.ID); err != nil {
+		return nil, err
+	}
+
 	// Apply parent timeout if specified
 	if step.Timeout > 0 {
 		var cancel context.CancelFunc

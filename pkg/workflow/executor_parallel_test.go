@@ -429,3 +429,41 @@ func (m *trackingMockProvider) Complete(ctx context.Context, prompt string, opti
 	}
 	return &CompletionResult{Content: m.response, Model: "mock"}, nil
 }
+
+func TestExecuteForeach_ArraySizeLimit(t *testing.T) {
+	executor := NewExecutor(nil, &mockLLMProvider{response: "test response"})
+
+	// Create an array with 10,001 items (exceeds limit of 10,000)
+	largeArray := make([]interface{}, 10001)
+	for i := range largeArray {
+		largeArray[i] = i
+	}
+
+	step := &StepDefinition{
+		ID:      "foreach_step",
+		Type:    StepTypeParallel,
+		Foreach: "{{.inputs.items}}", // Template expression referencing inputs
+		Steps: []StepDefinition{
+			{
+				ID:     "process",
+				Type:   StepTypeLLM,
+				Prompt: "Process item",
+			},
+		},
+	}
+
+	workflowContext := map[string]interface{}{
+		"_templateContext": &TemplateContext{
+			Inputs: map[string]interface{}{
+				"items": largeArray,
+			},
+		},
+	}
+
+	result, err := executor.Execute(context.Background(), step, workflowContext)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "foreach array size")
+	assert.Contains(t, err.Error(), "10001")
+	assert.Contains(t, err.Error(), "exceeds maximum of 10000")
+	assert.Equal(t, StepStatusFailed, result.Status)
+}
