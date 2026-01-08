@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -1306,6 +1307,111 @@ steps:
 				if !contains(err.Error(), tt.errMsg) {
 					t.Errorf("ParseDefinition() error = %v, want error containing %q", err, tt.errMsg)
 				}
+			}
+		})
+	}
+}
+
+func TestMaxConcurrencyValidation_Zero(t *testing.T) {
+	yaml := `
+name: test
+steps:
+  - id: parallel_step
+    type: parallel
+    max_concurrency: 0
+    steps:
+      - id: step1
+        type: llm
+        prompt: "Task"
+`
+	def, err := ParseDefinition([]byte(yaml))
+	if err != nil {
+		t.Fatalf("ParseDefinition() error = %v, expected success", err)
+	}
+
+	// Zero is valid (uses default)
+	err = def.Validate()
+	if err != nil {
+		t.Errorf("Validate() error = %v, expected no error for max_concurrency=0", err)
+	}
+}
+
+func TestMaxConcurrencyValidation_Negative(t *testing.T) {
+	yaml := `
+name: test
+steps:
+  - id: parallel_step
+    type: parallel
+    max_concurrency: -1
+    steps:
+      - id: step1
+        type: llm
+        prompt: "Task"
+`
+	// Negative should fail during parsing (ParseDefinition calls Validate)
+	_, err := ParseDefinition([]byte(yaml))
+	if err == nil {
+		t.Error("ParseDefinition() expected error for negative max_concurrency, got nil")
+	}
+	if err != nil && !contains(err.Error(), "max_concurrency") && !contains(err.Error(), "positive") {
+		t.Errorf("ParseDefinition() error = %v, expected error about max_concurrency being positive", err)
+	}
+}
+
+func TestMaxConcurrencyValidation_TooHigh(t *testing.T) {
+	yaml := `
+name: test
+steps:
+  - id: parallel_step
+    type: parallel
+    max_concurrency: 101
+    steps:
+      - id: step1
+        type: llm
+        prompt: "Task"
+`
+	// 101 should fail during parsing (max is 100)
+	_, err := ParseDefinition([]byte(yaml))
+	if err == nil {
+		t.Error("ParseDefinition() expected error for max_concurrency=101, got nil")
+	}
+	if err != nil && !contains(err.Error(), "max_concurrency") && !contains(err.Error(), "100") {
+		t.Errorf("ParseDefinition() error = %v, expected error about max_concurrency exceeding 100", err)
+	}
+}
+
+func TestMaxConcurrencyValidation_Valid(t *testing.T) {
+	tests := []struct {
+		name           string
+		maxConcurrency int
+	}{
+		{"one", 1},
+		{"fifty", 50},
+		{"hundred", 100},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			yaml := fmt.Sprintf(`
+name: test
+steps:
+  - id: parallel_step
+    type: parallel
+    max_concurrency: %d
+    steps:
+      - id: step1
+        type: llm
+        prompt: "Task"
+`, tt.maxConcurrency)
+
+			def, err := ParseDefinition([]byte(yaml))
+			if err != nil {
+				t.Fatalf("ParseDefinition() error = %v", err)
+			}
+
+			err = def.Validate()
+			if err != nil {
+				t.Errorf("Validate() error = %v, expected no error for max_concurrency=%d", err, tt.maxConcurrency)
 			}
 		})
 	}
