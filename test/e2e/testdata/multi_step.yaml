@@ -1,0 +1,46 @@
+name: multi-step
+description: Multi-step workflow with variable passing for E2E testing
+
+inputs:
+  - name: topic
+    type: string
+    description: The topic to write about
+
+steps:
+  - id: generate_outline
+    type: llm
+    model: mock
+    prompt: |
+      Create an outline for: {{.inputs.topic}}
+      Keep it brief with 3 main points.
+
+  - id: expand_first_point
+    type: llm
+    model: mock
+    prompt: |
+      Based on this outline: {{.steps.generate_outline.response}}
+      Expand on the first point in detail.
+
+  - id: generate_summary
+    type: llm
+    model: mock
+    prompt: |
+      Summarize these sections:
+
+      Outline: {{.steps.generate_outline.response}}
+      Details: {{.steps.expand_first_point.response}}
+
+      Provide a one-sentence summary.
+
+outputs:
+  - name: outline
+    type: string
+    value: "{{.steps.generate_outline.response}}"
+
+  - name: details
+    type: string
+    value: "{{.steps.expand_first_point.response}}"
+
+  - name: summary
+    type: string
+    value: "{{.steps.generate_summary.response}}"

@@ -1,4 +1,4 @@
-.PHONY: help build test test-integration test-claude-cli lint clean coverage install release snapshot
+.PHONY: help build test test-e2e test-smoke test-integration test-claude-cli lint clean coverage install release snapshot
 
 # Version information
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -17,7 +17,9 @@ INSTALL_DIR ?= /usr/local/bin
 help:
 	@echo "Available targets:"
 	@echo "  build           - Build the conductor binary"
-	@echo "  test            - Run all tests"
+	@echo "  test            - Run all tests (unit + E2E)"
+	@echo "  test-e2e        - Run E2E tests with mocked providers"
+	@echo "  test-smoke      - Run smoke tests with real providers (Ollama/Anthropic)"
 	@echo "  test-integration - Run integration tests (require external services)"
 	@echo "  test-claude-cli - Run Claude Code CLI integration tests"
 	@echo "  lint            - Run golangci-lint"
@@ -37,7 +39,21 @@ build:
 	go build -ldflags="$(LDFLAGS)" -o bin/conductor ./cmd/conductor
 
 test:
-	go test -v -race ./...
+	@echo "Running unit tests..."
+	@go test -v -race ./... -short
+	@echo ""
+	@echo "Running E2E tests with mocked providers..."
+	@$(MAKE) test-e2e
+
+test-e2e:
+	@echo "Running E2E tests (mock providers, no external dependencies)..."
+	go test -v -race ./test/e2e/...
+
+test-smoke:
+	@echo "Running smoke tests with real providers..."
+	@echo "Note: Requires Ollama running locally OR ANTHROPIC_API_KEY set"
+	@echo ""
+	go test -v -tags=smoke ./test/e2e/...
 
 test-integration:
 	go test -v -race -tags=integration ./...

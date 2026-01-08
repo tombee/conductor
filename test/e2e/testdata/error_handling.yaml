@@ -1,0 +1,41 @@
+name: error-handling
+description: Workflow for testing error paths and recovery for E2E testing
+
+inputs:
+  - name: fail_step
+    type: string
+    default: "none"
+    description: Which step should fail (none, first, second)
+
+steps:
+  - id: first_step
+    type: llm
+    model: mock
+    prompt: |
+      Step 1: Process input
+      Input: {{.inputs.fail_step}}
+
+  - id: conditional_step
+    type: llm
+    model: mock
+    condition:
+      expression: 'inputs.fail_step != "skip_this"'
+    prompt: |
+      This step runs conditionally
+      Previous: {{.steps.first_step.response}}
+
+  - id: final_step
+    type: llm
+    model: mock
+    prompt: |
+      Final step
+      Results: {{.steps.first_step.response}}
+
+outputs:
+  - name: first_result
+    type: string
+    value: "{{.steps.first_step.response}}"
+
+  - name: final_result
+    type: string
+    value: "{{.steps.final_step.response}}"
