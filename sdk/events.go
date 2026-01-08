@@ -25,6 +25,7 @@ const (
 	EventAgentToolResult   EventType = "agent.tool_result" // Agent tool result
 	EventAgentComplete     EventType = "agent.complete"    // Agent completion
 	EventTokenUpdate       EventType = "token.update"      // Token usage update
+	EventToolOutput        EventType = "tool.output"       // Streaming tool output chunk
 )
 
 // Event represents a workflow event.
@@ -124,4 +125,15 @@ func fromLLMTokenUsage(usage llm.TokenUsage) TokenUsage {
 		CacheCreationTokens: usage.CacheCreationTokens,
 		CacheReadTokens:     usage.CacheReadTokens,
 	}
+}
+
+// ToolOutputEvent is the Data for EventToolOutput.
+// It represents a streaming output chunk from a tool execution.
+type ToolOutputEvent struct {
+	ToolCallID string         // Links to the tool call
+	ToolName   string         // Name of the tool
+	Stream     string         // "stdout", "stderr", or ""
+	Data       string         // Chunk content
+	IsFinal    bool           // True for the final chunk
+	Metadata   map[string]any // Optional metadata
 }

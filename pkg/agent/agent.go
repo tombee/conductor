@@ -171,6 +171,37 @@ type ToolExecution struct {
 
 	// DurationMs is the duration in milliseconds (for spec compliance)
 	DurationMs int
+
+	// OutputChunks contains streaming output chunks from the tool execution
+	OutputChunks []ToolOutputChunk
+}
+
+// ToolOutputChunk represents a streaming output chunk from a tool execution.
+type ToolOutputChunk struct {
+	// ToolCallID links to the tool call
+	ToolCallID string
+
+	// ToolName is the name of the tool
+	ToolName string
+
+	// Stream identifies the output stream ("stdout", "stderr", or "")
+	Stream string
+
+	// Data is the chunk content
+	Data string
+
+	// IsFinal indicates this is the last chunk
+	IsFinal bool
+
+	// Metadata contains optional metadata
+	Metadata map[string]interface{}
+}
+
+// StepContext contains contextual information available during agent execution steps.
+// This context accumulates data across iterations and is available for reasoning.
+type StepContext struct {
+	// ToolOutputChunks contains all streaming output chunks from tool executions
+	ToolOutputChunks []ToolOutputChunk
 }
 
 // NewAgent creates a new agent.
@@ -214,6 +245,11 @@ func (a *Agent) Run(ctx context.Context, systemPrompt string, userPrompt string)
 	startTime := time.Now()
 	result := &Result{
 		ToolExecutions: []ToolExecution{},
+	}
+
+	// Initialize step context
+	stepContext := &StepContext{
+		ToolOutputChunks: []ToolOutputChunk{},
 	}
 
 	// Initialize conversation with system and user messages
@@ -274,7 +310,7 @@ func (a *Agent) Run(ctx context.Context, systemPrompt string, userPrompt string)
 		// Execute tool calls if any
 		if len(response.ToolCalls) > 0 {
 			for _, toolCall := range response.ToolCalls {
-				execution := a.executeTool(ctx, toolCall)
+				execution := a.executeTool(ctx, toolCall, stepContext)
 				result.ToolExecutions = append(result.ToolExecutions, execution)
 
 				// Add tool result to conversation
@@ -313,11 +349,12 @@ func (a *Agent) Run(ctx context.Context, systemPrompt string, userPrompt string)
 	return result, fmt.Errorf("max iterations reached")
 }
 
-// executeTool executes a single tool call.
-func (a *Agent) executeTool(ctx context.Context, toolCall ToolCall) ToolExecution {
+// executeTool executes a single tool call using streaming execution.
+func (a *Agent) executeTool(ctx context.Context, toolCall ToolCall, stepContext *StepContext) ToolExecution {
 	startTime := time.Now()
 	execution := ToolExecution{
-		ToolName: toolCall.Name,
+		ToolName:     toolCall.Name,
+		OutputChunks: []ToolOutputChunk{},
 	}
 
 	// Parse arguments
@@ -340,15 +377,62 @@ func (a *Agent) executeTool(ctx context.Context, toolCall ToolCall) ToolExecutio
 
 	execution.Inputs = inputs
 
-	// Execute tool
-	outputs, err := a.registry.Execute(ctx, toolCall.Name, inputs)
-	execution.Duration = time.Since(startTime)
-	execution.DurationMs = int(execution.Duration.Milliseconds())
-
+	// Execute tool with streaming support
+	chunks, err := a.registry.ExecuteStream(ctx, toolCall.Name, inputs, toolCall.ID)
 	if err != nil {
 		execution.Success = false
 		execution.Status = "error"
 		execution.Error = err.Error()
+		execution.Duration = time.Since(startTime)
+		execution.DurationMs = int(execution.Duration.Milliseconds())
+		return execution
+	}
+
+	// Process streaming chunks
+	var outputs map[string]interface{}
+	var execError error
+
+	for chunk := range chunks {
+		// Create output chunk for this execution
+		outputChunk := ToolOutputChunk{
+			ToolCallID: toolCall.ID,
+			ToolName:   toolCall.Name,
+			Stream:     chunk.Stream,
+			Data:       chunk.Data,
+			IsFinal:    chunk.IsFinal,
+			Metadata:   chunk.Metadata,
+		}
+
+		// Store chunk in execution and step context
+		execution.OutputChunks = append(execution.OutputChunks, outputChunk)
+		stepContext.ToolOutputChunks = append(stepContext.ToolOutputChunks, outputChunk)
+
+		// Emit event via callback if configured
+		if a.eventCallback != nil {
+			a.eventCallback("tool.output", map[string]interface{}{
+				"tool_call_id": toolCall.ID,
+				"tool_name":    toolCall.Name,
+				"stream":       chunk.Stream,
+				"data":         chunk.Data,
+				"is_final":     chunk.IsFinal,
+				"metadata":     chunk.Metadata,
+			})
+		}
+
+		// Extract final result
+		if chunk.IsFinal {
+			outputs = chunk.Result
+			execError = chunk.Error
+		}
+	}
+
+	execution.Duration = time.Since(startTime)
+	execution.DurationMs = int(execution.Duration.Milliseconds())
+
+	if execError != nil {
+		execution.Success = false
+		execution.Status = "error"
+		execution.Error = execError.Error()
 		return execution
 	}
 
