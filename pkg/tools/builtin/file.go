@@ -286,9 +286,25 @@ func (t *FileTool) Execute(ctx context.Context, inputs map[string]interface{}) (
 			return nil, &errors.ValidationError{
 				Field:      "max_lines",
 				Message:    err.Error(),
-				Suggestion: "Provide a non-negative integer for max_lines",
+				Suggestion: "Provide a null or positive integer for max_lines",
 			}
 		} else if found {
+			// Validate max_lines is positive (0 is not allowed)
+			if ml == 0 {
+				return nil, &errors.ValidationError{
+					Field:      "max_lines",
+					Message:    "max_lines must be null or a positive integer",
+					Suggestion: "Provide a positive integer or omit max_lines for unlimited read",
+				}
+			}
+			// Validate max_lines doesn't exceed maximum
+			if ml > 100000 {
+				return nil, &errors.ValidationError{
+					Field:      "max_lines",
+					Message:    "max_lines exceeds maximum allowed value (100000)",
+					Suggestion: "Provide a max_lines value of 100000 or less",
+				}
+			}
 			maxLines = ml
 		}
 
@@ -301,12 +317,20 @@ func (t *FileTool) Execute(ctx context.Context, inputs map[string]interface{}) (
 				Suggestion: "Provide a non-negative integer for offset",
 			}
 		} else if found {
+			// Validate offset doesn't exceed maximum
+			if off > 10000000 {
+				return nil, &errors.ValidationError{
+					Field:      "offset",
+					Message:    "offset exceeds maximum allowed value (10000000)",
+					Suggestion: "Provide an offset value of 10000000 or less",
+				}
+			}
 			offset = off
 		}
 
 		// Validate path for read access
 		if err := t.validatePath(path, security.ActionRead); err != nil {
-			return nil, fmt.Errorf("read access validation failed for path %s: %w", path, err)
+			return nil, fmt.Errorf("read access validation failed: %w", err)
 		}
 		return t.read(ctx, path, maxLines, offset)
 	case "write":
@@ -320,7 +344,7 @@ func (t *FileTool) Execute(ctx context.Context, inputs map[string]interface{}) (
 		}
 		// Validate path for write access
 		if err := t.validatePath(path, security.ActionWrite); err != nil {
-			return nil, fmt.Errorf("write access validation failed for path %s: %w", path, err)
+			return nil, fmt.Errorf("write access validation failed: %w", err)
 		}
 		return t.write(ctx, path, content)
 	default:

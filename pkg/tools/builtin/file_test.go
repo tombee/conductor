@@ -1221,6 +1221,34 @@ func TestFileTool_ParameterValidation(t *testing.T) {
 			errorField:  "offset",
 		},
 		{
+			name:        "max_lines zero (invalid)",
+			maxLines:    float64(0),
+			expectError: true,
+			errorField:  "max_lines",
+		},
+		{
+			name:        "max_lines exceeds maximum (100001)",
+			maxLines:    float64(100001),
+			expectError: true,
+			errorField:  "max_lines",
+		},
+		{
+			name:        "max_lines at maximum (100000)",
+			maxLines:    float64(100000),
+			expectError: false,
+		},
+		{
+			name:        "offset exceeds maximum (10000001)",
+			offset:      float64(10000001),
+			expectError: true,
+			errorField:  "offset",
+		},
+		{
+			name:        "offset at maximum (10000000)",
+			offset:      float64(10000000),
+			expectError: false,
+		},
+		{
 			name:        "valid max_lines as int",
 			maxLines:    5,
 			expectError: false,
