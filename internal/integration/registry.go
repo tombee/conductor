@@ -21,6 +21,15 @@ import (
 	"github.com/tombee/conductor/internal/operation/transport"
 )
 
+// defaultBaseURLs maps builtin integration names to their default API base URLs.
+// These are applied when no explicit base_url is provided.
+var defaultBaseURLs = map[string]string{
+	"github":  "https://api.github.com",
+	"slack":   "https://slack.com/api",
+	"discord": "https://discord.com/api/v10",
+	"notion":  "https://api.notion.com/v1",
+}
+
 // BuiltinRegistry holds all built-in API integration factories.
 // These integrations provide type-safe, Go-based implementations with
 // API-specific error handling and pagination support.
@@ -44,6 +53,13 @@ func init() {
 	for name := range BuiltinRegistry {
 		intName := name // capture for closure
 		operation.RegisterBuiltinAPI(name, func(integrationName string, baseURL string, authType string, authToken string) (operation.Provider, error) {
+			// Apply default base URL if not provided
+			if baseURL == "" {
+				if defaultURL, ok := defaultBaseURLs[intName]; ok {
+					baseURL = defaultURL
+				}
+			}
+
 			// Create HTTP transport for the integration
 			httpTransport, err := transport.NewHTTPTransport(&transport.HTTPTransportConfig{
 				BaseURL: baseURL,
