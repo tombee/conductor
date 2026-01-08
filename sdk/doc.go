@@ -59,8 +59,38 @@
 //   - LLM Abstraction: Multi-provider support (Anthropic, OpenAI, Ollama) with cost tracking
 //   - Action System: Built-in actions (file, shell, http) plus custom tool registration
 //   - Agent Loops: ReAct-style agent execution with tool use
+//   - Code Truncation: Language-aware code truncation for context window optimization
 //   - Event Streaming: Real-time events for UI integration
 //   - Security: Credential handling, MCP server trust model
+//
+// # Code Truncation
+//
+// TruncateCode intelligently shortens code files while preserving structural integrity.
+// Instead of naive character or line truncation, it understands code structure and
+// truncates at natural boundaries (between functions, after imports, at class boundaries).
+//
+// Example: Truncate a large file for LLM context:
+//
+//	result, err := sdk.TruncateCode(sourceCode, sdk.TruncateOptions{
+//		MaxLines:     500,           // Limit to 500 lines
+//		Language:     "go",          // Structure-aware Go truncation
+//		PreserveTop:  true,          // Keep imports and package declaration
+//		PreserveFunc: true,          // Don't cut mid-function
+//	})
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	fmt.Printf("Truncated from %d to %d lines\n",
+//		result.OriginalLines, result.FinalLines)
+//	fmt.Printf("Omitted %d functions\n", len(result.OmittedItems))
+//
+// Supported languages: Go, TypeScript, Python, JavaScript. Unknown languages fall back
+// to line-based truncation. Token-based truncation is also supported using the
+// MaxTokens option with a chars/4 estimation heuristic.
+//
+// The function is thread-safe, deterministic, and includes panic recovery for graceful
+// error handling.
 //
 // # Architecture
 //
