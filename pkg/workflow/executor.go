@@ -323,9 +323,13 @@ func (e *Executor) Execute(ctx context.Context, step *StepDefinition, workflowCo
 			)
 			result.Status = StepStatusSkipped
 			result.Output = map[string]interface{}{
-				"content": "",
-				"skipped": true,
-				"reason":  "condition evaluated to false",
+				"skipped":   true,
+				"reason":    "condition evaluated to false",
+				"stdout":    "",
+				"stderr":    "",
+				"exit_code": 0,
+				"content":   "",
+				"status":    "skipped",
 			}
 			result.CompletedAt = time.Now()
 			result.Duration = result.CompletedAt.Sub(result.StartedAt)
@@ -1654,18 +1658,31 @@ func copyWorkflowContext(ctx map[string]interface{}) map[string]interface{} {
 //   - has(inputs.personas, "security")
 //   - inputs.mode == "strict"
 //   - inputs.count > 5 && inputs.enabled
+//   - {{.steps.check.stdout}} == "success" (template syntax)
 func (e *Executor) evaluateCondition(expr string, workflowContext map[string]interface{}) (bool, error) {
 	// Build expression context from workflow context
 	ctx := expression.BuildContext(workflowContext)
 
+	// Preprocess template expressions ({{...}}) before evaluation
+	// This allows conditions like: {{.steps.check.stdout}} == "success"
+	preprocessed, err := expression.PreprocessTemplate(expr, ctx)
+	if err != nil {
+		return false, fmt.Errorf("template preprocessing failed: %w", err)
+	}
+
+	e.logger.Debug("condition preprocessed",
+		"original", expr,
+		"preprocessed", preprocessed,
+	)
+
 	// Evaluate the expression
-	result, err := e.exprEval.Evaluate(expr, ctx)
+	result, err := e.exprEval.Evaluate(preprocessed, ctx)
 	if err != nil {
 		return false, err
 	}
 
 	e.logger.Debug("condition evaluated",
-		"expression", expr,
+		"expression", preprocessed,
 		"result", result,
 	)
 

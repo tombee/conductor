@@ -257,9 +257,232 @@ func TestExecute_SkippedStepOutput(t *testing.T) {
 	result, err := executor.Execute(context.Background(), step, workflowContext)
 	require.NoError(t, err)
 
-	// Verify skipped step has proper output structure
+	// Verify skipped step has proper output structure matching spec FR4
 	assert.Equal(t, StepStatusSkipped, result.Status)
-	assert.Equal(t, "", result.Output["content"])
 	assert.Equal(t, true, result.Output["skipped"])
-	assert.NotEmpty(t, result.Output["reason"])
+	assert.Equal(t, "condition evaluated to false", result.Output["reason"])
+	assert.Equal(t, "", result.Output["stdout"])
+	assert.Equal(t, "", result.Output["stderr"])
+	assert.Equal(t, 0, result.Output["exit_code"])
+	assert.Equal(t, "", result.Output["content"])
+	assert.Equal(t, "skipped", result.Output["status"])
+}
+
+// TestExecute_ConditionWithTemplateExpression tests Phase 3: template syntax in conditions
+func TestExecute_ConditionWithTemplateExpression(t *testing.T) {
+	executor := NewExecutor(nil, &mockLLMProvider{response: "analysis complete"})
+
+	step := &StepDefinition{
+		ID:   "analyze",
+		Type: StepTypeLLM,
+		Condition: &ConditionDefinition{
+			Expression: `{{.steps.check.stdout}} == "success"`,
+		},
+		Prompt: "Analyze the data",
+	}
+
+	workflowContext := map[string]interface{}{
+		"steps": map[string]interface{}{
+			"check": map[string]interface{}{
+				"stdout": "success",
+				"stderr": "",
+			},
+		},
+	}
+
+	result, err := executor.Execute(context.Background(), step, workflowContext)
+	require.NoError(t, err)
+
+	assert.Equal(t, StepStatusSuccess, result.Status)
+	assert.Contains(t, result.Output["response"], "analysis complete")
+}
+
+// TestExecute_ConditionWithTemplateExpression_False tests skipped step with template
+func TestExecute_ConditionWithTemplateExpression_False(t *testing.T) {
+	executor := NewExecutor(nil, &mockLLMProvider{response: "should not run"})
+
+	step := &StepDefinition{
+		ID:   "analyze",
+		Type: StepTypeLLM,
+		Condition: &ConditionDefinition{
+			Expression: `{{.steps.check.stdout}} == "success"`,
+		},
+		Prompt: "Analyze the data",
+	}
+
+	workflowContext := map[string]interface{}{
+		"steps": map[string]interface{}{
+			"check": map[string]interface{}{
+				"stdout": "failed",
+				"stderr": "error occurred",
+			},
+		},
+	}
+
+	result, err := executor.Execute(context.Background(), step, workflowContext)
+	require.NoError(t, err)
+
+	assert.Equal(t, StepStatusSkipped, result.Status)
+	assert.Equal(t, true, result.Output["skipped"])
+}
+
+// TestExecute_SkippedStepReferencedByDownstream verifies downstream steps can reference skipped steps
+func TestExecute_SkippedStepReferencedByDownstream(t *testing.T) {
+	executor := NewExecutor(nil, &mockLLMProvider{response: "using skipped output"})
+
+	// First step gets skipped
+	step1 := &StepDefinition{
+		ID:   "optional_step",
+		Type: StepTypeLLM,
+		Condition: &ConditionDefinition{
+			Expression: `false`, // Always skip
+		},
+		Prompt: "This won't run",
+	}
+
+	workflowContext := map[string]interface{}{
+		"inputs": map[string]interface{}{},
+	}
+
+	result1, err := executor.Execute(context.Background(), step1, workflowContext)
+	require.NoError(t, err)
+	assert.Equal(t, StepStatusSkipped, result1.Status)
+
+	// Add skipped step output to context
+	workflowContext["steps"] = map[string]interface{}{
+		"optional_step": result1.Output,
+	}
+
+	// Second step references the skipped step using template syntax
+	step2 := &StepDefinition{
+		ID:   "next_step",
+		Type: StepTypeLLM,
+		Condition: &ConditionDefinition{
+			Expression: `{{.steps.optional_step.status}} == "skipped"`,
+		},
+		Prompt: "Handle skipped case",
+	}
+
+	result2, err := executor.Execute(context.Background(), step2, workflowContext)
+	require.NoError(t, err)
+
+	// This step should run because the condition evaluates to true
+	assert.Equal(t, StepStatusSuccess, result2.Status)
+	assert.Contains(t, result2.Output["response"], "using skipped output")
+}
+
+// TestExecute_ChainedConditionsWithTemplates tests multiple conditions with template expressions
+func TestExecute_ChainedConditionsWithTemplates(t *testing.T) {
+	executor := NewExecutor(nil, &mockLLMProvider{response: "final step"})
+
+	// First step succeeds
+	step1 := &StepDefinition{
+		ID:     "step1",
+		Type:   StepTypeLLM,
+		Prompt: "First step",
+	}
+
+	workflowContext := map[string]interface{}{
+		"inputs": map[string]interface{}{},
+	}
+
+	result1, err := executor.Execute(context.Background(), step1, workflowContext)
+	require.NoError(t, err)
+	assert.Equal(t, StepStatusSuccess, result1.Status)
+
+	// Second step checks first step's status
+	workflowContext["steps"] = map[string]interface{}{
+		"step1": map[string]interface{}{
+			"response": result1.Output["response"],
+			"status":   "success",
+		},
+	}
+
+	step2 := &StepDefinition{
+		ID:   "step2",
+		Type: StepTypeLLM,
+		Condition: &ConditionDefinition{
+			Expression: `{{.steps.step1.status}} == "success"`,
+		},
+		Prompt: "Second step",
+	}
+
+	result2, err := executor.Execute(context.Background(), step2, workflowContext)
+	require.NoError(t, err)
+	assert.Equal(t, StepStatusSuccess, result2.Status)
+
+	// Third step checks both previous steps using complex condition
+	workflowContext["steps"].(map[string]interface{})["step2"] = map[string]interface{}{
+		"response": result2.Output["response"],
+		"status":   "success",
+	}
+
+	step3 := &StepDefinition{
+		ID:   "step3",
+		Type: StepTypeLLM,
+		Condition: &ConditionDefinition{
+			Expression: `{{.steps.step1.status}} == "success" && {{.steps.step2.status}} == "success"`,
+		},
+		Prompt: "Final step",
+	}
+
+	result3, err := executor.Execute(context.Background(), step3, workflowContext)
+	require.NoError(t, err)
+	assert.Equal(t, StepStatusSuccess, result3.Status)
+	assert.Contains(t, result3.Output["response"], "final step")
+}
+
+// TestExecute_SkippedStepDoesNotTriggerOnError verifies skipped steps don't invoke error handlers
+func TestExecute_SkippedStepDoesNotTriggerOnError(t *testing.T) {
+	executor := NewExecutor(nil, &mockLLMProvider{response: "should not run"})
+
+	step := &StepDefinition{
+		ID:   "conditional_step",
+		Type: StepTypeLLM,
+		Condition: &ConditionDefinition{
+			Expression: `false`, // Always skip
+		},
+		OnError: &ErrorHandlingDefinition{
+			Strategy: ErrorStrategyFail,
+		},
+		Prompt: "This won't run",
+	}
+
+	workflowContext := map[string]interface{}{}
+
+	result, err := executor.Execute(context.Background(), step, workflowContext)
+	require.NoError(t, err) // No error should be returned
+
+	assert.Equal(t, StepStatusSkipped, result.Status)
+	assert.Empty(t, result.Error) // Error field should be empty for skipped steps
+	assert.Equal(t, true, result.Output["skipped"])
+}
+
+// TestExecute_ConditionWithNestedStepFields tests template expressions accessing nested fields
+func TestExecute_ConditionWithNestedStepFields(t *testing.T) {
+	executor := NewExecutor(nil, &mockLLMProvider{response: "processing"})
+
+	step := &StepDefinition{
+		ID:   "process",
+		Type: StepTypeLLM,
+		Condition: &ConditionDefinition{
+			Expression: `{{.steps.api_call.exit_code}} == 0`,
+		},
+		Prompt: "Process the API response",
+	}
+
+	workflowContext := map[string]interface{}{
+		"steps": map[string]interface{}{
+			"api_call": map[string]interface{}{
+				"stdout":    "API response data",
+				"stderr":    "",
+				"exit_code": 0,
+			},
+		},
+	}
+
+	result, err := executor.Execute(context.Background(), step, workflowContext)
+	require.NoError(t, err)
+
+	assert.Equal(t, StepStatusSuccess, result.Status)
 }

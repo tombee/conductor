@@ -880,3 +880,268 @@ func contains(s, substr string) bool {
 	}
 	return false
 }
+
+// TestIfFieldParsing tests that the 'if' field is correctly parsed from YAML
+func TestIfFieldParsing(t *testing.T) {
+	tests := []struct {
+		name       string
+		definition string
+		wantErr    bool
+		validate   func(t *testing.T, def *Definition)
+	}{
+		{
+			name: "valid if field",
+			definition: `
+name: test-workflow
+steps:
+  - id: check
+    type: llm
+    prompt: "Check something"
+
+  - id: conditional_step
+    type: llm
+    if: "{{.steps.check.response}} == 'yes'"
+    prompt: "Do something"
+`,
+			wantErr: false,
+			validate: func(t *testing.T, def *Definition) {
+				if len(def.Steps) < 2 {
+					t.Fatal("Expected at least 2 steps")
+				}
+				step := def.Steps[1]
+				if step.If != "{{.steps.check.response}} == 'yes'" {
+					t.Errorf("If field not parsed correctly, got %v", step.If)
+				}
+				// Check normalization: If should be copied to Condition.Expression
+				if step.Condition == nil {
+					t.Fatal("Condition should not be nil after normalization")
+				}
+				if step.Condition.Expression != step.If {
+					t.Errorf("Condition.Expression = %v, want %v", step.Condition.Expression, step.If)
+				}
+			},
+		},
+		{
+			name: "if field with simple expression",
+			definition: `
+name: test-workflow
+steps:
+  - id: conditional_step
+    type: llm
+    if: "inputs.enabled"
+    prompt: "Do something"
+`,
+			wantErr: false,
+			validate: func(t *testing.T, def *Definition) {
+				step := def.Steps[0]
+				if step.If != "inputs.enabled" {
+					t.Errorf("If field = %v, want 'inputs.enabled'", step.If)
+				}
+				if step.Condition == nil || step.Condition.Expression != "inputs.enabled" {
+					t.Error("If field not normalized to Condition.Expression")
+				}
+			},
+		},
+		{
+			name: "if field with boolean operators",
+			definition: `
+name: test-workflow
+steps:
+  - id: conditional_step
+    type: llm
+    if: "inputs.enabled && !inputs.dry_run"
+    prompt: "Do something"
+`,
+			wantErr: false,
+			validate: func(t *testing.T, def *Definition) {
+				step := def.Steps[0]
+				expectedIf := "inputs.enabled && !inputs.dry_run"
+				if step.If != expectedIf {
+					t.Errorf("If field = %v, want %v", step.If, expectedIf)
+				}
+				if step.Condition == nil || step.Condition.Expression != expectedIf {
+					t.Error("If field not normalized to Condition.Expression")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			def, err := ParseDefinition([]byte(tt.definition))
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseDefinition() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err == nil && tt.validate != nil {
+				tt.validate(t, def)
+			}
+		})
+	}
+}
+
+// TestIfFieldNormalization tests that 'if' is normalized to 'condition.expression'
+func TestIfFieldNormalization(t *testing.T) {
+	tests := []struct {
+		name               string
+		definition         string
+		wantErr            bool
+		expectedExpression string
+	}{
+		{
+			name: "if normalizes to condition.expression",
+			definition: `
+name: test-workflow
+steps:
+  - id: step1
+    type: llm
+    if: "true"
+    prompt: "test"
+`,
+			wantErr:            false,
+			expectedExpression: "true",
+		},
+		{
+			name: "if with template syntax",
+			definition: `
+name: test-workflow
+steps:
+  - id: check
+    type: llm
+    prompt: "check"
+  - id: step2
+    type: llm
+    if: "{{.steps.check.response}} == 'proceed'"
+    prompt: "test"
+`,
+			wantErr:            false,
+			expectedExpression: "{{.steps.check.response}} == 'proceed'",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			def, err := ParseDefinition([]byte(tt.definition))
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseDefinition() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err == nil {
+				// Find the step with 'if' field (not the first step in some tests)
+				var targetStep *StepDefinition
+				for i := range def.Steps {
+					if def.Steps[i].If != "" {
+						targetStep = &def.Steps[i]
+						break
+					}
+				}
+				if targetStep == nil {
+					t.Fatal("No step with 'if' field found")
+				}
+				if targetStep.Condition == nil {
+					t.Fatal("Condition should be set after normalization")
+				}
+				if targetStep.Condition.Expression != tt.expectedExpression {
+					t.Errorf("Condition.Expression = %v, want %v",
+						targetStep.Condition.Expression, tt.expectedExpression)
+				}
+			}
+		})
+	}
+}
+
+// TestIfAndConditionMutualExclusivity tests that 'if' and 'condition' cannot both be set
+func TestIfAndConditionMutualExclusivity(t *testing.T) {
+	tests := []struct {
+		name       string
+		definition string
+		wantErr    bool
+		errMsg     string
+	}{
+		{
+			name: "both if and condition.expression set",
+			definition: `
+name: test-workflow
+steps:
+  - id: step1
+    type: llm
+    if: "inputs.enabled"
+    condition:
+      expression: "inputs.mode == 'strict'"
+    prompt: "test"
+`,
+			wantErr: true,
+			errMsg:  "mutually exclusive",
+		},
+		{
+			name: "if and condition with then_steps",
+			definition: `
+name: test-workflow
+steps:
+  - id: step1
+    type: llm
+    if: "inputs.enabled"
+    condition:
+      expression: "inputs.enabled"
+      then_steps: ["step2"]
+    prompt: "test"
+  - id: step2
+    type: llm
+    prompt: "test2"
+`,
+			wantErr: true,
+			errMsg:  "mutually exclusive",
+		},
+		{
+			name: "only if field (valid)",
+			definition: `
+name: test-workflow
+steps:
+  - id: step1
+    type: llm
+    if: "inputs.enabled"
+    prompt: "test"
+`,
+			wantErr: false,
+		},
+		{
+			name: "only condition field (valid)",
+			definition: `
+name: test-workflow
+steps:
+  - id: step1
+    type: llm
+    condition:
+      expression: "inputs.enabled"
+    prompt: "test"
+`,
+			wantErr: false,
+		},
+		{
+			name: "neither if nor condition (valid)",
+			definition: `
+name: test-workflow
+steps:
+  - id: step1
+    type: llm
+    prompt: "test"
+`,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseDefinition([]byte(tt.definition))
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseDefinition() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil && tt.errMsg != "" {
+				if !contains(err.Error(), tt.errMsg) {
+					t.Errorf("ParseDefinition() error = %v, want error containing %q", err, tt.errMsg)
+				}
+			}
+		})
+	}
+}
